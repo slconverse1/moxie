@@ -5,7 +5,7 @@ title: "Mixer's Guide"
 
 # MIXER'S GUIDE
 
-These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the fourth regeneration, matching the fourth regeneration of the Spec. Outputs were recomputed by hand, and items marked *(proposed)* are not settled. Snippets continue from earlier ones: a name such as `add`, `half`, `Maybe`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
+These are compact examples, not a tutorial; a longer teaching Guide comes later. Outputs were recomputed by hand. Snippets continue from earlier ones: a name such as `add`, `half`, `Maybe`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
 
 **Chapter 1: Bindings, blocks, `if`, loops**
 
@@ -366,7 +366,7 @@ println("$item")
 println("${item == other}")
 ```
 
-Output: `Product(name: "Mechanical Keyboard", price: 120)` *(format proposed)*, then `true`. Trailing fields can have defaults: any expression the compiler can evaluate at compile time, such as `4000` or `pow2(4, 1)` (from chapter 2c). Omit them by name, or write `UploadOptions()` when all have defaults. A spread supplies every field:
+Output: `Product(name: "Mechanical Keyboard", price: 120)`, then `true`. Trailing fields can have defaults: any expression the compiler can evaluate at compile time, such as `4000` or `pow2(4, 1)` (from chapter 2c). Omit them by name, or write `UploadOptions()` when all have defaults. A spread supplies every field:
 
 ```
 tuple UploadOptions:
@@ -1177,7 +1177,7 @@ Output: `5 1 7`. Production code passes an `SmtpMailer` to the same `charge`, an
 
 **8d. Typeclasses**
 
-The Guide's `interface` and `impl` chapters already cover typeclasses, but this chapter gathers them in one place for Haskell programmers. Moxie has no separate typeclass feature: an `interface` is the class, an `impl` is the instance, and a bound is the constraint. Items marked *(proposed)* are not settled. Outputs were computed by hand.
+The Guide's `interface` and `impl` chapters already cover typeclasses, but this chapter gathers them in one place for Haskell programmers. Moxie has no separate typeclass feature: an `interface` is the class, an `impl` is the instance, and a bound is the constraint. Outputs were computed by hand.
 
 **1. A class, its instances, and a constrained function**
 
@@ -1208,7 +1208,7 @@ println("${mconcat(nums)} ${mconcat(maxes).value}")
 
 Output: `6 9`. `Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. A member with no receiver is a `static fn`, reached through the type, so Haskell's `mempty` is `T.empty()`. The compiler specializes `mconcat` for each type, with no tables at run time.
 
-**2. Associated types** *(approved)*
+**2. Associated types**
 
 An interface can name a type that each impl chooses, so there is no need for an extra parameter or functional dependencies:
 
@@ -1235,7 +1235,7 @@ when last_of(names):
 
 Output: `bob`. A type has exactly one impl of each interface, so `C.Item` is never ambiguous.
 
-**3. Constructor classes** *(approved)*
+**3. Constructor classes**
 
 A class over a type constructor takes `F[_]`, and an instance names the constructor itself. With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and `impl Monad[Maybe]` from chapter 24, you can write code that works for any monad:
 
@@ -1257,7 +1257,7 @@ println("${lift2(add, Maybe.Just(2), Maybe.Just(3))} ${lift2(add, none, Maybe.Ju
 
 Output: `Maybe.Just(5) Maybe.Nothing`. Return-type polymorphism needs an explicit type, so write `F.pure(x)` or `Maybe.pure(x)`; a bare `pure(x)` is not dispatched from context.
 
-**4. Conditional instances** *(proposed)*
+**4. Conditional instances**
 
 An `impl` may put a bound on its own type parameters:
 
@@ -1301,7 +1301,7 @@ for s in crowd:
 
 Output: `Woof! My name is Rex`, then `Beep Boep! Serial count is 7`. A call on an `any` value switches on a tag, so only members with a receiver, and `Self` used only as a result, are callable through it. `any` values aren't comparable or usable as keys.
 
-**6. Default method bodies** *(approved)*
+**6. Default method bodies**
 
 A member may have a default body that an `impl` can override:
 
@@ -2030,7 +2030,7 @@ for t in rows:
   println("${t.id}: ${t.value}")
 ```
 
-`$min_value` is a bound parameter, so there is no injection. The accepted SQL is a subset: SELECT with WHERE, JOIN, GROUP BY, the aggregates COUNT, SUM, MIN, and MAX, ORDER BY, LIMIT, and OFFSET, plus INSERT, UPDATE, and DELETE *(proposed)*. The result is a `Result` of a lazy stream that borrows `conn` (so the helper is `inline fn`), and each row is a named tuple of the selected columns. Writes return the rows affected, and configuration is read in the entry file before `daemon:` (`sql` is not allowed at module level or in `init:`):
+`$min_value` is a bound parameter, so there is no injection. The accepted SQL is a subset: SELECT with WHERE, JOIN, GROUP BY, the aggregates COUNT, SUM, MIN, and MAX, ORDER BY, LIMIT, and OFFSET, plus INSERT, UPDATE, and DELETE. The result is a `Result` of a lazy stream that borrows `conn` (so the helper is `inline fn`), and each row is a named tuple of the selected columns. Writes return the rows affected, and configuration is read in the entry file before `daemon:` (`sql` is not allowed at module level or in `init:`):
 
 ```
 fn load_config(conn: Connection) Result[Dict[String, String][64], Error]:
@@ -2184,7 +2184,7 @@ bad: Result[Int, Error] = fail(9, "bad")
 println("${(curry2(add) <$> r1) <*> r2} ${is_err((curry2(add) <$> bad) <*> r2)}")
 ```
 
-Output: `Ok(3) true`. The parentheses are needed because `<$>` and `<*>` sit in the comparison tier. This is the applicative style: independent inputs combined by one function, with the first error winning. The prelude's `traverse(f, stream)` *(signature proposed)* maps a `Result`-returning function and stops at the first error, and `sequence` turns a stream of `Result`s into a `Result` of a list:
+Output: `Ok(3) true`. The parentheses are needed because `<$>` and `<*>` sit in the comparison tier. This is the applicative style: independent inputs combined by one function, with the first error winning. The prelude's `traverse(f, stream)` maps a `Result`-returning function and stops at the first error, and `sequence` turns a stream of `Result`s into a `Result` of a list:
 
 ```
 all_ok = traverse(check, List(5, 20, 7) |> to_stream())
@@ -2274,7 +2274,7 @@ bad = for:
 println("$good $bad")
 ```
 
-Output: `Maybe.Just(25) Maybe.Nothing` (20 halves to 10 and then 5; 10 halves to 5, and 5 is odd). A line `name = expr` binds a value, a **refutable** line uses let-else, and independent generators joined by a leading `and` compile through `ap`, so they need only an `Applicative` *(the parse rule for this `and` is an assumption)*. Here is a payroll example in three forms, with `?`, with `for:`, and with a batch:
+Output: `Maybe.Just(25) Maybe.Nothing` (20 halves to 10 and then 5; 10 halves to 5, and 5 is odd). A line `name = expr` binds a value, a **refutable** line uses let-else, and independent generators joined by a leading `and` compile through `ap`, so they need only an `Applicative`. Here is a payroll example in three forms, with `?`, with `for:`, and with a batch:
 
 ```
 enum Rank:
