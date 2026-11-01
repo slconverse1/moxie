@@ -1981,14 +1981,14 @@ println("editor $editor")
 
 **Chapter 21: A DSL without macros**
 
-A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety:
+A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety. **[gc]** A variadic parameter is a `List`, so `join` takes one:
 
 ```
 tuple Html:
   text: String
 tuple Li:
   text: String
-fn join[N](parts: Array[Html][N]) String:
+fn join(parts: List[Html]) String:
   parts |> to_stream() |> map(_.text) |> reduce("", _1 + _2)
 fn h1(text: String) Html:
   Html(text: "<h1>$text</h1>")
@@ -2220,7 +2220,7 @@ interface Monad[F[_]]:
   fn flat_map[A, B](self: F[A], f: (A) -> F[B]) F[B]
 ```
 
-The prelude has instances for `Result[_, E]`, `Stream`, `List[_][N]`, and `Array[_][N]`. You write one for your own type with no `for`, naming the constructor (`Maybe` and `half` from chapter 10):
+The prelude has instances for `Result[_, E]`, `Stream`, `List[_]` **[gc]**, and `Array[_][N]`. You write one for your own type with no `for`, naming the constructor (`Maybe` and `half` from chapter 10):
 
 ```
 impl Monad[Maybe]:
@@ -2349,7 +2349,7 @@ lens: Dict[String, Int] = Dict(w: len(w) for w in words)
 println("${len(squares)} ${squares(0)} ${lens(cde)}")
 ```
 
-Output: `3 4 Ok(3)`: the squares are 4, 9, and 16, and a Dict lookup returns a `Result`. `Set(...)` is built the same way. Left out on purpose: custom builders, `try`/`with`, `use!`, and loops inside the block. Nested generators over streams work through `Monad[Stream]`, and the result is a view, so it can't be returned.
+Output: `3 4 Ok(3)`: the squares are 4, 9, and 16, and a Dict lookup returns a `Result`. `Set(...)` is built the same way. Left out on purpose: custom builders, `try`/`with`, `use!`, and loops inside the block. Nested generators over streams work through `Monad[Stream]`, and the result is a stream **[gc]**, which can be returned.
 
 **24h. State, Reader, and Writer**
 
