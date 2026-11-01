@@ -710,6 +710,19 @@ def b_set(I, a, kw, ta):
 @bi("put")
 def b_put(I, a, kw, ta):
     c = a[0]
+    if GC[0]:
+        # moxie/gc: put returns the updated collection and cannot fail for lack of room
+        if isinstance(c, DictV):
+            d = dict(c.d)
+            d[a[1]] = a[2]
+            return DictV(d)
+        if isinstance(c, ListV):
+            return ListV(c.items + [a[1]])
+        if isinstance(c, SetV):
+            d = dict(c.items)
+            d[a[1]] = True
+            return SetV(d)
+        raise Abort("put on " + type_name(c))
     if isinstance(c, DictV):
         if a[1] not in c.d and len(c.d) >= c.cap:
             return err_reserved("NO_SLOT", "Dict is full")
@@ -731,6 +744,8 @@ def b_put(I, a, kw, ta):
 
 @bi("copy")
 def b_copy(I, a, kw, ta):
+    if GC[0]:
+        raise Abort("`copy` does not exist in moxie/gc: a slice is already an ordinary value")
     return a[0]
 
 
@@ -1377,6 +1392,15 @@ def b_chan(I, a, kw, ta):
     cap = 0
     if ta and len(ta) > 1 and ta[1]:
         cap = I.const_of(ta[1][0], I.module_env)
+        if isinstance(cap, Kw):
+            if GC[0] and cap == "unbounded":
+                cap = INF_CAP
+            else:
+                raise Abort(f"unknown channel capacity #{cap}" if GC[0] else "`#unbounded` exists only in moxie/gc")
+        elif cap is None:
+            cap = 0
+        elif not isinstance(cap, int) or cap < 0:
+            raise Abort("channel capacity must be a non-negative Int")
     ch = S_.Chan(cap)
     return TupleV([S_.ChanR(ch), S_.ChanW(ch)])
 

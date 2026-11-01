@@ -2,7 +2,7 @@
 import os
 import sys
 
-USAGE = """usage: moxie run FILE [args...]     run a program
+USAGE = """usage: moxie [--gc] run FILE [args...]     run a program (--gc: moxie/gc rules, or set MOXIE_GC=1)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
        moxie -e 'code'              run a snippet
@@ -21,6 +21,10 @@ def make_interp(path, args):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "--gc" in argv:
+        from .values import GC
+        GC[0] = True
+        argv = [a for a in argv if a != "--gc"]
     sys.setrecursionlimit(100000)
     if not argv or argv[0] in ("-h", "--help", "help"):
         sys.stdout.write(USAGE)

@@ -844,7 +844,7 @@ class CallsMixin:
                     nv = named[pname]
                     rest = list(nv.items) if isinstance(nv, Seq) else [nv]
                     used_named.add(pname)
-                arr = ArrayV([self.coerce(x, p.type, c.env) for x in rest])
+                arr = (ListV if GC[0] else ArrayV)([self.coerce(x, p.type, c.env) for x in rest])
                 if pname:
                     env.vars[pname] = arr
                 continue

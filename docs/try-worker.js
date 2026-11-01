@@ -4,9 +4,10 @@ const PY = `
 import io, sys
 sys.setrecursionlimit(2500)
 from moxie.interp import Interp
-from moxie.values import ArrayV, DictV
+from moxie.values import ArrayV, DictV, GC
 
-def run_moxie(src, mode):
+def run_moxie(src, mode, gc=False):
+    GC[0] = bool(gc)
     out, err = io.StringIO(), io.StringIO()
     try:
         I = Interp(out=out, err=err)
@@ -33,7 +34,7 @@ self.onmessage = async (e) => {
       runner = py.globals.get('run_moxie');
       postMessage({ type: 'ready' });
     } else if (m.type === 'run') {
-      const [out, err, code] = runner(m.src, m.mode).toJs();
+      const [out, err, code] = runner(m.src, m.mode, !!m.gc).toJs();
       postMessage({ type: 'done', out, err, code });
     }
   } catch (err) {

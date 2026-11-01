@@ -29,13 +29,14 @@ pre .err{color:var(--err)}
 <nav><a href="./">moxie</a><a href="tutorial.html">Tutorial</a><a href="guide.html">Mixer's Guide</a><a href="spec.html">Spec</a></nav>
 <main>
 <h1>Try moxie</h1>
-<p class="lead">Pick a sample or write your own, then run it. The program runs in your browser using the reference interpreter, so nothing is sent anywhere. A program is one file, and its top level is <code>main</code>.</p>
+<p class="lead">Pick a sample or write your own, then run it. Tick "moxie/gc rules" to run it under the garbage-collected language (collections grow as needed). The program runs in your browser using the reference interpreter, so nothing is sent anywhere. A program is one file, and its top level is <code>main</code>.</p>
 <div class="bar">
   <select id="sample" aria-label="Sample program"></select>
   <button class="run" id="run" disabled>Run</button>
   <button id="test" disabled>Run tests</button>
   <button id="check" disabled>Check only</button>
   <button id="stop" hidden>Stop</button>
+  <label style="margin-left:8px"><input type="checkbox" id="gc"> moxie/gc rules</label>
   <span id="status">Loading the interpreter (about 10 MB the first time)...</span>
 </div>
 <textarea id="src" spellcheck="false" aria-label="Moxie source"></textarea>
@@ -106,7 +107,7 @@ function go(mode) {
   lastMode = mode;
   setBusy(true);
   status.textContent = 'Running...';
-  worker.postMessage({ type: 'run', src: src.value, mode });
+  worker.postMessage({ type: 'run', src: src.value, mode, gc: document.getElementById('gc').checked });
 }
 stopButton.onclick = () => {
   if (worker) worker.terminate();

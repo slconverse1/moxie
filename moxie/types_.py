@@ -211,7 +211,7 @@ class TypesMixin:
                     for k, x in v.d.items():
                         d[self.coerce(k, kt, env)] = self.coerce(x, vt, env)
                     v = DictV(d, v.cap)
-                if caps is not None:
+                if caps is not None and not GC[0]:
                     v.cap = caps
             return v
         if groups and groups[0]:

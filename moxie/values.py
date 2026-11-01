@@ -4,6 +4,12 @@ import math
 from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_HALF_DOWN, ROUND_UP, ROUND_DOWN, ROUND_CEILING, ROUND_FLOOR, localcontext
 
 
+# moxie/gc mode: List, Set and Dict have no fixed capacity (set by `--gc` or MOXIE_GC=1)
+import os as _os
+GC = [bool(_os.environ.get("MOXIE_GC"))]
+INF_CAP = 1 << 62
+
+
 # ---------------------------------------------------------------- exceptions
 class Abort(Exception):
     """An unrecoverable fault: ends the fiber."""
@@ -357,6 +363,8 @@ class Seq:
     def __init__(self, items, cap=None):
         self.items = items
         self.cap = cap if cap is not None else len(items)
+        if GC[0] and self.kind == "List":
+            self.cap = INF_CAP
 
     def __eq__(self, o):
         return type(o) is type(self) and o.items == self.items
@@ -384,7 +392,7 @@ class SetV:
 
     def __init__(self, items, cap=None):
         self.items = items         # python dict used as ordered set
-        self.cap = cap if cap is not None else max(len(items), 0)
+        self.cap = INF_CAP if GC[0] else (cap if cap is not None else max(len(items), 0))
 
     def __eq__(self, o):
         return isinstance(o, SetV) and set(o.items) == set(self.items)
@@ -402,7 +410,7 @@ class DictV:
 
     def __init__(self, d, cap=None):
         self.d = d
-        self.cap = cap if cap is not None else len(d)
+        self.cap = INF_CAP if GC[0] else (cap if cap is not None else len(d))
 
     def __eq__(self, o):
         return isinstance(o, DictV) and o.d == self.d
