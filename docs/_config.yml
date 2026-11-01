@@ -1,0 +1,7 @@
+title: Moxie
+description: A language-design exercise in typed, immutable, practical functional programming.
+baseurl: /moxie
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge

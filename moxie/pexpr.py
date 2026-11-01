@@ -1,0 +1,1036 @@
+"""Expression parser (mixin)."""
+from .pbase import PBase, HARD
+from .lexer import MoxieSyntaxError
+from .ast import *   # noqa
+
+T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_ADD, T_MUL, T_OTHER = range(13)
+
+COMP_OPS = {"==", "~=", "<", ">", "<=", ">=", "<$>", "<*>", "<~"}
+BINTIER = {
+    "|": T_BOR, "|>>": T_BOR, "^": T_BXOR, "&": T_BAND, "<<": T_SHIFT, ">>": T_SHIFT,
+    "+": T_ADD, "-": T_ADD, "*": T_MUL, "/": T_MUL, "%": T_MUL, "~>": T_OTHER,
+    "..": T_RANGE, "..=": T_RANGE,
+}
+for _o in COMP_OPS:
+    BINTIER[_o] = T_COMP
+
+
+def contains_ph(e):
+    """True when e holds a placeholder that is not inside a nested lambda."""
+    if isinstance(e, PH):
+        return True
+    if isinstance(e, Lambda):
+        return False
+    if isinstance(e, N):
+        for f in e._fields:
+            if contains_ph(getattr(e, f, None)):
+                return True
+        return False
+    if isinstance(e, (list, tuple)):
+        for x in e:
+            if contains_ph(x):
+                return True
+    return False
+
+
+def max_ph(e):
+    if isinstance(e, PH):
+        return e.idx
+    if isinstance(e, Lambda):
+        return 0
+    m = 0
+    if isinstance(e, N):
+        for f in e._fields:
+            m = max(m, max_ph(getattr(e, f, None)))
+    elif isinstance(e, (list, tuple)):
+        for x in e:
+            m = max(m, max_ph(x))
+    return m
+
+
+def split_sql(text, parser):
+    """Split SQL text into literal strings and parameter expressions ($name or ${expr})."""
+    import re
+    from .lexer import tokenize
+    out = []
+    i = 0
+    n = len(text)
+    buf = []
+    while i < n:
+        c = text[i]
+        if c == "$" and i + 1 < n:
+            if text[i + 1] == "{":
+                j = text.index("}", i)
+                src = text[i + 2:j]
+                sub = type(parser)(tokenize(src), parser.file)
+                out.append("".join(buf)); buf = []
+                out.append(("param", sub.parse_expr()))
+                i = j + 1
+                continue
+            m = re.match(r"[A-Za-z_][A-Za-z_0-9]*", text[i + 1:])
+            if m:
+                out.append("".join(buf)); buf = []
+                out.append(("param", Name(m.group(0))))
+                i += 1 + len(m.group(0))
+                continue
+        buf.append(c)
+        i += 1
+    out.append("".join(buf))
+    return [p for p in out if p != ""]
+
+
+def ph_lambda(body, line):
+    n = max(1, max_ph(body))
+    params = [Param(None, f"_{i}", None, None, None, False, line=line) for i in range(1, n + 1)]
+    return Lambda(params, body, None, None, None, line=line)
+
+
+class ExprParser(PBase):
+    stop_bol = 0
+
+    # ------------------------------------------------------------ entry
+    def parse_expr(self):
+        return self.parse_bin(T_PIPE)
+
+    def parse_bin(self, minp):
+        if minp == T_PIPE:
+            left = self.parse_bin(T_OR)
+            while self.at_op("|>") and not (self.stop_bol and self.peek().bol):
+                line = self.next().line
+                self.skip_nl_soft()
+                stage = self.parse_pipe_stage()
+                left = Pipe(left, stage, line=line)
+            return left
+        left = self.parse_unary() if minp > T_OTHER else None
+        return self._bin_loop(minp)
+
+    def skip_nl_soft(self):
+        pass
+
+    def parse_pipe_stage(self):
+        if self.at_name("seq") and self.at_op(":", 1):
+            line = self.next().line
+            self.next()
+            self.expect_nl_indent()
+            arms = []
+            while self.peek().kind != "DEDENT":
+                self.skip_nl()
+                if self.peek().kind == "DEDENT":
+                    break
+                save = self.no_trailing
+                self.no_trailing = True
+                pred = self.parse_expr()
+                self.no_trailing = save
+                self.expect_op("->")
+                save = self.stop_bol
+                self.stop_bol += 1
+                stage = self.parse_pipe_stage_inner()
+                self.stop_bol = save
+                arms.append((pred, stage))
+                self.end_line()
+            self.expect_dedent()
+            return SeqE(arms, line=line)
+        return self.parse_pipe_stage_inner()
+
+    def parse_pipe_stage_inner(self):
+        save = self.stop_bol
+        self.stop_bol += 1
+        e = self.parse_postfix()
+        self.stop_bol = save
+        return e
+
+    def _bin_loop(self, minp):
+        # operator precedence climbing from tier T_OR upward
+        return self._climb(max(minp, T_OR))
+
+    def _tier_of(self, t):
+        if t.kind == "OP":
+            if t.val == "|>":
+                return None
+            return BINTIER.get(t.val)
+        if t.kind == "BTICK":
+            return T_BT
+        if t.kind == "NAME":
+            if t.val == "and":
+                return T_AND
+            if t.val == "or":
+                return T_OR
+            if t.val in ("in", "is"):
+                return T_COMP
+            if t.val == "not" and self.peek(1).kind == "NAME" and self.peek(1).val == "in":
+                return T_COMP
+        return None
+
+    def _climb(self, minp):
+        left = self.parse_unary()
+        while True:
+            t = self.peek()
+            if self.stop_bol and t.bol:
+                break
+            tier = self._tier_of(t)
+            if tier is None or tier < minp:
+                break
+            # a '-' or '&' etc. at start of a continuation line is still binary
+            line = t.line
+            if t.kind == "NAME" and t.val in ("and", "or"):
+                self.next()
+                right = self._climb(tier + 1)
+                left = (AndE if t.val == "and" else OrE)(left, right, line=line)
+            elif t.kind == "NAME" and t.val == "is":
+                self.next()
+                pat = self.parse_pattern()
+                left = IsOp(left, pat, line=line)
+            elif t.kind == "NAME" and (t.val == "in" or t.val == "not"):
+                neg = False
+                if t.val == "not":
+                    self.next()
+                    neg = True
+                self.next()
+                right = self._climb(tier + 1)
+                left = InOp(left, right, neg, line=line)
+            elif t.kind == "BTICK":
+                self.next()
+                right = self._climb(tier + 1)
+                left = Tick(left, t.val, right, line=line)
+            elif t.val in ("..", "..="):
+                self.next()
+                nt = self.peek()
+                hi = None
+                if not self._ends_operand(nt):
+                    hi = self._climb(tier + 1)
+                left = RangeE(left, hi, t.val == "..=", line=line)
+            else:
+                self.next()
+                right = self._climb(tier + 1)
+                left = Binary(t.val, left, right, line=line)
+        return left
+
+    def _ends_operand(self, t):
+        if t.kind in ("NL", "DEDENT", "INDENT", "EOF"):
+            return True
+        if t.kind == "OP" and t.val in (")", "]", ",", ":", "->", ";", "}"):
+            return True
+        if t.kind == "NAME" and t.val in ("else", "elif", "and", "or", "if"):
+            return True
+        return False
+
+    # ------------------------------------------------------------ unary
+    def parse_unary(self):
+        t = self.peek()
+        line = t.line
+        if t.kind == "NAME" and t.val == "not":
+            if not (self.peek(1).kind == "NAME" and self.peek(1).val == "in"):
+                self.next()
+                return Unary("not", self.parse_unary(), line=line)
+        if t.kind == "OP":
+            if t.val == "-":
+                self.next()
+                nt = self.peek()
+                if nt.kind in ("INT", "FLOAT", "DEC") and not nt.sp:
+                    # negative literal: let postfix operations see the literal
+                    e = self.parse_postfix()
+                    if isinstance(e, IntLit):
+                        return IntLit(-e.v, e.suffix, line=line)
+                    if isinstance(e, FloatLit):
+                        return FloatLit(-e.v, e.suffix, line=line)
+                    return Unary("-", e, line=line)
+                return Unary("-", self.parse_unary(), line=line)
+            if t.val == "~":
+                self.next()
+                return Unary("~", self.parse_unary(), line=line)
+            if t.val == "@":
+                self.next()
+                return Deref(self.parse_unary(), line=line)
+            if t.val == "+":
+                self.next()
+                return self.parse_unary()
+            if t.val in ("..", "..="):
+                self.next()
+                hi = None
+                if not self._ends_operand(self.peek()):
+                    hi = self._climb(T_RANGE + 1)
+                return RangeE(None, hi, t.val == "..=", line=line)
+            if t.val == "/" and self.peek(1).kind == "NAME" and not self.peek(1).sp:
+                segs = []
+                while self.at_op("/") and self.peek(1).kind == "NAME" and not self.peek(1).sp:
+                    self.next()
+                    segs.append(self.next().val)
+                return PathE(segs, line=line)
+        return self.parse_postfix()
+
+    # ------------------------------------------------------------ postfix
+    def parse_postfix(self):
+        e = self.parse_atom()
+        return self.postfix_loop(e)
+
+    def postfix_loop(self, e):
+        while True:
+            t = self.peek()
+            if t.kind != "OP":
+                break
+            if self.stop_bol and t.bol and t.val not in (".",):
+                break
+            v = t.val
+            if v == "(" and not t.sp:
+                e = self.parse_call(e)
+            elif v == "[" and not t.sp and self._can_generic(e):
+                groups = []
+                while self.at_op("[") and not self.peek().sp:
+                    groups.append(self.parse_targ_group())
+                e = GenApp(e, groups, line=t.line)
+            elif v == ".":
+                nt = self.peek(1)
+                if nt.kind == "NAME":
+                    self.next()
+                    self.next()
+                    name = nt.val
+                    if name in ("do", "update") and self.at_op(":") and name != "":
+                        e = self.parse_recv_block(e, name, nt.line)
+                    else:
+                        e = Field(e, name, line=nt.line)
+                elif nt.kind == "INT":
+                    self.next()
+                    self.next()
+                    e = Field(e, nt.val, line=nt.line)
+                elif nt.kind == "OP" and nt.val == "(":
+                    break
+                else:
+                    break
+            elif v == "?":
+                self.next()
+                e = Q(e, line=t.line)
+            else:
+                break
+        return e
+
+    def _can_generic(self, e):
+        if isinstance(e, Name):
+            return True
+        if isinstance(e, Field):
+            return self._can_generic(e.obj)
+        if isinstance(e, GenApp):
+            return True
+        return False
+
+    def matching(self, k):
+        """Index of the token matching the opening bracket at offset k."""
+        depth = 0
+        i = self.p + k
+        while i < len(self.toks):
+            t = self.toks[i]
+            if t.kind == "OP":
+                if t.val in ("(", "[", "{"):
+                    depth += 1
+                elif t.val in (")", "]", "}"):
+                    depth -= 1
+                    if depth == 0:
+                        return i
+            elif t.kind == "EOF":
+                break
+            i += 1
+        return None
+
+    # ------------------------------------------------------------ calls
+    def parse_call(self, fn):
+        line = self.peek().line
+        args = self.parse_args()
+        call = self.finish_call(fn, args, line)
+        # trailing lambda forms
+        while True:
+            if self.no_trailing:
+                break
+            t = self.peek()
+            if t.kind == "OP" and t.val == "(" and not t.sp:
+                m = self.matching(0)
+                if m is not None and self.toks[m + 1].kind == "OP" and self.toks[m + 1].val == ":":
+                    params = self.parse_params()
+                    self.expect_op(":")
+                    body = self.parse_lambda_body()
+                    lam = Lambda(params, body, None, None, None, line=line)
+                    call.trailing = lam
+                    continue
+                call = self.parse_call(call)
+                return call
+            if t.kind == "OP" and t.val == ":" and not self._colon_is_other():
+                self.next()
+                body = self.parse_lambda_body()
+                call.trailing = ph_lambda(body, line)
+                continue
+            break
+        return call
+
+    def _colon_is_other(self):
+        # a ':' that follows a call is a trailing placeholder lambda only when something follows on the line
+        nt = self.peek(1)
+        if nt.kind in ("NL", "EOF"):
+            return nt.kind == "NL" and not (self.peek(2).kind == "INDENT")
+        return False
+
+    def parse_lambda_body(self):
+        if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
+            return self.parse_block()
+        save = self.stop_bol
+        self.stop_bol += 1
+        save_nt = self.no_trailing
+        self.no_trailing = False
+        e = self.parse_stmt_inline()
+        self.no_trailing = save_nt
+        self.stop_bol = save
+        return e
+
+    def parse_args(self):
+        self.expect_op("(")
+        save = (self.no_trailing, self.stop_bol)
+        self.no_trailing = False
+        self.stop_bol = 0
+        args = []
+        self.skip_nl()
+        while not self.at_op(")"):
+            a0 = self.parse_arg()
+            if not args and self.at_name("for") and a0.mod is None:
+                a0 = self.parse_comprehension(a0)
+            args.append(a0)
+            self.skip_nl()
+            if not self.eat_op(","):
+                break
+            self.skip_nl()
+        self.skip_nl()
+        self.expect_op(")", "to close the argument list")
+        self.no_trailing, self.stop_bol = save
+        return args
+
+    def parse_comprehension(self, first):
+        """Container comprehension: List(x * x for x in xs if x > 1) / Dict(k: v for k in ks)."""
+        line = self.next().line          # 'for'
+        pats = [self.parse_pattern()]
+        while self.eat_op(","):
+            pats.append(self.parse_pattern())
+        pat = pats[0] if len(pats) == 1 else PTuple([(None, p) for p in pats], line=line)
+        self.expect_name("in")
+        save = self.no_trailing
+        self.no_trailing = True
+        it = self.parse_expr_until_if()
+        cond = None
+        if self.at_name("if"):
+            self.next()
+            cond = self.parse_expr()
+        self.no_trailing = save
+        key = None
+        lab = first.label
+        if lab is not None:
+            key = Name(lab[1] if isinstance(lab, tuple) else lab, line=line)
+        return Arg(None, CompE(None, first.expr, key, pat, it, cond, line=line), "comp", line=line)
+
+    def parse_expr_until_if(self):
+        return self.parse_expr()
+
+    def parse_arg(self):
+        t = self.peek()
+        line = t.line
+        label = None
+        if t.kind in ("NAME", "INT") and self.at_op(":", 1):
+            label = t.val
+            self.next()
+            self.next()
+        elif t.kind == "STR" and self.at_op(":", 1):
+            label = "".join(p for p in t.val if isinstance(p, str))
+            self.next()
+            self.next()
+            label = ("str", label)
+        t = self.peek()
+        if t.kind == "NAME" and t.val in ("ref", "move", "using") :
+            nt = self.peek(1)
+            if t.val == "using" and (nt.kind == "OP" and nt.val in (",", ")")):
+                self.next()
+                return Arg(label, None, "using", line=line)
+            if t.val != "using":
+                self.next()
+                e = self.parse_expr()
+                return Arg(label, e, t.val, line=line)
+            self.next()
+            e = self.parse_expr()
+            return Arg(label, e, "using", line=line)
+        if t.kind == "OP" and t.val == "...":
+            self.next()
+            if self.at_op(",") or self.at_op(")"):
+                return Arg(label, None, "spread", line=line)
+            e = self.parse_expr()
+            return Arg(label, e, "spread", line=line)
+        e = self.parse_expr()
+        return Arg(label, e, None, line=line)
+
+    def finish_call(self, fn, args, line):
+        partial = False
+        new_args = []
+        for a in args:
+            if a.expr is not None and contains_ph(a.expr):
+                if isinstance(a.expr, PH):
+                    partial = True
+                else:
+                    a = Arg(a.label, ph_lambda(a.expr, a.line), a.mod, line=a.line)
+            new_args.append(a)
+        call = Call(fn, new_args, None, line=line)
+        if partial:
+            return ph_lambda(call, line)
+        return call
+
+    # ------------------------------------------------------------ atoms
+    def parse_atom(self):
+        t = self.peek()
+        k = t.kind
+        line = t.line
+        if k == "INT":
+            self.next()
+            return IntLit(t.val, t.extra, line=line)
+        if k == "FLOAT":
+            self.next()
+            return FloatLit(t.val, t.extra, line=line)
+        if k == "DEC":
+            self.next()
+            return DecLit(t.val, line=line)
+        if k == "STR":
+            self.next()
+            return StrLit(self.convert_parts(t.val, t), line=line)
+        if k == "CHAR":
+            self.next()
+            return CharLit(t.val, line=line)
+        if k == "BYTES":
+            self.next()
+            return BytesLit(t.val, line=line)
+        if k == "BCHAR":
+            self.next()
+            return ByteChar(t.val, line=line)
+        if k == "DUR":
+            self.next()
+            return DurLit(t.val, t.extra, line=line)
+        if k == "HASH":
+            nt = self.peek(1)
+            if nt.kind == "NAME" and nt.val in ("for", "while", "do"):
+                self.next()
+                e = self.parse_atom()
+                e.label = t.val
+                return e
+            self.next()
+            return KwLit(t.val, line=line)
+        if k == "OP":
+            v = t.val
+            if v == "(":
+                return self.parse_paren()
+            if v == "&":
+                self.next()
+                return Slot(line=line)
+            if v == "$":
+                self.next()
+                nm = self.expect_ident("a variable name after '$'")
+                return Dollar(Name(nm.val, line=line), line=line)
+            if v == "{":
+                self.err("'{' does not start an expression in moxie")
+            self.err(f"unexpected {self.describe(t)}")
+        if k == "NAME":
+            return self.parse_name_atom(t)
+        if k == "SQL":
+            self.err("unexpected SQL text")
+        self.err(f"unexpected {self.describe(t)}")
+
+    def parse_name_atom(self, t):
+        v = t.val
+        line = t.line
+        if v == "true" or v == "false":
+            self.next()
+            return BoolLit(v == "true", line=line)
+        if v == "if":
+            return self.parse_if()
+        if v == "when":
+            return self.parse_when()
+        if v == "for":
+            return self.parse_for()
+        if v == "while":
+            return self.parse_while()
+        if v == "do" and self.at_op(":", 1):
+            self.next()
+            self.next()
+            body = self.parse_block_or_inline()
+            return DoE(body, None, line=line)
+        if v == "select" and self.at_op(":", 1):
+            return self.parse_select()
+        if v == "daemon" and self.at_op(":", 1):
+            self.next()
+            self.next()
+            return DaemonE(self.parse_block_or_inline(), line=line)
+        if v == "run":
+            return self.parse_run()
+        if v == "fn":
+            return self.parse_lambda()
+        if v == "todo":
+            self.next()
+            msg = None
+            if self.at_op("(") and not self.peek().sp:
+                args = self.parse_args()
+                msg = args[0].expr if args else None
+            elif self.peek().kind == "STR":
+                msg = self.parse_atom()
+            return TodoE(msg, line=line)
+        if v in ("ref", "move") and not (self.peek(1).kind == "OP" and self.peek(1).val in (",", ")", ":", "=")):
+            self.next()
+            e = self.parse_unary()
+            return (Ref if v == "ref" else Move)(e, line=line)
+        if v == "sql" and self.at_op("(", 1) and not self.peek(1).sp:
+            m = self.matching(1)
+            if m is not None and self.toks[m + 1].kind == "OP" and self.toks[m + 1].val == ":" and self.toks[m + 2].kind == "SQL":
+                self.next()
+                args = self.parse_args()
+                self.expect_op(":")
+                tk = self.next()
+                return SqlE(args[0].expr, split_sql(tk.val, self), line=line)
+        if v == "gimme" and self.at_op(".", 1):
+            self.next()
+            self.next()
+            n = self.next()
+            if n.kind != "INT":
+                self.err("expected a layer number after 'gimme.'", n)
+            self.expect_op(".")
+            nm = self.next().val
+            return Gimme(n.val, nm, line=line)
+        if v == "_":
+            self.next()
+            return PH(1, line=line)
+        if v[0] == "_" and len(v) > 1 and v[1:].isdigit():
+            self.next()
+            return PH(int(v[1:]), line=line)
+        if v in HARD and v not in ("self", "Self"):
+            self.err(f"unexpected '{v}'")
+        self.next()
+        return Name(v, line=line)
+
+    def parse_paren(self):
+        t = self.next()
+        line = t.line
+        save = (self.no_trailing, self.stop_bol)
+        self.no_trailing = False
+        self.stop_bol = 0
+        self.skip_nl()
+        if self.eat_op(")"):
+            self.no_trailing, self.stop_bol = save
+            return UnitLit(line=line)
+        items = []
+        rows = []
+        cur = []
+        trailing_comma = False
+        multi = False
+        while True:
+            self.skip_nl()
+            label = None
+            spread = False
+            tt = self.peek()
+            if tt.kind in ("NAME", "INT") and self.at_op(":", 1):
+                label = tt.val
+                self.next()
+                self.next()
+            elif tt.kind == "OP" and tt.val == "...":
+                self.next()
+                spread = True
+            e = self.parse_expr()
+            cur.append((label, e, spread))
+            self.skip_nl()
+            if self.eat_op(","):
+                trailing_comma = True
+                self.skip_nl()
+                if self.at_op(")"):
+                    break
+                continue
+            trailing_comma = False
+            if self.at_op(";"):
+                multi = True
+                level = 1
+                self.next()
+                while self.at_op(";"):
+                    self.next()
+                    level += 1
+                rows.append((cur, level))
+                cur = []
+                self.skip_nl()
+                continue
+            break
+        self.skip_nl()
+        self.expect_op(")", "to close the parentheses")
+        self.no_trailing, self.stop_bol = save
+        if multi:
+            rows.append((cur, 0))
+            return MArr(rows, line=line)
+        if len(cur) == 1 and cur[0][0] is None and not cur[0][2] and not trailing_comma:
+            e = cur[0][1]
+            return e if not isinstance(e, (Pipe,)) else e
+        return TupleE(cur, line=line)
+
+    # ------------------------------------------------------------ lambda
+    def parse_lambda(self, run=False):
+        t = self.next()   # fn
+        line = t.line
+        recv = None
+        nt = self.peek()
+        if nt.kind == "NAME" and self.at_op(".", 1) and self.at_op("(", 2):
+            recv = self.parse_type_prim_name()
+            self.expect_op(".")
+        # inline fiber: run fn (args)(params): body  (the arguments come first, like the call run name(args))
+        if run and recv is None and self.at_op("("):
+            m = self.matching(0)
+            t2 = self.toks[m + 1] if m is not None else None
+            if t2 is not None and t2.kind == "OP" and t2.val == "(" and not t2.sp:
+                m2 = self.matching(m + 1 - self.p)
+                t3 = self.toks[m2 + 1] if m2 is not None else None
+                if t3 is not None and t3.kind == "OP" and t3.val == ":":
+                    args = self.parse_args()
+                    params = self.parse_params()
+                    self.expect_op(":")
+                    body = self.parse_lambda_body()
+                    lam = Lambda(params, body, None, None, None, line=line)
+                    return Call(lam, args, None, line=line)
+        params = self.parse_params()
+        # immediately-called: fn (params)(args): body
+        if not run and self.at_op("(") and not self.peek().sp:
+            m = self.matching(0)
+            if m is not None and self.toks[m + 1].kind == "OP" and self.toks[m + 1].val == ":":
+                args = self.parse_args()
+                self.expect_op(":")
+                body = self.parse_lambda_body()
+                lam = Lambda(params, body, None, None, None, line=line)
+                return Call(lam, args, None, line=line)
+        ret = None
+        if not self.at_op(":") and not self.at_op("("):
+            ret = self.parse_type()
+        elif self.at_op("(") and self._paren_is_type():
+            ret = self.parse_type()
+        locals_ = None
+        if self.at_op("("):
+            locals_ = [p.name for p in self.parse_params()]
+        self.expect_op(":")
+        body = self.parse_lambda_body()
+        lam = Lambda(params, body, recv, locals_, ret, line=line)
+        return lam
+
+    def _paren_is_type(self):
+        m = self.matching(0)
+        if m is None:
+            return False
+        after = self.toks[m + 1]
+        return after.kind == "OP" and after.val == "->"
+
+    def parse_type_prim_name(self):
+        t = self.next()
+        return TName([t.val], [], line=t.line)
+
+    def parse_params(self):
+        """Parameter list in parentheses."""
+        self.expect_op("(")
+        save = (self.no_trailing, self.stop_bol)
+        self.no_trailing = False
+        self.stop_bol = 0
+        out = []
+        self.skip_nl()
+        while not self.at_op(")"):
+            out.append(self.parse_param())
+            self.skip_nl()
+            if not self.eat_op(","):
+                break
+            self.skip_nl()
+        self.expect_op(")", "to close the parameter list")
+        self.no_trailing, self.stop_bol = save
+        return out
+
+    def parse_param(self):
+        t = self.peek()
+        line = t.line
+        mod = None
+        if t.kind == "NAME" and t.val in ("ref", "lazy", "using", "move") and not (self.at_op(":", 1) or self.at_op(",", 1) or self.at_op(")", 1)):
+            mod = t.val
+            self.next()
+            t = self.peek()
+        pat = None
+        name = None
+        if t.kind == "NAME" and (t.val not in HARD or t.val == "self") and (self.at_op(":", 1) or self.at_op(",", 1) or self.at_op(")", 1)) :
+            name = t.val
+            self.next()
+        else:
+            pat = self.parse_pattern()
+            if isinstance(pat, PBind):
+                name, pat = pat.name, None
+        typ = None
+        variadic = False
+        default = None
+        if self.eat_op(":"):
+            if self.at_op("..."):
+                self.next()
+                variadic = True
+            typ = self.parse_type()
+        if self.at_op("="):
+            self.next()
+            default = self.parse_expr()
+        return Param(pat, name, typ, default, mod, variadic, line=line)
+
+    # ------------------------------------------------------------ blocks
+    def expect_nl_indent(self):
+        if self.peek().kind != "NL" or self.peek(1).kind != "INDENT":
+            self.err("expected an indented block")
+        self.next()
+        self.next()
+
+    def expect_dedent(self):
+        t = self.peek()
+        if t.kind == "DEDENT":
+            self.next()
+        elif t.kind != "EOF":
+            self.err(f"unexpected {self.describe(t)}")
+
+    def end_line(self):
+        t = self.peek()
+        if t.kind == "NL":
+            self.next()
+        elif self.p > 0 and self.toks[self.p - 1].kind == "DEDENT":
+            pass
+        elif t.kind in ("DEDENT", "EOF"):
+            pass
+        else:
+            self.err(f"unexpected {self.describe(t)}")
+
+    def parse_block(self):
+        """NL INDENT stmts DEDENT"""
+        line = self.peek().line
+        self.expect_nl_indent()
+        stmts = self.parse_stmts_until_dedent()
+        self.expect_dedent()
+        return Block(stmts, line=line)
+
+    def parse_block_or_inline(self):
+        if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
+            return self.parse_block()
+        save = (self.no_trailing,)
+        self.no_trailing = False
+        e = self.parse_stmt_inline()
+        self.no_trailing = save[0]
+        return e
+
+    # ------------------------------------------------------------ control
+    def parse_header_expr(self):
+        save = self.no_trailing
+        self.no_trailing = True
+        e = self.parse_expr()
+        self.no_trailing = save
+        return e
+
+    def parse_if(self):
+        line = self.next().line
+        branches = []
+        cond = self.parse_header_expr()
+        self.expect_op(":")
+        body = self.parse_block_or_inline()
+        branches.append((cond, body))
+        else_ = None
+        while True:
+            if self.at_name("elif"):
+                self.next()
+                cond = self.parse_header_expr()
+                self.expect_op(":")
+                body = self.parse_block_or_inline()
+                branches.append((cond, body))
+                continue
+            if self.at_name("else"):
+                self.next()
+                self.expect_op(":")
+                else_ = self.parse_block_or_inline()
+            break
+        return IfE(branches, else_, line=line)
+
+    def parse_when(self):
+        line = self.next().line
+        scrut = None
+        if not self.at_op(":"):
+            scrut = self.parse_header_expr()
+        self.expect_op(":")
+        self.expect_nl_indent()
+        arms = []
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            aline = self.peek().line
+            if scrut is None:
+                save = self.no_trailing
+                self.no_trailing = True
+                cond = self.parse_expr()
+                self.no_trailing = save
+                self.expect_op("->")
+                body = self.parse_block_or_inline()
+                arms.append(Arm(None, cond, body, line=aline))
+                self.end_line()
+                continue
+            pats = [self.parse_pattern()]
+            while self.eat_op(","):
+                pats.append(self.parse_pattern())
+            guard = None
+            if self.at_name("if"):
+                self.next()
+                save = self.no_trailing
+                self.no_trailing = True
+                guard = self.parse_expr()
+                self.no_trailing = save
+            self.expect_op("->")
+            body = self.parse_block_or_inline()
+            arms.append(Arm(pats, guard, body, line=aline))
+            self.end_line()
+        self.expect_dedent()
+        return WhenE(scrut, arms, line=line)
+
+    def parse_for(self):
+        line = self.next().line
+        if self.at_op(":"):
+            return self.parse_for_monad(line)
+        pats = [self.parse_pattern()]
+        while self.eat_op(","):
+            pats.append(self.parse_pattern())
+        pat = pats[0] if len(pats) == 1 else PTuple([(None, p) for p in pats], line=line)
+        self.expect_name("in")
+        it = self.parse_header_expr()
+        self.expect_op(":")
+        body = self.parse_block_or_inline()
+        else_ = self.parse_loop_else()
+        return ForE(pat, it, body, else_, None, line=line)
+
+    def parse_loop_else(self):
+        if self.at_name("else") and self.at_op(":", 1):
+            self.next()
+            self.next()
+            return self.parse_block_or_inline()
+        return None
+
+    def parse_while(self):
+        line = self.next().line
+        cond = None
+        if not self.at_op(":"):
+            cond = self.parse_header_expr()
+        self.expect_op(":")
+        body = self.parse_block_or_inline()
+        else_ = self.parse_loop_else()
+        return WhileE(cond, body, else_, None, line=line)
+
+    def parse_for_monad(self, line):
+        self.expect_op(":")
+        self.expect_nl_indent()
+        lines = []
+        yield_ = None
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            if self.at_name("and") :
+                self.next()
+            if self.at_name("yield"):
+                self.next()
+                yield_ = self.parse_block_or_inline()
+                self.end_line()
+                continue
+            # pat in expr  |  pat = expr  |  if cond
+            if self.at_name("if"):
+                self.next()
+                c = self.parse_expr()
+                lines.append(("if", None, c, None))
+                self.end_line()
+                continue
+            pat = self.parse_pattern()
+            if self.at_name("in"):
+                self.next()
+                kind = "in"
+            else:
+                self.expect_op("=")
+                kind = "="
+            ex = self.parse_expr()
+            else_ = None
+            if self.at_name("else") and self.at_op(":", 1):
+                self.next()
+                self.next()
+                else_ = self.parse_block_or_inline()
+            lines.append((kind, pat, ex, else_))
+            self.end_line()
+        self.expect_dedent()
+        return ForM(lines, yield_, line=line)
+
+    def parse_select(self):
+        line = self.next().line
+        self.next()
+        self.expect_nl_indent()
+        arms = []
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            aline = self.peek().line
+            self.expect_name("case")
+            kind = "read"
+            bind = None
+            ex = None
+            if self.at_name("_") and self.at_op("->", 1):
+                self.next()
+                kind = "default"
+            elif self.at_name("closed") and self.at_op("(", 1):
+                self.next()
+                self.next()
+                ex = self.parse_expr()
+                self.expect_op(")")
+                kind = "closed"
+            else:
+                if self.peek().kind == "NAME" and self.at_op("=", 1):
+                    bind = self.next().val
+                    self.next()
+                elif self.at_op("(") :
+                    # tuple binding or pattern
+                    bind = self.parse_pattern()
+                    self.expect_op("=")
+                ex = self.parse_expr()
+            self.expect_op("->")
+            body = self.parse_block_or_inline()
+            arms.append(SelArm(kind, bind, ex, body, line=aline))
+            self.end_line()
+        self.expect_dedent()
+        return SelectE(arms, line=line)
+
+    def parse_run(self):
+        line = self.next().line
+        if self.at_name("fn"):
+            lam = self.parse_lambda(run=True)
+            return RunE(lam, None, line=line)
+        target = self.parse_postfix()
+        return RunE(target, None, line=line)
+
+    def parse_recv_block(self, recv, kind, line):
+        self.expect_op(":")
+        if kind == "do":
+            body = self.parse_block_or_inline()
+            return DoRecv(recv, "do", body, line=line)
+        lines = self.parse_upd_lines()
+        return DoRecv(recv, "update", lines, line=line)
+
+    def parse_upd_lines(self):
+        if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
+            self.expect_nl_indent()
+            out = []
+            while True:
+                self.skip_nl()
+                if self.peek().kind in ("DEDENT", "EOF"):
+                    break
+                out.append(self.parse_upd_line())
+            self.expect_dedent()
+            return out
+        # single inline: field: value
+        return [self.parse_upd_line(inline=True)]
+
+    def parse_upd_line(self, inline=False):
+        t = self.next()
+        if t.kind != "NAME":
+            self.err("expected a field name", t)
+        self.expect_op(":")
+        if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
+            nested = self.parse_upd_lines()
+            return UpdLine(t.val, None, nested, line=t.line)
+        e = self.parse_expr()
+        if not inline:
+            self.end_line()
+        return UpdLine(t.val, e, None, line=t.line)

@@ -1,0 +1,44 @@
+# Moxie interpreter (v1)
+
+A pure-Python interpreter for the frozen Moxie language. No C extensions, no threads, standard library only
+(`sqlite3` for SQL), so it also runs in the browser under Pyodide.
+
+    python -m moxie run FILE [args...]   run a program (core static checks run first; --no-check skips them)
+    python -m moxie test FILE [name]     run the `test` blocks, each in its own fiber; the entry body does not run
+    python -m moxie check FILE           parse and run the static checks only
+    python -m moxie -e 'println("hi")'   run a snippet
+
+Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
+
+## What it does
+* Runs everything in the Spec and Guide that is not marked "not designed": declarations, enums, patterns, generics,
+  interfaces and impls, `F[_]` constructor classes, pipes, `for:` comprehensions, streams, data paths, fixed-capacity
+  collections, sized/bounded/Big/Decimal numbers, format specs and `Locale`.
+* Fibers, channels, timers, futures, atoms, `select:`, `daemon:` and `run` on a generator-based cooperative scheduler
+  with a virtual clock (`sleep` and timers advance instantly and deterministically).
+* `sql(conn):` and `transaction(conn)(tx):` on sqlite3. `Connection.open(path)` and `Connection.memory()` create connections.
+* Core static checks (see `moxie/check.py`): mismatched types, undefined names, argument counts, `ref` mismatches,
+  non-exhaustive `when` (enums, Result, Bool, bounded ranges, literals without `_`), use-after-move and moves inside
+  loops, resource copies, and bounded-integer misuse. It also checks interface bounds at call sites (`best[T: Ordered]`
+  called with a type that has no `Ordered` impl is an error), `deriving` clauses (`hash` needs `eq`; `Hashable` can only
+  be derived), and relational patterns (`>= 500 ->`). The checker is conservative: whatever it cannot type is
+  unknown and never an error.
+* The prelude interfaces `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable` and `Numeric`, including
+  `T.zero()`, `T.one()` and `T.read(text)` inside generic code.
+* Argument-first `run` (`run fn (tx, start)(out, first): ...`) and params-first plain calls (`fn (x: Int)(21)`).
+
+## Tests
+    python tests/run_guide.py     every Guide example against its hand-computed output (174 blocks)
+    python tests/run_checks.py    negative cases for the static checks (36 cases)
+
+## Examples
+`examples/gradebook.mxi` is the program built step by step in the Moxie Tutorial. Run it with
+`python -m moxie run examples/gradebook.mxi`, or its test with `python -m moxie test examples/gradebook.mxi`.
+
+## Not in v1
+Full type inference. Generic bounds are checked only for parameters typed directly as the type parameter, and
+size parameters, `where N > 0` and Dict key eligibility are not checked. Pool/stack sizing and memory spaces (S-space/T-space),
+the SQL schema check, `moxie build`/`--release`, package manifests and lockfiles, and everything the Spec marks "not designed".
+Memory limits are not enforced: collection capacity is.
+
+See FIXLIST.md for the problems found in the Spec and Guide.

@@ -1,0 +1,38 @@
+tuple Telemetry:
+  id: Int,
+  value: Double
+inline fn fetch_active_telemetry(conn: Connection, min_value: Double) Result[Stream[Telemetry], Error]:
+  sql(conn):
+    SELECT id, value FROM telemetry
+    WHERE value >= $min_value AND active = true
+    ORDER BY id
+fn transfer(conn: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]:
+  transaction(conn)(tx):
+    debit = sql(tx):
+      UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
+    _ = debit?
+    credit = sql(tx):
+      UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
+    _ = credit?
+    Ok(())
+conn = Connection.memory()?
+_ = sql(conn):
+  CREATE TABLE telemetry (id INTEGER, value REAL, active BOOLEAN)
+_ = sql(conn):
+  CREATE TABLE accounts (id INTEGER, balance INTEGER)
+n = sql(conn):
+  INSERT INTO telemetry VALUES (1, 0.9, true), (2, 0.2, true), (3, 0.7, true)
+println("inserted ${n}")
+_ = sql(conn):
+  INSERT INTO accounts VALUES (1, 100), (2, 50)
+rows = fetch_active_telemetry(conn, 0.5)?
+for t in rows:
+  println("${t.id}: ${t.value}")
+println(transfer(conn, 1, 2, 30))
+bal = sql(conn):
+  SELECT id, balance FROM accounts ORDER BY id
+for r in bal?:
+  println("${r.id} ${r.balance}")
+bad = sql(conn):
+  SELEKT nonsense
+println(bad)

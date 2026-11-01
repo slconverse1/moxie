@@ -1,0 +1,16 @@
+// A sum type with a method. Leave out a case and the checker objects.
+enum Shape:
+  Circle(radius: Double),
+  Rect(w: Double, h: Double),
+  Empty
+
+impl Shape:
+  fn area() Double:
+    when self:
+      Circle(r) -> 3.14159 * r * r
+      Rect(w, h) -> w * h
+      Empty -> 0.0
+
+shapes = List(Shape.Circle(radius: 2.0), Shape.Rect(w: 3.0, h: 4.0), Shape.Empty)
+for s in shapes:
+  println("area ${s.area()}")

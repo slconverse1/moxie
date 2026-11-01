@@ -1,0 +1,10 @@
+// Hello, Mixers. A function with a when and a table of cases.
+fn describe(status: Int) String:
+  when status:
+    200 -> "Success"
+    400..=499 -> "Client Error"
+    >= 500 -> "Server Error"
+    _ -> "Unknown"
+
+for code in List(200, 404, 503, 302):
+  println("$code is ${describe(code)}")
