@@ -33,6 +33,8 @@ Only the memory model changes. Patterns, generics, interfaces, pipes, results, f
 
 Gone altogether: `String[n]`, `static` strings (the keyword survives only in `static fn`), S-space and T-space, daemon-safe values, transient closures, the bounded form of a recursive value, pool and fiber-slot tallies, the startup refusal, `copy` (a slice is already an owned value), and the in-place update guarantee.
 
+**Compatibility.** moxie/gc is not designed to run plain moxie programs unchanged, and there is no compatibility mode. The differences above are the whole list. Code that uses `String[n]`, `static` strings, `copy`, a sized `List`, `Set`, or `Dict` declaration written as a fixed capacity, `[pools]` or `[fibers] memory` in the manifest, or the `Result` from `put` needs editing. Going the other way, a program that stores a closure in a collection or returns a stream is not valid plain moxie.
+
 
 **0. Principles**
 - **Everything is an expression.** Bindings, `if`, `when`, `select`, `seq`, `do:`, `for:` comprehensions, loops, and blocks all yield a value, and a block's value is its last expression. The only non-expressions are declarations (`fn`, `tuple`, `enum`, `interface`, `impl`, `type`, `forward fn`), `import` and `export`, `init:` blocks, `test` blocks, `end` markers, and comments.

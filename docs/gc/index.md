@@ -6,7 +6,7 @@ title: "moxie/gc"
 
 > **This is the Site Intro for moxie/gc,** which is moxie with a garbage collector. It is a copy of the plain moxie page, and every passage that differs is marked **[gc]**. Unmarked text is the same in both languages. See also the [moxie/gc Spec](spec.html), the [constraints draft](constraints.html), and the [plain moxie page](../).
 
-Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in moxie and moxie/gc. Only the memory model changes, and with it a good deal of what moxie can't do. Here is what's different, at a glance:
+Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in moxie and moxie/gc. Only the memory model changes, and with it a good deal of what moxie can't do. Here is what's different, at a glance: Programs aren't meant to move between the two unchanged: anything written for moxie that leans on `String[n]`, `static` strings, `copy`, fixed capacities, or pools will need edits, and the list below is the full set of differences.
 
 - **Memory.** One shared heap, reclaimed by a generational collector that works in short slices. There is no startup tally, no S-space or T-space, and no pools.
 - **Sizes.** `List`, `Dict`, and `Set` grow as needed. A declared size is only a hint. `Array` and `MultiArray` still carry their sizes in their types.
