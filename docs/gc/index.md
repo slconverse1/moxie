@@ -2,7 +2,6 @@
 layout: default
 title: "moxie/gc"
 ---
-
 # Hello, mixers! (the moxie/gc edition)
 
 > **This is the Site Intro for moxie/gc,** which is moxie with a garbage collector. It is a copy of the plain moxie page, and every passage that differs is marked **[gc]**. Unmarked text is the same in both languages. See also the [moxie/gc Spec](spec.html), the [constraints draft](constraints.html), and the [plain moxie page](../).
@@ -118,10 +117,10 @@ The Moxie Runtime is the small piece of machinery that starts your program, sche
 
 Beyond that, the Runtime is small, and it hates surprises:
 
-- **Memory is one shared heap, collected for you.** **[gc]** All fibers allocate from the same heap, and a generational collector reclaims what nothing can reach. New values are collected often and cheaply, and values that survive move to an older generation that is collected less often. The collector works in short slices at moments when a fiber parks or allocates, so pauses stay short. They aren't zero, and the claim is still a promise until there is a real collector. There is no startup tally, no pool to size, and no S-space or T-space.
+- **Memory is one shared heap, collected for you.** **[gc]** All fibers allocate from the same heap, and a generational collector reclaims what nothing can reach. New values are collected often and cheaply, and values that survive move to an older generation that is collected less often. The collector works in short slices at moments when a fiber parks or allocates, so pauses stay short. They aren't zero, and the claim is still a promise until there is a real collector. There is no startup tally, no pool to size, and no S-space or T-space. A name you are finished with doesn't keep its value alive, because the collector counts a local only until its last use, so holding the head of a long list by accident isn't a problem.
 - **Resources are released at known points, not by the collector.** **[gc]** A channel end, a write handle, or a connection is a one-owner handle, and it is closed when its owner lets go of it, never whenever the collector gets around to it. That is why a dropped write end can reject its future with `ABANDONED` right away. There are no finalizers.
 - **A full heap ends the program.** **[gc]** The Manifest sets a limit on the heap. When any fiber needs memory after a full collection and the limit is reached, the Runtime prints a diagnostic and ends the whole program, because a heap that all fibers share is a heap that's full for all of them.
-- **Memory can leak again.** **[gc]** Plain moxie runs in constant memory forever. With a collector, a loop that keeps adding to a list, an Atom that keeps every message, and a Dict that is never trimmed all grow without end, because the collector frees only what nothing can reach.
+- **Memory can leak again.** **[gc]** Plain moxie runs in constant memory forever. With a collector, a loop that keeps adding to a list, an Atom that keeps every message, and a Dict that is never trimmed all grow without end, because the collector frees only what nothing can reach. (A variable you're done with doesn't count. This is about structures the program itself keeps.)
 - **Aborts are contained.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, ends that fiber, and drops its resources. An abort in the entry file ends the program with a non-zero exit.
 - **Everything is linked statically from source,** Go style, with unreachable code pruned and a link report of what each package contributed. No code is loaded at run time.
 

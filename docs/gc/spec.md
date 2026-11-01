@@ -2,7 +2,6 @@
 layout: default
 title: "Moxie/gc Spec"
 ---
-
 # MOXIE/GC SPEC
 
 moxie/gc is moxie with a garbage collector. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from plain moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
@@ -99,6 +98,7 @@ Every value lives in one of these places.
 
 How the heap behaves:
 - **Lifetime.** A value lives as long as something can reach it. No name is ever unbound because memory was reclaimed: a loop iteration, a self tail call, and a daemon cycle never invalidate a value, and any value can be carried from one cycle to the next.
+- **Dead names hold nothing.** The collector counts a local name as holding its value only while some path can still use the name. After its last use the value is free to be collected, which avoids the classic "holding the head" problem, where a variable you have finished with keeps all of a long list reachable. The compiler finds last uses with a backward pass over each function (it needs them already for use-after-move checks), and a loop carries forward only the bindings its next iteration reads. This does not help when the program itself still holds the data, as with an Atom that collects every message.
 - **The collector.** It is generational. New values are collected often and cheaply, and values that survive are promoted to an older generation that is collected less often. The work is done in bounded slices at safe points: an allocation, a park (`read`, `write`, `sleep`, `select`, a query), or the top of a loop iteration. Fibers run one at a time on one thread, so stopping the program means only that the running fiber reaches a safe point. A slice's time budget is set by the manifest's `[memory] slice` and defaults to a small fraction of a millisecond *(to be tuned once a collector exists)*. The aim is short pauses, not none: collecting the old generation takes many slices, and the program makes progress between them.
 - **No write barrier in ordinary code.** Values are immutable, so a value never comes to point at a newer one after it is built. The only places where an old object can gain a reference to a new one are Atoms and channel buffers, and only the runtime functions `swap`, `reset`, and `write` change them. Those record the update for the collector.
 - **Sending a value** on a channel passes a reference, not a copy. Sharing is safe because values never change.
@@ -115,7 +115,7 @@ How the heap behaves:
   2. It allocates the heap.
   3. It runs each file's module-level values and `init:` blocks, in order.
   4. It runs the entry file as the first fiber.
-- **Value layout**. Scalars use their natural width, in frames and in arrays. Everything else is a heap object with a small header that the collector reads. A tuple is its fields in order. An enum is a tag plus the fields of its case. A closure is a code pointer plus its captured values. An `any` value is a reference to the value plus its type's method table (section 12).
+- **Value layout**. Scalars use their natural width, in frames and in arrays. Everything else is a heap object with a small header that the collector reads. At every safe point the compiler records which frame slots are live, so the collector never treats a dead name as a root. A tuple is its fields in order. An enum is a tag plus the fields of its case. A closure is a code pointer plus its captured values. An `any` value is a reference to the value plus its type's method table (section 12).
 - **Scheduler.** A cooperative scheduler on a single thread keeps a ready queue of fibers. A fiber runs until it parks at `read`, `write`, `sleep`, `select`, a database query, or exits. It never preempts. A multi-core scheduler is an open question. **[gc]** The collector runs at the same safe points where the scheduler can switch fibers, and at allocation.
 - **Aborts.** When a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion, or a stack overflow), the runtime prints a diagnostic (file, line, function, message) and ends that fiber. Its resources are dropped: channel ends close, write handles reject with ABANDONED, and a connection closes. An abort in the entry file ends the program with a nonzero exit status. An abort in another fiber lets the program continue.
 - **Shutdown.** The program ends when the entry file ends or `break daemon` runs. Fibers still running are stopped and their resources dropped.
@@ -596,6 +596,7 @@ Everything else in this Spec is settled, including every call that earlier draft
 - One shared heap, collected by a generational collector that works in bounded slices at safe points.
 - `List`, `Dict`, and `Set` are persistent (O(log n) lookups and updates), and `Array` and `MultiArray` updates copy.
 - Running out of heap ends the program.
+- Dead names hold nothing: the collector counts a local only until its last use.
 - A channel's capacity is declared and may be any `Int` expression, and `#unbounded` is the explicit unbounded form.
 - `run` fails with NO_SLOT only when a declared fiber cap is full, and `[fibers] limit` is an optional default cap.
 - `put` returns the updated Dict, as the function form of `d(k) = v`.
