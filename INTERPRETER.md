@@ -78,8 +78,9 @@ cross-module pages. Contracts are enforced by the interpreter (see below). See `
 appear among a tuple's fields. `ensures` sees the return value as `result`.
 A failing `requires` aborts with "caller bug"; a failing `ensures` or
 `invariant` aborts with "supplier bug". Invariants are checked when a tuple is
-constructed. `moxie --release run FILE` turns all checks off. Not yet built:
-contracts on interface members are parsed (and shown by `moxie doc`) but not
-enforced, nor is a compile error for constant arguments that fail `requires`,
+constructed. Contracts on interface members are checked whenever an
+implementation of that member runs (the interface's parameter names are mapped
+onto the implementation's). `moxie --release run FILE` turns all checks off. Not
+yet built: a compile error for constant arguments that fail `requires`,
 or the manifest key that keeps contracts in release builds. See
 `tests/run_contracts.py`.

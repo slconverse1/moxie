@@ -258,6 +258,11 @@ class DeclsMixin:
                 c = Closure(node, env, name)
                 c.impl = n
                 c.owner = tname
+                idecl = self.ifaces.get(iface_name) if iface_name else None
+                if idecl is not None:
+                    for im in idecl.members or []:
+                        if getattr(im, "name", None) == name and getattr(im, "contracts", None):
+                            c.iface_contracts = (im.params or [], im.contracts)
                 if "static" in (flags or ()):
                     stat.setdefault(name, []).append(c)
                     table.setdefault(name, []).append(c) if False else None

@@ -127,6 +127,7 @@ class CallsMixin:
         b.bound = selfv
         b.impl = c.impl
         b.owner = c.owner
+        b.iface_contracts = c.iface_contracts
         return b
 
     def methods_of(self, v, name):
@@ -945,10 +946,19 @@ class CallsMixin:
         if body is None:
             raise Abort(f"function '{getattr(node, 'name', '?')}' has no body", line)
         contracts = getattr(node, "contracts", None) if CONTRACTS[0] else None
+        cenv0 = env
+        ic = getattr(c, "iface_contracts", None) if CONTRACTS[0] else None
+        if ic:
+            # the interface's contract, with its parameter names mapped onto the implementation's
+            cenv0 = env.child()
+            for ip, np_ in zip(ic[0], node.params or []):
+                if ip.name != np_.name and np_.name in env.vars:
+                    cenv0.vars[ip.name] = env.vars[np_.name]
+            contracts = list(contracts or []) + list(ic[1])
         if contracts:
             for kw, expr, ln, text in contracts:
                 if kw == "requires":
-                    ok = yield from self.ev(expr, env.child())
+                    ok = yield from self.ev(expr, cenv0.child())
                     if ok is not True:
                         raise Abort(f"requires failed in {node.name}: {text} (caller bug)", line)
         depth = self.depth = getattr(self, "depth", 0) + 1
@@ -971,7 +981,7 @@ class CallsMixin:
         elif node.__class__ is Lambda and node.ret is not None:
             v = self.coerce(v, node.ret, c.env)
         if contracts:
-            cenv2 = env.child()
+            cenv2 = cenv0.child()
             cenv2.vars["result"] = v
             for kw, expr, ln, text in contracts:
                 if kw == "ensures":

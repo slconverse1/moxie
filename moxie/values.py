@@ -486,7 +486,7 @@ class RangeV:
 
 
 class Closure:
-    __slots__ = ("node", "env", "name", "recv", "tparams", "bound", "impl", "owner")
+    __slots__ = ("node", "env", "name", "recv", "tparams", "bound", "impl", "owner", "iface_contracts")
 
     def __init__(self, node, env, name=None):
         self.node = node
@@ -497,6 +497,7 @@ class Closure:
         self.bound = None
         self.impl = None
         self.owner = None
+        self.iface_contracts = None
 
 
 class Builtin:
