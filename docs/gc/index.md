@@ -2,29 +2,17 @@
 layout: default
 title: "moxie/gc"
 ---
-# Hello, mixers! (the moxie/gc edition)
+# Hello, mixers! (moxie/gc edition)
 
-> **This is the Site Intro for moxie/gc,** the garbage-collected dialect of moxie. Plain moxie is the other dialect, and the two are kept apart because they make different promises. This page is a copy of the plain moxie page, and every passage that differs is marked **[gc]**. Unmarked text is the same in both languages. See also the [moxie/gc Spec](spec.html), the [moxie/gc Mixer's Guide](guide.html), the [constraints draft](constraints.html), and the [plain moxie page](../).
+Allow me to introduce you to moxie/gc.
 
-Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in moxie and moxie/gc. Only the memory model changes, and with it a good deal of what moxie can't do. Here is what's different, at a glance: Programs aren't meant to move between the two unchanged: anything written for moxie that leans on `String[n]`, `static` strings, `copy`, fixed capacities, or pools will need edits, and the list below is the full set of differences.
+Moxie/gc is a compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem.
 
-- **Memory.** One shared heap, reclaimed by a generational collector that works in short slices. There is no startup tally, no S-space or T-space, and no pools.
-- **Sizes.** `List`, `Dict`, and `Set` grow as needed. A declared size is only a hint. `Array` and `MultiArray` still carry their sizes in their types.
-- **Updates.** `List`, `Dict`, and `Set` are persistent, so an update shares structure with the old version.
-- **Strings.** One `String` type. There is no `String[n]`, no `static`, and no "lasts until the next reset."
-- **Closures.** A function type is just its signature, so a closure can go in a Dict, a tuple field, or a channel, and a function can return a different closure from each branch.
-- **Streams.** A stream can be returned from a function, unless it borrows a resource.
-- **Resources.** Atoms, channels, timers, and futures can be created anywhere, loops included. Ownership and moves work as before.
-- **Fibers.** Created on demand, with no slots reserved in advance. A cap is optional.
-- **Pauses.** Short, not zero. A full heap ends the program, and memory can leak through a structure that keeps growing.
+Moxie/gc compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie/gc-to-hardware mapping is so tight, moxie/gc runs impossibly fast. Best of all, you never have to give a thought about memory: moxie/gc has a garbage collector (GC) built for short pauses. **[gc]**
 
-Allow me to introduce you to moxie.
+Moxie/gc is an offshoot of moxie, its close, no-GC cousin. Their differences are described in a dedicated section below. Unless otherwise distinguished, “moxie” refers to both moxie and moxie/gc.
 
-Moxie is a compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem.
-
-Moxie compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie-to-hardware mapping is so tight, moxie runs impossibly fast. Best of all, you never have to think about memory: moxie/gc has a garbage collector built for short pauses. **[gc]**
-
-Moxie has just about all the features you've come to expect from an FP language: iterators, generators, comprehensions, lambdas, monads, pipes, laziness, generics, you name it. For data, it has the usual suspects: primitive types (numbers and String), structure types (tuple and enum), collection types (Array, MultiArray, List, Set, and Dict), resource types, and a fistful of others for good luck. Last but not least, as in any respectable FP language, functions are first-class citizens.
+Naturally, moxie has all the features you've come to expect in an FP language: iterators, generators, comprehensions, lambdas, monads, pipes, laziness, generics, you name it. For data, it has the usual suspects: primitive types (numbers and String), structure types (tuple and enum), collection types (Array, MultiArray, List, Set, and Dict), resource types, and a fistful of others for good luck. Last but not least, as in any respectable FP language, functions are first-class citizens.
 
 In short, moxie is perfect for Top Gun FP programmers who feel the need for speed.
 
@@ -32,15 +20,13 @@ You're welcome!
 
 ## About us
 
-Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer lives on paper alone. It's a software project undertaken by me, Steve Converse, in collaboration with Google's generative AI and Anthropic's Claude, without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
+Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer exists on paper alone. It's a software project undertaken by me, Steve Converse, in collaboration with Google's generative AI and Anthropic's Claude, without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
 
-The interpreter runs moxie programs, including the examples in the Mixer's Guide, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the speed in FCFX and the collector's short pauses, are still promises, not demonstrations. **[gc]**
+The interpreter runs both moxie and moxie/gc programs, including the examples in their Mixer's Guides, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the speed in FCFX and the garbage collector's short pauses, are still promises, not demonstrations. **[gc]**
 
-Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But moxie is still worth a look or two (the 1-pass compiler constraint on moxie’s design is especially informative, and moxie/gc is what you get when you drop the no-GC one) **[gc]**, and its promises should be kept in a real programming language.
+Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But even so, moxie is still worth a look; its particular combination of features is truly all its own.
 
-ASAP!
-
-In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers,” its life force. Alongside this page you'll find the moxie/gc Spec. **[gc]** The Mixer's Guide and the reference interpreter belong to plain moxie so far, and a moxie/gc Guide is still to come.
+In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Mixer's Guide](guide.html), and reference interpreter.
 
 ## A moxie appetizer
 
@@ -67,11 +53,11 @@ Assume this code lives in its own file. Notice the two-space moxie indentation. 
 
 ## Our debts
 
-Moxie's elegance rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
+The elegance of moxie rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
 
 - **Go:** interfaces, goroutines, channels, and `select`, and (in moxie/gc) the goal of garbage collection with short pauses. **[gc]**
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, and slicing with ranges.
-- **Kotlin:** scoped receiver blocks (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), Domain-Specific Languages, and labeled `break` and `continue`.
+- **Kotlin:** scoped receiver blocks, Domain-Specific Languages, and labeled `break` and `continue`.
 - **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, an `if` that gives back a value, `for`/`yield` comprehensions, and enums with fields.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, and `todo`.
@@ -80,10 +66,26 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
-- **Swift:** keypaths that act as lenses.
+- **Swift:** named tuples and keypaths that act as lenses.
 - **Elixir:** the pin (`^`) operator for pattern matching.
 
-By synthesizing these features, and untold others, into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
+By synthesizing these features and others into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
+
+## Moxie’s two dialects
+
+As acknowledged, there are two dialects of moxie: the no-GC, moxie dialect, and moxie/gc, the GC dialect. The two are kept apart because they make different promises, so every passage of this moxie/gc edition related to garbage collection is marked **[gc]**, as shown above. Unmarked text is fundamentally the same in both dialects. See also the [moxie/gc Spec](spec.html), the [moxie/gc Mixer's Guide](guide.html), the [constraints draft](constraints.html), and the [no-GC moxie page](../).
+
+Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes in moxie/gc, and with it a good deal of what moxie can't do. Here’s what's different, at a glance: Programs aren't meant to move between the two unchanged: anything written for moxie that leans on String[n], static strings, copy, fixed capacities, or pools will need edits. The full set of differences—the ways in which moxie/gc strips away the limitations of no-GC moxie—is as follows:
+
+- **Memory.** One shared heap, reclaimed by a generational collector that works in short slices. There is no startup tally, no S-space or T-space, and no pools.
+- **Sizes.** `List`, `Dict`, and `Set` grow as needed. A declared size is only a hint. `Array` and `MultiArray` still carry their sizes in their types.
+- **Updates.** `List`, `Dict`, and `Set` are persistent, so an update shares structure with the old version.
+- **Strings.** One `String` type. There is no `String[n]`, no `static`, and no "lasts until the next reset."
+- **Closures.** A function type is just its signature, so a closure can go in a Dict, a tuple field, or a channel, and a function can return a different closure from each branch.
+- **Streams.** A stream can be returned from a function, unless it borrows a resource.
+- **Resources.** Atoms, channels, timers, and futures can be created anywhere, loops included. Ownership and moves work as before.
+- **Fibers.** Created on demand, with no slots reserved in advance. A cap is optional.
+- **Pauses.** Short, not zero. A full heap ends the program, and memory can leak through a structure that keeps growing.
 
 ## Immutability, and the fine print
 
@@ -110,7 +112,7 @@ The Moxie Runtime is the small piece of machinery that starts your program, sche
 **What other languages call them.** If you know one of these, you already know the idea:
 - **Go:** a goroutine, and `run f()` is moxie's `go f()`. Go spreads goroutines across many OS threads and can preempt them, while moxie doesn't.
 - **Kotlin:** a coroutine, started with `launch`.
-- **Erlang and Elixir:** a process, started with `spawn`. Processes also talk by messages, but they're preemptively scheduled and each has its own heap, while moxie/gc fibers share one. **[gc]**
+- **Erlang and Elixir:** a process, started with `spawn`. Processes also talk by messages, but they're preemptively scheduled and each has its own heap, while moxie/gc fibers share one program heap. **[gc]**
 - **Python:** an `asyncio` task, which is also cooperative and single-threaded.
 - **Haskell:** a green thread, started with `forkIO`.
 - **Java (21 and later):** a virtual thread.
@@ -120,7 +122,7 @@ Beyond that, the Runtime is small, and it hates surprises:
 - **Memory is one shared heap, collected for you.** **[gc]** All fibers allocate from the same heap, and a generational collector reclaims what nothing can reach. New values are collected often and cheaply, and values that survive move to an older generation that is collected less often. The collector works in short slices at moments when a fiber parks or allocates, so pauses stay short. They aren't zero, and the claim is still a promise until there is a real collector. There is no startup tally, no pool to size, and no S-space or T-space. A name you are finished with doesn't keep its value alive, because the collector counts a local only until its last use, so holding the head of a long list by accident isn't a problem.
 - **Resources are released at known points, not by the collector.** **[gc]** A channel end, a write handle, or a connection is a one-owner handle, and it is closed when its owner lets go of it, never whenever the collector gets around to it. That is why a dropped write end can reject its future with `ABANDONED` right away. There are no finalizers.
 - **A full heap ends the program.** **[gc]** The Manifest sets a limit on the heap. When any fiber needs memory after a full collection and the limit is reached, the Runtime prints a diagnostic and ends the whole program, because a heap that all fibers share is a heap that's full for all of them.
-- **Memory can leak again.** **[gc]** Plain moxie runs in constant memory forever. With a collector, a loop that keeps adding to a list, an Atom that keeps every message, and a Dict that is never trimmed all grow without end, because the collector frees only what nothing can reach. (A variable you're done with doesn't count. This is about structures the program itself keeps.)
+- **Memory can leak again.** **[gc]** No-GC moxie runs in constant memory forever. With a garbage collector, a loop that keeps adding to a list, an Atom that keeps every message, and a Dict that is never trimmed all grow without end, because the collector frees only what nothing can reach. (A variable you're done with doesn't count. This is about structures the program itself keeps.)
 - **Aborts are contained.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, ends that fiber, and drops its resources. An abort in the entry file ends the program with a non-zero exit.
 - **Everything is linked statically from source,** Go style, with unreachable code pruned and a link report of what each package contributed. No code is loaded at run time.
 
@@ -263,7 +265,7 @@ These two names look alike but do different jobs, and you'll meet both in nearly
 
 **`Err` is a case of `Result`.** A `Result[T, E]` is either `Ok(value)`, holding the answer, or `Err(error)`, holding the reason it failed. `Err` is the "it didn't work" wrapper, and it can hold *any* error type `E` you choose.
 
-**`Error` is a built-in tuple** that is the standard moxie error type, `Error(code: Int, message: String)`, where the message is an ordinary `String`. **[gc]** (In plain moxie it has to be a fixed string known at compile time.) The function `fail(code, message)` is shorthand for building an `Err` that holds one:
+**`Error` is a built-in tuple** that is the standard moxie error type, `Error(code: Int, message: String)`, where the message is an ordinary `String`. **[gc]** (In no-GC moxie it has to be a fixed string known at compile time.) The function `fail(code, message)` is shorthand for building an `Err` that holds one:
 
 ```
 fn check_age(age: Int) Result[Int, Error]:
@@ -531,7 +533,7 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 
 - **Splatting:** `add(...pair)` spreads a tuple across a parameter list, and `total(100, ...values)` spreads an array into a variadic. `(...p, y: 9)` spreads a tuple's fields into a new tuple, with later fields overriding earlier ones. In many cases you don't even need the `...`, because `add(pair)` already works when the shape matches.
 - **Gathering:** `numbers: ...Int` gathers any number of trailing arguments into one list **[gc]**, and zero is fine. A pattern gathers too: in `Array(first, ...rest)` the `rest` collects whatever the pattern didn't name.
-- **The limits:** A variadic has a single element type (use a union or a tuple when you need a mix). **[gc]** In moxie/gc a `List` of any length can be splatted into a call, and a `rest` is an ordinary value. (Plain moxie has to know how many values it is spreading, so it can't splat a `List` of unknown length, and its `rest` is a read-only view that can't be returned or stored.)
+- **The limits:** A variadic has a single element type (use a union or a tuple when you need a mix). **[gc]** In moxie/gc a `List` of any length can be splatted into a call, and a `rest` is an ordinary value. (No-GC moxie has to know how many values it is spreading, so it can't splat a `List` of unknown length, and its `rest` is a read-only view that can't be returned or stored.)
 
 **The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry2` through `curry6` in the prelude for when you want classic currying.
 
@@ -678,7 +680,7 @@ println(advice(20, false))
 
 Output: `Bring a coat and an umbrella`, `Bring an umbrella`, `Bring a coat`, then `Enjoy the day`. The arms are tried from top to bottom, so the most specific test goes first.
 
-**Looking inside an object.** `x.do:` runs a block with `x` as its receiver, which puts the fields of `x` in scope as bare names. Combine that with a value-less `when` and the tests can be written in terms of the object's own fields:
+**Looking inside an object.** `x.do:` runs a block with `x` as its receiver, which puts the fields of `x` in scope as bare names. (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value.) Combine that with a value-less `when` and the tests can be written in terms of the object's own fields:
 
 ```
 tuple User:
@@ -949,7 +951,7 @@ Output: `skipped: 0`, with no "computing" line, because `x` is never read. Be aw
 **The fine print.**
 - Nothing is cached for you, and there's no hidden memoization. Caching is a recipe you write on purpose (example below).
 - A stream feeding two terminals runs its recipe twice, and the compiler warns you.
-- **[gc]** A stream holds its source, and the collector keeps the source alive, so a stream can be returned from a function. The exception is a stream that borrows a resource, such as a channel end or a database connection. A helper that returns one has to be an `inline fn`. (In plain moxie every stream over local data is a view that can't be returned.)
+- **[gc]** A stream holds its source, and the collector keeps the source alive, so a stream can be returned from a function. The exception is a stream that borrows a resource, such as a channel end or a database connection. A helper that returns one has to be an `inline fn`. (In no-GC moxie every stream over local data is a view that can't be returned.)
 - A `lazy` parameter can't also be a `ref` parameter.
 
 **A caching recipe.** The simplest one threads a `Dict` through the recursion as a `ref` parameter, so every call can see what earlier calls learned, and wraps it in a plain function that starts the table empty:
@@ -1114,7 +1116,7 @@ That works for `Maybe.Just(21)` and `Ok(21)` alike.
 **The limitations:**
 
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
-- A State monad can be defined, and **[gc]** it has none of plain moxie's limits. `ref` threading is still the simple way to carry state.
+- A State monad can be defined, and **[gc]** it has none of no-GC moxie's limits. `ref` threading is still the simple way to carry state.
 - Type constructors take at most one "hole" (`Result[_, E]`), so there are no monad transformers and no type-level lambdas.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
@@ -1138,7 +1140,7 @@ pure fn noisy(w: Int) Int:
   w
 ```
 
-**[gc]** In plain moxie the two lines marked "fine in moxie/gc" are errors. They are the price of having no heap: a closure's size depends on what it captures, so it can't live in a slot of fixed size, and a function returns exactly one closure type. With a collector, a function type is just its signature, so closures can be stored anywhere and a function can return a different one from each branch. Only the last error, the `pure fn`, is left.
+**[gc]** In no-GC moxie the two lines marked "fine in moxie/gc" are errors. They are the price of having no heap: a closure's size depends on what it captures, so it can't live in a slot of fixed size, and a function returns exactly one closure type. With a collector, a function type is just its signature, so closures can be stored anywhere and a function can return a different one from each branch. Only the last error, the `pure fn`, is left.
 
 ## 18. Fibers, channels, and daemons
 
@@ -1221,7 +1223,7 @@ fail: rejected no luck
 - **Three states.** A future starts `Pending` and leaves that state exactly once, becoming `Resolved(value)` through `resolve(w, value)` or `Rejected(error)` through `reject(w, error)`. Both consume the write end, so a future can't be completed twice.
 - **Looking never waits.** `@f` takes a snapshot and returns immediately, and asking again gives the same answer once the future is settled. There is no `await`. The example above sleeps before the second look; a program that needs to wait for a result usually sends it over a channel, or parks in a loop of its own.
 - **A write end that goes away rejects.** If the write end is dropped without ever being completed (say its fiber aborted), the future becomes `Rejected` with the reserved error `ABANDONED`, so a reader is never left looking at `Pending` forever.
-- **Futures aren't atoms.** An Atom is a cell you can keep replacing, while a future is filled once and then frozen. **[gc]** Like atoms, channels, and timers, futures can be created anywhere, loops and recursion included. (In plain moxie the compiler counts them at startup, so they can't.)
+- **Futures aren't atoms.** An Atom is a cell you can keep replacing, while a future is filled once and then frozen. **[gc]** Like atoms, channels, and timers, futures can be created anywhere, loops and recursion included. (In no-GC moxie the compiler counts them at startup, so they can't.)
 
 Servers don't end, so moxie has a place for that—`daemon:` is the server program's main cycle. **[gc]** Strings built inside a cycle are reclaimed by the collector once nothing refers to them, so a program can run for years without growing, as long as it doesn't keep adding to a structure forever.
 
@@ -1239,7 +1241,7 @@ daemon:
       counter + 1
 ```
 
-Around it, you get Go-style channels, `select`, timers, futures, atoms, and fibers. The compiler checks all of it: a channel end moves to one owner, and `clone(end)` is how you request another handle. **[gc]** They live on the heap, so you can create them wherever you like, loops included. (In plain moxie the compiler tallies them, so the Runtime can allocate them all up front.)
+Around it, you get Go-style channels, `select`, timers, futures, atoms, and fibers. The compiler checks all of it: a channel end moves to one owner, and `clone(end)` is how you request another handle. **[gc]** They live on the heap, so you can create them wherever you like, loops included. (In no-GC moxie the compiler tallies them, so the Runtime can allocate them all up front.)
 
 ## 19. Run routines
 
@@ -1301,7 +1303,7 @@ In most languages, that line allocates iterators or intermediate collections and
 - **Streams fuse.** A stream is a source plus an index range, with stages nested around it. The terminal (`sum` here) fuses the whole chain into one flat loop, and one element at a time travels through the entire pipeline with no buffer in between.
 - **Everything is specialized.** The compiler builds a copy of each generic function for each concrete use, with the lambda inlined. There's no boxing, no run-time type information, and no call through a table.
 - **Allocation is cheap and short-lived.** **[gc]** Scalars and small fixed-size values live in stack frames, and a lazy stream is a small record. What does go on the heap (strings, the contents of collections, closures) mostly dies young, which is what a generational collector is built for.
-- **A garbage collector built for short pauses.** **[gc]** It works in bounded slices at points where a fiber parks or allocates. Only one fiber runs at a time and values never change, so ordinary code needs no write barrier. The pauses are short, not zero, and a collector costs some memory overhead and some time that plain moxie doesn't pay.
+- **A garbage collector built for short pauses.** **[gc]** It works in bounded slices at points where a fiber parks or allocates. Only one fiber runs at a time and values never change, so ordinary code needs no write barrier. The pauses are short, not zero, and a collector costs some memory overhead and some time that no-GC moxie doesn't pay.
 
 The price is code size (each specialization is its own copy), the collector's overhead **[gc]**, and a few limits, which the next section lays out.
 
@@ -1309,7 +1311,7 @@ The price is code size (each specialization is its own copy), the collector's ov
 
 ## Constraints from the "1-pass compiler"
 
-These come with the territory, and we don't mind them. **[gc]** (In plain moxie this section is "Constraints from 'no GC' and '1-pass compiler'," and it has more entries. The ones that went away are listed below.)
+These come with the territory, and we don't mind them. **[gc]** (In no-GC moxie this section is "Constraints from 'no GC' and '1-pass compiler'," and it has more entries. The ones that went away are listed below.)
 
 - **No import cycles,** and names must be declared before they're used (with `forward fn` for mutual recursion). A single pass needs definitions first.
 - **A function passed to `swap` can't park or block.**
@@ -1330,7 +1332,7 @@ Taking the garbage collector back isn't free, and these are the prices:
 
 ## Constraints that went away with the GC **[gc]**
 
-Plain moxie has each of these because it has no heap. moxie/gc doesn't:
+No-GC moxie has each of these because it has no heap. moxie/gc doesn't:
 
 - **Capturing closures can be stored anywhere:** in a Dict, a tuple field, or a channel element.
 - **A function can return a different closure from each branch.**
