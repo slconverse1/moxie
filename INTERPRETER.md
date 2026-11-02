@@ -42,7 +42,7 @@ those parts of moxie/gc are not modeled.
 ## Tests
     python tests/run_guide.py     every Guide example against its hand-computed output (174 blocks)
     python tests/run_checks.py    negative cases for the static checks (36 cases)
-    python tests/run_helpers.py   stream helpers, clause guards, and `tailrec`, in both dialects (24 checks)
+    python tests/run_helpers.py   stream helpers, clause guards, and `tailrec`, in both dialects (26 checks)
     python tests/run_gc.py        programs that rely on the moxie/gc rules (16 cases)
     python tests/run_gc_guide.py  every moxie/gc Guide example under --gc
 

@@ -390,6 +390,11 @@ class Scheduler:
         if f.entry:
             f.error = ProgramExit(1, None)
             f.error.printed = True
+        else:
+            # an abort in any fiber ends the program
+            e = ProgramExit(1, None)
+            e.printed = True
+            raise e
 
     def drop_owned(self, f):
         for e in f.owned:

@@ -105,7 +105,7 @@ Beyond that, the Runtime is small, and it hates surprises:
 
 - **Memory is one fixed block, allocated at startup.** The compiler tallies everything your program can need (atoms, channels, timers, futures, connections, and one stack per possible fiber) and writes that into the program. At startup the Runtime checks that they all fit in memory and *refuses to start* if they don't. After that, creating those things can't fail, and there's no heap to fragment or run out of.
 - **Strings and temporaries live on stacks.** Each fiber has an S-space (for strings built at run time and recursive values) and a T-space (for temporaries from things like `collect()`). Both are released in bulk at fixed points, such as the end of a `daemon:` cycle, which is how a program can run forever in constant memory with no GC.
-- **Aborts are contained.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, ends that fiber, and drops its resources. An abort in the entry file ends the program with a non-zero exit.
+- **An abort ends the program.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, drops the fiber's resources, and ends the program with a non-zero exit, whichever fiber it was. A fault means a bug, so there's little reason to carry on.
 - **Everything is linked statically from source,** Go style, with unreachable code pruned and a link report of what each package contributed. No code is loaded at run time.
 
 ## Function declarations and signatures
@@ -1203,7 +1203,7 @@ fail: rejected no luck
 
 - **Three states.** A future starts `Pending` and leaves that state exactly once, becoming `Resolved(value)` through `resolve(w, value)` or `Rejected(error)` through `reject(w, error)`. Both consume the write end, so a future can't be completed twice.
 - **Looking never waits.** `@f` takes a snapshot and returns immediately, and asking again gives the same answer once the future is settled. There is no `await`. The example above sleeps before the second look; a program that needs to wait for a result usually sends it over a channel, or parks in a loop of its own.
-- **A write end that goes away rejects.** If the write end is dropped without ever being completed (say its fiber aborted), the future becomes `Rejected` with the reserved error `ABANDONED`, so a reader is never left looking at `Pending` forever.
+- **A write end that goes away rejects.** If the write end is dropped without ever being completed (say its owner finished without completing it), the future becomes `Rejected` with the reserved error `ABANDONED`, so a reader is never left looking at `Pending` forever.
 - **Futures aren't atoms.** An Atom is a cell you can keep replacing, while a future is filled once and then frozen. Like atoms, channels, and timers, futures are counted by the compiler at startup, so they can't be created in loops or recursion.
 
 Servers don't end, so moxie has a place for that—`daemon:` is the server program's main cycle. Strings built inside a cycle are freed at the end of it, so a program can run for years without growing.

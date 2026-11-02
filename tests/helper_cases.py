@@ -25,4 +25,13 @@ tailrec fn fact(0) Int: 1
 tailrec fn fact(n): n * fact(n - 1)
 println("${fact(5)}")
 ''', [], 2),
+("an abort in any fiber ends the program", '''
+fiber fn bad(tx: ChanW[Int]) Unit:
+  xs = List(1, 2, 3)
+  _ = write(tx, xs(7))
+rx, tx = Chan[Int][1]()
+_ = run bad(tx)
+sleep(1s)
+println("still here")
+''', [], 1),
 ]
