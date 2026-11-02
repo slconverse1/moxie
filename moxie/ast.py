@@ -101,9 +101,9 @@ def _defs():
         "TrailIf": "stmt cond",
         "ExprStmt": "e",
         # declarations
-        "FnDecl": "name tparams params ret locals body flags clauses alias guard",
+        "FnDecl": "name tparams params ret locals body flags clauses alias guard contracts",
         "FnGroup": "name clauses",
-        "TupleDecl": "name tparams fields derivs positional vis",
+        "TupleDecl": "name tparams fields derivs positional vis invariants",
         "FieldDecl": "name type default delegate",
         "EnumDecl": "name tparams header cases derivs vis",
         "CaseDecl": "name fields",

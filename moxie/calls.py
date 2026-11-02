@@ -944,6 +944,13 @@ class CallsMixin:
         body = node.body
         if body is None:
             raise Abort(f"function '{getattr(node, 'name', '?')}' has no body", line)
+        contracts = getattr(node, "contracts", None) if CONTRACTS[0] else None
+        if contracts:
+            for kw, expr, ln, text in contracts:
+                if kw == "requires":
+                    ok = yield from self.ev(expr, env.child())
+                    if ok is not True:
+                        raise Abort(f"requires failed in {node.name}: {text} (caller bug)", line)
         depth = self.depth = getattr(self, "depth", 0) + 1
         try:
             if node.__class__ is FnDecl and node.ret is not None:
@@ -963,6 +970,14 @@ class CallsMixin:
             v = self.coerce(v, node.ret, c.env)
         elif node.__class__ is Lambda and node.ret is not None:
             v = self.coerce(v, node.ret, c.env)
+        if contracts:
+            cenv2 = env.child()
+            cenv2.vars["result"] = v
+            for kw, expr, ln, text in contracts:
+                if kw == "ensures":
+                    ok = yield from self.ev(expr, cenv2)
+                    if ok is not True:
+                        raise Abort(f"ensures failed in {node.name}: {text} (supplier bug)", line)
         if refspec and cenv is not None:
             params = node.params or []
             for key, cname in refspec.items():

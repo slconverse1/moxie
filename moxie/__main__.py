@@ -2,7 +2,7 @@
 import os
 import sys
 
-USAGE = """usage: moxie [--gc] run FILE [args...]     run a program (--gc: moxie/gc rules, or set MOXIE_GC=1)
+USAGE = """usage: moxie [--gc] [--release] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
        moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
@@ -27,6 +27,10 @@ def main(argv=None):
         from .values import GC
         GC[0] = True
         argv = [a for a in argv if a != "--gc"]
+    if "--release" in argv:
+        from .values import CONTRACTS
+        CONTRACTS[0] = False
+        argv = [a for a in argv if a != "--release"]
     sys.setrecursionlimit(100000)
     if not argv or argv[0] in ("-h", "--help", "help"):
         sys.stdout.write(USAGE)
@@ -55,13 +59,11 @@ def main(argv=None):
         return I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
     if cmd == "test":
         I = make_interp(path, [])
-        from .doc import strip_contracts
-        src = strip_contracts(src)[0]       # contracts are not enforced yet; blank them
         p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)
         if "/// >" in src and len(argv) <= 2:
             from .doc import collect, run_doctests
             clean, _, items = collect(src)
-            for it, e, x, ok, msg in run_doctests(clean, items, lambda: make_interp(path, [])):
+            for it, e, x, ok, msg in run_doctests(src, items, lambda: make_interp(path, [])):
                 print(("ok    " if ok else "FAIL  ") + f"doctest {it.name}: {e}" + ("" if ok else f" ({msg})"))
                 code = code or (0 if ok else 1)
         return code

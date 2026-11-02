@@ -159,7 +159,7 @@ def _esc(s):
     return s.replace("\\", "\\\\").replace('"', '\\"').replace("$", "\\$").replace("\n", "\\n")
 
 
-def run_doctests(clean, items, make_interp):
+def run_doctests(src, items, make_interp):
     """Run every example; return a list of (item, expr, expected, ok, message)."""
     cases, tests = [], []
     for it in items:
@@ -169,7 +169,7 @@ def run_doctests(clean, items, make_interp):
             cases.append((it, expr, exp, name))
     if not cases:
         return []
-    src = clean + "\n" + "\n".join(tests)
+    src = src + "\n" + "\n".join(tests)
     I = make_interp()
     buf = io.StringIO()
     I.out = buf
@@ -376,7 +376,7 @@ def doc_main(argv, make_interp, out, err):
         shown = [it for it in items if it.exported]
     else:
         shown = items
-    results = run_doctests(clean, shown, make_interp)
+    results = run_doctests(src, shown, make_interp)
     bad = [r for r in results if not r[3]]
     for it, e, x, ok, msg in bad:
         err.write(f"{path}: example failed in {it.name}: > {e}  (expected {x!r}) {msg}\n")

@@ -8,6 +8,7 @@ from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_HALF_DOWN, RO
 import os as _os
 GC = [bool(_os.environ.get("MOXIE_GC"))]
 INF_CAP = 1 << 62
+CONTRACTS = [True]    # False under --release: requires/ensures/invariant are not checked
 
 
 # ---------------------------------------------------------------- exceptions

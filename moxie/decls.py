@@ -47,6 +47,7 @@ class DeclsMixin:
             fields = [FieldDecl(None, t, None, None) for t in n.positional]
         info = TypeInfo(n.name, n.tparams, fields, n.derivs, n.positional)
         info.env = env
+        info.invariants = n.invariants or []
         self.tuples[n.name] = info
         env.vars[n.name] = TypeV(n.name, info)
         self.note_export(env, n.name, n.vis)
@@ -117,7 +118,18 @@ class DeclsMixin:
                         dv = nd
                     v = dv
                 vals[j] = v
-        return TupleV(vals, list(names) if names and names[0] is not None else None, info.name)
+        tv = TupleV(vals, list(names) if names and names[0] is not None else None, info.name)
+        invs = getattr(info, "invariants", None)
+        if invs and CONTRACTS[0]:
+            ienv = info.env.child()
+            for nm, x in zip(names or [], vals):
+                if nm is not None:
+                    ienv.vars[nm] = x
+            for kw, expr, ln, text in invs:
+                ok = yield from self.ev(expr, ienv)
+                if ok is not True:
+                    raise Abort(f"invariant of {info.name} failed: {text} (supplier bug)", line)
+        return tv
 
     # ------------------------------------------------------------ enums
     def ev_EnumDecl(self, n, env):

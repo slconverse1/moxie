@@ -70,5 +70,16 @@ interfaces, and the `> expr` / expected-output examples, which are run as
 doctests. `--check` exits nonzero on a failing example or a broken
 ``[`name`]`` link and warns about undocumented exports. `moxie test FILE` also
 runs the doctests. Not yet built: effect display, the full Markdown subset,
-cross-module pages. Contract lines are only collected as text; the interpreter
-does not enforce them yet. See `examples/documented.mxi` and `tests/run_doc.py`.
+cross-module pages. Contracts are enforced by the interpreter (see below). See `examples/documented.mxi` and `tests/run_doc.py`.
+
+## Contracts (first prototype)
+
+`requires` and `ensures` lines may start a function body; `invariant` lines may
+appear among a tuple's fields. `ensures` sees the return value as `result`.
+A failing `requires` aborts with "caller bug"; a failing `ensures` or
+`invariant` aborts with "supplier bug". Invariants are checked when a tuple is
+constructed. `moxie --release run FILE` turns all checks off. Not yet built:
+contracts on interface members are parsed (and shown by `moxie doc`) but not
+enforced, nor is a compile error for constant arguments that fail `requires`,
+or the manifest key that keeps contracts in release builds. See
+`tests/run_contracts.py`.

@@ -799,7 +799,8 @@ class Lexer:
                 ind = L["indent"]
                 top = stack[-1]
                 if ind > top:
-                    if not prev_opens_block:
+                    if not prev_opens_block and not (first.kind == "NAME" and first.val in ("requires", "ensures")
+                                                     and len(toks) > 1):
                         raise MoxieSyntaxError("unexpected indent", first.line, ind + 1, self.file)
                     stack.append(ind)
                     out.append(Tok("INDENT", None, first.line, 1))

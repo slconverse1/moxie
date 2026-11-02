@@ -351,10 +351,45 @@ class Parser(ExprParser):
             self.next()
             guard = self.parse_expr()
         body = None
+        contracts = []
         if self.at_op(":"):
             self.next()
-            body = self.parse_block_or_inline_body()
-        return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, line=line)
+            if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
+                bline = self.peek().line
+                self.expect_nl_indent()
+                contracts = self.parse_contract_lines(("requires", "ensures"))
+                stmts = self.parse_stmts_until_dedent()
+                self.expect_dedent()
+                body = Block(stmts, line=bline)
+            else:
+                body = self.parse_block_or_inline_body()
+        elif self.peek().kind == "NL" and self.peek(1).kind == "INDENT" and self.peek(2).kind == "NAME" \
+                and self.peek(2).val in ("requires", "ensures"):
+            self.expect_nl_indent()          # contracts on a bodyless member (interface)
+            contracts = self.parse_contract_lines(("requires", "ensures"))
+            self.expect_dedent()
+        return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, contracts, line=line)
+
+    def parse_contract_lines(self, kws):
+        """Leading `requires EXPR` / `ensures EXPR` / `invariant EXPR` lines of a block."""
+        out = []
+        while True:
+            self.skip_nl()
+            t = self.peek()
+            nxt = self.peek(1)
+            if t.kind == "NAME" and t.val in kws and not (nxt.kind == "OP" and nxt.val in ("=", ".", ":")) \
+                    and nxt.kind not in ("NL", "EOF"):
+                self.next()
+                start = self.p
+                e = self.parse_expr()
+                text = ""
+                for tk in self.toks[start:self.p]:
+                    text += (" " if tk.sp and text else "") + str(tk.val)
+                self.end_line()
+                out.append((t.val, e, t.line, text))
+            else:
+                break
+        return out
 
     def parse_block_or_inline_body(self):
         return self.parse_block_or_inline()
@@ -385,14 +420,16 @@ class Parser(ExprParser):
             self.expect_op(")")
         derivs = self.parse_derivs()
         fields = []
+        invariants = []
         if self.at_op(":"):
             self.next()
+            self._invariants = invariants
             fields = self.parse_field_decls()
         vis = None
         for m in mods:
             if m in ("export", "internal"):
                 vis = m
-        return TupleDecl(name, tparams, fields, derivs, positional, vis, line=line)
+        return TupleDecl(name, tparams, fields, derivs, positional, vis, invariants, line=line)
 
     def parse_field_decls(self):
         fields = []
@@ -404,6 +441,12 @@ class Parser(ExprParser):
                 self.skip_nl()
                 if self.peek().kind in ("DEDENT", "EOF"):
                     break
+            t = self.peek()
+            if t.kind == "NAME" and t.val == "invariant" and self.peek(1).kind not in ("NL", "EOF") \
+                    and not (self.peek(1).kind == "OP" and self.peek(1).val == ":"):
+                got = self.parse_contract_lines(("invariant",))
+                self._invariants.extend(got)
+                continue
             t = self.next()
             if t.kind != "NAME":
                 self.err("expected a field name", t)
