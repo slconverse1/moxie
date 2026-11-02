@@ -5,6 +5,8 @@ import sys
 USAGE = """usage: moxie [--gc] run FILE [args...]     run a program (--gc: moxie/gc rules, or set MOXIE_GC=1)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
+       moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
+                                    generate documentation from /// comments; checks examples
        moxie -e 'code'              run a snippet
 """
 
@@ -33,6 +35,10 @@ def main(argv=None):
         I = make_interp(None, [])
         return I.run_source(argv[1], "<-e>")
     cmd = argv[0]
+    if cmd == "doc":
+        from .doc import doc_main
+        return doc_main(argv[1:], lambda: make_interp(argv[1] if len(argv) > 1 else None, []),
+                        sys.stdout, sys.stderr)
     if cmd not in ("run", "test", "check"):
         cmd, argv = "run", ["run"] + argv
     if len(argv) < 2:
@@ -49,7 +55,16 @@ def main(argv=None):
         return I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
     if cmd == "test":
         I = make_interp(path, [])
-        return I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)[2]
+        from .doc import strip_contracts
+        src = strip_contracts(src)[0]       # contracts are not enforced yet; blank them
+        p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)
+        if "/// >" in src and len(argv) <= 2:
+            from .doc import collect, run_doctests
+            clean, _, items = collect(src)
+            for it, e, x, ok, msg in run_doctests(clean, items, lambda: make_interp(path, [])):
+                print(("ok    " if ok else "FAIL  ") + f"doctest {it.name}: {e}" + ("" if ok else f" ({msg})"))
+                code = code or (0 if ok else 1)
+        return code
     if cmd == "check":
         I = make_interp(path, [])
         return I.check_source(src, os.path.basename(path))

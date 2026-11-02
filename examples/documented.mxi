@@ -1,0 +1,49 @@
+//! A tiny temperature library.
+//!
+//! Shows `///` docs, contracts and checked examples.
+
+/// Converts Celsius to Fahrenheit.
+///
+/// The result is exact for whole degrees.
+///
+/// > to_f(100)
+/// 212
+/// > to_f(0)
+/// 32
+export fn to_f(c: Int) Int:
+  requires c >= -273
+  ensures result >= -459
+  c * 9 / 5 + 32
+
+/// A reading from a sensor.
+///
+/// See [`to_f`] for conversion.
+export tuple Reading:
+  celsius: Int
+  label: String
+  invariant celsius >= -273
+
+/// Where a reading came from.
+export enum Source:
+  Indoor
+  Outdoor
+
+/// Something that can be summarised.
+export interface Summary:
+  /// One line description.
+  fn summary(self) String
+    ensures len(result) > 0
+
+/// Describes a reading.
+///
+/// > describe(Reading(20, "lab"))
+/// "lab: 20C"
+export fn describe(r: Reading) String:
+  "${r.label}: ${r.celsius}C"
+
+/// Returns one.
+///
+/// > to_f(10)
+/// 50
+export fn one() Int:
+  1

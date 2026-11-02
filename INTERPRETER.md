@@ -58,3 +58,17 @@ the SQL schema check, `moxie build`/`--release`, package manifests and lockfiles
 Memory limits are not enforced: collection capacity is.
 
 See FIXLIST.md for the problems found in the Spec and Guide.
+
+## moxie doc (first prototype)
+
+    moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
+
+Builds documentation from `///` comments (`//!` for module docs). It shows each
+exported item's signature (all items if none are exported, or with `--private`),
+doc text, contract lines (`requires` / `ensures` / `invariant`), implementors of
+interfaces, and the `> expr` / expected-output examples, which are run as
+doctests. `--check` exits nonzero on a failing example or a broken
+``[`name`]`` link and warns about undocumented exports. `moxie test FILE` also
+runs the doctests. Not yet built: effect display, the full Markdown subset,
+cross-module pages. Contract lines are only collected as text; the interpreter
+does not enforce them yet. See `examples/documented.mxi` and `tests/run_doc.py`.
