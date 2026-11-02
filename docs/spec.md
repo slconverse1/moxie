@@ -2,10 +2,9 @@
 layout: default
 title: "Moxie Spec"
 ---
-
 # MOXIE SPEC
 
-The reference for the moxie language, folding in everything decided through Sunday 2026-11-01. Items marked *(planned)*, *(sketch)*, *(design)*, or *(a starting rule)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
+The reference for the moxie language, the dialect with no garbage collector. A second dialect, moxie/gc, has a collector and its own Spec; the two are kept apart because they make different promises. This Spec folds in everything decided through Sunday 2026-11-01. Items marked *(planned)*, *(sketch)*, *(design)*, or *(a starting rule)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
 
 
 **0. Principles**
