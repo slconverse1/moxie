@@ -73,7 +73,7 @@ By synthesizing these features and others into an elegant mash-up, moxie balance
 
 ## Moxie’s two dialects
 
-As acknowledged, there are two dialects of moxie: the no-GC, moxie dialect, and moxie/gc, the GC dialect. The two are kept apart because they make different promises, so every passage of this moxie/gc edition related to garbage collection is marked **[gc]**, as shown above. Unmarked text is fundamentally the same in both dialects. See also the [moxie/gc Spec](spec.html), the [moxie/gc Mixer's Guide](guide.html), and the [no-GC moxie page](../).
+As acknowledged, there are two dialects of moxie: the no-GC, moxie dialect, and moxie/gc, the GC dialect. The two are kept apart because they make different promises, so every passage of this moxie/gc edition related to garbage collection is marked **[gc]**, as shown above. Unmarked text is fundamentally the same in both dialects. See also the [moxie/gc Spec](spec.html), the [moxie/gc Mixer's Guide](guide.html), the [moxie/gc Tutorial](tutorial.html), and the [no-GC moxie page](../).
 
 Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes in moxie/gc, and with it a good deal of what moxie can't do. Here’s what's different, at a glance: Programs aren't meant to move between the two unchanged: anything written for moxie that leans on String[n], static strings, copy, fixed capacities, or pools will need edits. The full set of differences—the ways in which moxie/gc strips away the limitations of no-GC moxie—is as follows:
 

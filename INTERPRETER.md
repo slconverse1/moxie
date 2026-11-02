@@ -49,6 +49,7 @@ those parts of moxie/gc are not modeled.
 ## Examples
 `examples/gradebook.mxi` is the program built step by step in the Moxie Tutorial. Run it with
 `python -m moxie run examples/gradebook.mxi`, or its test with `python -m moxie test examples/gradebook.mxi`.
+`examples/gradebook_gc.mxi` is the same program for moxie/gc, with the memory step added; run it with `python -m moxie --gc run examples/gradebook_gc.mxi`.
 
 ## Not in v1
 Full type inference. Generic bounds are checked only for parameters typed directly as the type parameter, and
