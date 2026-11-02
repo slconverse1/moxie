@@ -1,9 +1,9 @@
 # moxie
 
-Moxie is a language-design exercise: compile-time type-safe, immutable, practical functional programming, Go-style channels and fibers, and no garbage collector and no heap. This repository holds the language documents and a reference interpreter written in plain Python 3.
+Moxie is a language-design exercise: compile-time type-safe, immutable, practical functional programming, Go-style channels and fibers, and, in the plain dialect, no garbage collector and no heap. A second dialect, moxie/gc, adds a collector; the two are kept apart because they make different promises. This repository holds the language documents and a reference interpreter written in plain Python 3.
 
 - **Site:** https://slconverse1.github.io/moxie/ (the Site Intro, Tutorial, Mixer's Guide, Spec, and an in-browser "Try moxie" page)
-- **`docs/`** the documents, as the site's source: `index.md` (Site Intro), `tutorial.md`, `guide.md`, `spec.md`, and `gc/` for moxie/gc, the garbage-collected variant (its Site Intro, a draft Spec, and the list of what changes)
+- **`docs/`** the documents, as the site's source: `index.md` (Site Intro), `tutorial.md`, `guide.md`, `spec.md`, and `gc/` for moxie/gc, the garbage-collected dialect (its Site Intro, Spec, Guide, and the list of what changes)
 - **`moxie/`** the reference interpreter (standard library only)
 - **`examples/`**, **`tests/`**, **`INTERPRETER.md`**, **`FIXLIST.md`** the interpreter's samples, tests, notes, and a list of problems found in the Spec and Guide
 
