@@ -27,7 +27,7 @@ def stream_of(I, v):
 
 
 def make_iter(I, v):
-    if isinstance(v, (ListV, ArrayV)):
+    if isinstance(v, (ListV, ArrayV, RingV)):
         return ListIter(v.items)
     if isinstance(v, MultiV):
         return ListIter(v.items)
@@ -107,7 +107,7 @@ class ChanIter:
 
 def drain(I, v):
     """Collect every element of a source into a Python list."""
-    if isinstance(v, (ListV, ArrayV)):
+    if isinstance(v, (ListV, ArrayV, RingV)):
         return Done(list(v.items))
     return _drain(I, v)
 

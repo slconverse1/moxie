@@ -530,6 +530,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return arith(op, l, r)
 
     def new_seq(self, like, items):
+        if like.kind == "Ring":
+            return RingV(items[-like.cap:] if len(items) > like.cap else items, like.cap)
         if like.kind == "List":
             if len(items) > like.cap:
                 # a literal-sized list (capacity == length) grows to fit a concatenation;

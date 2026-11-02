@@ -376,7 +376,7 @@ class CallsMixin:
             callee = callee.base
         k = callee.__class__
         # indexing
-        if k in (ListV, ArrayV, DictV, MultiV, str, SetV) or (k is TupleV and piped is NOPIPE):
+        if k in (ListV, ArrayV, RingV, DictV, MultiV, str, SetV) or (k is TupleV and piped is NOPIPE):
             return (yield from self.index_call(callee, n, env))
         params = None
         if k is Closure and isinstance(callee.node, (FnDecl, Lambda)):
@@ -636,7 +636,7 @@ class CallsMixin:
                     raise Abort("tuple index out of range", line)
                 return coll.vals[key]
             return self.field_get(coll, key, line)
-        if k is ListV or k is ArrayV:
+        if k is ListV or k is ArrayV or k is RingV:
             i = args[0]
             if isinstance(i, RangeV):
                 s, e = self.slice_bounds(i, len(coll.items), line)
@@ -733,7 +733,7 @@ class CallsMixin:
             return self.apply(f.base, pos, named, refspec, env, f.targs, spreads, line, hint)
         if k is PathV:
             return Done(self.path_get(f, pos[0]))
-        if k in (ListV, ArrayV, DictV, MultiV, str, TupleV):
+        if k in (ListV, ArrayV, RingV, DictV, MultiV, str, TupleV):
             return Done(self.index_get(f, pos, line))
         raise Abort(f"{type_name(f)} is not callable", line)
 

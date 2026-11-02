@@ -2490,7 +2490,26 @@ fn note(msg: String) Unit:
   _ = swap(log, _ + msg)
 ```
 
-Every call to `note` makes the list longer, and the list stays reachable through `log`. This is the one way memory leaks in moxie/gc. If you only need recent history, trim as you add, for example by keeping the last 100 entries.
+Every call to `note` makes the list longer, and the list stays reachable through `log`. This is the one way memory leaks in moxie/gc. If you only need recent history, keep a `Ring` instead of a list. `Ring[T](n)` is an immutable buffer that holds at most `n` items, and adding to a full ring drops the oldest:
+
+```
+log = Atom[Ring[String]](Ring[String](3))
+fn note(msg: String) Unit:
+  _ = swap(log, _ + msg)
+for i in 1..=5:
+  note("m$i")
+r = @log
+println("${len(r)} ${r(0)} ${r(2)}")
+```
+
+Output: `3 m3 m5`. The ring never holds more than three messages, however many are written, and `to_stream(r)` yields them oldest first. For a stream, `take_last(n)` keeps just the last `n` elements:
+
+```
+last2 = List(1, 2, 3, 4, 5) |> to_stream() |> take_last(2) |> collect()
+println("${last2}")
+```
+
+Output: `List(4, 5)`. Both are moxie/gc additions to the prelude.
 
 Resources are different from memory. A channel end, write handle, Timer, or connection still has one owner and is dropped at a known point, when its owner goes out of scope or on an abort. That is when a channel closes or a write handle reports ABANDONED. The collector never closes anything for you, and there are no finalizers.
 

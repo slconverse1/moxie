@@ -117,4 +117,15 @@ s = "Python"
 t = copy(s(2..))
 println(t)
 ''', [], 1),
+("Ring keeps only the most recent items", '''
+log = Atom[Ring[String]](Ring[String](3))
+for i in 1..=5:
+  _ = swap(log, _ + "m$i")
+r = @log
+println("${len(r)} ${r(0)} ${r(2)}")
+''', ["3 m3 m5"], 0),
+("take_last keeps the last n", '''
+last2 = List(1, 2, 3, 4, 5) |> to_stream() |> take_last(2) |> collect()
+println("${last2}")
+''', ["List(4, 5)"], 0),
 ]

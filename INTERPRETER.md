@@ -32,14 +32,14 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 `--gc` (or `MOXIE_GC=1`) runs a program under the moxie/gc rules that an interpreter can show: `List`, `Set`, and `Dict`
 have no fixed capacity (a size in brackets is only a hint, and `Array` keeps its size), `put` returns the updated
 collection, a variadic parameter is a `List`, a channel capacity may be any `Int` expression, and `Chan[T][#unbounded]()`
-is accepted. `copy` is an error. Closures, streams, and recursive values already behave as moxie/gc describes, because
+is accepted. `copy` is an error. The prelude additions `Ring[T](n)` and `take_last(n)` are available. Closures, streams, and recursive values already behave as moxie/gc describes, because
 this interpreter never enforced the memory-space rules. It has no collector, no heap limit, and no allocation report, so
 those parts of moxie/gc are not modeled.
 
 ## Tests
     python tests/run_guide.py     every Guide example against its hand-computed output (174 blocks)
     python tests/run_checks.py    negative cases for the static checks (36 cases)
-    python tests/run_gc.py        programs that rely on the moxie/gc rules (14 cases)
+    python tests/run_gc.py        programs that rely on the moxie/gc rules (16 cases)
     python tests/run_gc_guide.py  every moxie/gc Guide example under --gc
 
 ## Examples

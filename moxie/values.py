@@ -386,6 +386,12 @@ class ListV(Seq):
     kind = "List"
 
 
+class RingV(Seq):
+    """moxie/gc Ring[T](n): an immutable bounded buffer; adding to a full ring drops the oldest item."""
+    __slots__ = ()
+    kind = "Ring"
+
+
 class SetV:
     __slots__ = ("items", "cap")
     kind = "Set"

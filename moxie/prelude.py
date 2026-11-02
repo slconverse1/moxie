@@ -1142,6 +1142,7 @@ def _sort_by_fn(I, rest):
 
 
 buffered("sort_by", "last", _sort_by_fn)
+buffered("take_last", "last", lambda I, rest: (lambda buf: Done(buf[-rest[0]:] if rest[0] > 0 else [])))
 buffered("reverse", "first", lambda I, rest: (lambda buf: Done(list(reversed(buf)))))
 
 
@@ -1365,6 +1366,16 @@ def b_sequence(I, a, kw, ta):
 
 
 # ---------------------------------------------------------------- concurrency
+@bi("Ring")
+def b_ring(I, a, kw, ta):
+    if not GC[0]:
+        raise Abort("`Ring` exists only in moxie/gc")
+    n = a[0] if a else None
+    if not isinstance(n, int) or n < 1:
+        raise Abort("Ring needs a capacity of at least 1")
+    return RingV([], n)
+
+
 @bi("Atom")
 def b_atom(I, a, kw, ta):
     v = a[0]

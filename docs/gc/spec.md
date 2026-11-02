@@ -123,7 +123,7 @@ How the heap behaves:
 - **Shutdown.** The program ends when the entry file ends or `break daemon` runs. Fibers still running are stopped and their resources dropped.
 - **Exhaustion.** **[gc]** There is no startup refusal. Running out of heap ends the program (section 3). A fiber that overflows its stack aborts, as in no-GC moxie. `run` fails with NO_SLOT only when a declared fiber cap is full (section 18).
 - **Reports.** `moxie build --report` lists the program's main allocation sites (section 22).
-- **Open:** the collector's tuning (the slice budget and the generation sizes), and whether each fiber should get its own young generation.
+- **Tuning** *(settled)*. The generation sizes and the slice budget's exact value belong to the runtime. A program can set a hard ceiling with `[memory] heap` and a pause budget with `[memory] slice`; an optional `nursery` key may be added if a real collector needs one. There is one young generation for the whole heap, since fibers share one thread and one heap. A per-fiber young generation and multi-core scheduling are left open, and the second would require a write barrier and pauses that stop all threads.
 
 **4. Packages, modules, imports, exports, linking**
 - **Packages.** A package is a directory of `.mxi` files ordered in `Moxie.toml` (`name`, `files`). The entry package's manifest also holds `entry`, `[fibers]` (`limit`, an optional default cap per fiber function; `stack`), `[memory]` (`heap`, `slice`) **[gc]**, and `[database]` (`schema`, `driver`; section 21). Sizes like `"64KiB"` are 1024-based and `"64KB"` is 1000-based. Files carry no `package` line, since the manifest names the package. A lockfile in the manifest pins every dependency by version and content hash.
@@ -477,6 +477,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 
 **17. Atoms, futures, channels, timers**
 - **Atoms.** `counter = Atom[Int](0)`. `@counter` copies a snapshot. The signature is `swap[T](a: Atom[T], f: (T) -> T) T`: it applies `f` to the old value, stores the result, and **returns the new value**. `f` must not park (effect inference, section 14), and it can be any function expression, so a placeholder call with extra arguments works: `swap(counter, add(_, 5))` or `swap(counter, my_func(_, 5, 9, -1))`. `reset(counter, 0)` sets it. **[gc]** An Atom may hold any value that is not a resource, including closures and other Atoms. Atoms are ordinary heap objects, collected when nothing can reach them, and cycles are harmless.
+- **Bounded history** **[gc]**. A collector cannot free what a program still holds, so the prelude gives a standard way to keep only recent items. `take_last(n)` is a vertical stream stage that yields the last `n` elements, and `Ring[T](n)` is an immutable bounded buffer. `r + x` returns a new ring with `x` added and, when the ring is full, the oldest item dropped. `len(r)` counts the items, `r(i)` reads the item `i` places from the oldest, and `to_stream(r)` yields oldest to newest. `n` is any `Int` expression and must be at least 1. A common use is an Atom that holds a ring instead of an ever-growing list: `log = Atom[Ring[String]](Ring[String](100))` and `swap(log, _ + msg)`. *(planned)*
 - **Futures.** `r, w = Future[T]()`. The two ends have the types `FutureR[T]` (read: inspect only) and `FutureW[T]` (write: `resolve` or `reject`), mirroring `ChanR` and `ChanW`, so using the wrong end is a compile error. `resolve(w, v)` or `reject(w, error)` consumes `w`. A future leaves `Pending` once, and a dropped `w` rejects with ABANDONED. Inspection never blocks and is idempotent. There is no `await`.
 - **Channels.** `rx, tx = Chan[String][1]()` is buffered; the number in the second brackets is the **capacity** (how many values can wait), and the first brackets are the element type. `Chan[String]()` is unbuffered. **[gc]** The capacity may be any `Int` expression, and `Chan[String][#unbounded]()` is the explicit form for a channel that never makes a writer wait. It can grow without limit, so use it with care. The two ends have the types `ChanR[T]` and `ChanW[T]`. `read` and `write` return `Result`, borrow the end, and pass the payload by reference **[gc]**, which is safe because values never change. Buffered values survive a close. Ignoring a result is explicit: `_ = write(tx, msg)`.
   - **Cloning ends**. A resource moves by default (`move`), but `clone(end)` makes another handle to the same channel, with a count. The channel closes for readers (CLOSED) when the last write handle is dropped, and for writers when the last read handle is dropped. A leaked handle keeps a channel open, and the deadlock detector reports it. **[gc]** `clone` may be used anywhere, loops included, because nothing is tallied in advance. This works for read ends too, so a work queue can have several consumers.
@@ -542,7 +543,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Assertions.** `assert(cond)`, `assert_eq(a, b)`, and `assert_ne(a, b)` are always on, in release builds too, and a failure aborts the fiber with a diagnostic. `debug_assert(cond)` is stripped in `--release`; its condition must be pure (section 14).
 - **`dbg(expr)`** prints the expression text, file, line, and value to the error stream, and gives the value back, so it can be wrapped around any sub-expression. It is exempt from effect inference.
 - **Numbers at compile time.** A constant that overflows, divides by zero, or is out of range for its type is a compile error.
-- **Allocation report** **[gc]**. `moxie build --report` lists the program's main allocation sites by location and size, the places where an `Array` update copies, and a summary of the heap. It replaces no-GC moxie's in-place update report and pool report.
+- **Allocation report** **[gc]**. `moxie build --report` has two parts. The static part lists the sites that allocate, by location and kind: an `Array` or `MultiArray` update that copies, a string built in a loop, a closure that captures values, and a collection built or grown inside a loop. A compiler cannot know byte counts, so this part reports kinds and locations, not sizes. The optional run-time part, `moxie run --profile`, adds the number of allocations and bytes at each site, the heap's peak size, and the number and length of collector slices. The report replaces no-GC moxie's in-place update report and pool report.
 - **`pure fn`** optionally declares that a function must be free of effects; the compiler checks it against inferred effects (section 14).
 - **Warnings** worth knowing: a `ref` parameter never rebound, a shadowed binding in a deeper block, a non-tail recursive call, float `==`, `todo`, a redundant last-line `return`, and a stream used by two terminals.
 
@@ -566,8 +567,8 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 Signatures only, grouped. Names with an asterisk are planned.
 - **Numbers:** `abs`, `min`, `max`, `pow`, `sqrt`, `cast[T]`, `try_cast[T]`, `wrap_to[T]`, `checked_add/sub/mul/div`, `wrapping_*`, `saturating_*`, `is_nan`, `is_inf`, `is_finite`, `finite(x)`, `round_to[n](x, mode)`, `div(a, b, scale, mode)` (Decimal), `parse_number`.
 - **Text:** `len` (bytes), `char_count`, `chars`, `pad_left`, `pad_right`, `split`, `join`, `trim`, `starts_with`, `ends_with`, `contains`, `show`, `read[T]`, `println`, `print`.
-- **Collections:** `get`, `get_or`, `put`, `clear`, `keys`, `values`, `items`, `replace`, `modify`, `to_stream`.
-- **Streams and combinators:** section 13, plus `identity`, `const`, `flip`, `curry2`–`curry6`, `map`, `flat_map`, `pure`, `ap`, `map_ok`, `map_err`, `or_else`, `is_ok`, `is_err`, `ensure`, `guard`, `traverse`, `sequence`.
+- **Collections:** `get`, `get_or`, `put`, `clear`, `keys`, `values`, `items`, `replace`, `modify`, `to_stream`, and, in moxie/gc **[gc]**, `Ring*`.
+- **Streams and combinators:** section 13, plus `identity`, `const`, `flip`, `take_last*` **[gc]**, `curry2`–`curry6`, `map`, `flat_map`, `pure`, `ap`, `map_ok`, `map_err`, `or_else`, `is_ok`, `is_err`, `ensure`, `guard`, `traverse`, `sequence`.
 - **Concurrency:** `Atom`, `swap`, `reset`, `Chan`, `read`, `write`, `clone`, `close`, `Future`, `resolve`, `reject`, `Timer`, `after`, `sleep`.
 - **Control and testing:** `fail`, `assert`, `assert_eq`, `assert_ne`, `debug_assert`, `dbg`, `transaction`, `todo`.
 - **Interfaces and operators:** `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, `Numeric`, `From[E]`, `Functor`, `Applicative`, `Monad`, `|>`, `|>>`, `~>`, `<~`, `<$>`, `<*>`.
@@ -582,7 +583,7 @@ Everything else in this Spec is settled, including every call that earlier draft
 6. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
 7. **Locale:** the details of the `Locale` tuple and the `n` format type (section 5) are a design, and dates wait for the date types.
 8. **Pending [gc]:** the compiler and the collector. The moxie/gc Mixer's Guide exists, and the reference interpreter runs moxie/gc programs with `--gc`, but it has no collector and does not model the heap limit or the allocation report.
-9. **Collector tuning [gc]:** the default slice budget (a small fraction of a millisecond, to be tuned once a collector exists), the generation sizes, and whether each fiber should get its own young generation.
+9. **Collector tuning [gc]:** the numbers (the default slice budget, the generation sizes) are to be set once a real collector exists. Whether each fiber gets its own young generation, and multi-core scheduling, stay open.
 10. **A per-fiber heap cap [gc]** that would end only the fiber that exceeded it is parked. Today the heap limit is for the whole program.
 
 **Decisions recorded on 2026-11-01**
@@ -604,3 +605,6 @@ Everything else in this Spec is settled, including every call that earlier draft
 - `put` returns the updated Dict, as the function form of `d(k) = v`.
 - Atoms, channel elements, and `run` arguments take any value that is not a resource.
 - `moxie build --report` shows an allocation report, and the manifest has a `[memory]` table with `heap` and `slice`.
+- The collector's generation sizes belong to the runtime, there is one young generation for the whole heap, and multi-core scheduling and a per-fiber heap cap stay open.
+- The allocation report has a static part (allocation sites by kind) and an optional run-time part (`moxie run --profile`).
+- The prelude gets `take_last(n)` and `Ring[T](n)` for bounded history.
