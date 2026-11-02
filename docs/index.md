@@ -55,14 +55,14 @@ Assume this code lives in its own file. Notice the two-space moxie indentation. 
 
 Moxie's elegance rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
 
-- **Go:** interfaces, goroutines, channels, and `select`.
-- **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, and slicing with ranges.
+- **Go:** interfaces, goroutines, channels, and `select`, and (designed, not yet built) `moxie fmt`, a formatter with no options, in the spirit of `gofmt`.
+- **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and (designed, not yet built) doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), Domain-Specific Languages, and labeled `break` and `continue`.
-- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, an `if` that gives back a value, `for`/`yield` comprehensions, and enums with fields.
+- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, an `if` that gives back a value, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
 - **Ruby:** its block argument and trailing `if`.
-- **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, and `todo`.
+- **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests (designed, not yet built).
 - **Clojure:** lock-free state through Atoms and `swap`, and `cond`.
-- **Haskell:** multi-clause function definitions, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, and infix functions in backticks.
+- **Haskell:** multi-clause function definitions, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, guards on function clauses, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and (designed, not yet built) QuickCheck-style property tests.
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
