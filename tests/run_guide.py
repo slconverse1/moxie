@@ -5,12 +5,18 @@ HERE=os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0,os.path.join(HERE,'..'))
 from moxie.interp import Interp
 blocks=json.load(open(os.path.join(HERE,'guide_corpus.json')))
+_v1=json.load(open(os.path.join(HERE,'guide_corpus_v1.json')))
+def _remap(i):
+    src=_v1[i][1]
+    for j,b in enumerate(blocks):
+        if b[1]==src: return j
+    return None
 only=[int(a) for a in sys.argv[1:] if a.isdigit()]
 verbose='-v' in sys.argv
 class TO(Exception): pass
 def h(*a): raise TO()
 signal.signal(signal.SIGALRM,h)
-SKIP={141,146}   # manifest examples, not moxie code
+SKIP={_remap(141),_remap(146)}   # manifest examples, not moxie code
 def run(src,name):
     out=io.StringIO(); err=io.StringIO()
     I=Interp(out=out,err=err)
@@ -25,9 +31,9 @@ def run(src,name):
     signal.alarm(0)
     got=out.getvalue().rstrip('\n').split('\n') if out.getvalue() else []
     return code,got,err.getvalue().strip()
-PREFIX_OK={33}
-DEPS={89:[99,162],90:[52,99,162],163:[52,99,162],164:[99,162],171:[37]}
-FRAG={105:'illustrative pipe fragment (subtract undefined)',135:'deliberate compile-error example',147:'needs a database connection (sql tested separately)',143:'two-file package (tested separately)'}
+PREFIX_OK={_remap(33)}
+DEPS={_remap(k):[_remap(x) for x in v] for k,v in {89:[99,162],90:[52,99,162],163:[52,99,162],164:[99,162],171:[37]}.items()}
+FRAG={_remap(k):v for k,v in {105:'illustrative pipe fragment (subtract undefined)',135:'deliberate compile-error example',147:'needs a database connection (sql tested separately)',143:'two-file package (tested separately)'}.items()}
 def judge(code,got,exp,i=None):
     if code!=0: return False
     if exp is None: return True

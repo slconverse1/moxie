@@ -28,6 +28,9 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
   `T.zero()`, `T.one()` and `T.read(text)` inside generic code.
 * Argument-first `run` (`run fn (tx, start)(out, first): ...`) and params-first plain calls (`fn (x: Int)(21)`).
 
+## Since the first release
+The prelude has `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `reduce_right`, `min_by`, `max_by`, `span`, and `split_at`. A function clause may carry an `if` guard, and `tailrec fn` makes a self-call outside tail position a compile error. `moxie fmt`, doctests, and property tests are designed in the Spec (section 22) but not built.
+
 ## moxie/gc mode
 `--gc` (or `MOXIE_GC=1`) runs a program under the moxie/gc rules that an interpreter can show: `List`, `Set`, and `Dict`
 have no fixed capacity (a size in brackets is only a hint, and `Array` keeps its size), `put` returns the updated
@@ -39,6 +42,7 @@ those parts of moxie/gc are not modeled.
 ## Tests
     python tests/run_guide.py     every Guide example against its hand-computed output (174 blocks)
     python tests/run_checks.py    negative cases for the static checks (36 cases)
+    python tests/run_helpers.py   stream helpers, clause guards, and `tailrec`, in both dialects (24 checks)
     python tests/run_gc.py        programs that rely on the moxie/gc rules (16 cases)
     python tests/run_gc_guide.py  every moxie/gc Guide example under --gc
 

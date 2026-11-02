@@ -767,6 +767,10 @@ class CallsMixin:
         for clause in grp.clauses:
             r = self.try_bind(c, clause, pos, named, targs)
             if r is not None:
+                if getattr(clause, "guard", None) is not None:
+                    ok = yield from self.ev(clause.guard, r)
+                    if ok is not True:
+                        continue
                 return (yield from self.run_bound(c, clause, r, refspec, cenv, line))
         raise Abort(f"no clause of '{grp.name}' matches the arguments", line)
 

@@ -1586,7 +1586,18 @@ fn sum_to(n, total: Int) Int: sum_to(n - 1, total + n)
 println("${route_status(404)} ${sum_to(4, 0)}")
 ```
 
-Output: `Not Found 10`. A pattern that can't fail may take a value apart in a binding:
+Output: `Not Found 10`. A clause can carry an `if` guard before its colon, and `tailrec` makes a self-call that isn't a tail call a compile error:
+
+```
+fn classify(n: Int) String if n < 0: "neg"
+fn classify(n) if n == 0: "zero"
+fn classify(n): "pos"
+tailrec fn count_up(0, acc: Int) Int: acc
+tailrec fn count_up(n, acc): count_up(n - 1, acc + n)
+println("${classify(-1)} ${classify(0)} ${classify(5)} ${count_up(100, 0)}")
+```
+
+Output: `neg zero pos 5050`. **Mistake:** a `tailrec fn` whose recursive call sits inside `n * fact(n - 1)`, which is not in tail position. A pattern that can't fail may take a value apart in a binding:
 
 ```
 Point(x, y) = Point(x: 1.5, y: 2.0)
@@ -1710,7 +1721,28 @@ for (name, age) in zip(names, ages):
   println("$name is $age")
 ```
 
-Output: `alice is 30`, then `bob is 25`. A generator is a function that returns an `unfold` stream. The step takes the state and returns the value with the next state, or `Err` to end:
+Output: `alice is 30`, then `bob is 25`. More stages shape a stream. `distinct()` drops repeats, `intersperse(sep)` puts a separator between elements, `min_by(key)` and `max_by(key)` give a `Result`, and `span(pred)` splits a stream at the first element that fails `pred`:
+
+```
+words = List("pear", "fig", "banana", "fig", "kiwi")
+println("${words |> to_stream() |> distinct() |> collect()}")
+println("${words |> to_stream() |> distinct() |> intersperse("|") |> reduce("", _1 + _2)}")
+println("${words |> to_stream() |> min_by(len)} ${words |> to_stream() |> max_by(len)}")
+(short, rest) = words |> to_stream() |> span(fn (w): len(w) < 6)
+println("$short ${len(rest)}")
+```
+
+Output: `List("pear", "fig", "banana", "kiwi")`, `pear|fig|banana|kiwi`, `Ok("fig") Ok("banana")`, then `List("pear", "fig") 3`. `zip_with`, `flatten`, `cycle`, and `split_at` work the same way:
+
+```
+sums = zip_with(_1 + _2, List(1, 2, 3), List(10, 20, 30)) |> collect()
+flat = List(List(1, 2), List(3)) |> to_stream() |> flatten() |> collect()
+loop3 = List(1, 2) |> to_stream() |> cycle() |> take(5) |> collect()
+(head, tail) = List(1, 2, 3, 4) |> to_stream() |> split_at(1)
+println("$sums $flat $loop3 $head $tail")
+```
+
+Output: `List(11, 22, 33) List(1, 2, 3) List(1, 2, 1, 2, 1) List(1) List(2, 3, 4)`. A generator is a function that returns an `unfold` stream. The step takes the state and returns the value with the next state, or `Err` to end:
 
 ```
 tuple Fib:

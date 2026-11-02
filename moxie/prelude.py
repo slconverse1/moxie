@@ -1487,3 +1487,145 @@ def b_sleep(I, a, kw, ta):
 def b_transaction(I, a, kw, ta):
     from .sqlrt import transaction
     return (yield from transaction(I, a, kw))
+
+
+# ---------------------------------------------------------------- more stream helpers
+class _DistinctIter:
+    def __init__(self, src):
+        self.src, self.seen = src, set()
+
+    def nxt(self):
+        while True:
+            x = yield from self.src.nxt()
+            if x is END:
+                return END
+            if x not in self.seen:
+                self.seen.add(x)
+                return x
+
+
+class _FlattenIter:
+    def __init__(self, I, src):
+        self.I, self.src, self.cur = I, src, None
+
+    def nxt(self):
+        while True:
+            if self.cur is not None:
+                y = yield from self.cur.nxt()
+                if y is not END:
+                    return y
+                self.cur = None
+            x = yield from self.src.nxt()
+            if x is END:
+                return END
+            self.cur = make_iter(self.I, x)
+
+
+class _CycleIter:
+    def __init__(self, I, src):
+        self.I, self.src = I, src
+        self.items, self.i, self.filled = [], 0, False
+
+    def nxt(self):
+        if not self.filled:
+            x = yield from self.src.nxt()
+            if x is not END:
+                self.items.append(x)
+                return x
+            self.filled = True
+        if not self.items:
+            return END
+        x = self.items[self.i % len(self.items)]
+        self.i += 1
+        return x
+
+
+stage("distinct", "first", lambda I, a: StreamV(lambda: _DistinctIter(src_of(I, a[0]))))
+stage("flatten", "first", lambda I, a: StreamV(lambda: _FlattenIter(I, src_of(I, a[0]))))
+stage("cycle", "first", lambda I, a: StreamV(lambda: _CycleIter(I, src_of(I, a[0]))))
+
+
+class _Intersperse:
+    def __init__(self, src, sep):
+        self.src, self.sep = src, sep
+        self.state = 0      # 0 = before first, 1 = last was an element, 2 = a separator was just emitted
+        self.held = None
+
+    def nxt(self):
+        if self.state == 2:
+            self.state = 1
+            return self.held
+        x = yield from self.src.nxt()
+        if x is END:
+            return END
+        if self.state == 0:
+            self.state = 1
+            return x
+        self.held = x
+        self.state = 2
+        return self.sep
+
+
+stage("intersperse", "last", lambda I, a: StreamV(lambda: _Intersperse(src_of(I, a[1]), a[0])))
+
+
+@bi("zip_with", "last", True)
+def b_zip_with(I, a, kw, ta):
+    f = a[0]
+    xs = make_iter(I, a[1])
+    ys = make_iter(I, a[2])
+    out = []
+    while True:
+        x = yield from xs.nxt()
+        if x is END:
+            break
+        y = yield from ys.nxt()
+        if y is END:
+            break
+        out.append((yield from I.apply(f, [x, y])))
+    return StreamV(lambda: ListIter(out))
+
+
+@bi("reduce_right", "last", True)
+def b_reduce_right(I, a, kw, ta):
+    start, f, s = a[0], a[1], a[2]
+    items = yield from drain(I, s)
+    acc = start
+    for x in reversed(items):
+        acc = yield from I.apply(f, [x, acc])
+    return acc
+
+
+def _by(which):
+    def fn(I, a, kw, ta):
+        key, s = a[0], a[1]
+        items = yield from drain(I, s)
+        if not items:
+            return err_reserved("MISSING", "empty")
+        best, bk = items[0], (yield from I.apply(key, [items[0]]))
+        for x in items[1:]:
+            k = yield from I.apply(key, [x])
+            if (which == "min" and lt(k, bk)) or (which == "max" and lt(bk, k)):
+                best, bk = x, k
+        return Ok(best)
+    return fn
+
+
+REG["min_by"] = (_by("min"), "last", True)
+REG["max_by"] = (_by("max"), "last", True)
+
+
+@bi("span", "last", True)
+def b_span(I, a, kw, ta):
+    items = yield from drain(I, a[1])
+    i = 0
+    while i < len(items) and (yield from I.apply(a[0], [items[i]])):
+        i += 1
+    return TupleV([ListV(items[:i]), ListV(items[i:])])
+
+
+@bi("split_at", "last", True)
+def b_split_at(I, a, kw, ta):
+    items = yield from drain(I, a[1])
+    n = max(0, a[0])
+    return TupleV([ListV(items[:n]), ListV(items[n:])])

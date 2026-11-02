@@ -7,7 +7,7 @@ from moxie.values import GC
 GC[0]=True
 from moxie.interp import Interp
 blocks=json.load(open(os.path.join(HERE,'gc_guide_corpus.json')))
-_plain=json.load(open(os.path.join(HERE,'guide_corpus.json')))
+_plain=json.load(open(os.path.join(HERE,'guide_corpus_v1.json')))
 def _remap(i):
     src=_plain[i][1]
     for j,b in enumerate(blocks):

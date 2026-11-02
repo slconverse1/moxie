@@ -1048,10 +1048,63 @@ class Checker:
         if n.alias is not None:
             self.ev(n.alias, inner)
         elif n.body is not None:
+            if n.guard is not None:
+                self.ev(n.guard, inner)
             t, c = self.ev(n.body, inner)
             self.check_tail(n.body, inner)
+            if "tailrec" in (n.flags or ()):
+                self.check_tailrec(n)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved = saved
         return None, None
+
+    def check_tailrec(self, n):
+        """`tailrec fn`: every call to the function itself must be in tail position."""
+        ok = set()
+
+        def mark(e):
+            c = e.__class__
+            if c is ExprStmt:
+                mark(e.e)
+            elif c is Block:
+                s = e.stmts or []
+                if s:
+                    last = s[-1]
+                    if last.__class__ is ExprStmt:
+                        mark(last.e)
+                    elif last.__class__ is Return and last.e is not None:
+                        mark(last.e)
+                    elif last.__class__ is ElseLet:
+                        pass
+                for st in s:
+                    if st.__class__ is Return and st.e is not None:
+                        mark(st.e)
+                    elif st.__class__ is ElseLet and st.else_ is not None:
+                        mark(st.else_)
+            elif c is IfE:
+                for _, b in e.branches:
+                    mark(b)
+                if e.else_ is not None:
+                    mark(e.else_)
+            elif c is WhenE:
+                for a in e.arms or []:
+                    mark(a.body)
+            elif c is Call:
+                ok.add(id(e))
+        mark(n.body)
+        bad = []
+
+        def walk(x):
+            if isinstance(x, N):
+                if x.__class__ is Call and x.fn.__class__ is Name and x.fn.name == n.name and id(x) not in ok:
+                    bad.append(x)
+                for f in x._fields:
+                    walk(getattr(x, f, None))
+            elif isinstance(x, (list, tuple)):
+                for y in x:
+                    walk(y)
+        walk(n.body)
+        for b in bad:
+            self.err(b.line or n.line, f"`{n.name}` is marked `tailrec`, but this recursive call is not in tail position")
 
     def check_tail(self, body, sc):
         if self.fn_ret is None:

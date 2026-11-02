@@ -4,7 +4,7 @@ from .pbase import HARD, ASSIGN_OPS
 from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
 
-MODS = {"export", "internal", "inline", "forward", "fiber", "static", "pure"}
+MODS = {"export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec"}
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
@@ -46,7 +46,7 @@ class Parser(ExprParser):
             v = t.val
             if v in MODS or v in DECL_START:
                 pass
-            if (v in MODS and v != "pure") or v in DECL_START or (v == "pure" and self.at_name("fn", 1)):
+            if (v in MODS and v not in ("pure", "tailrec")) or v in DECL_START or (v in ("pure", "tailrec") and self.at_name("fn", 1)):
                 d = self.try_decl()
                 if d is not None:
                     return d
@@ -273,7 +273,7 @@ class Parser(ExprParser):
     def try_decl(self):
         i = 0
         mods = []
-        while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val == "pure" and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn"})):
+        while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val in ("pure", "tailrec") and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn"})):
             mods.append(self.peek(i).val)
             i += 1
         t = self.peek(i)
@@ -341,16 +341,20 @@ class Parser(ExprParser):
             return FnDecl(name, tparams, [], None, None, None, flags, None, target, line=line)
         params = self.parse_params()
         ret = None
-        if not self.at_op(":") and self.peek().kind != "NL" and not self.at_op("="):
+        if not self.at_op(":") and self.peek().kind != "NL" and not self.at_op("=") and not self.at_name("if"):
             ret = self.parse_type()
         locals_ = None
         if self.at_op("("):
             locals_ = [p.name for p in self.parse_params()]
+        guard = None
+        if self.at_name("if"):
+            self.next()
+            guard = self.parse_expr()
         body = None
         if self.at_op(":"):
             self.next()
             body = self.parse_block_or_inline_body()
-        return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, line=line)
+        return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, line=line)
 
     def parse_block_or_inline_body(self):
         return self.parse_block_or_inline()
