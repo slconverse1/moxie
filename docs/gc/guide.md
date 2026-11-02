@@ -4,7 +4,7 @@ title: "moxie/gc Mixer's Guide"
 ---
 # MOXIE/GC MIXER'S GUIDE
 
-These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie/gc, the garbage-collected dialect of moxie; plain moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from plain moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements plain moxie, so their outputs were worked out by hand. Outputs were recomputed by hand. Snippets continue from earlier ones: a name such as `add`, `half`, `Maybe`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
+These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie/gc, the garbage-collected dialect of moxie; no-GC moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from no-GC moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements no-GC moxie, so their outputs were worked out by hand. Outputs were recomputed by hand. Snippets continue from earlier ones: a name such as `add`, `half`, `Maybe`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
 
 **Chapter 1: Bindings, blocks, `if`, loops**
 
@@ -955,7 +955,7 @@ run_op(ops, "minus", 10, 4)
 run_op(ops, "times", 2, 8)
 ```
 
-Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14). **[gc]** Because a closure can go anywhere, the next example, which plain moxie rejects, is fine:
+Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14). **[gc]** Because a closure can go anywhere, the next example, which no-GC moxie rejects, is fine:
 
 ```
 fn pick(flag: Bool, k: Int) (Int) -> Int:
@@ -2396,7 +2396,7 @@ r = two.run(0)
 println("${r(0)(0)} ${r(0)(1)} ${r(1)}")
 ```
 
-Output: `1 2 2`. **[gc]** None of plain moxie's closure limits apply: a closure has one type per signature, branches may return different closures, loops and recursion over runtime-length data work, and a State value can go in a Dict, an Atom, or a channel. It is still a Guide example and not a library type, and `ref` threading remains the simpler way. A **Reader** is a `using` parameter, which the caller can override:
+Output: `1 2 2`. **[gc]** None of no-GC moxie's closure limits apply: a closure has one type per signature, branches may return different closures, loops and recursion over runtime-length data work, and a State value can go in a Dict, an Atom, or a channel. It is still a Guide example and not a library type, and `ref` threading remains the simpler way. A **Reader** is a `using` parameter, which the caller can override:
 
 ```
 fn price(base: Int, using tax: Int) Int:

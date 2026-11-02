@@ -4,7 +4,7 @@ title: "Moxie/gc Spec"
 ---
 # MOXIE/GC SPEC
 
-moxie/gc is the garbage-collected dialect of moxie. Plain moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from plain moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
+moxie/gc is the garbage-collected dialect of moxie. No-GC moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from no-GC moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
 
 **What's different from moxie**
 
@@ -33,7 +33,7 @@ Only the memory model changes. Patterns, generics, interfaces, pipes, results, f
 
 Gone altogether: `String[n]`, `static` strings (the keyword survives only in `static fn`), S-space and T-space, daemon-safe values, transient closures, the bounded form of a recursive value, pool and fiber-slot tallies, the startup refusal, `copy` (a slice is already an owned value), and the in-place update guarantee.
 
-**Compatibility.** moxie/gc is not designed to run plain moxie programs unchanged, and there is no compatibility mode. The differences above are the whole list. Code that uses `String[n]`, `static` strings, `copy`, a sized `List`, `Set`, or `Dict` declaration written as a fixed capacity, `[pools]` or `[fibers] memory` in the manifest, or the `Result` from `put` needs editing. Going the other way, a program that stores a closure in a collection or returns a stream is not valid plain moxie.
+**Compatibility.** moxie/gc is not designed to run no-GC moxie programs unchanged, and there is no compatibility mode. The differences above are the whole list. Code that uses `String[n]`, `static` strings, `copy`, a sized `List`, `Set`, or `Dict` declaration written as a fixed capacity, `[pools]` or `[fibers] memory` in the manifest, or the `Result` from `put` needs editing. Going the other way, a program that stores a closure in a collection or returns a stream is not valid no-GC moxie.
 
 
 **0. Principles**
@@ -88,7 +88,7 @@ Gone altogether: `String[n]`, `static` strings (the keyword survives only in `st
 
 **3. Memory model: one heap, short pauses** **[gc: rewritten]**
 
-**Why this is different.** Plain moxie has no garbage collector, so it plans memory in advance: capacities are declared, resources are counted before the program starts, and strings and temporaries are released in bulk at fixed points. moxie/gc gives that up. It spends a little speed, and accepts short pauses, so that a program never sizes a collection, counts a resource, or asks where a string lives.
+**Why this is different.** No-GC moxie has no garbage collector, so it plans memory in advance: capacities are declared, resources are counted before the program starts, and strings and temporaries are released in bulk at fixed points. moxie/gc gives that up. It spends a little speed, and accepts short pauses, so that a program never sizes a collection, counts a resource, or asks where a string lives.
 
 **The daemon.** `daemon:` is the entry file's main loop. It runs until `break daemon`, and each pass through its body is a cycle.
 
@@ -121,7 +121,7 @@ How the heap behaves:
 - **Scheduler.** A cooperative scheduler on a single thread keeps a ready queue of fibers. A fiber runs until it parks at `read`, `write`, `sleep`, `select`, a database query, or exits. It never preempts. A multi-core scheduler is an open question. **[gc]** The collector runs at the same safe points where the scheduler can switch fibers, and at allocation.
 - **Aborts.** When a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion, or a stack overflow), the runtime prints a diagnostic (file, line, function, message) and ends that fiber. Its resources are dropped: channel ends close, write handles reject with ABANDONED, and a connection closes. An abort in the entry file ends the program with a nonzero exit status. An abort in another fiber lets the program continue.
 - **Shutdown.** The program ends when the entry file ends or `break daemon` runs. Fibers still running are stopped and their resources dropped.
-- **Exhaustion.** **[gc]** There is no startup refusal. Running out of heap ends the program (section 3). A fiber that overflows its stack aborts, as in plain moxie. `run` fails with NO_SLOT only when a declared fiber cap is full (section 18).
+- **Exhaustion.** **[gc]** There is no startup refusal. Running out of heap ends the program (section 3). A fiber that overflows its stack aborts, as in no-GC moxie. `run` fails with NO_SLOT only when a declared fiber cap is full (section 18).
 - **Reports.** `moxie build --report` lists the program's main allocation sites (section 22).
 - **Open:** the collector's tuning (the slice budget and the generation sizes), and whether each fiber should get its own young generation.
 
@@ -307,7 +307,7 @@ How the heap behaves:
 
 **9a. Generics**
 - **What a generic is.** A generic declaration takes parameters in square brackets, which the compiler fills in at each use. Functions, `impl` blocks, declared tuples, enums, aliases, unions, and interfaces can all be generic.
-- **Two kinds of parameter.** A **type parameter** (`T`, `A`, `S`) stands for a type. A **size parameter** (`N`, `R`, `C`) stands for a number that sizes a collection, recognized by appearing in a size position such as `Array[T][N]`. **[gc]** Only `Array` and `MultiArray` carry sizes in their types, so size parameters are rarer here than in plain moxie. Generic parameters exist only at compile time.
+- **Two kinds of parameter.** A **type parameter** (`T`, `A`, `S`) stands for a type. A **size parameter** (`N`, `R`, `C`) stands for a number that sizes a collection, recognized by appearing in a size position such as `Array[T][N]`. **[gc]** Only `Array` and `MultiArray` carry sizes in their types, so size parameters are rarer here than in no-GC moxie. Generic parameters exist only at compile time.
 - **Bounds.** A type parameter may be bounded by an interface: `[T, S: Speaker[T]]`. A type satisfies a bound only through a visible `impl` (section 12). The body may use only what the bound provides, plus what every type allows: binding, passing, returning, and storing the value. A parameter with no bound is plain data. `==` and `<` on a `T` need `Equatable` and `Ordered` bounds. A bound is checked when the function is defined, so a call fails with "`Dog` doesn't implement `Speaker[Int]`" at the call site. A parameter may have several bounds joined with `+`: `[T: Equatable + Show]`. A combined requirement can also be named by an interface that embeds others (section 12).
 - **Size constraints**. A `where` clause inside the brackets constrains size parameters: `fn first_of[T, N where N > 0](a: Array[T][N]) T:`. The condition uses comparisons, `+ - * /`, `and`, `or`, and `not`, over size parameters and constants, and is checked at each instantiation (a compile error at the call, such as "`first_of` requires `N > 0`, but `N` is 0 here"). It is part of the signature in the package summary. A subtraction in a result size (`Array[T][N - 1]`) is allowed only when a constraint proves it can't go negative.
 - **Inference.** The compiler works out the parameters from the arguments of each call, in the order written. A literal given to a function parameter takes its types from what is already fixed.
@@ -542,7 +542,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Assertions.** `assert(cond)`, `assert_eq(a, b)`, and `assert_ne(a, b)` are always on, in release builds too, and a failure aborts the fiber with a diagnostic. `debug_assert(cond)` is stripped in `--release`; its condition must be pure (section 14).
 - **`dbg(expr)`** prints the expression text, file, line, and value to the error stream, and gives the value back, so it can be wrapped around any sub-expression. It is exempt from effect inference.
 - **Numbers at compile time.** A constant that overflows, divides by zero, or is out of range for its type is a compile error.
-- **Allocation report** **[gc]**. `moxie build --report` lists the program's main allocation sites by location and size, the places where an `Array` update copies, and a summary of the heap. It replaces plain moxie's in-place update report and pool report.
+- **Allocation report** **[gc]**. `moxie build --report` lists the program's main allocation sites by location and size, the places where an `Array` update copies, and a summary of the heap. It replaces no-GC moxie's in-place update report and pool report.
 - **`pure fn`** optionally declares that a function must be free of effects; the compiler checks it against inferred effects (section 14).
 - **Warnings** worth knowing: a `ref` parameter never rebound, a shadowed binding in a deeper block, a non-tail recursive call, float `==`, `todo`, a redundant last-line `return`, and a stream used by two terminals.
 
@@ -558,7 +558,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
   - **Left out:** custom builders, `try`/`with`, `use!`, and loops inside the block.
 - **Prelude functions**: `ensure(cond, err)` (Result: `Ok(())` or `Err(err)`), `guard(cond)` (Maybe), `or_else(r, f)`, `traverse(f, stream)` (maps a Result- or Maybe-returning function over a stream, first error wins), and `sequence`. Error payloads that carry runtime text must be typed values such as `NotFound(id: id)`, since static-string errors can't.
 - **No IO monad.** Effects are inferred (section 14) and sequencing is ordinary code. Evaluation is eager.
-- **State.** Recommended: `ref` parameters (Guide, output `1 2 2`). A State monad can be defined, `tuple State[S, A]: run: (S) -> (A, S)` with `impl[S] Monad[State[S, _]]:`. **[gc]** It has none of plain moxie's limits: a closure has one type per signature, so branches may return different closures, and a State value can be stored, returned, and built in loops over runtime-length data. It is still a Guide example, not a library type; an optional `fp.state` is open.
+- **State.** Recommended: `ref` parameters (Guide, output `1 2 2`). A State monad can be defined, `tuple State[S, A]: run: (S) -> (A, S)` with `impl[S] Monad[State[S, _]]:`. **[gc]** It has none of no-GC moxie's limits: a closure has one type per signature, so branches may return different closures, and a State value can be stored, returned, and built in loops over runtime-length data. It is still a Guide example, not a library type; an optional `fp.state` is open.
 - **Reader** is `using`. **Writer** is a convention (return the log with the value).
 - **`Locale`** *(design)*: a tuple of separators and names, passed by `using`. The `n` format type reads it.
 
@@ -581,7 +581,7 @@ Everything else in this Spec is settled, including every call that earlier draft
 5. **Currying names:** `curry2` through `curry6` (section 11) are names I picked.
 6. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
 7. **Locale:** the details of the `Locale` tuple and the `n` format type (section 5) are a design, and dates wait for the date types.
-8. **Pending [gc]:** the compiler and the collector. The Mixer's Guide and the reference interpreter belong to plain moxie. No moxie/gc Guide or interpreter exists yet.
+8. **Pending [gc]:** the compiler and the collector. The moxie/gc Mixer's Guide exists, and the reference interpreter runs moxie/gc programs with `--gc`, but it has no collector and does not model the heap limit or the allocation report.
 9. **Collector tuning [gc]:** the default slice budget (a small fraction of a millisecond, to be tuned once a collector exists), the generation sizes, and whether each fiber should get its own young generation.
 10. **A per-fiber heap cap [gc]** that would end only the fiber that exceeded it is parked. Today the heap limit is for the whole program.
 

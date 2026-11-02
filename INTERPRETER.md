@@ -40,6 +40,7 @@ those parts of moxie/gc are not modeled.
     python tests/run_guide.py     every Guide example against its hand-computed output (174 blocks)
     python tests/run_checks.py    negative cases for the static checks (36 cases)
     python tests/run_gc.py        programs that rely on the moxie/gc rules (14 cases)
+    python tests/run_gc_guide.py  every moxie/gc Guide example under --gc
 
 ## Examples
 `examples/gradebook.mxi` is the program built step by step in the Moxie Tutorial. Run it with
