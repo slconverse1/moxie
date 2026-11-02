@@ -68,6 +68,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Node.js:** module-level code (code that runs when the module loads).
 - **Swift:** named tuples and keypaths that act as lenses.
 - **Elixir:** the pin (`^`) operator for pattern matching.
+- **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds (designed, not yet built).
 
 By synthesizing these features and others into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
 

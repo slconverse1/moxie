@@ -338,6 +338,19 @@ How the heap behaves:
 - **Passing a builder.** A function taking `Config.() -> Config` is called with `fn Config.(): ...` or with a trailing lambda. The function that receives it runs it on a value of its own choosing.
 - **No hidden store.** The receiver is an ordinary value. A block that wants to collect children (the DSL case) returns them from ordinary calls, as in the Guide. A dedicated child-collection mechanism is still open.
 
+**9b. Contracts** *(design)*
+- **What they are.** A contract states what a function needs and what it promises, in the code and not in a comment. `requires` is a **precondition** that the caller must meet, `ensures` is a **postcondition** that the function guarantees, and `invariant` is a condition that every value of a tuple type must satisfy. Contracts are for faults that are bugs; an expected failure still returns a `Result`.
+- **Where they go.** A function body may begin with `requires cond` and `ensures cond` lines, one condition per line:
+  - `fn withdraw(a: Account, amt: Int) Account:`, then `requires amt > 0`, then `ensures result.balance == a.balance - amt`, then the body.
+  - An `ensures` condition may name `result`. Arguments never change, so it can also refer to the arguments as they were, and there is no `old`. For a `ref` parameter it sees the final value *(open: the entry value)*.
+  - A free function, a function in an extension or receiver block, and an interface member may carry contracts. An interface member's contract lines go in its block: `fn reset() Self:` with `ensures position(result) == 0` under it, and no body means there is no default. A member that also has a body is a default method.
+- **Interfaces own the contract.** The contract of an interface member belongs to the interface, so every `impl` obeys it, and an `impl` may not add contracts of its own. Generic code bounded by the interface gets the contract through it. When two interfaces give a type methods with the same name, the call is qualified, as in `Reader.reset(stream)` (section 12), and the qualifier also selects whose contract applies.
+- **Invariants.** `tuple Account:` may end its fields with `invariant balance >= 0 - limit`. Values never change, so an invariant needs checking only where a value is built: a constructor call, a rebuild with `...p`, a field update (which rebuilds), and `read`. Every `Account` that exists therefore satisfies it.
+- **Order of checks and blame.** A call checks the `requires` conditions, runs the body, checks the invariants of any value it built, and then checks the `ensures` conditions. A failed `requires` is a **caller bug**, and a failed `invariant` or `ensures` is a **supplier bug**. The diagnostic says which, and names the condition, the function, and the line. A failed contract is an abort (section 3a), so it ends the program.
+- **Conditions are pure.** A condition may call only pure functions (section 14), as with `debug_assert`.
+- **Build modes.** Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true` *(the key name is open)*. A `requires` whose arguments are all constants and that fails is a compile error, as a constant out-of-range index is.
+- **With tests.** Because `moxie test` checks contracts, a property test (section 22) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
+
 **10. Operators**
 - **Arithmetic and comparison:** `+ - * / %`, `== ~= < > <= >=`. A type defines only `==` and `<` (in an `impl`, below). The compiler derives `~=` as `not (x == y)`, and `>`, `<=`, `>=` from `<` and `==`; defining those four is an error. `==` on a type with no definition and no derived `eq` is an error.
 - **Numbers and generic arithmetic.** Built-in numbers have their operators built in, and the prelude also declares them through `Addable` and `Numeric` (section 12), so a generic `sum` is written `fn sum[T: Addable](xs: List[T]) T:` **[gc]** with no `impl` of your own. Your own types (`Money`, `Vector`) join in by writing `impl Addable for Money`.
@@ -580,16 +593,17 @@ Signatures only, grouped. Names with an asterisk are planned.
 
 **25. Still open**
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
-1. **Not designed:** FFI, package permissions, secret types, dates and time, environment for launched processes, grapheme clusters, structured concurrency and cancellation, `fp.state`, and a dedicated child-collection mechanism for DSLs. Also parked after the 2026-11-02 survey of other languages: units of measure (`Int[m]`), active patterns, binary patterns for byte layouts, contracts (`requires` and `ensures` on functions, and `invariant` on tuples, checked where a value is built), a `NonEmpty` type (a head plus a List tail, so it needs no compiler support), and a REPL.
+1. **Not designed:** FFI, package permissions, secret types, dates and time, environment for launched processes, grapheme clusters, structured concurrency and cancellation, `fp.state`, and a dedicated child-collection mechanism for DSLs. Also parked after the 2026-11-02 survey of other languages: units of measure (`Int[m]`), active patterns, binary patterns for byte layouts, a `NonEmpty` type (a head plus a List tail, so it needs no compiler support), and a REPL.
 2. **Tooling designs (section 22):** the layout rules and line width for `moxie fmt`, the doctest example syntax, and the `forall` syntax, the `Arbitrary` interface, and the shrinking rules for property tests are sketches.
-3. **Memoization by a bottom-up reduce** (section 14) is a sketch.
-4. **Key size warning:** the threshold above which the compiler warns about a large Dict key (section 6) is not set.
-5. **Currying names:** `curry2` through `curry6` (section 11) are names I picked.
-6. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
-7. **Locale:** the details of the `Locale` tuple and the `n` format type (section 5) are a design, and dates wait for the date types.
-8. **Pending [gc]:** the compiler and the collector. The moxie/gc Mixer's Guide exists, and the reference interpreter runs moxie/gc programs with `--gc`, but it has no collector and does not model the heap limit or the allocation report.
-9. **Collector tuning [gc]:** the numbers (the default slice budget, the generation sizes) are to be set once a real collector exists. Whether each fiber gets its own young generation, and multi-core scheduling, stay open.
-10. **A per-fiber heap cap [gc]** that would end only the fiber that exceeded it is parked. Today the heap limit is for the whole program.
+3. **Contracts (section 9b):** the exact form of a `ref` parameter's entry value in `ensures`, the name of the `keep_in_release` key, and whether compile-time checking goes further than constants are open.
+4. **Memoization by a bottom-up reduce** (section 14) is a sketch.
+5. **Key size warning:** the threshold above which the compiler warns about a large Dict key (section 6) is not set.
+6. **Currying names:** `curry2` through `curry6` (section 11) are names I picked.
+7. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
+8. **Locale:** the details of the `Locale` tuple and the `n` format type (section 5) are a design, and dates wait for the date types.
+9. **Pending [gc]:** the compiler and the collector. The moxie/gc Mixer's Guide exists, and the reference interpreter runs moxie/gc programs with `--gc`, but it has no collector and does not model the heap limit or the allocation report.
+10. **Collector tuning [gc]:** the numbers (the default slice budget, the generation sizes) are to be set once a real collector exists. Whether each fiber gets its own young generation, and multi-core scheduling, stay open.
+11. **A per-fiber heap cap [gc]** that would end only the fiber that exceeded it is parked. Today the heap limit is for the whole program.
 
 **Decisions recorded on 2026-11-01**
 - String slices count bytes, and a cut inside a multi-byte character aborts.
@@ -618,4 +632,5 @@ Everything else in this Spec is settled, including every call that earlier draft
 - The prelude gets `distinct`, `intersperse`, `flatten`, `min_by`, `max_by`, `span`, and `split_at`, and `zip_with`, `reduce_right`, and `cycle` are settled.
 - A function clause may carry an `if` guard, and `tailrec fn` makes a non-tail self-call an error.
 - `moxie fmt`, doctests, and property tests are designed in outline (section 22).
+- Contracts are designed in outline (section 9b): `requires` and `ensures` on free functions, extension functions, and interface members, `invariant` on tuples, checked in debug builds and `moxie test`.
 - An abort in any fiber ends the program, so moxie has no supervisors, links, or restarts. A test block's abort fails only that test.
