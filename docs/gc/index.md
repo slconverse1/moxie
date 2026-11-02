@@ -60,7 +60,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Kotlin:** scoped receiver blocks, Domain-Specific Languages, and labeled `break` and `continue`.
 - **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, an `if` that gives back a value, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
 - **Ruby:** its block argument and trailing `if`.
-- **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests (designed, not yet built).
+- **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts (all designed, not yet built).
 - **Clojure:** lock-free state through Atoms and `swap`, `cond`, and (in moxie/gc) persistent collections that share structure. **[gc]**
 - **Haskell:** multi-clause function definitions, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, guards on function clauses, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and (designed, not yet built) QuickCheck-style property tests.
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
