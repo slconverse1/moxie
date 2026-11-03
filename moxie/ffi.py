@@ -34,11 +34,13 @@ class HandleV:
     def __init__(self, kind, ptr, I):
         self.kind, self.ptr, self.closed, self.I = kind, ptr, False, I
         I.__dict__.setdefault("live_handles", []).append(self)
+        I.pools.acquire("handle " + kind)
 
     def drop(self, sched=None):
         if self.closed:
             return
         self.closed = True
+        self.I.pools.release("handle " + self.kind)
         f = self.I.handle_closers.get(self.kind)
         if f is not None:
             try:
@@ -405,8 +407,9 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
     if f.closes:
         for p in declared:
             hv = values.get(p.name)
-            if isinstance(hv, HandleV) and hv.kind == f.closes:
+            if isinstance(hv, HandleV) and hv.kind == f.closes and not hv.closed:
                 hv.closed = True
+                I_of(f).pools.release("handle " + hv.kind)
     if f.ret is None or tname(f.ret) == "Unit":
         return UNIT
     hret, wrapped = handle_result(I_of(f), f.ret)

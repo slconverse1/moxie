@@ -2,7 +2,7 @@
 import os
 import sys
 
-USAGE = """usage: moxie [--gc] [--release] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
+USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
@@ -33,6 +33,8 @@ def main(argv=None):
         from .values import CONTRACTS
         CONTRACTS[0] = False
         argv = [a for a in argv if a != "--release"]
+    want_pools = "--pools" in argv
+    argv = [a for a in argv if a != "--pools"]
     sys.setrecursionlimit(100000)
     if not argv or argv[0] in ("-h", "--help", "help"):
         sys.stdout.write(USAGE)
@@ -61,7 +63,10 @@ def main(argv=None):
         return 2
     if cmd == "run":
         I = make_interp(path, [a for a in argv[2:] if a != "--no-check"])
-        return I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
+        code = I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
+        if want_pools:
+            sys.stderr.write(I.pools.report())
+        return code
     if cmd == "test":
         I = make_interp(path, [])
         p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)

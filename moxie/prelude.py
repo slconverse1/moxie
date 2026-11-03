@@ -90,11 +90,13 @@ class IoV:
     def __init__(self, I, kind, f, sock=None):
         self.kind, self.f, self.sock, self.closed, self.I = kind, f, sock, False, I
         I.__dict__.setdefault("live_io", []).append(self)
+        I.pools.acquire("Io " + kind)
 
     def drop(self, sched=None):
         if self.closed:
             return
         self.closed = True
+        self.I.pools.release("Io " + self.kind)
         for x in (self.f, self.sock):
             try:
                 if x is not None:
@@ -115,15 +117,17 @@ class IoV:
 
 
 class ListenerV:
-    __slots__ = ("sock", "closed")
+    __slots__ = ("sock", "closed", "I")
     tname_ = "Listener"
 
-    def __init__(self, sock):
-        self.sock, self.closed = sock, False
+    def __init__(self, sock, I):
+        self.sock, self.closed, self.I = sock, False, I
+        I.pools.acquire("Listener")
 
     def drop(self, sched=None):
         if not self.closed:
             self.closed = True
+            self.I.pools.release("Listener")
             try:
                 self.sock.close()
             except Exception:
@@ -396,7 +400,7 @@ def b_listen(I, a, kw, ta):
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind(("", int(a[0])))
         s.listen(16)
-        return Ok(ListenerV(s))
+        return Ok(ListenerV(s, I))
     except OSError as e:
         return io_error(e, f"port {a[0]}")
 

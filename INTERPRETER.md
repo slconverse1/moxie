@@ -203,3 +203,11 @@ reads C's `int` status (0 is success; otherwise `Err` with the status as the cod
 closing any handle C left); a plain `H` result ignores C's result and aborts on NULL.
 `moxie bindgen` turns `T **` to an opaque struct into such a parameter. Tests:
 `tests/run_handles.py`, `tests/run_bindgen.py`.
+
+## Observed pool report
+
+The compiler's static pool tally does not exist yet. `moxie --pools run FILE` prints,
+to stderr after the run, how many files and sockets (`Io file`, `Io socket`),
+listeners, and foreign handles (`handle NAME`) were open at once and in total
+(`moxie/pools.py`, hooked into `IoV`, `ListenerV`, and `HandleV`). `Connection`,
+channels, and timers are not counted yet. Tests: `tests/run_pools.py`.

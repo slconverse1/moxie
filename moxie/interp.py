@@ -19,6 +19,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.err = err if err is not None else sys.stderr
         self.search_dir = search_dir
         self.test_mode = test_mode
+        from .pools import Pools
+        self.pools = Pools()
         self.tuples = {}
         self.enums = {}
         self.ifaces = {}
