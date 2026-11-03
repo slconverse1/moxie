@@ -180,3 +180,16 @@ virtual time, and in-flight calls are not a deadlock. Exceptions are carried bac
 `read_bytes`, `lines`, `connect`, `accept` (in-memory input, as in `with_stdin`,
 stays inline) and by foreign functions declared `parks` (`ffi.call_foreign` is now
 a generator). The thread function must not touch interpreter state.
+
+## FFI callbacks
+
+A function-typed parameter of a foreign function (`f: (Double) -> Double`) becomes a
+`ctypes.CFUNCTYPE` thunk made per call (`ffi.make_thunk`). The thunk converts C
+arguments, runs the moxie function to completion with `ffi.run_sync` (a callback
+that parks aborts), and converts the result. An exception in a callback is stored,
+the thunk returns zero, and the call re-raises it when the foreign function returns.
+A foreign function with a callback cannot be `parks` (checked in `check.py` and
+`make_foreign`). In `effects.py` the callback argument must not park and its other
+effects count against the caller. `moxie bindgen` turns a function pointer with
+scalar/tuple parameters and result into a function type, and leaves the rest as
+todos. Tests: `tests/run_callbacks.py`.

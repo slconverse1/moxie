@@ -1228,6 +1228,9 @@ class Checker:
         for d in n.fns:
             if Effects.declared(d) is None:
                 self.err(d.line, f"foreign fn '{d.name}' needs an effect declaration: pure, prints, parks, or impure")
+            if "parks" in (d.flags or ()) and any(p.type.__class__ is TFn for p in d.params or []):
+                self.err(d.line, f"foreign fn '{d.name}' takes a callback, so it cannot be declared parks: "
+                                 "the callback would run on the OS helper thread")
         return None, None
 
     def e_IfaceDecl(self, n, sc):

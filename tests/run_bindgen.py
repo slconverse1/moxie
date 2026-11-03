@@ -22,6 +22,8 @@ int mini_parse(const char *s, int *out);
 int mini_printf(const char *fmt, ...);
 int mini_fill(unsigned char *buf, unsigned long n);
 int mini_bad(unsigned char *buf);
+int mini_apply(int (*f)(int), int x);
+int mini_each(void (*f)(int, void *), void *user);
 '''
 CODE = r'''
 #include <math.h>
@@ -33,6 +35,7 @@ typedef struct mini_ctx mini_ctx;
 mini_ctx *mini_open(const char *name) { mini_ctx *c = malloc(sizeof *c); c->hits = name[0]; return c; }
 int mini_hits(mini_ctx *c) { return ++c->hits; }
 void mini_close(mini_ctx *c) { free(c); }
+int mini_apply(int (*f)(int), int x) { return f(x); }
 int mini_add(int a, int b) { return a + b; }
 mini_u32 mini_sum(mini_u32 seed, const unsigned char *buf, unsigned long len) {
   mini_u32 s = seed; for (unsigned long i = 0; i < len; i++) s = s * 31u + buf[i]; return s; }
@@ -64,6 +67,8 @@ chk("out-parameter becomes ref", "fn mini_parse(s: CString, ref out: Int32) Int3
 chk("enum constants", "MINI_SAFE = 5" in text)
 chk("header comment becomes ///", "/// Adds two numbers." in text)
 chk("variadic and unpaired pointer are todos", all(f"todo: {n}" in text for n in ("mini_printf", "mini_bad")), text[-600:])
+chk("function pointer becomes a function type", "fn mini_apply(f: (Int32) -> Int32, x: Int32) Int32" in text, text[-900:])
+chk("callback with user data is a todo", "todo: mini_each" in text, text[-500:])
 chk("opaque pointer becomes a handle", "  handle MiniCtx closes mini_close" in text and "fn mini_open(name: CString) Result[MiniCtx, Error]" in text and "fn mini_hits(c: MiniCtx) Int32" in text, text[-700:])
 
 # sidecar: effects and pairing
@@ -87,6 +92,7 @@ println("${parse_count("42")} ${parse_count("x")}")
 buf = b"\x00\x00\x00\x00"
 k = mini_fill(ref buf)
 println("$k $buf")
+println("apply ${mini_apply(fn(v): v * 7i32, 6i32)}")
 ctx = mini_open(cstr("A"))?
 println("hits ${mini_hits(ctx)}")
 mini_close(ctx)
@@ -95,7 +101,7 @@ p = os.path.join(d, "main.mxi")
 open(p, "w").write(prog)
 r = subprocess.run([sys.executable, "-m", "moxie", "run", p], cwd=ROOT, capture_output=True, text=True)
 exp_sum = (((7 * 31 + 97) * 31 + 98) * 31 + 99) & 0xFFFFFFFF
-chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout, r.stdout + r.stderr)
+chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout and "apply 42" in r.stdout, r.stdout + r.stderr)
 
 # --check drift
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")

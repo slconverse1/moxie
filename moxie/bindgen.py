@@ -175,7 +175,7 @@ class Gen:
                     const = True
                 t = t.type
             elif isinstance(t, c.FuncDecl):
-                raise Todo("a function-pointer parameter is a callback, which is not supported")
+                return self.callback(t)
             else:
                 break
         if isinstance(t, c.IdentifierType):
@@ -226,6 +226,30 @@ class Gen:
         if isinstance(t, c.Union):
             raise Todo("a union has no moxie equivalent")
         raise Todo("an unsupported C type")
+
+    def callback(self, ft):
+        """A function-pointer parameter whose parameters and result are plain values becomes a function type."""
+        ps = []
+        if ft.args:
+            for p in ft.args.params:
+                if isinstance(p, c_ellipsis(self.c)):
+                    raise Todo("a callback with a variadic signature cannot be declared")
+                if isinstance(p, self.c.Typename) and isinstance(p.type, self.c.TypeDecl) \
+                        and isinstance(p.type.type, self.c.IdentifierType) and p.type.type.names == ["void"] \
+                        and len(ft.args.params) == 1:
+                    break
+                d = self.desc(p.type)
+                if d[0] not in ("scalar", "struct"):
+                    raise Todo("a callback takes a pointer (user data or a buffer), which is not supported yet")
+                ps.append(d[1])
+        r = self.desc(ft.type, False)
+        if r[0] == "void":
+            rt = "Unit"
+        elif r[0] in ("scalar", "struct"):
+            rt = r[1]
+        else:
+            raise Todo("a callback returns a pointer, which is not supported")
+        return ("callback", f"({', '.join(ps)}) -> {rt}", "callback", False)
 
     def bad(self, why):
         raise Todo(why)
@@ -312,6 +336,8 @@ class Gen:
                     # const pointer to a scalar: an array of them, which is not supported yet
                     raise Todo(f"parameter '{pn}' is a const pointer to {d[2]} (an array input), which is not supported yet")
                 out.append(f"ref {pn}: {d[1]}")
+            elif k == "callback":
+                out.append(f"{pn}: {d[1]}")
             elif k == "opaque_ptr":
                 out.append(f"{pn}: {d[1]}")
                 hs.add(d[1])
@@ -332,6 +358,10 @@ class Gen:
         if eff not in ("pure", "prints", "parks", "impure", "prints parks", "parks prints"):
             eff = "impure"
         return f"internal {eff} fn {name}({', '.join(out)}){rtxt}"
+
+
+def c_ellipsis(c):
+    return c.EllipsisParam
 
 
 CLOSE_NAMES = re.compile(r"(close|free|destroy|release|finalize|delete|dispose|fini|term)", re.I)

@@ -57,6 +57,7 @@ class Effects:
         self.diags = []
         self.where = {}
         self.bounds = {}
+        self.callbacks = {}          # foreign fn name -> indices of its callback parameters
         self._collect(prog)
 
     def _collect(self, n, ctx="top"):
@@ -66,6 +67,11 @@ class Effects:
             self.where[id(n)] = ctx
             if n.body is None and self.declared(n) is not None:
                 self.bounds[(ctx[1] if isinstance(ctx, tuple) else None, n.name)] = self.declared(n)
+        if c is ForeignDecl:
+            for d in n.fns:
+                idx = [i for i, p in enumerate(d.params or []) if p.type.__class__ is TFn]
+                if idx:
+                    self.callbacks[d.name] = idx
         if c is IfaceDecl:
             sub = ("iface", n.name)
         elif c is ImplDecl:
@@ -160,6 +166,16 @@ class Effects:
             for a in args:
                 if a.__class__ is Lambda or (a.__class__ is Name and (a.name in self.defs or a.name in BUILTIN)):
                     self.arg_effects(a, fnnames, acc)
+        if name in self.callbacks and not is_method:
+            for i in self.callbacks[name]:
+                if i < len(args):
+                    sub = {}
+                    self.arg_effects(args[i], fnnames, sub)
+                    if PARKS in sub:
+                        self.diags.append((line, f"the callback given to '{name}' may park (it calls '{sub[PARKS][2]}'); "
+                                                 "a callback that C calls must not park"))
+                    for eff, w in sub.items():
+                        acc.setdefault(eff, w)
         if name == "swap" and name not in self.defs and len(args) >= 2:
             sub = {}
             self.arg_effects(args[1], fnnames, sub)

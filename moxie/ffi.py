@@ -136,6 +136,59 @@ def struct_for(I, t):
     return S
 
 
+def is_fn_type(t):
+    return t is not None and t.__class__.__name__ == "TFn"
+
+
+def cb_ctype(I, t):
+    """The C function-pointer type for a moxie function type (callback parameter)."""
+    args = []
+    for _nm, pt in t.params:
+        ct = ctype_of(I, pt)
+        if ct is None:
+            raise Abort("a callback parameter cannot cross the foreign boundary")
+        args.append(ct)
+    rn = tname(t.ret)
+    if t.ret is None or rn == "Unit":
+        rt = None
+    else:
+        rt = ctype_of(I, t.ret)
+        if rt is None:
+            raise Abort("the result of a callback cannot cross the foreign boundary")
+    return ctypes.CFUNCTYPE(rt, *args)
+
+
+def run_sync(I, g):
+    """Run a moxie call to completion inside a C callback.  It cannot park: C is waiting for it."""
+    if isinstance(g, Done):
+        return g.v
+    try:
+        g.send(None)
+    except StopIteration as s:
+        return s.value
+    raise Abort("a callback called from C must not park (read, write, sleep, select, a query, ...)")
+
+
+def make_thunk(I, t, fnv, box):
+    """A Python function C can call: converts the arguments, runs the moxie function, converts the result."""
+    ptypes = [pt for _nm, pt in t.params]
+    rt = t.ret if t.ret is not None and tname(t.ret) != "Unit" else None
+
+    def thunk(*cargs):
+        try:
+            vals = [from_c(I, pt, c) for pt, c in zip(ptypes, cargs)]
+            r = run_sync(I, I.apply(fnv, vals, {}))
+            return to_c(I, rt, r) if rt is not None else None
+        except BaseException as e:      # noqa: carried out of C and re-raised by the caller
+            if box.get("exc") is None:
+                box["exc"] = e
+            if rt is None:
+                return None
+            ct = ctype_of(I, rt)
+            return ct() if isinstance(ct, type) and issubclass(ct, ctypes.Structure) else 0
+    return thunk
+
+
 def ctype_of(I, t):
     n = tname(t)
     if n in SCALARS:
@@ -202,7 +255,13 @@ def make_foreign(I, lib_name, d):
         raise Abort(f"native library '{lib_name}' has no function '{d.name}'")
     cargs = []
     for p in d.params or []:
-        if is_byte_array(p.type):
+        if is_fn_type(p.type):
+            from .effects import Effects as _E
+            if "parks" in (_E.declared(d) or ()):
+                raise Abort(f"'{d.name}' takes a callback, so it cannot be declared parks: "
+                            "the callback would run on the OS helper thread")
+            cargs.append(cb_ctype(I, p.type))
+        elif is_byte_array(p.type):
             cargs.append(ctypes.c_void_p)
         elif p.mod == "ref":
             ct = ctype_of(I, p.type)
@@ -247,6 +306,7 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
     for k, v in named.items():
         values[k] = v
     keep = []        # buffers must stay alive for the call
+    cbbox = {}
     cargs = []
     outs = []        # (param, ctypes object, caller variable)
     ref_by_param = {}
@@ -265,7 +325,12 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         if p.name not in values:
             raise Abort(f"missing argument '{p.name}' for {f.name}", line)
         v = values[p.name]
-        if is_byte_array(p.type):
+        if is_fn_type(p.type):
+            ctype = cb_ctype(I_of(f), p.type)
+            th = ctype(make_thunk(I_of(f), p.type, v, cbbox))
+            keep.append(th)
+            cargs.append(th)
+        elif is_byte_array(p.type):
             items = [int(x) for x in (v.items if hasattr(v, "items") else v)]
             buf = (ctypes.c_ubyte * max(len(items), 1))(*items)
             keep.append(buf)
@@ -300,6 +365,8 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         newv = from_c(I_of(f), p.type, val)
         scope = cenv.find_scope(cname) if cenv is not None else None
         (scope or cenv).vars[cname] = newv
+    if cbbox.get("exc") is not None:       # a callback aborted: C ran on with zeros; now the abort ends the call
+        raise cbbox["exc"]
     if f.closes:
         for p in declared:
             hv = values.get(p.name)
