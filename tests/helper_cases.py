@@ -40,4 +40,9 @@ when non_empty(List(3, 1, 2)):
   Err(e) -> println("empty")
 println("${non_empty(List())}")
 ''', ["List(3, 1, 2) 3 1 3 6 NonEmpty(head: 6, tail: List(2, 4))", 'Err(Error(code: 4, message: "empty"))'], 0),
+("curry for any arity", '''
+fn add7(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int) Int: a + b + c + d + e + f + g
+println("${curry(add7)(1)(2)(3)(4)(5)(6)(7)}")
+println("${(curry(fn (a: Int, b: Int): a * b)(6))(7)}")
+''', ["28", "42"], 0),
 ]

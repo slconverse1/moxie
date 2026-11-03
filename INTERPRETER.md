@@ -110,3 +110,7 @@ an upper bound for the impls. Not yet built: the "resource" effect, and reading 
 
 `trace(msg)` writes `[trace FILE:LINE] msg` to the error stream, is exempt from
 effect inference, and does nothing under `--release` (as does `debug_assert`).
+
+`curry(f)` works for a function of two or more parameters, read from its
+declaration at run time (`curry2` to `curry6` remain). The checker has no
+special typing rule for it yet.

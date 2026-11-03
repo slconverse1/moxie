@@ -1004,6 +1004,23 @@ for _n in range(2, 7):
     REG[f"curry{_n}"] = (_curry(_n), "first", False)
 
 
+@bi("curry")
+def b_curry(I, a, kw, ta):
+    """curry(f): any number of parameters (two or more), read from f's declaration."""
+    f = a[0]
+    node = getattr(f, "node", None)
+    if node is None:
+        raise Abort("curry needs a declared function or a function literal")
+    if node.__class__.__name__ == "FnGroup":
+        node = node.clauses[0]
+    ps = node.params or []
+    if any(getattr(p, "mod", None) or getattr(p, "variadic", None) for p in ps):
+        raise Abort("curry cannot take a function with a ref, lazy, using, or variadic parameter")
+    if len(ps) < 2:
+        raise Abort("curry needs a function of two or more parameters")
+    return _curry(len(ps))(I, a, kw, ta)
+
+
 # ---------------------------------------------------------------- assertions
 @bi("assert")
 def b_assert(I, a, kw, ta):
