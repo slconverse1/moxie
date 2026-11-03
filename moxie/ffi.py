@@ -3,8 +3,9 @@
 Supported across the boundary: fixed-width integers, Int/UInt, Float, Double, Bool,
 tuples of those (as C structs, by value), Array[Byte] (a pointer; a following parameter
 written `n: T = len(name)` is the length and is filled in by the call), CString, and
-`ref` out-parameters of scalars and tuples.  Not yet: handles as resources, callbacks,
+`ref` out-parameters of scalars and tuples, and handles (opaque pointers that must be closed).  Not yet: callbacks,
 and running a `parks` function on a helper thread (it runs inline).
+Handles (`handle H closes fn` in a foreign block) are move-only resources: HandleV.
 """
 import ctypes
 import ctypes.util
@@ -26,12 +27,59 @@ class CStringV(bytes):
     pass
 
 
+class HandleV:
+    """An opaque C pointer owned by moxie code: a move-only resource that is closed exactly once."""
+    __slots__ = ("kind", "ptr", "closed", "I")
+
+    def __init__(self, kind, ptr, I):
+        self.kind, self.ptr, self.closed, self.I = kind, ptr, False, I
+        I.__dict__.setdefault("live_handles", []).append(self)
+
+    def drop(self, sched=None):
+        if self.closed:
+            return
+        self.closed = True
+        f = self.I.handle_closers.get(self.kind)
+        if f is not None:
+            try:
+                f.cfn(ctypes.c_void_p(self.ptr))
+            except Exception:
+                pass
+
+    def __repr__(self):
+        return f"<{self.kind} {'closed' if self.closed else hex(self.ptr)}>"
+
+
+def drop_live_handles(I):
+    """At program end: close every handle still open (a leak the checker could not see)."""
+    n = 0
+    for h in list(I.__dict__.get("live_handles", [])):
+        if not h.closed:
+            h.drop()
+            n += 1
+    return n
+
+
+def handle_result(I, t):
+    """If `t` is a handle type H or Result[H, Error], return (H, is_result)."""
+    n = tname(t)
+    ht = getattr(I, "handle_types", {})
+    if n in ht:
+        return n, False
+    if n == "Result" and t.groups and t.groups[0]:
+        h = tname(t.groups[0][0])
+        if h in ht:
+            return h, True
+    return None, False
+
+
 class ForeignFn:
-    __slots__ = ("name", "lib", "params", "ret", "cfn", "effects", "tuples", "I")
+    __slots__ = ("name", "lib", "params", "ret", "cfn", "effects", "tuples", "I", "closes")
 
     def __init__(self, name, lib, params, ret, cfn, effects, I):
         self.name, self.lib, self.params, self.ret, self.cfn = name, lib, params, ret, cfn
         self.effects, self.I = effects, I
+        self.closes = None
 
 
 def tname(t):
@@ -94,6 +142,8 @@ def ctype_of(I, t):
         return SCALARS[n]
     if n == "CString":
         return ctypes.c_char_p
+    if n in getattr(I, "handle_types", {}):
+        return ctypes.c_void_p
     if n in I.tuples:
         return struct_for(I, t)
     return None
@@ -108,6 +158,12 @@ def to_c(I, t, v):
         if n == "Bool":
             return bool(v)
         return int(v)
+    if n in getattr(I, "handle_types", {}):
+        if not isinstance(v, HandleV) or v.kind != n:
+            raise Abort(f"a {n} handle is needed here")
+        if v.closed:
+            raise Abort(f"use of a closed {n} handle")
+        return v.ptr
     if n == "CString":
         if isinstance(v, CStringV):
             return bytes(v[:-1])
@@ -159,7 +215,8 @@ def make_foreign(I, lib_name, d):
                 raise Abort(f"parameter '{p.name}' of '{d.name}' cannot cross the foreign boundary")
             cargs.append(ct)
     cfn.argtypes = cargs
-    cfn.restype = ctype_of(I, d.ret) if d.ret is not None and tname(d.ret) != "Unit" else None
+    hret, _ = handle_result(I, d.ret)
+    cfn.restype = (ctypes.c_void_p if hret else ctype_of(I, d.ret)) if d.ret is not None and tname(d.ret) != "Unit" else None
     if d.ret is not None and tname(d.ret) != "Unit" and cfn.restype is None:
         raise Abort(f"the result of '{d.name}' cannot cross the foreign boundary")
     return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, None, I)
@@ -236,8 +293,21 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         newv = from_c(I_of(f), p.type, val)
         scope = cenv.find_scope(cname) if cenv is not None else None
         (scope or cenv).vars[cname] = newv
+    if f.closes:
+        for p in declared:
+            hv = values.get(p.name)
+            if isinstance(hv, HandleV) and hv.kind == f.closes:
+                hv.closed = True
     if f.ret is None or tname(f.ret) == "Unit":
         return UNIT
+    hret, wrapped = handle_result(I_of(f), f.ret)
+    if hret:
+        if not r:
+            if wrapped:
+                return Err(make_error(ERR_CODES["MISSING"], f"{f.name} returned NULL"))
+            raise Abort(f"{f.name} returned NULL, so it cannot return a {hret}; declare it -> Result[{hret}, Error]", line)
+        h = HandleV(hret, r, I_of(f))
+        return Ok(h) if wrapped else h
     return from_c(I_of(f), f.ret, r)
 
 

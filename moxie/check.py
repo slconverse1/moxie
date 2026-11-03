@@ -96,6 +96,8 @@ class Checker:
         self.cases = {}            # bare case name -> [enum names]
         self.globals = set()
         self.moved = {}            # Var -> line
+        self.handle_types = {}     # handle type name -> closing fn name
+        self.handle_makers = set() # foreign fns that return a handle
         self.loop_depth = 0
         self.exit_ctx = False
         self.fn_ret = None
@@ -138,9 +140,15 @@ class Checker:
             self.fns[st.name] = list(st.clauses or [])
             self.globals.add(st.name)
         elif c is ForeignDecl:
+            for hname, closer, _ln in st.handles or []:
+                self.handle_types[hname] = closer
+                self.globals.add(hname)
             for d in st.fns:
                 self.fns[d.name] = [d]
                 self.globals.add(d.name)
+            for d in st.fns:
+                if self.handle_ret(d.ret):
+                    self.handle_makers.add(d.name)
         elif c is AliasDecl:
             self.aliases[st.name] = st
             self.globals.add(st.name)
@@ -522,6 +530,18 @@ class Checker:
         self.ev(n.e, sc)
         return None, None
 
+    def handle_ret(self, t):
+        """The handle type named by `t` (H or Result[H, E]), or None."""
+        if t.__class__ is not TName or not t.path:
+            return None
+        if t.path[-1] in self.handle_types:
+            return t.path[-1]
+        if t.path[-1] == "Result" and t.groups and t.groups[0]:
+            g = t.groups[0][0]
+            if g.__class__ is TName and g.path and g.path[-1] in self.handle_types:
+                return g.path[-1]
+        return None
+
     def is_resource_expr(self, e):
         while e.__class__ in (Q, Move):
             e = e.e
@@ -529,7 +549,7 @@ class Checker:
             f = e.fn
             if f.__class__ is GenApp:
                 f = f.base
-            if f.__class__ is Name and f.name in RES_MAKERS:
+            if f.__class__ is Name and (f.name in RES_MAKERS or f.name in self.handle_makers):
                 return True
             if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name == "Connection":
                 return True
@@ -890,6 +910,13 @@ class Checker:
             ats.append(self.ev(a.expr, asc) if hasattr(a, "expr") else (None, None))
         if n.trailing is not None:
             self.ev(n.trailing, sc)
+        if fn.__class__ is Name and fn.name in self.handle_types.values():
+            for a in args:        # the function that closes a handle consumes it
+                x = a.expr if hasattr(a, "expr") else None
+                if x.__class__ is Name:
+                    hv = sc.find(x.name)
+                    if hv is not None:
+                        self.moved[hv] = n.line
         if fn.__class__ is Name:
             v = sc.find(fn.name)
             if v is None:
@@ -1040,7 +1067,7 @@ class Checker:
         for tp in n.tparams or []:
             inner.vars[tp.name] = Var(None, False, 0)
         for p in n.params or []:
-            res = p.type.__class__ is TName and p.type.path[-1] in RES_TYPES
+            res = p.type.__class__ is TName and (p.type.path[-1] in RES_TYPES or p.type.path[-1] in self.handle_types)
             if p.name:
                 inner.vars[p.name] = Var(self.ty_of_type(p.type), res, 0)
             if p.pat is not None:

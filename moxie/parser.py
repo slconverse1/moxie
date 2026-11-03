@@ -380,10 +380,23 @@ class Parser(ExprParser):
         self.expect_op(":")
         self.expect_nl_indent()
         fns = []
+        handles = []
         while True:
             self.skip_nl()
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
+            t0 = self.peek()
+            if t0.kind == "NAME" and t0.val == "handle" and self.peek(1).kind == "NAME" \
+                    and self.peek(2).kind == "NAME" and self.peek(2).val == "closes":
+                self.next()
+                hname = self.next().val
+                self.next()
+                closer = self.next()
+                if closer.kind != "NAME":
+                    self.err("expected the name of the function that closes the handle", closer)
+                handles.append((hname, closer.val, t0.line))
+                self.end_line()
+                continue
             d = self.try_decl()
             if d is None or d.__class__ is not FnDecl:
                 self.err("expected a foreign function declaration")
@@ -392,7 +405,7 @@ class Parser(ExprParser):
             fns.append(d)
             self.end_line()
         self.expect_dedent()
-        return ForeignDecl(lib, fns, line=line)
+        return ForeignDecl(lib, fns, handles, line=line)
 
     def parse_contract_lines(self, kws):
         """Leading `requires EXPR` / `ensures EXPR` / `invariant EXPR` lines of a block."""

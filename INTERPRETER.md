@@ -128,9 +128,18 @@ value), `Array[Byte]` (a pointer, with `n: T = len(name)` as the length that the
 call fills in, and `ref` for a writable buffer), `CString` (made by `cstr(text)`),
 and `ref` out-parameters of scalars and tuples. A library is found by its name,
 in the program's directory (`libNAME.so`), or in `MOXIE_NATIVE_PATH`. Not yet
-built: handles as resources, callbacks, running `parks` functions on a helper
-thread (they run inline), and reading `[native]` from a manifest. Tests:
-`tests/run_ffi.py`.
+built: handles through out-parameters, a pool tally for handles, callbacks, running
+`parks` functions on a helper thread (they run inline), and reading `[native]`
+from a manifest. Tests: `tests/run_ffi.py`.
+
+Handles: `handle Name closes fn` in a `foreign` block makes `Name` an opaque
+pointer type (`HandleV` in `ffi.py`). The checker treats a function that returns
+`Name` or `Result[Name, Error]` as a resource maker, so `move` and use-after-move
+rules apply, and a call to the closing function consumes its argument. At run
+time a closed handle used again aborts, a NULL result is `Err(MISSING)` (or an
+abort for a plain `Name`), and handles still open at program end are closed.
+`moxie bindgen` emits handle declarations and finds the closer by name or from
+`[handles.NAME] closes` in `bindgen.toml`. Tests: `tests/run_handles.py`.
 
     moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [-D X] [-I DIR]
 

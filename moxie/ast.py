@@ -115,7 +115,7 @@ def _defs():
         "InitDecl": "body",
         "TestDecl": "name body",
         "ForwardDecl": "fn",
-        "ForeignDecl": "lib fns",
+        "ForeignDecl": "lib fns handles",
         "TParam": "name holes bounds where",
         # patterns
         "PWild": "",

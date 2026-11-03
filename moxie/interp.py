@@ -111,7 +111,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             r = yield from self.exec_stmts(prog.stmts, env)
             return r
         try:
-            self.sched.run_main(body())
+            try:
+                self.sched.run_main(body())
+            finally:
+                if self.__dict__.get("live_handles"):
+                    from .ffi import drop_live_handles
+                    drop_live_handles(self)
         except ProgramExit as e:
             if e.msg and not getattr(e, "printed", False):
                 self.err.write(e.msg + "\n")

@@ -39,8 +39,18 @@ class DeclsMixin:
 
     def ev_ForeignDecl(self, n, env):
         from .ffi import make_foreign
+        ht = self.__dict__.setdefault("handle_types", {})
+        hc = self.__dict__.setdefault("handle_closers", {})
+        for hname, closer, _ln in n.handles or []:
+            ht[hname] = closer
         for d in n.fns:
             env.vars[d.name] = make_foreign(self, n.lib, d)
+        for hname, closer, _ln in n.handles or []:
+            fobj = env.vars.get(closer)
+            if fobj is None:
+                raise Abort(f"handle {hname}: the closing function '{closer}' is not declared in this foreign block")
+            fobj.closes = hname
+            hc[hname] = fobj
             for f in d.flags or ():
                 if f in ("export", "internal"):
                     self.note_export(env, d.name, f)
