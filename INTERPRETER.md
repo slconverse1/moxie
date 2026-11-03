@@ -167,9 +167,9 @@ sockets. `open_file(path, mode)` takes the prelude enum `FileMode`
 `port_of`, `accept` are builtins, all `parks` in `effects.py`. The checker treats
 `open_file`, `connect`, `listen`, `accept` as resource makers and `Io`/`Listener`
 as resource types. Errors map to `NOT_FOUND`, `DENIED`, `IO_ERROR`. Anything
-still open at program end is closed. Blocking calls use helper OS threads (see below). Tests: `tests/run_io.py`.
+still open at program end is closed. Blocking calls use OS helper threads (see below). Tests: `tests/run_io.py`.
 
-## Helper OS threads
+## OS helper threads
 
 `sched.park_thread(I, fn)` (use `r = yield from park_thread(I, fn)`) runs `fn()` on a
 daemon thread while the calling fiber is blocked; the scheduler keeps running

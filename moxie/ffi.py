@@ -4,7 +4,7 @@ Supported across the boundary: fixed-width integers, Int/UInt, Float, Double, Bo
 tuples of those (as C structs, by value), Array[Byte] (a pointer; a following parameter
 written `n: T = len(name)` is the length and is filled in by the call), CString, and
 `ref` out-parameters of scalars and tuples, and handles (opaque pointers that must be closed).  Not yet: callbacks,
-and running a `parks` function on a helper OS thread (it runs inline).
+and running a `parks` function on a OS helper thread (it runs inline).
 Handles (`handle H closes fn` in a foreign block) are move-only resources: HandleV.
 """
 import ctypes
@@ -234,7 +234,7 @@ def length_of(p):
 
 
 def call_foreign(I, f, pos, named, refspec, cenv, line):
-    """A generator: a `parks` function runs on a helper OS thread while its fiber waits."""
+    """A generator: a `parks` function runs on a OS helper thread while its fiber waits."""
     named = dict(named or {})
     declared = f.params
     # which declared parameters the caller supplies: all but the length parameters
