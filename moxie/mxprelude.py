@@ -1,6 +1,12 @@
 """Parts of the prelude that are written in moxie itself (no compiler support needed)."""
 
 SRC = '''
+enum FileMode:
+  ReadOnly
+  Create
+  Append
+  ReadWrite
+
 tuple NonEmpty[T]:
   head: T
   tail: List[T]

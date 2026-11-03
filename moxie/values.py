@@ -344,7 +344,7 @@ def is_err(r):
 
 
 # Error codes
-ERR_CODES = {"CLOSED": 1, "TOO_LONG": 2, "TOO_SHORT": 3, "MISSING": 4, "NO_SLOT": 5, "OUT_OF_RANGE": 6, "ABANDONED": 7, "BAD_ENCODING": 8}
+ERR_CODES = {"CLOSED": 1, "TOO_LONG": 2, "TOO_SHORT": 3, "MISSING": 4, "NO_SLOT": 5, "OUT_OF_RANGE": 6, "ABANDONED": 7, "BAD_ENCODING": 8, "NOT_FOUND": 9, "DENIED": 10, "IO_ERROR": 11}
 ERR_NAMES = {v: k for k, v in ERR_CODES.items()}
 
 

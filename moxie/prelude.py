@@ -82,16 +82,81 @@ class StdStream:
 STDIN, STDOUT, STDERR = StdStream("stdin"), StdStream("stdout"), StdStream("stderr")
 
 
+class IoV:
+    """A file or a socket: a move-only resource wrapping a binary Python file object (Spec 19c)."""
+    __slots__ = ("kind", "f", "sock", "closed", "I")
+    tname_ = "Io"
+
+    def __init__(self, I, kind, f, sock=None):
+        self.kind, self.f, self.sock, self.closed, self.I = kind, f, sock, False, I
+        I.__dict__.setdefault("live_io", []).append(self)
+
+    def drop(self, sched=None):
+        if self.closed:
+            return
+        self.closed = True
+        for x in (self.f, self.sock):
+            try:
+                if x is not None:
+                    x.close()
+            except Exception:
+                pass
+
+    def write(self, s):
+        self.f.write(s.encode("utf-8"))
+
+    def flush(self):
+        self.f.flush()
+
+    def __repr__(self):
+        return f"<{self.kind} {'closed' if self.closed else 'open'}>"
+
+
+class ListenerV:
+    __slots__ = ("sock", "closed")
+    tname_ = "Listener"
+
+    def __init__(self, sock):
+        self.sock, self.closed = sock, False
+
+    def drop(self, sched=None):
+        if not self.closed:
+            self.closed = True
+            try:
+                self.sock.close()
+            except Exception:
+                pass
+
+
+def io_error(e, what=""):
+    import errno
+    code = "IO_ERROR"
+    if isinstance(e, FileNotFoundError) or getattr(e, "errno", None) == errno.ENOENT:
+        code = "NOT_FOUND"
+    elif isinstance(e, PermissionError):
+        code = "DENIED"
+    return err_reserved(code, (what + ": " if what else "") + (e.strerror or str(e)))
+
+
+def close_live_io(I):
+    for x in list(I.__dict__.get("live_io", [])):
+        x.drop()
+
+
 def _sink(I, h):
     if h is STDOUT:
         return I.out
     if h is STDERR:
         return I.err
+    if isinstance(h, IoV):
+        if h.closed:
+            raise Abort("write to a closed file or socket")
+        return h
     raise Abort(f"cannot write to {h.kind if isinstance(h, StdStream) else type_name(h)}")
 
 
 def _emit(I, a, nl):
-    if len(a) >= 2 and isinstance(a[0], StdStream):
+    if len(a) >= 2 and isinstance(a[0], (StdStream, IoV)):
         s = display(a[1], I)
         sink = _sink(I, a[0])
     else:
@@ -132,8 +197,12 @@ def b_flush(I, a, kw, ta):
 
 
 def _inp(I, a):
+    if a and isinstance(a[0], IoV):
+        if a[0].closed:
+            raise Abort("read from a closed file or socket")
+        return a[0].f
     if a and a[0] is not STDIN:
-        raise Abort("a read needs stdin")
+        raise Abort("a read needs stdin or an open file or socket")
     return I.inp
 
 
@@ -150,6 +219,8 @@ def _read_line(I, a):
     _prompt_flush(I)
     try:
         raw = f.buffer.readline() if hasattr(f, "buffer") else f.readline()
+    except OSError as e:
+        return io_error(e)
     except Exception as e:
         return err_reserved("CLOSED", str(e))
     if isinstance(raw, str):
@@ -186,13 +257,13 @@ def b_read_all(I, a, kw, ta):
 
 
 class StdinLinesIter:
-    __slots__ = ("I",)
+    __slots__ = ("I", "a")
 
-    def __init__(self, I):
-        self.I = I
+    def __init__(self, I, a=()):
+        self.I, self.a = I, list(a)
 
     def nxt(self):
-        r = _read_line(self.I, [])
+        r = _read_line(self.I, self.a)
         if r.case == "Ok":
             return Done(r.vals[0])
         if r.vals[0].vals[0] == ERR_CODES["CLOSED"]:
@@ -203,6 +274,115 @@ class StdinLinesIter:
 @bi("stdin_lines")
 def b_stdin_lines(I, a, kw, ta):
     return StreamV(lambda: StdinLinesIter(I))
+
+
+@bi("lines")
+def b_lines(I, a, kw, ta):
+    if not a or not isinstance(a[0], (IoV, StdStream)):
+        raise Abort("lines needs stdin, a file, or a socket")
+    return StreamV(lambda: StdinLinesIter(I, [a[0]]))
+
+
+def _mode_of(m):
+    return m.case if isinstance(m, EnumV) else str(m)
+
+
+@bi("open_file")
+def b_open_file(I, a, kw, ta):
+    path, mode = a[0], _mode_of(a[1]) if len(a) > 1 else "ReadOnly"
+    pm = {"ReadOnly": "rb", "Create": "wb", "Append": "ab", "ReadWrite": "r+b"}.get(mode)
+    if pm is None:
+        raise Abort(f"open_file: unknown mode {mode}")
+    try:
+        return Ok(IoV(I, "file", open(path, pm)))
+    except OSError as e:
+        return io_error(e, path)
+
+
+@bi("read_file")
+def b_read_file(I, a, kw, ta):
+    try:
+        raw = open(a[0], "rb").read()
+    except OSError as e:
+        return io_error(e, a[0])
+    try:
+        return Ok(raw.decode("utf-8"))
+    except UnicodeDecodeError:
+        return err_reserved("BAD_ENCODING", a[0] + " is not valid UTF-8")
+
+
+@bi("write_file")
+def b_write_file(I, a, kw, ta):
+    try:
+        with open(a[0], "wb") as f:
+            f.write(a[1].encode("utf-8"))
+    except OSError as e:
+        return io_error(e, a[0])
+    return Ok(UNIT)
+
+
+@bi("read_bytes")
+def b_read_bytes(I, a, kw, ta):
+    f = _inp(I, a)
+    try:
+        raw = (f.buffer if hasattr(f, "buffer") else f).read(int(a[1]))
+    except OSError as e:
+        return io_error(e)
+    cls = INT_CLASSES.get("UInt8")
+    return Ok(ArrayV([cls(b) if cls else b for b in raw]))
+
+
+@bi("write_bytes")
+def b_write_bytes(I, a, kw, ta):
+    h = a[0]
+    if not isinstance(h, IoV) or h.closed:
+        raise Abort("write_bytes needs an open file or socket")
+    try:
+        h.f.write(bytes(int(x) for x in a[1].items))
+    except OSError as e:
+        return io_error(e)
+    return Ok(UNIT)
+
+
+@bi("connect")
+def b_connect(I, a, kw, ta):
+    import socket
+    try:
+        s = socket.create_connection((a[0], int(a[1])), timeout=30)
+        s.settimeout(None)
+        return Ok(IoV(I, "socket", s.makefile("rwb"), s))
+    except OSError as e:
+        return io_error(e, f"{a[0]}:{a[1]}")
+
+
+@bi("listen")
+def b_listen(I, a, kw, ta):
+    import socket
+    try:
+        s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("", int(a[0])))
+        s.listen(16)
+        return Ok(ListenerV(s))
+    except OSError as e:
+        return io_error(e, f"port {a[0]}")
+
+
+@bi("port_of")
+def b_port_of(I, a, kw, ta):
+    return a[0].sock.getsockname()[1]
+
+
+@bi("accept")
+def b_accept(I, a, kw, ta):
+    l = a[0]
+    if not isinstance(l, ListenerV) or l.closed:
+        raise Abort("accept needs an open Listener")
+    try:
+        c, _ = l.sock.accept()
+        return Ok(IoV(I, "socket", c.makefile("rwb"), c))
+    except OSError as e:
+        return io_error(e)
 
 
 @bi("with_stdin", "first", True)

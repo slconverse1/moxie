@@ -157,3 +157,16 @@ never moved or closed). `print`/`println` take an optional stream first;
 interpreter reads `Interp.inp` (default `sys.stdin`; tests pass their own).
 Input is UTF-8; bad bytes give `Err` code `BAD_ENCODING`. Tests:
 `tests/run_stdio.py`.
+
+## Files and sockets
+
+`IoV` and `ListenerV` in `prelude.py` wrap binary Python file objects and
+sockets. `open_file(path, mode)` takes the prelude enum `FileMode`
+(`ReadOnly`, `Create`, `Append`, `ReadWrite`, defined in `mxprelude.py`).
+`read_line`, `read_all`, `lines`, `print`, `println`, `flush` accept an `Io`;
+`read_bytes`, `write_bytes`, `read_file`, `write_file`, `connect`, `listen`,
+`port_of`, `accept` are builtins, all `parks` in `effects.py`. The checker treats
+`open_file`, `connect`, `listen`, `accept` as resource makers and `Io`/`Listener`
+as resource types. Errors map to `NOT_FOUND`, `DENIED`, `IO_ERROR`. Anything
+still open at program end is closed. Calls block the whole process (no helper
+thread yet). Tests: `tests/run_io.py`.

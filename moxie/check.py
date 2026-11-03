@@ -7,12 +7,12 @@ Anything the checker cannot type is "unknown" and never produces an error.
 from .ast import *   # noqa
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
-RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection"}
-RES_MAKERS = {"Chan", "Timer", "clone"}
+RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener"}
+RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
                "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",
-               "Locale", "Connection", "true", "false", "stdin", "stdout", "stderr"}
+               "Locale", "Connection", "true", "false", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener"}
 
 
 INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte", "BigInt"}

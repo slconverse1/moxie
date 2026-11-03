@@ -18,7 +18,9 @@ from .ast import *   # noqa
 PARKS, PRINTS = "parks", "prints"
 BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRINTS,
            "read": PARKS, "write": PARKS, "sleep": PARKS,
-           "read_line": PARKS, "read_all": PARKS, "stdin_lines": PARKS}
+           "read_line": PARKS, "read_all": PARKS, "stdin_lines": PARKS,
+           "lines": PARKS, "open_file": PARKS, "read_file": PARKS, "write_file": PARKS, "read_bytes": PARKS,
+           "write_bytes": PARKS, "connect": PARKS, "listen": PARKS, "accept": PARKS}
 EXEMPT = {"dbg", "trace"}
 
 

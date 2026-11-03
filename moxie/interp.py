@@ -115,6 +115,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             try:
                 self.sched.run_main(body())
             finally:
+                if self.__dict__.get("live_io"):
+                    from .prelude import close_live_io
+                    close_live_io(self)
                 if self.__dict__.get("live_handles"):
                     from .ffi import drop_live_handles
                     drop_live_handles(self)
