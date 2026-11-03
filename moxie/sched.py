@@ -11,7 +11,7 @@ from .streams import StreamV
 
 
 class ExtFail:
-    """Carries an exception raised on a helper thread back to the fiber that was waiting."""
+    """Carries an exception raised on a helper OS thread back to the fiber that was waiting."""
     __slots__ = ("exc",)
 
     def __init__(self, exc):
@@ -19,7 +19,7 @@ class ExtFail:
 
 
 def park_thread(I, fn):
-    """Run `fn()` on a helper thread while the calling fiber parks; the other fibers keep running.
+    """Run `fn()` on a helper OS thread while the calling fiber parks; the other fibers keep running.
     Use as `r = yield from park_thread(I, fn)`.  `fn` must not touch interpreter state."""
     r = yield ("ext", fn)
     if isinstance(r, ExtFail):
@@ -364,7 +364,7 @@ class Scheduler:
             if self.ext:
                 self.drain_ext(False)
             if not self.ready:
-                if self.ext:                 # real time: wait for a helper thread before advancing virtual time
+                if self.ext:                 # real time: wait for a helper OS thread before advancing virtual time
                     self.drain_ext(True)
                     continue
                 if not self.advance():

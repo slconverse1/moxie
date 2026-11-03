@@ -239,7 +239,7 @@ def _read_line_f(f):
 
 
 def _blocking(I, f, fn):
-    """Run a blocking read: inline when the source is in memory, else on a helper thread."""
+    """Run a blocking read: inline when the source is in memory, else on a helper OS thread."""
     import io as _io
     if isinstance(f, (_io.BytesIO, _io.StringIO)):
         return Done(fn())
