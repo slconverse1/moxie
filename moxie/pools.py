@@ -24,9 +24,11 @@ class Pools:
 
     def report(self):
         if not self.peak:
-            return "pool report: no files, sockets, or foreign handles were opened\n"
+            return "pool report: nothing counted was created\n"
         w = max(len(k) for k in self.peak)
         out = ["pool report (observed): kind, most open at once, total opened"]
         for k in sorted(self.peak):
             out.append(f"  {k.ljust(w)}  {self.peak[k]:>4}  {self.total[k]:>6}")
+        out.append("  (a resource that goes out of scope without being closed or dropped counts as open until its fiber or the program ends;")
+        out.append("   Timers and Atoms are never released)")
         return "\n".join(out) + "\n"

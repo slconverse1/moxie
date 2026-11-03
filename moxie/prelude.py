@@ -1804,6 +1804,7 @@ def b_atom(I, a, kw, ta):
     v = a[0]
     if ta and ta[0]:
         v = I.coerce(v, ta[0][0], I.module_env)
+    I.pools.acquire("Atom")
     return S_.AtomV(v)
 
 
@@ -1836,6 +1837,8 @@ def b_chan(I, a, kw, ta):
         elif not isinstance(cap, int) or cap < 0:
             raise Abort("channel capacity must be a non-negative Int")
     ch = S_.Chan(cap)
+    ch.pools = I.pools
+    I.pools.acquire("Chan")
     return TupleV([S_.ChanR(ch), S_.ChanW(ch)])
 
 
@@ -1847,6 +1850,8 @@ def b_write(I, a, kw, ta):
 @bi("Future")
 def b_future(I, a, kw, ta):
     st = S_.FutureState()
+    st.pools = I.pools
+    I.pools.acquire("Future")
     return TupleV([S_.FutureR(st), S_.FutureW(st)])
 
 
@@ -1857,6 +1862,7 @@ def b_resolve(I, a, kw, ta):
         w.st.state = "Resolved"
         w.st.value = v
     w.dropped = True
+    w.st.settle_pool()
     return UNIT
 
 
@@ -1867,11 +1873,13 @@ def b_reject(I, a, kw, ta):
         w.st.state = "Rejected"
         w.st.value = e
     w.dropped = True
+    w.st.settle_pool()
     return UNIT
 
 
 @bi("Timer")
 def b_timer(I, a, kw, ta):
+    I.pools.acquire("Timer")
     return S_.TimerV()
 
 
@@ -1896,6 +1904,7 @@ def b_disarm(I, a, kw, ta):
 @bi("after")
 def b_after(I, a, kw, ta):
     t = S_.TimerV()
+    I.pools.acquire("Timer")
     I.sched.arm_timer(t, a[0].ns)
     return t
 

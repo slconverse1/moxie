@@ -53,6 +53,13 @@ class Chan:
         self.sel = []               # fibers waiting in select
         self.wcount = 1
         self.rcount = 1
+        self.pools = None           # set by Chan(...) so the observed report can count it
+        self.released = False
+
+    def maybe_release(self):
+        if self.pools is not None and not self.released and self.rcount <= 0 and self.wcount <= 0:
+            self.released = True
+            self.pools.release("Chan")
 
 
 class ChanR:
@@ -108,6 +115,7 @@ class ChanR:
         self.dropped = True
         c = self.chan
         c.rcount -= 1
+        c.maybe_release()
         if c.rcount <= 0:
             # writers get CLOSED
             while c.writers:
@@ -152,6 +160,7 @@ class ChanW:
         self.dropped = True
         c = self.chan
         c.wcount -= 1
+        c.maybe_release()
         if c.wcount <= 0:
             while c.readers:
                 rf = c.readers.popleft()
@@ -205,6 +214,13 @@ class FutureState:
         self.state = "Pending"
         self.value = None
         self.waiters = []
+        self.pools = None
+        self.released = False
+
+    def settle_pool(self):
+        if self.pools is not None and not self.released:
+            self.released = True
+            self.pools.release("Future")
 
 
 class FutureR:
@@ -236,6 +252,7 @@ class FutureW:
         if self.st.state == "Pending":
             self.st.state = "Rejected"
             self.st.value = make_error(ERR_CODES["ABANDONED"], "abandoned")
+        self.st.settle_pool()
 
 
 class Scheduler:

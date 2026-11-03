@@ -208,6 +208,7 @@ closing any handle C left); a plain `H` result ignores C's result and aborts on 
 
 The compiler's static pool tally does not exist yet. `moxie --pools run FILE` prints,
 to stderr after the run, how many files and sockets (`Io file`, `Io socket`),
-listeners, and foreign handles (`handle NAME`) were open at once and in total
-(`moxie/pools.py`, hooked into `IoV`, `ListenerV`, and `HandleV`). `Connection`,
-channels, and timers are not counted yet. Tests: `tests/run_pools.py`.
+listeners, foreign handles (`handle NAME`), connections, channels, futures, timers,
+and atoms were open at once and in total (`moxie/pools.py`). A resource that goes out
+of scope without being closed is not noticed until its fiber or the program ends, so
+peaks can over-count; timers and atoms are never released. Tests: `tests/run_pools.py`.

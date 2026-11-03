@@ -14,7 +14,7 @@ SQL_CODE = 40   # error code for database errors
 
 class ConnV:
     """A Connection resource. One owner; a transaction handle `tx` is a borrow of it."""
-    __slots__ = ("db", "path", "in_tx", "closed", "tx_of")
+    __slots__ = ("db", "path", "in_tx", "closed", "tx_of", "pools")
     tname_ = "Connection"
 
     def __init__(self, db, path, tx_of=None):
@@ -23,10 +23,13 @@ class ConnV:
         self.in_tx = False
         self.closed = False
         self.tx_of = tx_of
+        self.pools = None
 
     def drop(self, sched=None):
         if self.tx_of is None and not self.closed:
             self.closed = True
+            if self.pools is not None:
+                self.pools.release("Connection")
             try:
                 self.db.close()
             except Exception:

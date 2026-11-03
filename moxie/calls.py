@@ -514,8 +514,8 @@ class CallsMixin:
         if t.name == "Connection" and name in ("open", "memory"):
             from .sqlrt import open_connection
             if name == "memory":
-                return Builtin(lambda I, a, kw, ta: open_connection(":memory:"), "memory")
-            return Builtin(lambda I, a, kw, ta: open_connection(a[0]), "open")
+                return Builtin(lambda I, a, kw, ta: _counted(I, open_connection(":memory:")), "memory")
+            return Builtin(lambda I, a, kw, ta: _counted(I, open_connection(a[0])), "open")
         if name == "pure" and t.name in ("Result", "List", "Array", "Stream"):
             if t.name == "Result":
                 return Builtin(lambda I, a, kw, ta: Ok(a[0]), "pure")
@@ -1065,3 +1065,11 @@ def _read_scalar(name, text):
         return Ok(int(s))
     except ValueError:
         return err_reserved("MISSING", "cannot read " + name)
+
+
+def _counted(I, r):
+    """Count an opened Connection in the observed pool report."""
+    if getattr(r, "case", None) == "Ok":
+        r.vals[0].pools = I.pools
+        I.pools.acquire("Connection")
+    return r
