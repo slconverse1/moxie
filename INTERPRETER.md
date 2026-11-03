@@ -82,5 +82,27 @@ constructed. Contracts on interface members are checked whenever an
 implementation of that member runs (the interface's parameter names are mapped
 onto the implementation's). `moxie --release run FILE` turns all checks off. Not
 yet built: a compile error for constant arguments that fail `requires`,
-or the manifest key that keeps contracts in release builds. See
+or the manifest key that keeps contracts in release builds. An `impl` of an
+interface that adds its own contracts is a compile error. See
 `tests/run_contracts.py`.
+
+## Effect inference (first version)
+
+`moxie check` (and `run`, which checks first) infers whether each function
+parks (`read`, `write`, `sleep`, a `select` with no default arm, a database
+query) or prints, through callees and recursion. A call through a function
+parameter takes the effect of the function passed at the call site. Methods are
+resolved by name (the union over every function or method with that name).
+It reports: a `pure fn` that has an effect, a function given to `swap` that may
+park, a `debug_assert` condition that has an effect, and a contract condition
+that has an effect. `moxie doc` shows each function's effects. Not yet built:
+the "resource" effect, effect declarations on interface members and forward
+declarations, and reading `read(x)` as text versus a channel by type (a call
+`read(x)` is taken to park; `read[T](x)` does not). See `tests/run_effects.py`.
+
+## NonEmpty
+
+`non_empty(list)` returns `Ok(NonEmpty)` or `Err(Error(MISSING, "empty"))`.
+`NonEmpty` is written in moxie itself (`moxie/mxprelude.py`) and has `to_list`,
+`len`, `to_stream`, `map`, `reduce1`, `min`, and `max`. The reserved error codes
+(`MISSING`, `CLOSED`, ...) are now bound as names.

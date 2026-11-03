@@ -27,6 +27,7 @@ class Item:
         self.contracts = []    # (owner header text or None, keyword, condition)
         self.examples = []     # (expr, expected, source line)
         self.implementors = []
+        self.effects = None    # None for non-functions; a sorted list of effect names (empty = pure)
 
 
 def indent_of(s):
@@ -142,6 +143,16 @@ def collect(src):
             continue
         label = None if owner == top.line else header_text(lines, owner)
         top.contracts.append((label, kw, cond))
+    # inferred effects
+    try:
+        from .effects import Effects
+        ef = Effects(prog)
+        ef.solve()
+        for it in items:
+            if it.kind == "fn" and it.name in ef.sum:
+                it.effects = sorted(ef.sum[it.name].eff)
+    except Exception:
+        pass
     # implementors
     for it in items:
         if it.kind == "impl":
@@ -286,6 +297,8 @@ def render_html(title, module_doc, items, results):
             for label, kw, cond in it.contracts:
                 lab = f" <span class=k>({html.escape(label)})</span>" if label else ""
                 o.append(f'<div class=c><code>{kw} {html.escape(cond)}</code>{lab}</div>')
+        if it.effects is not None:
+            o.append("<p><b>Effects:</b> " + (html.escape(", ".join(it.effects)) if it.effects else "pure") + "</p>")
         if it.implementors:
             o.append("<p><b>Implementors</b></p><ul>" + "".join(f"<li><code>{html.escape(i)}</code></li>" for i in it.implementors) + "</ul>")
         if res.get(id(it)):
@@ -315,6 +328,8 @@ def render_md(title, module_doc, items, results):
             for label, kw, cond in it.contracts:
                 o.append(f"- `{kw} {cond}`" + (f" ({label})" if label else ""))
             o.append("")
+        if it.effects is not None:
+            o += ["**Effects:** " + (", ".join(it.effects) if it.effects else "pure"), ""]
         if it.implementors:
             o += ["**Implementors**", ""] + [f"- `{i}`" for i in it.implementors] + [""]
         if res.get(id(it)):

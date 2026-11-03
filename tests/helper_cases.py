@@ -34,4 +34,10 @@ _ = run bad(tx)
 sleep(1s)
 println("still here")
 ''', [], 1),
+("NonEmpty", '''
+when non_empty(List(3, 1, 2)):
+  Ok(x) -> println("${x.to_list()} ${x.len()} ${x.min()} ${x.max()} ${x.reduce1(_1 + _2)} ${x.map(_ * 2)}")
+  Err(e) -> println("empty")
+println("${non_empty(List())}")
+''', ["List(3, 1, 2) 3 1 3 6 NonEmpty(head: 6, tail: List(2, 4))", 'Err(Error(code: 4, message: "empty"))'], 0),
 ]

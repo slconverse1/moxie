@@ -45,6 +45,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.prelude.mod = self.prelude
         install_prelude(self)
         self.module_env = None
+        from .mxprelude import install as _install_mx
+        _install_mx(self)
 
     # ------------------------------------------------------------ driving
     def run_sync(self, gen):

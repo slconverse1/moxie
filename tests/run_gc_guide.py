@@ -54,6 +54,8 @@ for i,(ln,src,exp) in enumerate(blocks):
         stat['noexp']+=1; good.append(i); continue
     if code==0 and not got:
         stat['noexp']+=1; good.append(i); continue
+    if code==2 and '// ERROR' in src:
+        stat['noexp']+=1; continue       # the example is meant to be rejected
     if code==0: good.append(i)
     # try context
     done=False

@@ -63,5 +63,21 @@ rc, o = run2('println("${Cat(nm: "a").pick(-1)}")\n')
 chk("interface requires with renamed param", rc != 0 and "requires failed in pick" in o)
 rc, o = run2('println("${Cat(nm: "a").pick(2)}")\n')
 chk("interface requires passes", rc == 0 and o.strip() == "3")
+rc, o = run2('impl Named for Cat:\n  fn name(self) String: self.nm\n' if False else 'println("x")\n', "--no-check") if False else (0, "")
+BADIMPL = '''interface Named:
+  fn name(self) String
+tuple Cat:
+  nm: String
+impl Named for Cat:
+  fn name(self) String:
+    ensures len(result) > 0
+    self.nm
+println("x")
+'''
+with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
+    f.write(BADIMPL)
+r = subprocess.run([sys.executable, "-m", "moxie", "check", f.name], cwd=ROOT, capture_output=True, text=True)
+os.unlink(f.name)
+chk("an impl adding a contract is a compile error", r.returncode != 0 and "may not add contracts" in (r.stdout + r.stderr))
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)

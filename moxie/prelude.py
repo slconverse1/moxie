@@ -27,6 +27,8 @@ def install_prelude(I):
         b = Builtin(fn, name, gen)
         b.pre = pos
         env.vars[name] = b
+    for _k, _c in ERR_CODES.items():
+        env.vars[_k] = _c          # the reserved Error codes: CLOSED, MISSING, ...
     env.vars["NAN"] = math.nan
     env.vars["INF"] = math.inf
     env.vars["MAX"] = INT_MAX

@@ -1185,6 +1185,9 @@ class Checker:
 
     def e_ImplDecl(self, n, sc):
         for m in n.members or []:
+            if n.iface is not None and m.__class__ is FnDecl and m.contracts:
+                self.err(m.line, f"an impl of an interface may not add contracts to '{m.name}'; "
+                                 "the contract belongs to the interface")
             inner = Sc(sc, open_=True)
             self.ev(m, inner)
         return None, None
@@ -1233,4 +1236,10 @@ class Checker:
 
 
 def check_program(prog, prelude_names):
-    return Checker(prelude_names).check(prog)
+    diags = Checker(prelude_names).check(prog)
+    from .effects import check_effects
+    seen = {(d.line, d.msg) for d in diags}
+    for line, msg in check_effects(prog):
+        if (line, msg) not in seen:
+            diags.append(Diag(line, msg))
+    return diags
