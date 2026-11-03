@@ -21,6 +21,11 @@ BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRI
 EXEMPT = {"dbg"}
 
 
+def _last(t):
+    p = getattr(t, "path", None)
+    return p[-1] if p else None
+
+
 def _children(n):
     for f in n._fields:
         v = getattr(n, f, None)
@@ -47,15 +52,44 @@ class Effects:
         self.defs = {}           # name -> [FnDecl]
         self.sum = {}            # name -> Summary
         self.diags = []
+        self.where = {}
+        self.bounds = {}
         self._collect(prog)
 
-    def _collect(self, n):
-        if n.__class__ is FnDecl and n.name:
+    def _collect(self, n, ctx="top"):
+        c = n.__class__
+        if c is FnDecl and n.name:
             self.defs.setdefault(n.name, []).append(n)
-        for c in _children(n):
-            self._collect(c)
-        if n.__class__ is FnGroup:
-            pass                 # clauses are children via _fields
+            self.where[id(n)] = ctx
+            if n.body is None and self.declared(n) is not None:
+                self.bounds[(ctx[1] if isinstance(ctx, tuple) else None, n.name)] = self.declared(n)
+        if c is IfaceDecl:
+            sub = ("iface", n.name)
+        elif c is ImplDecl:
+            sub = ("impl", _last(n.iface)) if n.iface is not None else "top"
+        elif c in (FnDecl, FnGroup, Lambda):
+            sub = "top"
+        else:
+            sub = ctx
+        for ch in _children(n):
+            self._collect(ch, sub)
+
+    @staticmethod
+    def declared(d):
+        """The declared effects of `d`: a set, 'some' for impure, or None when nothing is declared."""
+        f = d.flags or ()
+        if "impure" in f:
+            return "some"
+        names = set()
+        if "parks" in f:
+            names.add(PARKS)
+        if "prints" in f:
+            names.add(PRINTS)
+        if names:
+            return names
+        if "pure" in f:
+            return set()
+        return None
 
     # ---------------------------------------------------------------- walking
     def callee_name(self, f):
@@ -187,6 +221,12 @@ class Effects:
     def solve(self):
         for name in self.defs:
             self.sum[name] = Summary()
+        for name, ds in self.defs.items():
+            for d in ds:
+                dec = self.declared(d) if d.body is None else None
+                if dec:
+                    for eff in (dec if dec != "some" else (PARKS, PRINTS)):
+                        self.sum[name].eff.setdefault(eff, (name, d.line, name))
         changed = True
         rounds = 0
         while changed and rounds < 50:
@@ -197,8 +237,11 @@ class Effects:
                 for d in ds:
                     before = (len(s.eff), len(s.param_calls))
                     acc = self.run_def(d, s)
+                    ctx = self.where.get(id(d))
+                    bounded = d.body is not None and (ctx[1] if isinstance(ctx, tuple) else None, name) in self.bounds
                     for eff, w in acc.items():
-                        s.eff.setdefault(eff, w)
+                        if not bounded:          # a declared interface member stands for all its impls
+                            s.eff.setdefault(eff, w)
                     if (len(s.eff), len(s.param_calls)) != before:
                         changed = True
         self.diags = []          # discard diagnostics from the iteration rounds
@@ -220,12 +263,35 @@ class Effects:
                 self.walk(st, None, acc, None)
 
     def check_def(self, d):
-        if "pure" in (d.flags or ()):
-            s = self.sum.get(d.name)
-            acc = self.run_def(d, Summary())
+        dec = self.declared(d)
+        f = d.flags or ()
+        if ("pure" in f) and (("parks" in f) or ("prints" in f) or ("impure" in f)):
+            self.diags.append((d.line, f"'{d.name}' is declared both pure and impure"))
+            return
+        if d.body is None:
+            return
+        acc = self.run_def(d, Summary())
+        if dec is not None:
+            if dec == "some":
+                if not acc:
+                    self.diags.append((d.line, f"fn '{d.name}' is declared impure but has no effect"))
+            else:
+                for eff, (callee, ln, root) in acc.items():
+                    if eff not in dec:
+                        who = "pure " if not dec else ""
+                        self.diags.append((ln or d.line, f"{who}fn '{d.name}' {eff} (calls '{root}'), but it is not declared {eff}"
+                                           if dec else f"pure fn '{d.name}' {eff} (calls '{root}')"))
+                for eff in dec:
+                    if eff not in acc:
+                        self.diags.append((d.line, f"fn '{d.name}' is declared {eff} but never does"))
+        ctx = self.where.get(id(d))
+        key = (ctx[1] if isinstance(ctx, tuple) else None, d.name)
+        if key in self.bounds and ctx != "top" or (ctx == "top" and (None, d.name) in self.bounds):
+            bound = self.bounds.get(key)
+            allowed = {PARKS, PRINTS} if bound == "some" else (bound or set())
             for eff, (callee, ln, root) in acc.items():
-                via = f" (calls '{root}')" if root else ""
-                self.diags.append((ln or d.line, f"pure fn '{d.name}' {eff}{via}"))
+                if eff not in allowed:
+                    self.diags.append((ln or d.line, f"'{d.name}' {eff} (calls '{root}'), which its declaration does not allow"))
 
     def check_contracts(self):
         for ds in self.defs.values():

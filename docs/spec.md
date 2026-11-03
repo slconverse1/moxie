@@ -437,10 +437,10 @@ Nothing is cached behind your back. Four recipes cover the need:
 - **Cache daemon:** a fiber or `Atom` holds the table and answers requests over channels (section 17).
 
 **Effect inference**. The compiler works out, per function, whether its body can park (read, write, sleep, select, query), print, or use a resource, including through callees.
-- **How it is worked out.** Each builtin has a known effect. A function's effect is the union of the effects of the calls in its body, and recursion is solved by iterating to a fixed point. A call through a function parameter takes the effect of the function passed at that call site, so `map(f)` is as effectful as `f`. An interface member and a forward declaration state their effects, and are assumed to have all of them if they do not *(syntax open)*.
+- **How it is worked out.** Each builtin has a known effect. A function's effect is the union of the effects of the calls in its body, and recursion is solved by iterating to a fixed point. A call through a function parameter takes the effect of the function passed at that call site, so `map(f)` is as effectful as `f`. An interface member or forward declaration with no body uses its declared effects (see below) and has none if it declares none.
 - **Consumers of the result:** `swap` (its function must not park), compile-time evaluation, and `debug_assert` conditions. A violation is a compile error that names the effect and the call that caused it.
 - **`dbg(expr)` is exempt**, since it exists to be dropped into anything.
-- **Optional `pure fn`** states the intent: it is an error if the body has any effect. Unmarked functions are still inferred.
+- **Declared effects.** A function may declare its effects before `fn`: `pure` (none), `prints`, `parks`, both together, or `impure` (some effect, unspecified). A declaration is an agreement between mixer and compiler, checked both ways: it is an error if the inferred effects include one that is not declared, and an error if a declared effect is not in the inferred set (`impure` requires at least one), and `pure` with another declaration is an error. Declaring is optional and nothing is ever propagated by hand, since callers are still inferred. On an interface member or a forward declaration with no body, the declaration is an **upper bound**: each `impl` (or the later definition) may do less, and doing more is an error. A call to such a member has exactly the declared effects, so `pure` code that calls through the interface is checked. The same keywords are intended for FFI, where the compiler cannot see the body.
 - **Compile-time evaluation.** A pure function whose arguments are constants can be evaluated by the compiler in a constant context (a size, a constant binding), for example `KILOBYTE = pow(2, 10)`, giving `1024`. Overflow or a division by zero there is a compile error.
 
 **15. Errors and Results**
@@ -545,7 +545,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **`dbg(expr)`** prints the expression text, file, line, and value to the error stream, and gives the value back, so it can be wrapped around any sub-expression. It is exempt from effect inference.
 - **Numbers at compile time.** A constant that overflows, divides by zero, or is out of range for its type is a compile error.
 - **In-place update guarantee.** Rebinding a name to an update of itself (`items = items.replace(...)`, `p = p.update: ...`) never copies when the old value is dead on every path after the statement. `moxie build --report` lists each place where a copy was needed and why.
-- **`pure fn`** optionally declares that a function must be free of effects; the compiler checks it against inferred effects (section 14).
+- **`pure`, `prints`, `parks`, `impure`** optionally declare a function's effects; the compiler checks the declaration against inferred effects, in both directions (section 14).
 - **Warnings** worth knowing: a `ref` parameter never rebound, a shadowed binding in a deeper block, an unannotated fiber that creates resources, a non-tail recursive call, float `==`, `todo`, a redundant last-line `return`, and a stream used by two terminals.
 
 **23. Functional programming support** (in the prelude; no separate package)
@@ -581,7 +581,7 @@ Everything else in this Spec is settled, including every call that earlier draft
 2. **Tooling designs (section 22):** the layout rules and line width for `moxie fmt`, the doctest example syntax, and the `forall` syntax, the `Arbitrary` interface, and the shrinking rules for property tests, and the Markdown subset and page layout for `moxie doc`, are sketches.
 3. **Contracts (section 9b):** nothing is open in the design. The compile error for a failing constant `requires` is not yet built in the interpreter.
 3a. **Binary patterns (section 8)** are a sketch: the kinds, `bits(n)`, `bytes(n)`, and the failure rule are proposed, and building bytes from fields is not designed.
-3b. **Effect inference (section 14):** the call-site rule for function parameters is settled; the syntax for an interface member or forward declaration to state its effects is open.
+3b. **Effect inference (section 14):** settled, apart from the "resource" effect, which the checker does not track yet.
 4. **Memoization by a bottom-up reduce** (section 14) is a sketch.
 5. **Key size warning:** the threshold above which the compiler warns about a large Dict key (section 6) is not set.
 6. **Currying names:** `curry2` through `curry6` (section 11) are names I picked.
@@ -609,3 +609,4 @@ Everything else in this Spec is settled, including every call that earlier draft
 - Contracts: an `ensures` sees a `ref` parameter's final value only, the release key is `keep_in_release`, an `impl` adding contracts is a compile error, and a failing constant `requires` is a compile error.
 - Active patterns and units of measure are dropped. `NonEmpty` is added to the prelude, and binary patterns are sketched in section 8.
 - Effect inference follows a call-site rule for function parameters (section 14).
+- A function may declare its effects (`pure`, `prints`, `parks`, `impure`); a declaration must agree with the inferred effects both ways, and on a bodyless interface member or forward declaration it is an upper bound for the impls (section 14).

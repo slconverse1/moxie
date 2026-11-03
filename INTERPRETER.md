@@ -95,9 +95,10 @@ parameter takes the effect of the function passed at the call site. Methods are
 resolved by name (the union over every function or method with that name).
 It reports: a `pure fn` that has an effect, a function given to `swap` that may
 park, a `debug_assert` condition that has an effect, and a contract condition
-that has an effect. `moxie doc` shows each function's effects. Not yet built:
-the "resource" effect, effect declarations on interface members and forward
-declarations, and reading `read(x)` as text versus a channel by type (a call
+that has an effect. `moxie doc` shows each function's effects. Effect
+declarations (`pure`, `prints`, `parks`, `impure` before `fn`) are checked in
+both directions; on a bodyless interface member or forward declaration they are
+an upper bound for the impls. Not yet built: the "resource" effect, and reading `read(x)` as text versus a channel by type (a call
 `read(x)` is taken to park; `read[T](x)` does not). See `tests/run_effects.py`.
 
 ## NonEmpty

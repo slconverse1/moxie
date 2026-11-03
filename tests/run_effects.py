@@ -22,6 +22,15 @@ CASES = [
  ("dbg is exempt", "pure fn f(x: Int) Int: dbg(x)\n", True, ""),
  ("read[T] parses and does not park", 'pure fn f(s: String): read[Int](s)\n', True, ""),
  ("contract conditions must be pure", 'fn f(x: Int) Int:\n  requires println("a") == ()\n  x\n', False, "must be pure"),
+ ("declared prints, does print", 'prints fn f(s: String) Unit: println(s)\n', True, ""),
+ ("declared prints through a callee (no propagation needed in callers)", 'fn g(s: String) Unit: println(s)\nprints fn f(s: String) Unit: g(s)\nfn h(): f("x")\nh()\n', True, ""),
+ ("undeclared extra effect", 'prints fn f() Unit:\n  ch = Chan[Int](1)\n  println("a")\n  read(ch)\n', False, "not declared parks"),
+ ("stale declaration", 'prints fn f(x: Int) Int: x\n', False, "never does"),
+ ("impure with no effect", 'impure fn f(x: Int) Int: x\n', False, "declared impure"),
+ ("pure and impure together", 'pure prints fn f(x: Int) Int: x\n', False, "both pure and impure"),
+ ("interface member bound allows an impl", 'interface L:\n  prints fn log(self, s: String) Unit\ntuple Q:\n  n: Int\nimpl L for Q:\n  fn log(self, s: String) Unit: println(s)\n', True, ""),
+ ("impl exceeds the interface bound", 'interface L:\n  prints fn log(self, s: String) Unit\ntuple Q:\n  n: Int\nimpl L for Q:\n  fn log(self, s: String) Unit:\n    ch = Chan[Int](1)\n    read(ch)\n', False, "does not allow"),
+ ("a pure fn calling a declared member is caught", 'interface L:\n  prints fn log(self, s: String) Unit\ntuple Q:\n  n: Int\nimpl L for Q:\n  fn log(self, s: String) Unit: println(s)\npure fn f(q: Q) Unit: q.log("x")\n', False, "prints"),
 ]
 fails = []
 for name, src, ok, word in CASES:

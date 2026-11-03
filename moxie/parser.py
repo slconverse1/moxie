@@ -4,7 +4,8 @@ from .pbase import HARD, ASSIGN_OPS
 from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
 
-MODS = {"export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec"}
+EFFMODS = ("pure", "tailrec", "prints", "parks", "impure")
+MODS = {"export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure"}
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
@@ -46,7 +47,7 @@ class Parser(ExprParser):
             v = t.val
             if v in MODS or v in DECL_START:
                 pass
-            if (v in MODS and v not in ("pure", "tailrec")) or v in DECL_START or (v in ("pure", "tailrec") and self.at_name("fn", 1)):
+            if (v in MODS and v not in EFFMODS) or v in DECL_START or (v in EFFMODS and self.peek(1).kind == "NAME" and self.peek(1).val in MODS | {"fn"}):
                 d = self.try_decl()
                 if d is not None:
                     return d
@@ -273,7 +274,7 @@ class Parser(ExprParser):
     def try_decl(self):
         i = 0
         mods = []
-        while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val in ("pure", "tailrec") and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn"})):
+        while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val in EFFMODS and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn"})):
             mods.append(self.peek(i).val)
             i += 1
         t = self.peek(i)
@@ -565,7 +566,7 @@ class Parser(ExprParser):
                 members.append(AliasDecl("assoc", nm, [], ty, None, line=t.line))
                 self.end_line()
                 continue
-            if t.kind == "NAME" and t.val in ("fn", "static", "inline", "export", "internal", "fiber"):
+            if t.kind == "NAME" and t.val in ("fn", "static", "inline", "export", "internal", "fiber", "pure", "prints", "parks", "impure"):
                 d = self.try_decl()
                 if d is None:
                     self.err("expected a method declaration")

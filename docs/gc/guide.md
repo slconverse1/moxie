@@ -2140,6 +2140,8 @@ pure fn noisy(w: Int) Int:
 
 `swap`, `debug_assert`, and compile-time evaluation require pure functions, with or without the marker. `dbg` is exempt. Compile-time evaluation lets `limit = pow2(10, 1)` size a Dict (chapter 2c).
 
+You are never required to write effects, and you never have to pass them up the call chain: a caller of a function that prints is inferred to print, and you change nothing in the callers when you add a `println` while debugging (or use `dbg`, which is exempt). When you want the compiler to hold you to a statement, declare it before `fn`: `pure`, `prints`, `parks` (both can be given, as in `prints parks fn`), or `impure` for "has some effect". A declaration is an agreement checked both ways. The compiler rejects a body that does an effect you did not declare, and it also rejects a declaration the body no longer earns, so a stale `prints` cannot linger after the print is removed. An interface member can be declared the same way (`prints fn log(self, s: String) Unit`), and then it is an upper bound: an impl may do less, but doing more is a compile error, and code that calls through the interface is checked against the declaration.
+
 **24c. Functions as values: compose, apply, curry**
 
 ```

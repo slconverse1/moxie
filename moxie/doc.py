@@ -27,6 +27,7 @@ class Item:
         self.contracts = []    # (owner header text or None, keyword, condition)
         self.examples = []     # (expr, expected, source line)
         self.implementors = []
+        self.declared = []
         self.effects = None    # None for non-functions; a sorted list of effect names (empty = pure)
 
 
@@ -151,6 +152,7 @@ def collect(src):
         for it in items:
             if it.kind == "fn" and it.name in ef.sum:
                 it.effects = sorted(ef.sum[it.name].eff)
+                it.declared = sorted({m for m in re.findall(r'\b(pure|prints|parks|impure)\b', it.header.split('fn ')[0])})
     except Exception:
         pass
     # implementors
