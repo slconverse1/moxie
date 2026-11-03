@@ -516,7 +516,7 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 - **Gathering:** `numbers: ...Int` gathers any number of trailing arguments into one array, and zero is fine. A pattern gathers too: in `Array(first, ...rest)` the `rest` collects whatever the pattern didn't name.
 - **The limits:** The compiler has to know how many values it is spreading, so a `List` of unknown length can't be splatted into a call. A variadic has a single element type (use a union or a tuple when you need a mix), and a `rest` is a read-only view that can't be returned or stored.
 
-**The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry2` through `curry6` in the prelude for when you want classic currying.
+**The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. There is no `uncurry`, because moxie's argument bundle already is a tuple: `f(a, b)` and `f(pair)` both work.
 
 ## 8. Pattern matching
 

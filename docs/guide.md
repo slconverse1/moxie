@@ -2160,6 +2160,8 @@ println("${add5(1)} ${make_adder(10)(1)}")
 
 Output: `6 11` (`add` from chapter 6). Capturing closures can be passed and returned, but not stored in data structures (chapter 7).
 
+**Why there is no `uncurry`.** In Haskell and F#, `uncurry` turns a function that takes its arguments one at a time into one that takes a single pair, so it can be used where a pair-taking function is expected or handed to a library that wants all its arguments at once. Moxie needs none of that, because an argument list and a tuple of the same shape are already the same thing (chapter 6). A two-parameter function is called as `f(a, b)` or as `f(pair)`, `f(...pair)` always unpacks, and the function type `(Int, Int) -> Int` is the same type as `((Int, Int)) -> Int`, so a stream of pairs can be mapped with a two-parameter function directly. The one case left is a curried function that you made with `curry` or got from a library, and you turn it back with `fn (a, b): g(a)(b)`. `uncurry` could not be an ordinary library function anyway: from a type like `A -> B -> C`, the compiler cannot tell whether `B -> C` is a function that a one-parameter function returns or the rest of a chain of parameters, so it would have to be told how many arguments to expect. `curry` has no such problem, because it starts from a declared parameter list.
+
 **24d. Recursion over data**
 
 ```
