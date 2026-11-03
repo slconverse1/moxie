@@ -1,0 +1,10 @@
+// Echo every line a client sends, with a prefix.  Pair with stdin_to_socket.mxi:
+//   moxie run examples/echo_server.mxi           (one terminal)
+//   moxie run examples/stdin_to_socket.mxi localhost 7000 < lines.txt   (another)
+l = listen(7000)?
+println("listening on port ${port_of(l)}")
+c = accept(l)?
+for line in lines(c):
+  println(c, "echo: ${line}")
+close(c)
+close(l)
