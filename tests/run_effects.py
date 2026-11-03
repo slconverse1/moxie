@@ -20,6 +20,7 @@ CASES = [
  ("swap function that is pure", "c = Atom[Int](0)\nswap(c, _ + 1)\n", True, ""),
  ("debug_assert condition must be pure", 'fn p(): println("x")\ndebug_assert(p() == ())\n', False, "debug_assert"),
  ("dbg is exempt", "pure fn f(x: Int) Int: dbg(x)\n", True, ""),
+ ("trace is exempt", 'pure fn f(x: Int) Int:\n  trace("in f")\n  x\n', True, ""),
  ("read[T] parses and does not park", 'pure fn f(s: String): read[Int](s)\n', True, ""),
  ("contract conditions must be pure", 'fn f(x: Int) Int:\n  requires println("a") == ()\n  x\n', False, "must be pure"),
  ("declared prints, does print", 'prints fn f(s: String) Unit: println(s)\n', True, ""),

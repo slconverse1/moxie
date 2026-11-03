@@ -18,7 +18,7 @@ from .ast import *   # noqa
 PARKS, PRINTS = "parks", "prints"
 BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRINTS,
            "read": PARKS, "write": PARKS, "sleep": PARKS}
-EXEMPT = {"dbg"}
+EXEMPT = {"dbg", "trace"}
 
 
 def _last(t):

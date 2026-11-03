@@ -82,6 +82,15 @@ def b_dbg(I, a, kw, ta):
     return a[0]
 
 
+@bi("trace")
+def b_trace(I, a, kw, ta):
+    """A debug message to the error stream; exempt from effect inference; off under --release."""
+    if CONTRACTS[0]:
+        t = a[0] if isinstance(a[0], str) else show(a[0], I)
+        I.err.write(f"[trace {I.file}:{I.line}] {t}\n")
+    return UNIT
+
+
 @bi("show")
 def b_show(I, a, kw, ta):
     return show(a[0], I)
@@ -1005,7 +1014,7 @@ def b_assert(I, a, kw, ta):
 
 @bi("debug_assert")
 def b_debug_assert(I, a, kw, ta):
-    if not a[0]:
+    if CONTRACTS[0] and not a[0]:
         raise Abort("debug assertion failed")
     return UNIT
 

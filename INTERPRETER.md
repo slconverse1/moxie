@@ -107,3 +107,6 @@ an upper bound for the impls. Not yet built: the "resource" effect, and reading 
 `NonEmpty` is written in moxie itself (`moxie/mxprelude.py`) and has `to_list`,
 `len`, `to_stream`, `map`, `reduce1`, `min`, and `max`. The reserved error codes
 (`MISSING`, `CLOSED`, ...) are now bound as names.
+
+`trace(msg)` writes `[trace FILE:LINE] msg` to the error stream, is exempt from
+effect inference, and does nothing under `--release` (as does `debug_assert`).
