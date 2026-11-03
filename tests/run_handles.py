@@ -8,6 +8,8 @@ C = r'''
 typedef struct { int n; } counter;
 counter *counter_open(int start) { if (start < 0) return NULL; counter *c = malloc(sizeof *c); c->n = start; return c; }
 int counter_bump(counter *c) { return ++c->n; }
+int counter_open2(int start, counter **out) { if (start < 0) { *out = NULL; return 14; } if (start == 99) { *out = malloc(sizeof **out); return 21; } *out = malloc(sizeof **out); (*out)->n = start; return 0; }
+void counter_make(int start, counter **out) { if (start < 0) { *out = NULL; return; } *out = malloc(sizeof **out); (*out)->n = start; }
 int counter_close(counter *c) { printf("closed\n"); fflush(stdout); free(c); return 0; }
 '''
 open(os.path.join(D, "cnt.c"), "w").write(C)
@@ -25,6 +27,8 @@ HDR = '''foreign "cnt":
   impure fn counter_open(start: Int32) Result[Counter, Error]
   impure fn counter_bump(c: Counter) Int32
   impure fn counter_close(c: Counter) Int32
+  impure fn counter_open2(start: Int32, ref c: Counter) Result[Counter, Error]
+  impure fn counter_make(start: Int32, ref c: Counter) Counter
 '''
 CASES = [
  ("open, use, close", 'c = counter_open(5)?\nprintln(counter_bump(c))\ncounter_close(c)\nprintln("done")\n', 0, "6\nclosed\ndone"),
@@ -34,6 +38,11 @@ CASES = [
  ("copying a handle needs move", 'c = counter_open(1)?\nd = c\ncounter_close(move d)\n', 2, "is a resource"),
  ("a handle left open is closed at exit", 'c = counter_open(1)?\nprintln(counter_bump(c))\n', 0, "2\nclosed"),
  ("close builtin", 'c = counter_open(1)?\nclose(c)\nprintln("x")\n', 0, "closed\nx"),
+ ("an out-handle is filled in by the call", 'c = counter_open2(5i32)?\nprintln(counter_bump(c))\ncounter_close(c)\n', 0, "6\nclosed"),
+ ("out-handle status is the error code", 'println(counter_open2(-1i32))\n', 0, "code: 14"),
+ ("a handle from a failing call is still closed", 'println(counter_open2(99i32))\n', 0, "closed\nErr(Error(code: 21"),
+ ("void out-handle returns the handle", 'c = counter_make(3i32)\nprintln(counter_bump(c))\ncounter_close(c)\n', 0, "4\nclosed"),
+ ("out-handle use after close is an error", 'c = counter_open2(5i32)?\ncounter_close(c)\nprintln(counter_bump(c))\n', 2, "use of moved"),
  ("closer missing", 'foreign "cnt":\n  handle Counter closes nope\n  impure fn counter_bump(c: Counter) Int32\nprintln("x")\n', 1, "closing function"),
 ]
 LIBC = '''foreign "c":

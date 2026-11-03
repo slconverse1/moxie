@@ -98,6 +98,7 @@ class Checker:
         self.moved = {}            # Var -> line
         self.handle_types = {}     # handle type name -> closing fn name
         self.handle_makers = set() # foreign fns that return a handle
+        self.foreign_ids = set()   # ids of foreign FnDecls
         self.loop_depth = 0
         self.exit_ctx = False
         self.fn_ret = None
@@ -146,6 +147,7 @@ class Checker:
             for d in st.fns:
                 self.fns[d.name] = [d]
                 self.globals.add(d.name)
+                self.foreign_ids.add(id(d))
             for d in st.fns:
                 if self.handle_ret(d.ret):
                     self.handle_makers.add(d.name)
@@ -1012,8 +1014,17 @@ class Checker:
                 i += 1
             self.compat(self.ty_of_type(f.type), t, c, line)
 
+    def hidden_foreign_param(self, p):
+        """A foreign parameter the caller does not supply: a length filled in by the call, or an out-handle."""
+        d = p.default
+        if d is not None and d.__class__ is Call and d.fn.__class__ is Name and d.fn.name == "len":
+            return True
+        return p.mod == "ref" and p.type.__class__ is TName and p.type.path[-1] in self.handle_types
+
     def check_call(self, fd, n, args, ats, extra):
         params = list(fd.params or [])
+        if id(fd) in self.foreign_ids:
+            params = [p for p in params if not self.hidden_foreign_param(p)]
         if any(p.mod == "using" for p in params):
             return self.ret_of(fd), None
         if any(a.mod == "spread" or a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")):

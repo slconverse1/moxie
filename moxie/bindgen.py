@@ -184,6 +184,8 @@ class Gen:
                 d = self.desc(self.typedefs[nm], is_param)
                 if ptr == 0:
                     return d
+                if ptr == 2 and d[0] == "opaque":
+                    return ("out_handle", d[1], d[2], const)
                 if ptr > 1:
                     raise Todo("pointer to pointer")
                 if d[0] == "struct":
@@ -216,6 +218,8 @@ class Gen:
             decls = t.decls if t.decls is not None else self.structs.get(name)
             if decls is None:
                 hn = pascal(name or "Handle")
+                if ptr == 2:
+                    return ("out_handle", hn, name, const)
                 return ("opaque", hn, name) if ptr == 0 else ("opaque_ptr", hn, name, const)
             tn = self.make_tuple(t)
             return ("struct", tn, name or tn) if ptr == 0 else ("struct_ptr", tn, name, const)
@@ -307,6 +311,7 @@ class Gen:
         if sc.get("skip"):
             raise Todo("skipped in bindgen.toml")
         out, i = [], 0
+        outh = None
         hs = set()
         self.fn_handles[name] = hs
         while i < len(params):
@@ -336,6 +341,12 @@ class Gen:
                     # const pointer to a scalar: an array of them, which is not supported yet
                     raise Todo(f"parameter '{pn}' is a const pointer to {d[2]} (an array input), which is not supported yet")
                 out.append(f"ref {pn}: {d[1]}")
+            elif k == "out_handle":
+                if outh is not None:
+                    raise Todo("more than one out-handle parameter is not supported")
+                outh = d[1]
+                out.append(f"ref {pn}: {d[1]}")
+                hs.add(d[1])
             elif k == "callback":
                 out.append(f"{pn}: {d[1]}")
             elif k == "opaque_ptr":
@@ -345,7 +356,14 @@ class Gen:
                 raise Todo(f"parameter '{pn}' has an unsupported type")
             i += 1
         rk = ret[0]
-        if rk == "void":
+        if outh is not None:
+            if rk == "void":
+                rtxt = f" {outh}"
+            elif rk == "scalar" and ret[1] in ("Int32", "Int", "Int64", "UInt32"):
+                rtxt = f" Result[{outh}, Error]"
+            else:
+                raise Todo("a function with an out-handle must return void or an int status")
+        elif rk == "void":
             rtxt = ""
         elif rk in ("scalar", "struct"):
             rtxt = " " + ret[1]

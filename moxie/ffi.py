@@ -263,6 +263,8 @@ def make_foreign(I, lib_name, d):
             cargs.append(cb_ctype(I, p.type))
         elif is_byte_array(p.type):
             cargs.append(ctypes.c_void_p)
+        elif is_out_handle(I, p):
+            cargs.append(ctypes.POINTER(ctypes.c_void_p))
         elif p.mod == "ref":
             ct = ctype_of(I, p.type)
             if ct is None:
@@ -275,12 +277,25 @@ def make_foreign(I, lib_name, d):
             cargs.append(ct)
     cfn.argtypes = cargs
     hret, _ = handle_result(I, d.ret)
+    if any(is_out_handle(I, p) for p in d.params or []):
+        if not hret:
+            raise Abort(f"'{d.name}' has an out-handle parameter, so it must return the handle: Result[H, Error] (C returns an int status, 0 is success) or H (C's result is ignored)")
+        cfn.restype = ctypes.c_int if handle_result(I, d.ret)[1] else None
+        return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, _decl_effects(d), I)
     cfn.restype = (ctypes.c_void_p if hret else ctype_of(I, d.ret)) if d.ret is not None and tname(d.ret) != "Unit" else None
     if d.ret is not None and tname(d.ret) != "Unit" and cfn.restype is None:
         raise Abort(f"the result of '{d.name}' cannot cross the foreign boundary")
+    return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, _decl_effects(d), I)
+
+
+def is_out_handle(I, p):
+    """`ref db: Db` where Db is a handle type: a C `Db **` that the call fills in; the caller does not supply it."""
+    return p.mod == "ref" and tname(p.type) in getattr(I, "handle_types", {})
+
+
+def _decl_effects(d):
     from .effects import Effects
-    dec = Effects.declared(d)
-    return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, dec, I)
+    return Effects.declared(d)
 
 
 def length_of(p):
@@ -297,7 +312,7 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
     named = dict(named or {})
     declared = f.params
     # which declared parameters the caller supplies: all but the length parameters
-    supplied = [p for p in declared if length_of(p) is None]
+    supplied = [p for p in declared if length_of(p) is None and not is_out_handle(I_of(f), p)]
     if len(pos) > len(supplied):
         raise Abort(f"{f.name} takes {len(supplied)} arguments but {len(pos)} were given", line)
     values = {}
@@ -316,7 +331,12 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
                 ref_by_param[supplied[key].name] = cname
         else:
             ref_by_param[key] = cname
+    outcell = None
     for p in declared:
+        if is_out_handle(I_of(f), p):
+            outcell = ctypes.c_void_p()
+            cargs.append(ctypes.byref(outcell))
+            continue
         n = length_of(p)
         if n is not None:
             arr = values.get(n)
@@ -367,6 +387,21 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         (scope or cenv).vars[cname] = newv
     if cbbox.get("exc") is not None:       # a callback aborted: C ran on with zeros; now the abort ends the call
         raise cbbox["exc"]
+    if outcell is not None:
+        hname, wrapped = handle_result(I_of(f), f.ret)
+        ptr = outcell.value
+        if wrapped:
+            status = int(r or 0)
+            if status != 0:
+                if ptr:                       # e.g. sqlite3_open leaves a handle that must still be closed
+                    HandleV(hname, ptr, I_of(f)).drop()
+                return Err(make_error(status, f"{f.name} failed with status {status}"))
+            if not ptr:
+                return Err(make_error(ERR_CODES["MISSING"], f"{f.name} gave no handle"))
+            return Ok(HandleV(hname, ptr, I_of(f)))
+        if not ptr:
+            raise Abort(f"{f.name} gave no handle", line)
+        return HandleV(hname, ptr, I_of(f))
     if f.closes:
         for p in declared:
             hv = values.get(p.name)

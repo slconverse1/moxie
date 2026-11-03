@@ -193,3 +193,13 @@ A foreign function with a callback cannot be `parks` (checked in `check.py` and
 effects count against the caller. `moxie bindgen` turns a function pointer with
 scalar/tuple parameters and result into a function type, and leaves the rest as
 todos. Tests: `tests/run_callbacks.py`.
+
+## Handle out-parameters
+
+A `ref p: H` parameter with `H` a handle type is a `void **` that `call_foreign` fills
+in (`ffi.is_out_handle`); the checker drops it (and length parameters) from the
+caller's argument list (`check.hidden_foreign_param`). A `Result[H, Error]` result
+reads C's `int` status (0 is success; otherwise `Err` with the status as the code,
+closing any handle C left); a plain `H` result ignores C's result and aborts on NULL.
+`moxie bindgen` turns `T **` to an opaque struct into such a parameter. Tests:
+`tests/run_handles.py`, `tests/run_bindgen.py`.
