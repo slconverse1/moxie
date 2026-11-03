@@ -1004,6 +1004,31 @@ for _n in range(2, 7):
     REG[f"curry{_n}"] = (_curry(_n), "first", False)
 
 
+@bi("uncurry")
+def b_uncurry(I, a, kw, ta):
+    """uncurry[n](g): the inverse of curry. g takes one argument and returns a function, n times over;
+    the result takes all n arguments at once.  n is a constant in brackets, like round_to[n]."""
+    if not ta:
+        raise Abort("uncurry needs its number of parameters in brackets, as in uncurry[2](g)")
+    n = I.run_sync(I.ev(ta[0][0].expr, I.module_env))
+    if not isinstance(n, int) or isinstance(n, bool) or n < 2:
+        raise Abort("uncurry[n] needs a constant n of 2 or more")
+    g = a[0]
+
+    def go(I2, a2, kw2, ta2):
+        if len(a2) != n:
+            raise Abort(f"this function was made by uncurry[{n}] and takes {n} arguments, not {len(a2)}")
+        return _apply_chain(I2, g, list(a2))
+    return Builtin(go, "uncurried", gen=True)
+
+
+def _apply_chain(I, g, args):
+    v = g
+    for x in args:
+        v = yield from I.apply(v, [x])
+    return v
+
+
 @bi("curry")
 def b_curry(I, a, kw, ta):
     """curry(f): any number of parameters (two or more), read from f's declaration."""

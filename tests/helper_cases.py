@@ -45,4 +45,15 @@ fn add7(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int) Int: a + b + c +
 println("${curry(add7)(1)(2)(3)(4)(5)(6)(7)}")
 println("${(curry(fn (a: Int, b: Int): a * b)(6))(7)}")
 ''', ["28", "42"], 0),
+("uncurry for any arity", '''
+fn add(a: Int, b: Int) Int: a + b
+fn add4(a: Int, b: Int, c: Int, d: Int) Int: a + b + c + d
+sums = zip_with(uncurry[2](curry(add)), List(1, 2, 3), List(10, 20, 30)) |> collect()
+println("$sums")
+println("${uncurry[4](curry(add4))(1, 2, 3, 4)}")
+''', ["List(11, 22, 33)", "10"], 0),
+("uncurry with the wrong argument count aborts", '''
+fn add(a: Int, b: Int) Int: a + b
+println("${uncurry[2](curry(add))(1)}")
+''', [], 1),
 ]
