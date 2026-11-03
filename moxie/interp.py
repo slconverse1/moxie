@@ -122,7 +122,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return 0
 
     DECL_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "ImplDecl", "AliasDecl",
-                  "ImportDecl", "UsingDecl", "TestDecl", "Assign")
+                  "ImportDecl", "UsingDecl", "TestDecl", "Assign", "ForeignDecl")
 
     EFFECTS = {"println", "print", "dbg", "sql", "read", "write", "sleep", "run", "transaction"}
 

@@ -116,3 +116,25 @@ declaration at run time (`curry2` to `curry6` remain). `uncurry[n](g)` is the
 inverse, with `n` a constant in brackets (2 or more, no upper limit); calling the
 result with another number of arguments aborts. The checker has no special
 typing rule for either yet.
+
+## Foreign functions and `moxie bindgen` (first version)
+
+`foreign "lib":` blocks of body-less declarations call C libraries through
+`ctypes` (`moxie/ffi.py`). Every declaration needs an effect (`pure`, `prints`,
+`parks`, `impure`); a missing one is a compile error, and the declared effects
+are what the checker uses for callers. Supported across the boundary: fixed-width
+integers, `Int`/`UInt`, `Float`, `Double`, `Bool`, tuples of those (C structs, by
+value), `Array[Byte]` (a pointer, with `n: T = len(name)` as the length that the
+call fills in, and `ref` for a writable buffer), `CString` (made by `cstr(text)`),
+and `ref` out-parameters of scalars and tuples. A library is found by its name,
+in the program's directory (`libNAME.so`), or in `MOXIE_NATIVE_PATH`. Not yet
+built: handles as resources, callbacks, running `parks` functions on a helper
+thread (they run inline), and reading `[native]` from a manifest. Tests:
+`tests/run_ffi.py`.
+
+    moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [-D X] [-I DIR]
+
+writes the declarations from a C header (needs `gcc` and `pip install pycparser`).
+Corrections go in `bindgen.toml` next to the output: `[functions.NAME]` with
+`effects`, `skip`, or `pair = ["buf", "len"]`. Functions it cannot declare are
+left as `// todo:` comments and listed in its report. Tests: `tests/run_bindgen.py`.

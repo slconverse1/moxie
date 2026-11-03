@@ -37,6 +37,15 @@ class DeclsMixin:
         return UNIT
         yield
 
+    def ev_ForeignDecl(self, n, env):
+        from .ffi import make_foreign
+        for d in n.fns:
+            env.vars[d.name] = make_foreign(self, n.lib, d)
+            for f in d.flags or ():
+                if f in ("export", "internal"):
+                    self.note_export(env, d.name, f)
+        return Done(UNIT)
+
     def ev_ForwardDecl(self, n, env):
         return Done(UNIT)
 

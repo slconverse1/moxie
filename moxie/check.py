@@ -137,6 +137,10 @@ class Checker:
         elif c is FnGroup:
             self.fns[st.name] = list(st.clauses or [])
             self.globals.add(st.name)
+        elif c is ForeignDecl:
+            for d in st.fns:
+                self.fns[d.name] = [d]
+                self.globals.add(d.name)
         elif c is AliasDecl:
             self.aliases[st.name] = st
             self.globals.add(st.name)
@@ -1190,6 +1194,13 @@ class Checker:
                                  "the contract belongs to the interface")
             inner = Sc(sc, open_=True)
             self.ev(m, inner)
+        return None, None
+
+    def e_ForeignDecl(self, n, sc):
+        from .effects import Effects
+        for d in n.fns:
+            if Effects.declared(d) is None:
+                self.err(d.line, f"foreign fn '{d.name}' needs an effect declaration: pure, prints, parks, or impure")
         return None, None
 
     def e_IfaceDecl(self, n, sc):

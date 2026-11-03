@@ -82,6 +82,13 @@ def b_dbg(I, a, kw, ta):
     return a[0]
 
 
+@bi("cstr")
+def b_cstr(I, a, kw, ta):
+    """cstr(text): a NUL-terminated copy of a String, for a foreign function."""
+    from .ffi import CStringV
+    return CStringV(a[0].encode("utf-8") + b"\0")
+
+
 @bi("trace")
 def b_trace(I, a, kw, ta):
     """A debug message to the error stream; exempt from effect inference; off under --release."""

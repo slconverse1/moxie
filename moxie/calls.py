@@ -722,6 +722,9 @@ class CallsMixin:
             return self.call_closure(f, pos, named, refspec, env, targs, line)
         if k is Builtin:
             return self.call_builtin(f, pos, named, targs, line)
+        if k.__name__ == "ForeignFn":
+            from .ffi import call_foreign
+            return Done(call_foreign(self, f, pos, named, refspec, env, line))
         if k is PartialV:
             return self.apply(f.fn, f.pre + list(pos) + f.post, named, refspec, env, targs, None, line)
         if k is ComposeV:

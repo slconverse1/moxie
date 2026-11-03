@@ -5,6 +5,8 @@ import sys
 USAGE = """usage: moxie [--gc] [--release] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
+       moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
+                                    write foreign declarations from a C header
        moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
                                     generate documentation from /// comments; checks examples
        moxie -e 'code'              run a snippet
@@ -39,6 +41,9 @@ def main(argv=None):
         I = make_interp(None, [])
         return I.run_source(argv[1], "<-e>")
     cmd = argv[0]
+    if cmd == "bindgen":
+        from .bindgen import main as bg_main
+        return bg_main(argv[1:])
     if cmd == "doc":
         from .doc import doc_main
         return doc_main(argv[1:], lambda: make_interp(argv[1] if len(argv) > 1 else None, []),

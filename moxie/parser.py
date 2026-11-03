@@ -51,6 +51,8 @@ class Parser(ExprParser):
                 d = self.try_decl()
                 if d is not None:
                     return d
+            if v == "foreign" and self.peek(1).kind == "STR" and self.at_op(":", 2):
+                return self.parse_foreign()
             if v == "import":
                 return self.parse_import()
             if v == "type" and self.peek(1).kind == "NAME" and self.peek(1).val in ("alias", "opaque", "union"):
@@ -370,6 +372,27 @@ class Parser(ExprParser):
             contracts = self.parse_contract_lines(("requires", "ensures"))
             self.expect_dedent()
         return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, contracts, line=line)
+
+    def parse_foreign(self):
+        """foreign "lib": a block of body-less function declarations (Spec 19a)."""
+        line = self.next().line
+        lib = "".join(x for x in self.next().val if isinstance(x, str))
+        self.expect_op(":")
+        self.expect_nl_indent()
+        fns = []
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            d = self.try_decl()
+            if d is None or d.__class__ is not FnDecl:
+                self.err("expected a foreign function declaration")
+            if d.body is not None:
+                self.err("a foreign function has no body", self.peek())
+            fns.append(d)
+            self.end_line()
+        self.expect_dedent()
+        return ForeignDecl(lib, fns, line=line)
 
     def parse_contract_lines(self, kws):
         """Leading `requires EXPR` / `ensures EXPR` / `invariant EXPR` lines of a block."""
