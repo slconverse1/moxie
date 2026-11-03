@@ -104,6 +104,8 @@ class IoV:
 
     def write(self, s):
         self.f.write(s.encode("utf-8"))
+        if self.kind == "socket":          # a socket sends each write at once
+            self.f.flush()
 
     def flush(self):
         self.f.flush()
@@ -339,6 +341,8 @@ def b_write_bytes(I, a, kw, ta):
         raise Abort("write_bytes needs an open file or socket")
     try:
         h.f.write(bytes(int(x) for x in a[1].items))
+        if h.kind == "socket":
+            h.f.flush()
     except OSError as e:
         return io_error(e)
     return Ok(UNIT)
