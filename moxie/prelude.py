@@ -216,9 +216,7 @@ def _prompt_flush(I):
         pass
 
 
-def _read_line(I, a):
-    f = _inp(I, a)
-    _prompt_flush(I)
+def _read_line_f(f):
     try:
         raw = f.buffer.readline() if hasattr(f, "buffer") else f.readline()
     except OSError as e:
@@ -240,22 +238,42 @@ def _read_line(I, a):
     return Ok(line)
 
 
-@bi("read_line")
+def _blocking(I, f, fn):
+    """Run a blocking read: inline when the source is in memory, else on a helper thread."""
+    import io as _io
+    if isinstance(f, (_io.BytesIO, _io.StringIO)):
+        return Done(fn())
+    return S_.park_thread(I, fn)
+
+
+def _read_line(I, a):
+    f = _inp(I, a)
+    _prompt_flush(I)
+    return (yield from _blocking(I, f, lambda: _read_line_f(f)))
+
+
+@bi("read_line", "first", True)
 def b_read_line(I, a, kw, ta):
-    return _read_line(I, a)
+    return (yield from _read_line(I, a))
 
 
-@bi("read_all")
+@bi("read_all", "first", True)
 def b_read_all(I, a, kw, ta):
     f = _inp(I, a)
     _prompt_flush(I)
-    raw = f.buffer.read() if hasattr(f, "buffer") else f.read()
-    if isinstance(raw, str):
-        raw = raw.encode("utf-8")
-    try:
-        return Ok(raw.decode("utf-8"))
-    except UnicodeDecodeError:
-        return err_reserved("BAD_ENCODING", "input is not valid UTF-8")
+
+    def work():
+        try:
+            raw = f.buffer.read() if hasattr(f, "buffer") else f.read()
+        except OSError as e:
+            return io_error(e)
+        if isinstance(raw, str):
+            raw = raw.encode("utf-8")
+        try:
+            return Ok(raw.decode("utf-8"))
+        except UnicodeDecodeError:
+            return err_reserved("BAD_ENCODING", "input is not valid UTF-8")
+    return (yield from _blocking(I, f, work))
 
 
 class StdinLinesIter:
@@ -265,12 +283,12 @@ class StdinLinesIter:
         self.I, self.a = I, list(a)
 
     def nxt(self):
-        r = _read_line(self.I, self.a)
+        r = yield from _read_line(self.I, self.a)
         if r.case == "Ok":
-            return Done(r.vals[0])
+            return r.vals[0]
         if r.vals[0].vals[0] == ERR_CODES["CLOSED"]:
-            return Done(END)
-        raise Abort("stdin_lines: " + r.vals[0].vals[1])
+            return END
+        raise Abort("lines: " + r.vals[0].vals[1])
 
 
 @bi("stdin_lines")
@@ -323,13 +341,18 @@ def b_write_file(I, a, kw, ta):
     return Ok(UNIT)
 
 
-@bi("read_bytes")
+@bi("read_bytes", "first", True)
 def b_read_bytes(I, a, kw, ta):
     f = _inp(I, a)
-    try:
-        raw = (f.buffer if hasattr(f, "buffer") else f).read(int(a[1]))
-    except OSError as e:
-        return io_error(e)
+
+    def work():
+        try:
+            return (f.buffer if hasattr(f, "buffer") else f).read(int(a[1]))
+        except OSError as e:
+            return e
+    raw = yield from _blocking(I, f, work)
+    if isinstance(raw, OSError):
+        return io_error(raw)
     cls = INT_CLASSES.get("UInt8")
     return Ok(ArrayV([cls(b) if cls else b for b in raw]))
 
@@ -348,15 +371,21 @@ def b_write_bytes(I, a, kw, ta):
     return Ok(UNIT)
 
 
-@bi("connect")
+@bi("connect", "first", True)
 def b_connect(I, a, kw, ta):
     import socket
-    try:
-        s = socket.create_connection((a[0], int(a[1])), timeout=30)
-        s.settimeout(None)
-        return Ok(IoV(I, "socket", s.makefile("rwb"), s))
-    except OSError as e:
-        return io_error(e, f"{a[0]}:{a[1]}")
+
+    def work():
+        try:
+            s = socket.create_connection((a[0], int(a[1])), timeout=30)
+            s.settimeout(None)
+            return s
+        except OSError as e:
+            return e
+    s = yield from S_.park_thread(I, work)
+    if isinstance(s, OSError):
+        return io_error(s, f"{a[0]}:{a[1]}")
+    return Ok(IoV(I, "socket", s.makefile("rwb"), s))
 
 
 @bi("listen")
@@ -377,16 +406,21 @@ def b_port_of(I, a, kw, ta):
     return a[0].sock.getsockname()[1]
 
 
-@bi("accept")
+@bi("accept", "first", True)
 def b_accept(I, a, kw, ta):
     l = a[0]
     if not isinstance(l, ListenerV) or l.closed:
         raise Abort("accept needs an open Listener")
-    try:
-        c, _ = l.sock.accept()
-        return Ok(IoV(I, "socket", c.makefile("rwb"), c))
-    except OSError as e:
-        return io_error(e)
+
+    def work():
+        try:
+            return l.sock.accept()[0]
+        except OSError as e:
+            return e
+    c = yield from S_.park_thread(I, work)
+    if isinstance(c, OSError):
+        return io_error(c)
+    return Ok(IoV(I, "socket", c.makefile("rwb"), c))
 
 
 @bi("with_stdin", "first", True)

@@ -129,8 +129,7 @@ call fills in, and `ref` for a writable buffer), `CString` (made by `cstr(text)`
 and `ref` out-parameters of scalars and tuples. A library is found by its name,
 in the program's directory (`libNAME.so`), or in `MOXIE_NATIVE_PATH`. Not yet
 built: handles through out-parameters, a pool tally for handles, callbacks, running
-`parks` functions on a helper thread (they run inline), and reading `[native]`
-from a manifest. Tests: `tests/run_ffi.py`.
+and reading `[native]` from a manifest. Tests: `tests/run_ffi.py`.
 
 Handles: `handle Name closes fn` in a `foreign` block makes `Name` an opaque
 pointer type (`HandleV` in `ffi.py`). The checker treats a function that returns
@@ -168,5 +167,16 @@ sockets. `open_file(path, mode)` takes the prelude enum `FileMode`
 `port_of`, `accept` are builtins, all `parks` in `effects.py`. The checker treats
 `open_file`, `connect`, `listen`, `accept` as resource makers and `Io`/`Listener`
 as resource types. Errors map to `NOT_FOUND`, `DENIED`, `IO_ERROR`. Anything
-still open at program end is closed. Calls block the whole process (no helper
-thread yet). Tests: `tests/run_io.py`.
+still open at program end is closed. Blocking calls use helper threads (see below). Tests: `tests/run_io.py`.
+
+## Helper threads
+
+`sched.park_thread(I, fn)` (use `r = yield from park_thread(I, fn)`) runs `fn()` on a
+daemon thread while the calling fiber is blocked; the scheduler keeps running
+other fibers, and its loop drains finished calls from a queue. When nothing else is
+ready and calls are in flight, it waits for one in real time before advancing
+virtual time, and in-flight calls are not a deadlock. Exceptions are carried back
+(`ExtFail`) and re-raised in the fiber. Used by `read_line`, `read_all`,
+`read_bytes`, `lines`, `connect`, `accept` (in-memory input, as in `with_stdin`,
+stays inline) and by foreign functions declared `parks` (`ffi.call_foreign` is now
+a generator). The thread function must not touch interpreter state.

@@ -1,11 +1,30 @@
 """Cooperative scheduler, channels, timers, futures, atoms, select and run."""
 import heapq
+import queue
+import threading
 from collections import deque
 from .ast import *   # noqa
 from .values import *   # noqa
 from .core import *   # noqa
 from .calls import END, USING, SLOT, NOPIPE
 from .streams import StreamV
+
+
+class ExtFail:
+    """Carries an exception raised on a helper thread back to the fiber that was waiting."""
+    __slots__ = ("exc",)
+
+    def __init__(self, exc):
+        self.exc = exc
+
+
+def park_thread(I, fn):
+    """Run `fn()` on a helper thread while the calling fiber parks; the other fibers keep running.
+    Use as `r = yield from park_thread(I, fn)`.  `fn` must not touch interpreter state."""
+    r = yield ("ext", fn)
+    if isinstance(r, ExtFail):
+        raise r.exc
+    return r
 
 
 class Fiber:
@@ -231,6 +250,30 @@ class Scheduler:
         self.cur = None
         self.nextid = 1
         self.entry = None
+        self.ext = 0                 # helper-thread calls in flight
+        self.extq = queue.Queue()
+
+    def start_ext(self, f, fn):
+        self.ext += 1
+        q = self.extq
+
+        def work():
+            try:
+                q.put((f, fn(), None))
+            except BaseException as e:      # noqa: reported to the waiting fiber
+                q.put((f, None, e))
+        threading.Thread(target=work, daemon=True).start()
+
+    def drain_ext(self, block):
+        """Wake the fibers whose helper-thread calls have finished (waiting for the first if `block`)."""
+        while self.ext:
+            try:
+                f, r, e = self.extq.get(block=block)
+            except queue.Empty:
+                return
+            block = False
+            self.ext -= 1
+            self.wake(f, ExtFail(e) if e is not None else r)
 
     # -------------------------------------------------------------- spawn / wake
     def spawn(self, gen, name, entry=False):
@@ -318,7 +361,12 @@ class Scheduler:
         main = self.spawn(gen, "main", entry=True)
         I.cur_fiber = main
         while not main.done:
+            if self.ext:
+                self.drain_ext(False)
             if not self.ready:
+                if self.ext:                 # real time: wait for a helper thread before advancing virtual time
+                    self.drain_ext(True)
+                    continue
                 if not self.advance():
                     raise ProgramExit(1, "deadlock: every fiber is waiting and nothing can wake them")
                 continue
@@ -367,6 +415,9 @@ class Scheduler:
             heapq.heappush(self.sleepers, (self.now + req[1], self.seq, f))
         elif k == "block":
             f.state = "blocked"
+        elif k == "ext":
+            f.state = "blocked"
+            self.start_ext(f, req[1])
         else:
             raise RuntimeError(f"unknown scheduler request {req}")
 

@@ -219,7 +219,9 @@ def make_foreign(I, lib_name, d):
     cfn.restype = (ctypes.c_void_p if hret else ctype_of(I, d.ret)) if d.ret is not None and tname(d.ret) != "Unit" else None
     if d.ret is not None and tname(d.ret) != "Unit" and cfn.restype is None:
         raise Abort(f"the result of '{d.name}' cannot cross the foreign boundary")
-    return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, None, I)
+    from .effects import Effects
+    dec = Effects.declared(d)
+    return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, dec, I)
 
 
 def length_of(p):
@@ -232,6 +234,7 @@ def length_of(p):
 
 
 def call_foreign(I, f, pos, named, refspec, cenv, line):
+    """A generator: a `parks` function runs on a helper thread while its fiber waits."""
     named = dict(named or {})
     declared = f.params
     # which declared parameters the caller supplies: all but the length parameters
@@ -278,7 +281,11 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
                 outs.append((p, obj, ref_by_param[p.name]))
         else:
             cargs.append(to_c(I_of(f), p.type, v))
-    r = f.cfn(*cargs)
+    if f.effects and "parks" in f.effects:
+        from .sched import park_thread
+        r = yield from park_thread(I, lambda: f.cfn(*cargs))
+    else:
+        r = f.cfn(*cargs)
     for o in outs:
         p, obj, cname = o[0], o[1], o[2]
         if len(o) > 3:                       # a writable byte buffer: copy the bytes back

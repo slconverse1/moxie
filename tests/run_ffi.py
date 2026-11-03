@@ -45,6 +45,13 @@ for name, body, rc_want, word in CASES:
     good = (rc == rc_want or (rc_want == 2 and rc != 0)) and word in o
     print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} {o.strip()[:150]}"))
     if not good: fails.append(name)
+SLOW = 'foreign "c":\n  parks fn usleep(us: UInt32) Int32\nfn slow(tx: ChanW[Int]):\n  usleep(300000u32)\n  write(tx, 1)\nfn ticker(tx: ChanW[Int]):\n  for i in 1..=3:\n    write(tx, i * 10)\nrx, tx = Chan[Int][8]()\nrx2, tx2 = Chan[Int][8]()\nrun slow(tx)\nrun ticker(tx2)\nprintln(read(rx2)?)\nprintln(read(rx2)?)\nprintln(read(rx2)?)\nprintln(read(rx)?)\n'
+import time
+t0 = time.time()
+rc, o = run(SLOW)
+good = rc == 0 and o.split() == ["10", "20", "30", "1"]
+print(("ok    " if good else "FAIL  ") + "a parks foreign function lets other fibers run")
+if not good: fails.append("parks thread")
 rc, o = run(HDR + 'println("${crc32(0u32, b"hello")}")\n', "--gc")
 print(("ok    " if rc == 0 and "907060870" in o else "FAIL  ") + "moxie/gc mode")
 if not (rc == 0 and "907060870" in o): fails.append("gc")
