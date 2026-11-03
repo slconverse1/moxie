@@ -12,7 +12,7 @@ RES_MAKERS = {"Chan", "Timer", "clone"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
                "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",
-               "Locale", "Connection", "true", "false"}
+               "Locale", "Connection", "true", "false", "stdin", "stdout", "stderr"}
 
 
 INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte", "BigInt"}

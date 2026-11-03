@@ -147,3 +147,13 @@ writes the declarations from a C header (needs `gcc` and `pip install pycparser`
 Corrections go in `bindgen.toml` next to the output: `[functions.NAME]` with
 `effects`, `skip`, or `pair = ["buf", "len"]`. Functions it cannot declare are
 left as `// todo:` comments and listed in its report. Tests: `tests/run_bindgen.py`.
+
+## Standard input and output
+
+`stdin`, `stdout`, `stderr` are `StdStream` values in `prelude.py` (borrowed:
+never moved or closed). `print`/`println` take an optional stream first;
+`eprint`/`eprintln`, `flush`, `read_line()`, `read_all()`, `stdin_lines()` and
+`with_stdin(text, f)` are builtins. The reads are `parks` in `effects.py`. The
+interpreter reads `Interp.inp` (default `sys.stdin`; tests pass their own).
+Input is UTF-8; bad bytes give `Err` code `BAD_ENCODING`. Tests:
+`tests/run_stdio.py`.

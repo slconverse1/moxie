@@ -23,6 +23,7 @@ def bi(name, pos="first", gen=False):
 
 def install_prelude(I):
     env = I.prelude
+    env.vars["stdin"], env.vars["stdout"], env.vars["stderr"] = STDIN, STDOUT, STDERR
     for name, (fn, pos, gen) in REG.items():
         b = Builtin(fn, name, gen)
         b.pre = pos
@@ -63,17 +64,157 @@ from .interp import Interp as _I  # noqa  (circular-safe: attached after class c
 
 
 # ---------------------------------------------------------------- output
+class StdStream:
+    """standard input, output or error: a value the runtime owns (borrowed, never moved or closed)."""
+    __slots__ = ("kind",)
+    tname_ = "Stdio"
+
+    def __init__(self, kind):
+        self.kind = kind
+
+    def drop(self, sched=None):
+        raise Abort(f"{self.kind} belongs to the runtime and cannot be closed")
+
+    def __repr__(self):
+        return self.kind
+
+
+STDIN, STDOUT, STDERR = StdStream("stdin"), StdStream("stdout"), StdStream("stderr")
+
+
+def _sink(I, h):
+    if h is STDOUT:
+        return I.out
+    if h is STDERR:
+        return I.err
+    raise Abort(f"cannot write to {h.kind if isinstance(h, StdStream) else type_name(h)}")
+
+
+def _emit(I, a, nl):
+    if len(a) >= 2 and isinstance(a[0], StdStream):
+        s = display(a[1], I)
+        sink = _sink(I, a[0])
+    else:
+        s = display(a[0], I) if a else ""
+        sink = I.out
+    sink.write(s + ("\n" if nl else ""))
+    return UNIT
+
+
 @bi("println")
 def b_println(I, a, kw, ta):
-    s = display(a[0], I) if a else ""
-    I.out.write(s + "\n")
-    return UNIT
+    return _emit(I, a, True)
 
 
 @bi("print")
 def b_print(I, a, kw, ta):
-    I.out.write(display(a[0], I) if a else "")
+    return _emit(I, a, False)
+
+
+@bi("eprintln")
+def b_eprintln(I, a, kw, ta):
+    return _emit(I, [STDERR, a[0] if a else ""], True)
+
+
+@bi("eprint")
+def b_eprint(I, a, kw, ta):
+    return _emit(I, [STDERR, a[0] if a else ""], False)
+
+
+@bi("flush")
+def b_flush(I, a, kw, ta):
+    for s in ([_sink(I, a[0])] if a else [I.out, I.err]):
+        try:
+            s.flush()
+        except Exception:
+            pass
     return UNIT
+
+
+def _inp(I, a):
+    if a and a[0] is not STDIN:
+        raise Abort("a read needs stdin")
+    return I.inp
+
+
+def _prompt_flush(I):
+    try:
+        if I.out.isatty():
+            I.out.flush()
+    except Exception:
+        pass
+
+
+def _read_line(I, a):
+    f = _inp(I, a)
+    _prompt_flush(I)
+    try:
+        raw = f.buffer.readline() if hasattr(f, "buffer") else f.readline()
+    except Exception as e:
+        return err_reserved("CLOSED", str(e))
+    if isinstance(raw, str):
+        raw = raw.encode("utf-8")
+    if not raw:
+        return err_reserved("CLOSED", "end of input")
+    try:
+        line = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return err_reserved("BAD_ENCODING", "input is not valid UTF-8")
+    if line.endswith("\n"):
+        line = line[:-1]
+        if line.endswith("\r"):
+            line = line[:-1]
+    return Ok(line)
+
+
+@bi("read_line")
+def b_read_line(I, a, kw, ta):
+    return _read_line(I, a)
+
+
+@bi("read_all")
+def b_read_all(I, a, kw, ta):
+    f = _inp(I, a)
+    _prompt_flush(I)
+    raw = f.buffer.read() if hasattr(f, "buffer") else f.read()
+    if isinstance(raw, str):
+        raw = raw.encode("utf-8")
+    try:
+        return Ok(raw.decode("utf-8"))
+    except UnicodeDecodeError:
+        return err_reserved("BAD_ENCODING", "input is not valid UTF-8")
+
+
+class StdinLinesIter:
+    __slots__ = ("I",)
+
+    def __init__(self, I):
+        self.I = I
+
+    def nxt(self):
+        r = _read_line(self.I, [])
+        if r.case == "Ok":
+            return Done(r.vals[0])
+        if r.vals[0].vals[0] == ERR_CODES["CLOSED"]:
+            return Done(END)
+        raise Abort("stdin_lines: " + r.vals[0].vals[1])
+
+
+@bi("stdin_lines")
+def b_stdin_lines(I, a, kw, ta):
+    return StreamV(lambda: StdinLinesIter(I))
+
+
+@bi("with_stdin", "first", True)
+def b_with_stdin(I, a, kw, ta):
+    """with_stdin(text, f): run f() with `text` as standard input (for tests and doctests)."""
+    import io as _io
+    saved = I.inp
+    I.inp = _io.BytesIO(a[0].encode("utf-8") if isinstance(a[0], str) else bytes(a[0]))
+    try:
+        return (yield from I.apply(a[1], [], {}))
+    finally:
+        I.inp = saved
 
 
 @bi("dbg")

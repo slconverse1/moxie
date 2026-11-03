@@ -13,7 +13,8 @@ from .parser import parse_program
 
 
 class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
-    def __init__(self, out=None, err=None, search_dir=None, test_mode=False):
+    def __init__(self, out=None, err=None, search_dir=None, test_mode=False, inp=None):
+        self.inp = inp if inp is not None else sys.stdin
         self.out = out if out is not None else sys.stdout
         self.err = err if err is not None else sys.stderr
         self.search_dir = search_dir
