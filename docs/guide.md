@@ -888,7 +888,7 @@ add_n = make_adder(10)
 println("${scale(6)} ${add_n(5)}")
 ```
 
-Output: `30 15`. The prelude has `curry2` to `curry6`, and pipelines and closures cover the rest, so these five all give 100:
+Output: `30 15`. The prelude has `curry(f)`, which works for a function of any number of parameters (`curry2` to `curry6` are older names for it), and pipelines and closures cover the rest, so these five all give 100:
 
 ```
 curried = curry2(add)
