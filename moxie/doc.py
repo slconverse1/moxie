@@ -204,6 +204,15 @@ def _inline(s):
     return re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
 
 
+def effect_label(it):
+    """How a function's effects are shown: promised by the mixer, or only inferred."""
+    inferred = ", ".join(it.effects) if it.effects else "pure"
+    if it.declared:
+        d = ", ".join(it.declared)
+        return f"declared {d}" + ("" if it.declared == ["impure"] or d == inferred else f" (inferred: {inferred})")
+    return f"inferred, not promised: {inferred}"
+
+
 def md_to_html(lines):
     out, para, ul, code = [], [], False, None
 
@@ -300,7 +309,7 @@ def render_html(title, module_doc, items, results):
                 lab = f" <span class=k>({html.escape(label)})</span>" if label else ""
                 o.append(f'<div class=c><code>{kw} {html.escape(cond)}</code>{lab}</div>')
         if it.effects is not None:
-            o.append("<p><b>Effects:</b> " + (html.escape(", ".join(it.effects)) if it.effects else "pure") + "</p>")
+            o.append("<p><b>Effects:</b> " + html.escape(effect_label(it)) + "</p>")
         if it.implementors:
             o.append("<p><b>Implementors</b></p><ul>" + "".join(f"<li><code>{html.escape(i)}</code></li>" for i in it.implementors) + "</ul>")
         if res.get(id(it)):
@@ -331,7 +340,7 @@ def render_md(title, module_doc, items, results):
                 o.append(f"- `{kw} {cond}`" + (f" ({label})" if label else ""))
             o.append("")
         if it.effects is not None:
-            o += ["**Effects:** " + (", ".join(it.effects) if it.effects else "pure"), ""]
+            o += ["**Effects:** " + effect_label(it), ""]
         if it.implementors:
             o += ["**Implementors**", ""] + [f"- `{i}`" for i in it.implementors] + [""]
         if res.get(id(it)):
@@ -413,6 +422,8 @@ def doc_main(argv, make_interp, out, err):
         for it in shown:
             if it.exported and not any(l.strip() for l in it.doc):
                 err.write(f"{path}: warning: {it.kind} {it.name} has no doc comment\n")
+            if it.exported and it.kind == "fn" and not it.declared:
+                err.write(f"{path}: warning: fn {it.name} is exported without an effect declaration (pure, prints, parks, impure)\n")
         out.write(f"{len(results) - len(bad)} examples ok, {len(bad)} failed, {len(errs)} broken links\n")
         return 1 if bad or errs else 0
     return 1 if bad else 0

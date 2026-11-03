@@ -10,7 +10,7 @@
 /// 212
 /// > to_f(0)
 /// 32
-export fn to_f(c: Int) Int:
+export pure fn to_f(c: Int) Int:
   requires c >= -273
   ensures result >= -459
   c * 9 / 5 + 32
@@ -38,16 +38,16 @@ export interface Summary:
 ///
 /// > describe(Reading(20, "lab"))
 /// "lab: 20C"
-export fn describe(r: Reading) String:
+export pure fn describe(r: Reading) String:
   "${r.label}: ${r.celsius}C"
 
 /// Returns one.
 ///
 /// > to_f(10)
 /// 50
-export fn one() Int:
+export pure fn one() Int:
   1
 
 /// Prints a greeting.
-export fn greet(name: String) Unit:
+export prints fn greet(name: String) Unit:
   println("hello $name")
