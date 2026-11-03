@@ -1,0 +1,10 @@
+// Send each line typed on stdin to a server and print the reply.
+// Try: moxie run examples/stdin_to_socket.mxi localhost 7000 < lines.txt
+host = args(0)
+port = read[Int](args(1))?
+conn = connect(host, port)?
+for line in lines(stdin):
+  println(conn, line)
+  reply = read_line(conn)?
+  println("sent '${line}', got '${reply}'")
+close(conn)
