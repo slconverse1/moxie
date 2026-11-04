@@ -37,12 +37,89 @@ def pascal(name):
     return "".join(p[0].upper() + p[1:] for p in parts) or "T"
 
 
+EFFECT_VALUES = ("pure", "prints", "parks", "impure", "prints parks", "parks prints")
+FUNCTION_KEYS = {"effects": "one of " + ", ".join(f'"{e}"' for e in EFFECT_VALUES),
+                 "skip": "true or false", "pair": 'a list of two names, ["buf", "len"]',
+                 "returns": '"status" or "value"', "outs": "a list of parameter names", "rename": "a name"}
+HANDLE_KEYS = {"closes": "the name of a C function"}
+TOP_KEYS = {"lib": "the library name", "functions": "tables, one per C function",
+            "handles": "tables, one per handle type"}
+
+
+class SidecarError(Exception):
+    pass
+
+
+def _suggest(word, choices):
+    import difflib
+    m = difflib.get_close_matches(word, list(choices), n=1)
+    return f" (did you mean '{m[0]}'?)" if m else ""
+
+
+def validate_sidecar(side):
+    """Check the shape of bindgen.toml; returns a list of problems (empty when it is fine)."""
+    errs = []
+    for k in side:
+        if k not in TOP_KEYS:
+            errs.append(f"unknown key '{k}'{_suggest(k, TOP_KEYS)}; the keys are lib, [functions.NAME], and [handles.TYPE]")
+    if "lib" in side and not isinstance(side["lib"], str):
+        errs.append("lib must be a string")
+    for tbl, keys in (("functions", FUNCTION_KEYS), ("handles", HANDLE_KEYS)):
+        t = side.get(tbl, {})
+        if not isinstance(t, dict):
+            errs.append(f"[{tbl}] must be a table of tables, such as [{tbl}.NAME]")
+            continue
+        for name, spec in t.items():
+            if not isinstance(spec, dict):
+                errs.append(f"[{tbl}.{name}] must be a table")
+                continue
+            for k, v in spec.items():
+                if k not in keys:
+                    errs.append(f"[{tbl}.{name}]: unknown key '{k}'{_suggest(k, keys)}; the keys are {', '.join(keys)}")
+                    continue
+                ok = True
+                if k == "effects":
+                    ok = v in EFFECT_VALUES
+                elif k == "skip":
+                    ok = isinstance(v, bool)
+                elif k == "pair":
+                    ok = isinstance(v, list) and len(v) == 2 and all(isinstance(x, str) for x in v)
+                elif k == "returns":
+                    ok = v in ("status", "value")
+                elif k == "outs":
+                    ok = isinstance(v, list) and all(isinstance(x, str) for x in v)
+                elif k in ("rename", "closes"):
+                    ok = isinstance(v, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", v) is not None
+                if not ok:
+                    errs.append(f"[{tbl}.{name}]: {k} must be {keys[k]}")
+    return errs
+
+
 def load_sidecar(path):
     if path and os.path.exists(path):
         import tomllib
-        with open(path, "rb") as f:
-            return tomllib.load(f)
+        try:
+            with open(path, "rb") as f:
+                side = tomllib.load(f)
+        except tomllib.TOMLDecodeError as e:
+            raise SidecarError(f"{path}: {e}")
+        errs = validate_sidecar(side)
+        if errs:
+            raise SidecarError("\n".join(f"{path}: {e}" for e in errs))
+        return side
     return {}
+
+
+def unused_sidecar(side, decls, handles_used, all_c_functions):
+    """Entries that match nothing: usually a typo, or a function the library dropped."""
+    out = []
+    for name in side.get("functions", {}):
+        if name not in all_c_functions:
+            out.append(f"[functions.{name}] matches no function in the header{_suggest(name, all_c_functions)}")
+    for name in side.get("handles", {}):
+        if name not in handles_used:
+            out.append(f"[handles.{name}] matches no handle type in the generated bindings{_suggest(name, handles_used)}")
+    return out
 
 
 def preprocess(header, defines, includes):
@@ -103,6 +180,7 @@ class Gen:
         self.side = side
         self.typedefs = {}      # name -> node (the TypeDecl inside)
         self.fn_info = {}       # function -> facts for --wrap
+        self.c_functions = set()  # every function the header declares
         self.fn_handles = {}    # function -> handle types it mentions
         self.structs = {}       # struct tag -> list of (field, type node) or None (opaque)
         self.enums = []         # (name, value)
@@ -402,8 +480,6 @@ class Gen:
         else:
             raise Todo("the result is a pointer, which is not supported yet")
         eff = sc.get("effects", "impure")
-        if eff not in ("pure", "prints", "parks", "impure", "prints parks", "parks prints"):
-            eff = "impure"
         info.update(eff=eff, rtxt=rtxt.strip(), rk=rk, rt=ret[1] if len(ret) > 1 else None, sc=sc)
         self.fn_info[name] = info
         return f"internal {eff} fn {name}({', '.join(out)}){rtxt}"
@@ -416,11 +492,12 @@ OUT_NAMES = re.compile(r"^(out|result|res|ret)$|(^|_)(out|result|res|ret)$|^p?ou
 STATUS_TYPES = ("Int32", "Int", "Int64", "UInt32")
 
 
-def wrapper_names(decls, lib, taken):
+def wrapper_names(decls, lib, taken, side=None):
     """The exported name for each raw function: the library prefix removed, or `lib_name` when that would clash."""
     from .prelude import REG
     pre = re.sub(r"[^a-z0-9]", "", lib.lower())
     names, used = {}, set(decls) | set(taken)
+    side = side or {}
     for n in decls:
         cand = n
         if pre and n.startswith(pre + "_") and len(n) > len(pre) + 1:
@@ -436,6 +513,8 @@ def wrapper_names(decls, lib, taken):
         while cand in used or cand in names.values():
             cand += "_"
         names[n] = cand
+        if side.get("functions", {}).get(n, {}).get("rename"):
+            names[n] = side["functions"][n]["rename"]
     return names
 
 
@@ -462,7 +541,7 @@ def make_wrappers(g, decls, lib, side, comments):
     """Default wrappers (Spec 19a): text conversion, and a Result for the usual C conventions.
     Returns (text, report lines)."""
     taken = set(g.tuples) | set(n for n, _ in g.enums)
-    names = wrapper_names(decls, lib, taken)
+    names = wrapper_names(decls, lib, taken, side)
     lines = [f"// Generated by moxie bindgen --wrap for the {lib} bindings.",
              "// Wrappers follow common C habits: a CString parameter is a String; an int status where 0 is success,",
              "// with out-parameters, becomes a Result; everything else is passed through.  Correct a guess with",
@@ -595,6 +674,7 @@ def generate(header, lib, side, defines=(), includes=()):
             cf = getattr(n.coord, "file", None)
             if cf and os.path.basename(cf) != os.path.basename(header):
                 continue          # declared in a header that this one includes
+            g.c_functions.add(n.name)
             try:
                 decls[n.name] = g.function(n)
             except Todo as t:
@@ -687,10 +767,14 @@ def main(argv, out=None, err=None):
     if not header or not (target or pkg):
         err.write("usage: moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [--wrap] [-D NAME] [-I DIR]\n")
         return 2
-    lib = lib or re.sub(r"\.h$", "", os.path.basename(header))
     outdir = pkg if pkg else os.path.dirname(os.path.abspath(target))
     bind_path = os.path.join(pkg, "bindings.mxi") if pkg else target
-    side = load_sidecar(os.path.join(outdir, "bindgen.toml"))
+    try:
+        side = load_sidecar(os.path.join(outdir, "bindgen.toml"))
+    except SidecarError as e:
+        err.write(f"moxie bindgen: {e}\n")
+        return 2
+    lib = lib or side.get("lib") or re.sub(r"\.h$", "", os.path.basename(header))
     text, decls, todos = generate(header, lib, side, defines, includes)
     if check:
         added, removed, changed = check_drift(decls, bind_path)
@@ -713,6 +797,10 @@ def main(argv, out=None, err=None):
     out.write(f"wrote {bind_path}: {len(decls)} functions declared, {len(todos)} left as todo\n")
     for n, why in todos:
         out.write(f"  todo: {n}: {why}\n")
+    g0, _c0 = generate.last
+    used_handles = {h for n in decls for h in g0.fn_handles.get(n, ())}
+    for msg in unused_sidecar(side, decls, used_handles, g0.c_functions):
+        out.write(f"  warning: bindgen.toml: {msg}\n")
     if wrap:
         g, comments = generate.last
         wtext, report = make_wrappers(g, decls, lib, side, comments)

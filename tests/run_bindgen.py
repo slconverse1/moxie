@@ -146,7 +146,29 @@ w2 = open(os.path.join(d, "wrappers.mxi")).read()
 chk("returns = value keeps the raw shape", "fn parse(s: String, ref out: Int32) Int32: mini_parse(cstr(s), ref out)" in w2, w2)
 os.remove(os.path.join(d, "bindgen.toml"))
 
+# bindgen.toml: validation and the full format
+def toml_run(content, *extra):
+    open(os.path.join(d, "bindgen.toml"), "w").write(content)
+    r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), *extra)
+    os.remove(os.path.join(d, "bindgen.toml"))
+    return r
+r = toml_run('[functions.mini_add]\neffect = "pure"\n', "--lib", "mini")
+chk("unknown key is an error with a suggestion", r.returncode == 2 and "unknown key 'effect'" in (r.stderr + r.stdout) and "did you mean 'effects'" in (r.stderr + r.stdout), r.stdout + r.stderr)
+r = toml_run('[functions.mini_add]\neffects = "fast"\n', "--lib", "mini")
+chk("bad value is an error", r.returncode == 2 and "effects must be one of" in (r.stderr + r.stdout), r.stdout + r.stderr)
+r = toml_run('[fucntions.mini_add]\neffects = "pure"\n', "--lib", "mini")
+chk("unknown table is an error", r.returncode == 2 and "unknown key 'fucntions'" in (r.stderr + r.stdout), r.stdout + r.stderr)
+r = toml_run('[functions.mini_adds]\neffects = "pure"\n', "--lib", "mini")
+chk("an entry that matches nothing is a warning", r.returncode == 0 and "warning: bindgen.toml: [functions.mini_adds] matches no function" in r.stdout and "did you mean 'mini_add'" in r.stdout, r.stdout + r.stderr)
+r = toml_run('[functions.mini_add\n', "--lib", "mini")
+chk("a TOML syntax error is reported", r.returncode == 2 and "bindgen.toml" in (r.stderr + r.stdout), r.stdout + r.stderr)
+r = toml_run('lib = "mini"\n[functions.mini_add]\neffects = "pure"\nrename = "plus"\n[handles.MiniCtx]\ncloses = "mini_close"\n', "--wrap")
+w3 = open(os.path.join(d, "wrappers.mxi")).read()
+b3 = open(os.path.join(d, "bindings.mxi")).read()
+chk("lib in the file, rename, handles all work", r.returncode == 0 and 'foreign "mini"' in b3 and "fn plus(a: Int32, b: Int32) Int32: mini_add(a, b)" in w3 and "handle MiniCtx closes mini_close" in b3, r.stdout + r.stderr + w3[:300])
+
 # --check drift
+bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")
 chk("--check finds no drift on a fresh file", r.returncode == 0 and "0 new, 0 removed, 0 changed" in r.stdout, r.stdout)
 open(os.path.join(d, "mini.h"), "a").write("int mini_extra(int a);\n")

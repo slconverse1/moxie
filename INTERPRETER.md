@@ -235,3 +235,11 @@ or `outs = [...]` in `bindgen.toml`) returns `Result[T, Error]` using `fail(stat
 `returns = "status" | "value"` overrides the guess. Names: library prefix removed, a
 trailing underscore when the result would hide a prelude function or repeat a name
 (`wrapper_names`). The report lists each status guess. Tests: `tests/run_bindgen.py`.
+
+## `bindgen.toml`
+
+Keys: top-level `lib`; `[functions.NAME]` with `effects`, `skip`, `pair`, `returns`,
+`outs`, `rename`; `[handles.TYPE]` with `closes`. `bindgen.validate_sidecar` checks the
+shape on every run (errors name the file and key and suggest the nearest valid key;
+exit code 2), and `unused_sidecar` warns about entries that match no function or handle
+in the header. Tests: `tests/run_bindgen.py`.
