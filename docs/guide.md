@@ -2117,7 +2117,7 @@ stack = "16KiB"
 memory = "1MiB"
 ```
 
-Each fiber needs its `memory` plus its `stack`, and the program needs that for the largest number of fibers it can have, so the start is refused when `[program] memory` is too small, with the sum in the message. A budget needs every fiber function to have a limit, since a count that is unknown cannot be checked, and it needs both `memory` and `stack`. Sizes are `"64KiB"` (1024-based), `"64KB"` (1000-based), or a plain number of bytes. **Mistakes:** keeping an old header after changing the program (it is refused as stale), and setting a budget while a fiber function has no `fiber[n]`.
+Each fiber needs its `memory` plus its `stack`, and the program needs that for the largest number of fibers it can have, and it also needs room for the pools, so the start is refused when `[program] memory` is too small, with the sum in the message. A pool costs a fixed amount for its kind plus the size of what it holds (a channel's capacity times its element), and `moxie pools` prints the total. The size of the element or value must be known, so write `Chan[String[32]][4]()` rather than a channel of a plain `String`, and `Atom[Point](p)` rather than an `Atom` of a value that isn't a number. A budget needs every fiber function to have a limit, since a count that is unknown cannot be checked, and it needs both `memory` and `stack`. Sizes are `"64KiB"` (1024-based), `"64KB"` (1000-based), or a plain number of bytes. **Mistakes:** keeping an old header after changing the program (it is refused as stale), and setting a budget while a fiber function has no `fiber[n]`.
 
 **Chapter 20: Arguments and environment**
 

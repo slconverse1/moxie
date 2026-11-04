@@ -456,3 +456,12 @@ comma tokens (`Tok.col`, so strings are never split). `_break(text, marks, inden
 past the width (or the last one that starts before it), puts each top-level item of that group on its own line two
 deeper, and calls itself on the head line, every item, and the closing line; it gives the original back when the result
 is not shorter. `format_source` then checks the parse tree, tokens, comments and that both `_once` and `_wrap` are stable.
+
+## Pool sizes in the budget
+
+`moxie/layout.py` has the slot table (`SLOT`) and `layout(type, decls)` for the size and alignment of a type, and
+`slot_bytes(kind, call, decls)` for one creation site (a `Chan` from its element type and constant capacity, an `Atom` or
+`Future` from its type argument, an `Atom` from a number or `Bool` literal). The tally's `Count` carries `b` (bytes by
+kind, scaled and merged with the counts) and `why` (the sites whose size is not known). `header_dict` stores
+`bytes: {pools, unknown}`, `header.budget_error` adds `pools` to the fibers' need and refuses when it is `None`, and
+`format_tally` prints the total. A header without `bytes` adds nothing. Tests: `tests/run_header.py`.

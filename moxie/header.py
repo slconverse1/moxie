@@ -2,8 +2,8 @@
 
 `moxie pools FILE --header OUT` writes the header: how many of each counted resource the program can have open, the
 largest number of fibers, and a hash of the program text.  `moxie --header=OUT run FILE` (or `[pools] header` in
-Moxie.toml) reads it before the first line runs: a header made for other source text is refused, the memory the fibers
-need is checked against the manifest's `[program] memory`, and the pools and the fiber count are then held to the
+Moxie.toml) reads it before the first line runs: a header made for other source text is refused, the memory the pools and
+fibers need is checked against the manifest's `[program] memory`, and the pools and the fiber count are then held to the
 header's numbers.  With `[program] memory` set and no header file, the numbers come from the tally of the program.
 """
 import json
@@ -46,9 +46,17 @@ def budget_error(header, manifest):
                 "a fiber function has no limit (add fiber[n] or [fibers] limit)")
     if mem is None or stack is None:
         return "[program] memory is set, so [fibers] needs both memory and stack to say what one fiber uses"
-    need = n * (mem + stack)
+    pools = 0
+    if "bytes" in header:                     # a header from before pool sizes were counted has no sizes to add
+        pools = header["bytes"].get("pools")
+        if pools is None:
+            why = header["bytes"].get("unknown") or []
+            return ("[program] memory is set, but the size of the pools is not known: " + "; ".join(why[:3]) +
+                    (f"; and {len(why) - 3} more" if len(why) > 3 else ""))
+    need = pools + n * (mem + stack)
     if need > total:
-        return f"the program needs {need} bytes ({n} fibers of {mem} memory + {stack} stack) but [program] memory is {total}"
+        return (f"the program needs {need} bytes ({pools} for pools + {n} fibers of {mem} memory + {stack} stack) "
+                f"but [program] memory is {total}")
     return None
 
 

@@ -42,16 +42,27 @@ class Count:
     resource of the kind outlives the code that created it."""
     def __init__(self):
         self.k = {}
+        self.b = {}            # kind -> bytes of pool slots (layout.py), for the sites whose size is known
+        self.why = []          # the sites whose size is not known, and what to write
 
-    def add(self, kind, n=1, reasons=(), kept=True):
+    def add(self, kind, n=1, reasons=(), kept=True, nbytes=0, why=None):
         e = self.k.setdefault(kind, [0, set(), False])
         e[0] += n
         e[1] |= set(reasons)
         e[2] = e[2] or kept
+        self.b[kind] = self.b.get(kind, 0) + nbytes
+        if why and why not in self.why:
+            self.why.append(why)
 
     def scale(self, m):
         for e in self.k.values():
             e[0] *= m
+        for kind in self.b:
+            self.b[kind] *= m
+
+    def pool_bytes(self):
+        """The bytes of all the pool slots, or None when some site's size is not known."""
+        return None if self.why else sum(self.b.values())
 
     def merge(self, other, loop_reasons=(), fiber=False, release=False):
         """Add a callee's counts.  Loop and recursion reasons apply to what is kept; a fiber reason to all;
@@ -65,6 +76,11 @@ class Count:
             if fiber:
                 r.add("fiber")
             self.add(kind, n, r, kept)
+        for kind, v in other.b.items():
+            self.b[kind] = self.b.get(kind, 0) + v
+        for w in other.why:
+            if w not in self.why:
+                self.why.append(w)
 
 
 def names_in(n):
@@ -388,7 +404,12 @@ class Tally:
                                     "(close it in the same iteration, or create it before the loop)")
         if fiber:
             reasons.add("fiber")
-        out.add(kind, 1, reasons, kept)
+        from .layout import slot_bytes, type_decls
+        if getattr(self, "decls", None) is None:
+            self.decls = type_decls(self.prog)
+        nb, why = slot_bytes(kind, call, self.decls)
+        where = (self.label + ": " if self.label else "") + f"line {call.line}: "
+        out.add(kind, 1, reasons, kept, nb or 0, None if nb is not None else where + why)
 
     def call_in(self, out, nm, call, in_loop, fiber, release=False, owner=None):
         owner = owner or self
@@ -514,7 +535,8 @@ def header_dict(t, cnt, src=None):
     n, exact = t.fiber_count()
     pools = {k: (e[0] if not e[1] else None) for k, e in sorted(cnt.k.items())}
     d = {"version": 1, "pools": pools, "fibers": {"largest": n if exact else None, "functions": dict(t.fibers)},
-         "exact": exact and all(v is not None for v in pools.values())}
+         "exact": exact and all(v is not None for v in pools.values()),
+         "bytes": {"pools": cnt.pool_bytes(), "unknown": list(cnt.why)}}
     if src is not None:
         d["program"] = program_hash(src, t.search_dir, t.prog)
     return d
@@ -548,6 +570,11 @@ def format_tally(cnt):
         out.append(f"  {k.ljust(w)}  {str(n) + ('+' if rs else ''):>4}{note}")
     out.append("  (N is the number of creation sites reached through calls; N+ means a site runs an unknown number of times,")
     out.append("   so `moxie --pools run` is the evidence for how many are open together)")
+    pb = cnt.pool_bytes()
+    if pb is not None:
+        out.append(f"  pool memory: {pb} bytes (slot sizes from layout.py)")
+    else:
+        out.append("  pool memory: not known; " + "; ".join(cnt.why[:3]))
     return "\n".join(out) + "\n"
 
 

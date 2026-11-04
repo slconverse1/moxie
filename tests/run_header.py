@@ -63,7 +63,7 @@ chk("without a header nothing is held to a count", moxie(d, "run", "main.mxi"), 
 
 M = '[fibers]\nmemory = "{m}"\nstack = "{s}"\n[program]\nmemory = "{t}"\n'
 d = project(PROG, M.format(m="512B", s="512B", t="1KiB"))
-chk("fibers that do not fit [program] memory stop the start", moxie(d, "run", "main.mxi"), 2, "needs 3072 bytes", "3 fibers of 512 memory + 512 stack", "is 1024")
+chk("fibers that do not fit [program] memory stop the start", moxie(d, "run", "main.mxi"), 2, "needs 3144 bytes", "72 for pools + 3 fibers of 512 memory + 512 stack", "is 1024")
 d = project(PROG, M.format(m="512B", s="512B", t="4KiB"))
 chk("fibers that fit start", moxie(d, "run", "main.mxi"), 0, "2")
 d = project(NOLIMIT, M.format(m="512B", s="512B", t="1MiB"))
@@ -126,5 +126,44 @@ d = project("import lib\nb = lib.new_box()\nt1 = b.chan()\nprintln(1)\n", files=
 chk("a package method called as x.method() is followed (UFCS)", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
 d = project("import lib\nb = lib.new_box()\nprintln(1)\n", files={"lib.mxi": BOXLIB})
 chk("a package method that is not called is not counted", moxie(d, "pools", "main.mxi"), 0, "no counted resource")
+
+# the pools themselves count in the budget (layout.py: slot sizes)
+PB = '''rx, tx = Chan[Int][4]()
+a = Atom[Int](0)
+t = Timer(1s)
+println("done")
+'''
+FM = '[fibers]\nlimit = 1\nmemory = "1KiB"\nstack = "1KiB"\n[program]\nmemory = "{t}"\n'
+d = project(PB, FM.format(t="2200"))
+chk("pools and fibers that exactly fit start", moxie(d, "run", "main.mxi"), 0, "done")
+d = project(PB, FM.format(t="2199"))
+chk("one byte less is refused, with the pools named", moxie(d, "run", "main.mxi"), 2, "needs 2200 bytes", "152 for pools")
+chk("the pool report gives the pool memory", moxie(d, "pools", "main.mxi"), 0, "pool memory: 152 bytes")
+TUP = '''tuple Point:
+  x: Double
+  y: Float
+rx, tx = Chan[Point][3]()
+println(1)
+'''
+d = project(TUP, FM.format(t="4KiB"))
+chk("a channel of a tuple type is sized from its fields", moxie(d, "pools", "main.mxi"), 0, "pool memory: 112 bytes")
+d = project("rx, tx = Chan[String]()\nprintln(1)\n", FM.format(t="4KiB"))
+chk("a pool whose size is not known cannot be budgeted", moxie(d, "run", "main.mxi"), 2, "the size of the pools is not known", "line 1", "Chan")
+d = project("a = Atom(7)\nb = Atom(\"x\")\nprintln(1)\n", FM.format(t="4KiB"))
+chk("an Atom with no type argument is sized from a literal, else it is not known", moxie(d, "run", "main.mxi"), 2, "write the type of the Atom")
+FP = '''fiber[2] fn w(tx: ChanW[Int]):
+  rx2, tx2 = Chan[Int][1]()
+  write(tx, 2)
+rx, tx = Chan[Int][1]()
+run w(tx)
+println(read(rx)?)
+'''
+d = project(FP, FM.format(t="4KiB").replace("limit = 1", "limit = 3"))
+chk("pools in a fiber function count once per possible fiber", moxie(d, "pools", "main.mxi"), 0, "pool memory: 216 bytes")
+d = project(PB, FM.format(t="100"))
+moxie(d, "pools", "main.mxi", "--header", "old.json")
+oldh = json.load(open(os.path.join(d, "old.json"))); del oldh["bytes"]
+json.dump(oldh, open(os.path.join(d, "old.json"), "w"))
+chk("a header without sizes is not refused for them", moxie(d, "--header=old.json", "run", "main.mxi"), 2, "needs 2048 bytes")
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)
