@@ -129,6 +129,7 @@ class Tally:
         self.memo = {}
         self.stack = []
         self.cyclic = set()
+        self.methods = set()         # names defined inside impl blocks, reachable as x.name(...) by UFCS
         self.problems = []           # (line, message): a kept resource created in a loop or recursion
         self._seen_problem = set()
         self._collect(prog)
@@ -163,6 +164,20 @@ class Tally:
             else:
                 self.pkgs[st.alias or st.pkg[-1]] = sub
 
+    def pk_methods(self, f):
+        """Package methods an `x.name(...)` call can reach (UFCS): an impl method of the same name in any imported package."""
+        if f.__class__ is GenApp:
+            return self.pk_methods(f.base)
+        if f.__class__ is not Field or (f.obj.__class__ is Name and f.obj.name in self.pkgs):
+            return []
+        subs = list(self.pkgs.values()) + [s for s, _n in self.imported.values()]
+        seen, out = set(), []
+        for s in subs:
+            if id(s) not in seen and f.name in s.methods:
+                seen.add(id(s))
+                out.append((s, f.name))
+        return out
+
     def pk(self, f):
         """(Tally, function name) when the callee `f` is a function of an imported package, else None."""
         c = f.__class__
@@ -176,7 +191,7 @@ class Tally:
             return (sub, orig) if orig in sub.defs else None
         return None
 
-    def _collect(self, n):
+    def _collect(self, n, in_impl=False):
         c = n.__class__
         if c is ForeignDecl:
             hn = {h[0] for h in n.handles or []}
@@ -192,8 +207,10 @@ class Tally:
                     self.handle_fns[d.name] = "handle " + t
         elif c is FnDecl and n.name and n.body is not None:
             self.defs.setdefault(n.name, []).append(n)
+            if in_impl:
+                self.methods.add(n.name)
         for ch in _children(n):
-            self._collect(ch)
+            self._collect(ch, in_impl or c is ImplDecl)
 
     # ---------------------------------------------------------------- one function
     def of_fn(self, name):
@@ -331,6 +348,8 @@ class Tally:
                 self.site(out, kind, n, in_loop, fiber, kept=True)
             elif nm in self.defs:
                 self.call_in(out, nm, n, in_loop, fiber)
+            for sub, mn in self.pk_methods(n.fn):
+                self.call_in(out, mn, n, in_loop, fiber, owner=sub)
             if n.fn.__class__ is not Name and n.fn.__class__ is not GenApp:
                 self.walk(n.fn, loops, in_fiber, out, fnscope)
             self.args(n, loops, fiber, out, fnscope)

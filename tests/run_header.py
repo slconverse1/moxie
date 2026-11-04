@@ -114,5 +114,17 @@ d = project("import lib\nfor i in 0..3:\n  t = lib.mk()\nprintln(1)\n", files={"
 chk("a kept resource from a package in a loop is an error naming the package", moxie(d, "pools", "main.mxi"), 1, "lib.mk' creates a Chan that outlives the call")
 d = project("fiber[3] fn w(tx: ChanW[Int]):\n  write(tx, 2)\nfn start(tx: ChanW[Int]):\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n")
 chk("fibers started by a helper function are counted", moxie(d, "pools", "main.mxi"), 0, "largest possible fiber count: 4")
+BOXLIB = '''export tuple Box:
+  n: Int
+impl Box:
+  fn chan(self) ChanW[Int]:
+    rx, tx = Chan[Int][1]()
+    tx
+export fn new_box() Box: Box(1)
+'''
+d = project("import lib\nb = lib.new_box()\nt1 = b.chan()\nprintln(1)\n", files={"lib.mxi": BOXLIB})
+chk("a package method called as x.method() is followed (UFCS)", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
+d = project("import lib\nb = lib.new_box()\nprintln(1)\n", files={"lib.mxi": BOXLIB})
+chk("a package method that is not called is not counted", moxie(d, "pools", "main.mxi"), 0, "no counted resource")
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)

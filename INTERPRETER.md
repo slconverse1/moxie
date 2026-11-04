@@ -425,3 +425,7 @@ package's tally. Fiber functions are `(tally, name)` pairs, and a function's `st
 helper that runs a fiber function counts toward the largest fiber count. `program()` also adds each package's top
 level and merges the packages' `problems` (prefixed with the package name and file line). `program_hash(src,
 search_dir, prog)` hashes the tokens of the entry file and of every package from `load_packages`.
+
+UFCS: `x.name(...)` and `name(x)` reach the same function, so `Tally.pk_methods` adds, for a field-style call that is
+not on a package alias, every `impl` method of that name in the imported packages (`Tally.methods` is the set of
+names defined inside impl blocks). Like the by-name counting inside one file, this can over-count, never under-count.
