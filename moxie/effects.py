@@ -68,8 +68,17 @@ class Effects:
             if n.body is None and self.declared(n) is not None:
                 self.bounds[(ctx[1] if isinstance(ctx, tuple) else None, n.name)] = self.declared(n)
         if c is ForeignDecl:
+            hnames = {h[0] for h in n.handles or []}
+
+            def hidden(p):
+                df = p.default
+                if df is not None and df.__class__ is Call and df.fn.__class__ is Name and df.fn.name == "len":
+                    return True
+                tn = _last(p.type) if p.type.__class__ is TName else None
+                return tn == "UserData" or (p.mod == "ref" and tn in hnames)
             for d in n.fns:
-                idx = [i for i, p in enumerate(d.params or []) if p.type.__class__ is TFn]
+                visible = [p for p in d.params or [] if not hidden(p)]
+                idx = [i for i, p in enumerate(visible) if p.type.__class__ is TFn]
                 if idx:
                     self.callbacks[d.name] = idx
         if c is IfaceDecl:

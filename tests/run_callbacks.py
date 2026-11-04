@@ -7,6 +7,10 @@ typedef struct { double x; double y; } pt;
 double apply_n(double (*f)(double), double x, int n) { for (int i = 0; i < n; i++) x = f(x); return x; }
 int count_if(int (*pred)(int), int lo, int hi) { int c = 0; for (int i = lo; i < hi; i++) if (pred(i)) c++; return c; }
 double combine(double (*f)(pt), double a, double b) { pt p = {a, b}; return f(p); }
+void for_each(int n, void (*cb)(int, void *), void *ud) { for (int i = 0; i < n; i++) cb(i * i, ud); }
+long chunks(const unsigned char *buf, unsigned long n, long (*cb)(const unsigned char *, unsigned long, void *), void *ud) {
+  long total = 0; unsigned long half = n / 2;
+  total += cb(buf, half, ud); total += cb(buf + half, n - half, ud); return total; }
 '''
 open(os.path.join(D, "cb.c"), "w").write(C)
 subprocess.check_call(["gcc", "-shared", "-fPIC", "-o", os.path.join(D, "libcb.so"), os.path.join(D, "cb.c")])
@@ -17,6 +21,8 @@ foreign "cb":
   pure fn apply_n(f: (Double) -> Double, x: Double, n: Int32) Double
   pure fn count_if(pred: (Int32) -> Int32, lo: Int32, hi: Int32) Int32
   pure fn combine(f: (Pt) -> Double, a: Double, b: Double) Double
+  impure fn for_each(n: Int32, cb: (Int32, UserData) -> Unit, ud: UserData)
+  impure fn chunks(buf: Array[Byte], n: UInt = len(buf), cb: (Array[Byte], UInt, UserData) -> Int64, ud: UserData) Int64
   parks fn slow(f: (Int32) -> Int32, n: Int32) Int32
 '''
 CASES = [
@@ -25,6 +31,10 @@ CASES = [
  ("an integer predicate", 'println(count_if(fn(v): if v % 3 == 0i32: 1i32 else: 0i32, 0i32, 10i32))\n', 0, "4"),
  ("a tuple argument", 'println(combine(fn(p): p.x + p.y * 10.0, 1.0, 2.0))\n', 0, "21.0"),
  ("a function name works too", 'fn half(v: Double) Double: v / 2.0\nprintln(apply_n(half, 64.0, 3i32))\n', 0, "8.0"),
+ ("user data is not passed to the closure", 'for_each(4i32, fn(v): println(v))\n', 0, "0\n1\n4\n9"),
+ ("a buffer arrives as one array", 'println(chunks(b"abcdefg", fn(d): len(d) * 10i64))\n', 0, "70"),
+ ("the buffer holds the bytes C passed", 'fn show(d: Array[Byte]) Int64:\n  println(d)\n  0i64\nprintln(chunks(b"hi there", show))\n', 0, "Array(104, 105, 32, 116)\nArray(104, 101, 114, 101)"),
+ ("a buffer callback may not park", 'fn bad(d: Array[Byte]) Int64:\n  sleep(1ms)\n  0i64\nprintln(chunks(b"abcd", bad))\n', 2, "may park"),
  ("an abort in the callback ends the program", 'println(count_if(fn(v): 1i32 / (v - v), 0i32, 3i32))\nprintln("not reached")\n', 1, "abort"),
  ("a callback may not park", 'fn bad(v: Double) Double:\n  sleep(1ms)\n  v\nprintln(apply_n(bad, 1.0, 2i32))\n', 2, "may park"),
  ("a callback-taking function cannot be parks", 'foreign "cb":\n  parks fn apply_n(f: (Double) -> Double, x: Double, n: Int32) Double\n', 2, "callback"),

@@ -142,14 +142,39 @@ def is_fn_type(t):
     return t is not None and t.__class__.__name__ == "TFn"
 
 
+def cb_plan(I, t):
+    """How C's callback arguments map to the moxie function's: ("val", type), ("bytes", length ctype), ("ud",).
+    An `Array[Byte]` followed by an integer type is C's (pointer, length) pair and arrives as one array;
+    `UserData` is C's `void *` user-data pointer and is not passed to the moxie function."""
+    plan, ps, i = [], [pt for _nm, pt in t.params], 0
+    while i < len(ps):
+        pt = ps[i]
+        if is_byte_array(pt):
+            if i + 1 >= len(ps) or tname(ps[i + 1]) not in SCALARS or tname(ps[i + 1]) in ("Float", "Double", "Bool"):
+                raise Abort("in a callback type, an Array[Byte] must be followed by its integer length type")
+            plan.append(("bytes", SCALARS[tname(ps[i + 1])]))
+            i += 2
+            continue
+        if tname(pt) == "UserData":
+            plan.append(("ud",))
+        else:
+            if ctype_of(I, pt) is None:
+                raise Abort("a callback parameter cannot cross the foreign boundary")
+            plan.append(("val", pt))
+        i += 1
+    return plan
+
+
 def cb_ctype(I, t):
     """The C function-pointer type for a moxie function type (callback parameter)."""
     args = []
-    for _nm, pt in t.params:
-        ct = ctype_of(I, pt)
-        if ct is None:
-            raise Abort("a callback parameter cannot cross the foreign boundary")
-        args.append(ct)
+    for e in cb_plan(I, t):
+        if e[0] == "val":
+            args.append(ctype_of(I, e[1]))
+        elif e[0] == "bytes":
+            args += [ctypes.c_void_p, e[1]]
+        else:
+            args.append(ctypes.c_void_p)
     rn = tname(t.ret)
     if t.ret is None or rn == "Unit":
         rt = None
@@ -173,12 +198,24 @@ def run_sync(I, g):
 
 def make_thunk(I, t, fnv, box):
     """A Python function C can call: converts the arguments, runs the moxie function, converts the result."""
-    ptypes = [pt for _nm, pt in t.params]
+    plan = cb_plan(I, t)
     rt = t.ret if t.ret is not None and tname(t.ret) != "Unit" else None
 
     def thunk(*cargs):
         try:
-            vals = [from_c(I, pt, c) for pt, c in zip(ptypes, cargs)]
+            vals, k = [], 0
+            for e in plan:
+                if e[0] == "val":
+                    vals.append(from_c(I, e[1], cargs[k]))
+                    k += 1
+                elif e[0] == "bytes":
+                    ptr, n = cargs[k], int(cargs[k + 1])
+                    raw = ctypes.string_at(ptr, n) if ptr and n else b""
+                    cls = INT_CLASSES.get("UInt8")
+                    vals.append(ArrayV([cls(x) if cls else x for x in raw]))
+                    k += 2
+                else:
+                    k += 1
             r = run_sync(I, I.apply(fnv, vals, {}))
             return to_c(I, rt, r) if rt is not None else None
         except BaseException as e:      # noqa: carried out of C and re-raised by the caller
@@ -265,6 +302,8 @@ def make_foreign(I, lib_name, d):
             cargs.append(cb_ctype(I, p.type))
         elif is_byte_array(p.type):
             cargs.append(ctypes.c_void_p)
+        elif is_userdata(p):
+            cargs.append(ctypes.c_void_p)
         elif is_out_handle(I, p):
             cargs.append(ctypes.POINTER(ctypes.c_void_p))
         elif p.mod == "ref":
@@ -288,6 +327,11 @@ def make_foreign(I, lib_name, d):
     if d.ret is not None and tname(d.ret) != "Unit" and cfn.restype is None:
         raise Abort(f"the result of '{d.name}' cannot cross the foreign boundary")
     return ForeignFn(d.name, lib_name, d.params or [], d.ret, cfn, _decl_effects(d), I)
+
+
+def is_userdata(p):
+    """`ud: UserData`: a C `void *` user-data argument; the caller does not supply it and C gets NULL."""
+    return tname(p.type) == "UserData"
 
 
 def is_out_handle(I, p):
@@ -314,7 +358,7 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
     named = dict(named or {})
     declared = f.params
     # which declared parameters the caller supplies: all but the length parameters
-    supplied = [p for p in declared if length_of(p) is None and not is_out_handle(I_of(f), p)]
+    supplied = [p for p in declared if length_of(p) is None and not is_out_handle(I_of(f), p) and not is_userdata(p)]
     if len(pos) > len(supplied):
         raise Abort(f"{f.name} takes {len(supplied)} arguments but {len(pos)} were given", line)
     values = {}
@@ -335,6 +379,9 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
             ref_by_param[key] = cname
     outcell = None
     for p in declared:
+        if is_userdata(p):
+            cargs.append(None)
+            continue
         if is_out_handle(I_of(f), p):
             outcell = ctypes.c_void_p()
             cargs.append(ctypes.byref(outcell))

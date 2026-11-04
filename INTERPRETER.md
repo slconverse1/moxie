@@ -212,3 +212,14 @@ listeners, foreign handles (`handle NAME`), connections, channels, futures, time
 and atoms were open at once and in total (`moxie/pools.py`). A resource that goes out
 of scope without being closed is not noticed until its fiber or the program ends, so
 peaks can over-count; timers and atoms are never released. Tests: `tests/run_pools.py`.
+
+## Callback buffers and user data
+
+In a callback's function type, `ffi.cb_plan` maps C's arguments to the moxie function's:
+an `Array[Byte]` followed by an integer type is C's (pointer, length) pair and becomes
+one array (a copy, read from the pointer with `ctypes.string_at`), and `UserData` is a
+`void *` that is not passed on. A `ud: UserData` parameter of the foreign function is
+hidden from callers (the checker and `effects.py` leave it out of the argument list)
+and C is given NULL. `moxie bindgen` recognizes `void *` next to a callback as
+`UserData` and a byte pointer followed by an integer in a callback as a buffer.
+Tests: `tests/run_callbacks.py`, `tests/run_bindgen.py`.

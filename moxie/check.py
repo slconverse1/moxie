@@ -12,7 +12,7 @@ RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accep
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
                "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",
-               "Locale", "Connection", "true", "false", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener"}
+               "Locale", "Connection", "true", "false", "UserData", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener"}
 
 
 INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte", "BigInt"}
@@ -1018,6 +1018,8 @@ class Checker:
         """A foreign parameter the caller does not supply: a length filled in by the call, or an out-handle."""
         d = p.default
         if d is not None and d.__class__ is Call and d.fn.__class__ is Name and d.fn.name == "len":
+            return True
+        if p.type.__class__ is TName and p.type.path[-1] == "UserData":
             return True
         return p.mod == "ref" and p.type.__class__ is TName and p.type.path[-1] in self.handle_types
 

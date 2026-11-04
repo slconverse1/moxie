@@ -232,20 +232,34 @@ class Gen:
         raise Todo("an unsupported C type")
 
     def callback(self, ft):
-        """A function-pointer parameter whose parameters and result are plain values becomes a function type."""
-        ps = []
+        """A function-pointer parameter becomes a function type. A `void *` is the user-data pointer
+        (UserData: the closure carries its own context), and a byte pointer followed by an integer
+        length is one Array[Byte]."""
+        c = self.c
+        raw = []
         if ft.args:
             for p in ft.args.params:
-                if isinstance(p, c_ellipsis(self.c)):
+                if isinstance(p, c_ellipsis(c)):
                     raise Todo("a callback with a variadic signature cannot be declared")
-                if isinstance(p, self.c.Typename) and isinstance(p.type, self.c.TypeDecl) \
-                        and isinstance(p.type.type, self.c.IdentifierType) and p.type.type.names == ["void"] \
+                if isinstance(p, c.Typename) and isinstance(p.type, c.TypeDecl) \
+                        and isinstance(p.type.type, c.IdentifierType) and p.type.type.names == ["void"] \
                         and len(ft.args.params) == 1:
                     break
-                d = self.desc(p.type)
-                if d[0] not in ("scalar", "struct"):
-                    raise Todo("a callback takes a pointer (user data or a buffer), which is not supported yet")
+                raw.append((self.pname(getattr(p, "name", None), len(raw)), self.desc(p.type)))
+        ps, i = [], 0
+        while i < len(raw):
+            pn, d = raw[i]
+            if d[0] in ("scalar", "struct"):
                 ps.append(d[1])
+            elif d[0] == "bytes" and d[2] == "void":
+                ps.append("UserData")
+            elif d[0] == "bytes" and i + 1 < len(raw) and raw[i + 1][1][0] == "scalar" \
+                    and raw[i + 1][1][1] not in ("Float", "Double", "Bool"):
+                ps += ["Array[Byte]", raw[i + 1][1][1]]
+                i += 1
+            else:
+                raise Todo("a callback takes a pointer that is neither user data nor a buffer with a length, which is not supported")
+            i += 1
         r = self.desc(ft.type, False)
         if r[0] == "void":
             rt = "Unit"
@@ -317,6 +331,11 @@ class Gen:
         while i < len(params):
             pn, d = params[i]
             k = d[0]
+            if k == "bytes" and d[2] == "void" and any(q[1][0] == "callback" for q in params) \
+                    and not (i + 1 < len(params) and params[i + 1][1][0] == "scalar" and LEN_NAMES.search(params[i + 1][0])):
+                out.append(f"{pn}: UserData")          # the user-data pointer that goes with a callback
+                i += 1
+                continue
             if k == "bytes":
                 pair = None
                 forced = sc.get("pair")

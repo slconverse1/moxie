@@ -26,6 +26,8 @@ int mini_apply(int (*f)(int), int x);
 int mini_connect(const char *name, mini_ctx **out);
 void mini_make(int v, mini_ctx **out);
 int mini_each(void (*f)(int, void *), void *user);
+int mini_feed(const unsigned char *buf, unsigned long n, int (*f)(const unsigned char *, unsigned long, void *), void *ud);
+int mini_walk(void (*f)(int *), int n);
 '''
 CODE = r'''
 #include <math.h>
@@ -38,6 +40,8 @@ mini_ctx *mini_open(const char *name) { mini_ctx *c = malloc(sizeof *c); c->hits
 int mini_hits(mini_ctx *c) { return ++c->hits; }
 void mini_close(mini_ctx *c) { free(c); }
 int mini_apply(int (*f)(int), int x) { return f(x); }
+int mini_each(void (*f)(int, void *), void *user) { for (int i = 1; i <= 3; i++) f(i, user); return 3; }
+int mini_feed(const unsigned char *buf, unsigned long n, int (*f)(const unsigned char *, unsigned long, void *), void *ud) { return f(buf, n, ud); }
 int mini_connect(const char *name, mini_ctx **out) { if (name[0] == 'x') { *out = NULL; return 5; } *out = malloc(sizeof **out); (*out)->hits = 100; return 0; }
 void mini_make(int v, mini_ctx **out) { *out = malloc(sizeof **out); (*out)->hits = v; }
 int mini_add(int a, int b) { return a + b; }
@@ -72,7 +76,8 @@ chk("enum constants", "MINI_SAFE = 5" in text)
 chk("header comment becomes ///", "/// Adds two numbers." in text)
 chk("variadic and unpaired pointer are todos", all(f"todo: {n}" in text for n in ("mini_printf", "mini_bad")), text[-600:])
 chk("function pointer becomes a function type", "fn mini_apply(f: (Int32) -> Int32, x: Int32) Int32" in text, text[-900:])
-chk("callback with user data is a todo", "todo: mini_each" in text, text[-500:])
+chk("callback with user data and a buffer", "fn mini_each(f: (Int32, UserData) -> Unit, user: UserData) Int32" in text and "fn mini_feed(buf: Array[Byte], n: UInt = len(buf), f: (Array[Byte], UInt, UserData) -> Int32, ud: UserData) Int32" in text, text[-900:])
+chk("callback taking another pointer is a todo", "todo: mini_walk" in text, text[-500:])
 chk("pointer to opaque pointer becomes an out-handle", "fn mini_connect(name: CString, ref out: MiniCtx) Result[MiniCtx, Error]" in text and "fn mini_make(v: Int32, ref out: MiniCtx) MiniCtx" in text, text[-1100:])
 chk("opaque pointer becomes a handle", "  handle MiniCtx closes mini_close" in text and "fn mini_open(name: CString) Result[MiniCtx, Error]" in text and "fn mini_hits(c: MiniCtx) Int32" in text, text[-700:])
 
@@ -101,6 +106,8 @@ k = mini_connect(cstr("db"))?
 println("connected ${mini_hits(k)}")
 mini_close(k)
 println(mini_connect(cstr("x")))
+println("each ${mini_each(fn(v): println(\"item $v\")) }")
+println("feed ${mini_feed(b\"abc\", fn(d): len(d))}")
 println("apply ${mini_apply(fn(v): v * 7i32, 6i32)}")
 ctx = mini_open(cstr("A"))?
 println("hits ${mini_hits(ctx)}")
@@ -110,7 +117,7 @@ p = os.path.join(d, "main.mxi")
 open(p, "w").write(prog)
 r = subprocess.run([sys.executable, "-m", "moxie", "run", p], cwd=ROOT, capture_output=True, text=True)
 exp_sum = (((7 * 31 + 97) * 31 + 98) * 31 + 99) & 0xFFFFFFFF
-chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout and "apply 42" in r.stdout and "connected 101" in r.stdout and "code: 5" in r.stdout, r.stdout + r.stderr)
+chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout and "apply 42" in r.stdout and "item 3" in r.stdout and "feed 3" in r.stdout and "connected 101" in r.stdout and "code: 5" in r.stdout, r.stdout + r.stderr)
 
 # --check drift
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")
