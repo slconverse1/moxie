@@ -466,3 +466,5 @@ is not shorter. `format_source` then checks the parse tree, tokens, comments and
 kind, scaled and merged with the counts) and `why` (the sites whose size is not known). `header_dict` stores
 `bytes: {pools, unknown}`, `header.budget_error` adds `pools` to the fibers' need and refuses when it is `None`, and
 `format_tally` prints the total. A header without `bytes` adds nothing. Tests: `tests/run_header.py`.
+
+The checker requires a type on every plain-name parameter of a named function (`check.e_FnDecl`), as it requires a return type; later clauses of a multi-clause function, foreign declarations and aliases, and lambdas are exempt.

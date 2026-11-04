@@ -739,7 +739,7 @@ fn later(x: Int) Int:
   todo "finish later"
 ```
 
-**Mistakes:** `bump(n)` without `ref`, a tuple spread into a `ref` parameter, `transfer(100, source: 5)` (a parameter supplied twice), a function with no return type, `fn f(x: Int) Unit:` ending in `x + 1`, a variadic with a default, spreading a `List` of unknown length, and a trailing lambda on a call that writes the stream out.
+**Mistakes:** `bump(n)` without `ref`, a tuple spread into a `ref` parameter, `transfer(100, source: 5)` (a parameter supplied twice), a function with no return type or an untyped parameter, `fn f(x: Int) Unit:` ending in `x + 1`, a variadic with a default, spreading a `List` of unknown length, and a trailing lambda on a call that writes the stream out.
 
 **6a. Generics**
 

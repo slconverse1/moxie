@@ -1339,6 +1339,10 @@ class Checker:
         self.fn_ret = self.ty_of_type(n.ret) if n.ret is not None else None
         if n.ret is None and not later and n.body is not None and n.alias is None and id(n) not in self.foreign_ids:
             self.err(n.line, f"function '{n.name}' has no return type: write it after the parameters, and write Unit if it returns nothing")
+        if not later and n.body is not None and n.alias is None and id(n) not in self.foreign_ids:
+            for p in n.params or []:
+                if p.name and p.type is None and p.name != "self":
+                    self.err(n.line, f"parameter '{p.name}' of function '{n.name}' has no type: write it after the name, as in `{p.name}: Int`")
         if n.alias is not None:
             self.ev(n.alias, inner)
         elif n.body is not None:
