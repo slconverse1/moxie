@@ -27,6 +27,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self._perms = Perms.open()
         self.pkg_ceilings = {}        # package name -> Perms (Spec 19d, per-package ceilings)
         self.mod_pkg = {}             # id(module env) -> package name
+        self.pkg_native = {}          # package name -> (has a Moxie.toml, its [native] table or None)
+        self.native_dirs = []         # [native] paths of the package whose foreign block is being loaded
         self.cur_mod = None
         self.manifest = {}
         self.heap_limit = None        # moxie/gc: [memory] heap, in bytes (heap.py)

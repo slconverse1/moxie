@@ -4,6 +4,7 @@ import os
 FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
 PROGRAM_KEYS = {"memory"}
+NATIVE_KEYS = {"libs", "paths"}
 MEMORY_KEYS = {"heap", "slice"}
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "KIB": 1024, "MIB": 1024 ** 2, "GIB": 1024 ** 3}
 
@@ -49,6 +50,8 @@ def load(path):
     except tomllib.TOMLDecodeError as e:
         raise ManifestError(f"{m}: {e}")
     out = {"path": m, "fibers": {}, "pools": {}, "program": {}, "memory": {}}
+    if "native" in data:
+        out["native"] = native_table(m, data["native"])
     for table, keys in (("fibers", FIBER_KEYS), ("pools", POOL_KEYS), ("program", PROGRAM_KEYS), ("memory", MEMORY_KEYS)):
         t = data.get(table, {})
         if not isinstance(t, dict):
@@ -96,3 +99,33 @@ def fiber_spaces(fib):
     if tp is not None:
         return mem - tp, tp
     return None
+
+
+def native_table(m, t):
+    """The validated [native] table of the manifest at `m`: {"libs": [...] or None, "paths": [absolute dirs]}."""
+    if not isinstance(t, dict):
+        raise ManifestError(f"{m}: [native] must be a table")
+    for k in t:
+        if k not in NATIVE_KEYS:
+            raise ManifestError(f"{m}: unknown key '{k}' in [native] (known: {', '.join(sorted(NATIVE_KEYS))})")
+    for k in NATIVE_KEYS & set(t):
+        v = t[k]
+        if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
+            raise ManifestError(f"{m}: [native] {k} must be a list of strings")
+    base = os.path.dirname(os.path.abspath(m))
+    return {"libs": t.get("libs"), "paths": [os.path.normpath(os.path.join(base, d)) for d in t.get("paths", [])]}
+
+
+def package_native(pkg_dir):
+    """For an imported package directory: (has_manifest, native table or None).  A package without a Moxie.toml
+    is a plain file or folder, which the reference interpreter lets declare foreign functions."""
+    m = os.path.join(pkg_dir, "Moxie.toml")
+    if not os.path.isfile(m):
+        return False, None
+    import tomllib
+    try:
+        with open(m, "rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as e:
+        raise ManifestError(f"{m}: {e}")
+    return True, (native_table(m, data["native"]) if "native" in data else None)

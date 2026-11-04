@@ -37,8 +37,24 @@ class DeclsMixin:
         return UNIT
         yield
 
+    def native_rights(self, env):
+        """(has_manifest, native table or None, where) for the package whose code is being run."""
+        key = self.mod_pkg.get(id(getattr(env, "mod", None) or env))
+        if key is None:
+            man = self.manifest or {}
+            return ("path" in man), man.get("native"), "the entry package"
+        return self.pkg_native.get(key, (False, None)) + (f"package '{key}'",)
+
     def ev_ForeignDecl(self, n, env):
         from .ffi import make_foreign
+        has, nat, where = self.native_rights(env)
+        if has and nat is None:
+            raise Abort(f"{where} declares foreign functions (line {n.line}), but its Moxie.toml has no [native] section; "
+                        f"add one with libs = [\"{n.lib}\"]")
+        if nat is not None and nat["libs"] is not None and n.lib not in nat["libs"]:
+            raise Abort(f"{where} names the native library '{n.lib}' (line {n.line}), which is not in its [native] libs "
+                        f"({', '.join(nat['libs']) or 'none'})")
+        self.native_dirs = list(nat["paths"]) if nat is not None else []
         ht = self.__dict__.setdefault("handle_types", {})
         hc = self.__dict__.setdefault("handle_closers", {})
         for hname, closer, _ln in n.handles or []:
@@ -365,6 +381,9 @@ class DeclsMixin:
         prog = self.load_source(src, path)
         menv = self.new_module_env()
         self.mod_pkg[id(menv)] = key
+        if path == cands[1]:                   # a package folder may carry its own Moxie.toml
+            from .manifest import package_native
+            self.pkg_native[key] = package_native(os.path.dirname(path))
         self.run_sync(self.exec_stmts(prog.stmts, menv))
         exp = self.exports.get(id(menv), set())
         pe = Env(None)

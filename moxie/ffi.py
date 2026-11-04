@@ -131,6 +131,8 @@ def load_library(name, I=None):
     dirs = [d for d in os.environ.get("MOXIE_NATIVE_PATH", "").split(os.pathsep) if d]
     if I is not None and getattr(I, "search_dir", None):
         dirs.insert(0, I.search_dir)
+    if I is not None and getattr(I, "native_dirs", None):
+        dirs[:0] = I.native_dirs
     for d in dirs:
         for fn in ("lib%s.so" % name, "lib%s.dylib" % name, "%s.dll" % name):
             cands.append(os.path.join(d, fn))
