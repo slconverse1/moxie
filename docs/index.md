@@ -483,7 +483,11 @@ Here's some of what unification buys you:
 ```
 fn fetch_sensor_data(id: Int) (Float, Float, Float):
   (12.5, 45.0, 0.8)
-fn calculate_velocity(x: Float, y: Float, z: Float) (speed: Float, angle: Float):
+fn calculate_velocity(
+  x: Float,
+  y: Float,
+  z: Float
+) (speed: Float, angle: Float):
   (95.2, 14.6)
 fn update_physics(speed: Float, angle: Float) Unit:
   println("Physics vector updated: speed $speed, angle $angle")
@@ -503,7 +507,8 @@ fn total(base: Int, numbers: ...Int) Int:
   numbers |> to_stream() |> reduce(base, _1 + _2)
 pair = (3, 5)
 values = Array(10, 20, 30)
-println("${add(...pair)} ${total(100, 1, 2, 3)} ${total(100, ...values)} ${total(100)}")
+print("${add(...pair)} ${total(100, 1, 2, 3)} ${total(100, ...values)} ")
+println("${total(100)}")
 fn describe(xs: Array[Int][3]) String:
   when xs:
     Array(first, ...rest) -> "first $first, then ${len(rest)} more"
@@ -538,7 +543,8 @@ fn area(s: Shape) Double:
     Rect(w, h) -> w * h
     Dot -> 0.0
 
-println("${area(Shape.Circle(2.0))} ${area(Shape.Rect(2.0, 3.0))} ${area(Shape.Dot)}")
+print("${area(Shape.Circle(2.0))} ${area(Shape.Rect(2.0, 3.0))} ")
+println("${area(Shape.Dot)}")
 ```
 
 Output: `12.0 6.0 0.0`. Each arm names its case and binds its fields in the same step, so there's no cast and no null check. That is also how moxie handles "absent": a missing value is just another case, such as a `Maybe`'s `Nothing`, that you match.
@@ -604,7 +610,8 @@ tuple Player:
 fn describe(Player(name, score)) String:
   "$name has $score"
 
-println("${area(Shape.Circle(2.0))} ${area(Shape.Rect(2.0, 3.0))} ${area(Shape.Dot)}")
+print("${area(Shape.Circle(2.0))} ${area(Shape.Rect(2.0, 3.0))} ")
+println("${area(Shape.Dot)}")
 println(describe(Player(name: "Ann", score: 250)))
 ```
 
@@ -677,7 +684,9 @@ fn access(user: User) String:
       is_manager -> "Limited Access"
       _ -> "No Access"
 
-println("${access(User(is_admin: false, is_manager: true))} ${access(User(is_admin: true, is_manager: false))} ${access(User(is_admin: false, is_manager: false))}")
+print("${access(User(is_admin: false, is_manager: true))} ")
+print("${access(User(is_admin: true, is_manager: false))} ")
+println("${access(User(is_admin: false, is_manager: false))}")
 ```
 
 Output: `Limited Access Full Access No Access`.
@@ -913,7 +922,11 @@ Moxie is eager by default, so laziness is something you ask for, in two places.
 **Streams.** A stream is a recipe, defined as a source plus a list of stages, and nothing happens until a terminal (`collect`, `sum`, `reduce`, `count`, or a `for` loop) pulls on it. `map`, `filter`, `take`, `scan`, `enumerate`, and the other horizontal stages are all lazy: one element travels through the entire chain, and an element that `take` or `filter` rejects is never mapped over further. That's why an infinite source costs nothing:
 
 ```
-total = Range(1..) |> filter(_ % 3 == 0) |> map(fn (n): n * n) |> take(4) |> sum()
+total = Range(1..)
+  |> filter(_ % 3 == 0)
+  |> map(fn (n): n * n)
+  |> take(4)
+  |> sum()
 ```
 
 That's 9 + 36 + 81 + 144, or `270`, and it never builds a list. The vertical stages (`sort`, `reverse`) must see every element first, so they collect them in a temporary buffer and break the one-at-a-time flow. (`chunks` and `windows` buffer a little, too.)
@@ -1117,7 +1130,7 @@ fn pick(flag: Bool, a: Int, b: Double) (Int) -> Int:
   if flag:
     fn (n): n + a                  // captures an Int
   else:
-    fn (n): n + cast[Int](b)       // error: this branch returns a different closure type
+    fn (n): n + cast[Int](b)       // error: a different closure type
 
 pure fn noisy(w: Int) Int:
   println("w is $w")               // error: pure fn calls println
@@ -1252,9 +1265,11 @@ A short fiber can also be written inline, right where you start it. The full for
 ```
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
-_ = run fn (tx):                               // short form: parameter tx gets the variable tx
+// short form: parameter tx gets the variable tx
+_ = run fn (tx):
   _ = write(tx, "short form")
-_ = run fn ("long form", tx2)(msg, out):        // full form: arguments, then parameters
+// full form: arguments, then parameters
+_ = run fn ("long form", tx2)(msg, out):
   _ = write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
@@ -1298,7 +1313,12 @@ net.connect = ["example.com:443"]
 
 ```
 foreign "c":
-  impure fn qsort(ref base: Array[Int32], n: UInt = len(base), size: UInt = size_of(base), cmp: (Ptr[Int32], Ptr[Int32]) -> Int32)
+  impure fn qsort(
+    ref base: Array[Int32],
+    n: UInt = len(base),
+    size: UInt = size_of(base),
+    cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
+  )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
 qsort(ref xs, fn(a, b): a - b)
 println(xs)

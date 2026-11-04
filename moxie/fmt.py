@@ -223,6 +223,7 @@ def _once(src, file, spacing=True):
 
 
 WIDTH = 80
+_DECL = re.compile(r"\s*((export|internal|pure|parks|prints|impure|inline|static|tailrec)\s+)*fn\b")
 OPENS, CLOSES = "([{", ")]}"
 
 
@@ -245,7 +246,10 @@ def _break(text, marks, indent):
         return [text]
     hit = [g for g in groups if g[0] < WIDTH <= g[1]]
     before = [g for g in groups if g[0] < WIDTH]
-    o, c = (hit or before or groups)[-1 if not hit else 0]
+    if _DECL.match(text) and text.rstrip().endswith(":"):
+        o, c = groups[0]                        # a declaration breaks its parameter list first
+    else:
+        o, c = (hit or before or groups)[-1 if not hit else 0]
     depth, cuts = 0, [o]
     for i, ch in marks:
         if i <= o or i >= c:

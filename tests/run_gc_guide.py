@@ -13,7 +13,9 @@ def _remap(i):
     src=_plain[i][1]
     for j,b in enumerate(blocks):
         if b[1]==src: return j
-    return None
+    import difflib      # the example was reflowed since the numbering was made: take the closest one
+    best=max(range(len(blocks)),key=lambda j: difflib.SequenceMatcher(None,blocks[j][1],src,autojunk=False).ratio())
+    return best
 only=[int(a) for a in sys.argv[1:] if a.isdigit()]
 verbose='-v' in sys.argv
 class TO(Exception): pass

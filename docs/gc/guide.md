@@ -666,7 +666,8 @@ Output: `5 15 2 0`. Every function states its return type. A call may be positio
 ```
 fn transfer(source: Int, dest: Int, count: Int = 10) Int (src, dst, n):
   src - dst + n
-println("${transfer(100, 40)} ${transfer(count: 5, dest: 40, source: 100)} ${transfer(100, dest: 40)}")
+print("${transfer(100, 40)} ${transfer(count: 5, dest: 40, source: 100)} ")
+println("${transfer(100, dest: 40)}")
 ```
 
 Output: `70 65 70`. A tuple can fill a parameter list:
@@ -803,7 +804,8 @@ fn call_with[A, R](f: (A) -> R, args: A) R:
   f(args)
 fn twice[A](f: (A) -> A, args: A) A:
   f(f(args))
-println("${call_with(add, (3, 4))} ${call_with(shout, "hi")} ${twice(shout, "yo")}")
+print("${call_with(add, (3, 4))} ${call_with(shout, "hi")} ")
+println("${twice(shout, "yo")}")
 ```
 
 Output: `7 hi! yo!!`. Field names are ignored when `A` is matched against a function type. A function with a `ref`, `lazy`, `using`, or variadic parameter doesn't match `(A) -> R`, because those modifiers are part of its type. Moxie has no way to take a tuple type apart or join two of them, so a wrapper can pass an argument list along but can't add or remove an argument. **Mistakes:** passing a `ref` function to `call_with`, and a wrapper that tries to split `A` into a first argument and the rest.
@@ -822,10 +824,12 @@ fn parse[T: Read](text: String) Result[T, Error]:
   T.read(text)
 fn label[T: Show + Hashable](x: T) String:
   "${x.show()} ${x.hash() == x.hash()}"
-println("${total(Array(1, 2, 3))} ${total(Array(1.5, 2.0, 3.0))} ${unit_of(7)} ${unit_of(2.5)}")
+print("${total(Array(1, 2, 3))} ${total(Array(1.5, 2.0, 3.0))} ${unit_of(7)} ")
+println("${unit_of(2.5)}")
 println("${parse[Int]("42")} ${parse[Bool]("true")}")
 println(label(Pixel(x: 1, y: 2)))
-println("${hash(Pixel(x: 1, y: 2)) == hash(Pixel(x: 1, y: 2))} ${hash(Pixel(x: 1, y: 2)) == hash(Pixel(x: 2, y: 1))}")
+print("${hash(Pixel(x: 1, y: 2)) == hash(Pixel(x: 1, y: 2))} ")
+println("${hash(Pixel(x: 1, y: 2)) == hash(Pixel(x: 2, y: 1))}")
 ```
 
 Output: `7 7.5 1 1.0`, then `Ok(42) Ok(true)`, then `Pixel(x: 1, y: 2) true`, then `true false`. Numbers, `String`, and `Char` implement the bounds that make sense for them (`String` is `Addable`, with `""` as its zero, but not `Numeric`), and a declared type joins with `deriving` (`show`, `eq`, `ord`, `read`, `hash`) or an `impl`. `Hashable` can only be derived, and `deriving hash` needs `eq` in the same header, so equal values always have equal hashes. A type is a Dict key or Set element only when it is `Hashable`. **Mistakes:** `deriving hash` without `eq`, a hand-written `impl Hashable`, and passing a `String` where a `Numeric` is required.
@@ -910,7 +914,8 @@ Output: `30 15`. The prelude has `curry(f)`, which works for a function of any n
 ```
 curried = curry2(add)
 add40 = fn (y: Int): add(40, y)
-println("${add(40, 60)} ${curried(40)(60)} ${add40(60)} ${60 |> add(40, &)} ${fn (x: Int, y: Int)(40, 60): x + y}")
+print("${add(40, 60)} ${curried(40)(60)} ${add40(60)} ${60 |> add(40, &)} ")
+println("${fn (x: Int, y: Int)(40, 60): x + y}")
 ```
 
 Output: `100 100 100 100 100`.
@@ -925,7 +930,11 @@ fn log_info = log("INFO", _)
 handlers = Dict[String, (String) -> Unit]()
 handlers(info) = log_info
 handlers(error) = log_error
-fn dispatch(table: Dict[String, (String) -> Unit], kind: String, msg: String) Unit:
+fn dispatch(
+  table: Dict[String, (String) -> Unit],
+  kind: String,
+  msg: String
+) Unit:
   when table($kind):
     Ok(h) -> h(msg)
     Err(e) -> println("unknown handler")
@@ -940,7 +949,8 @@ Functions compose with `~>` (left to right) and `<~` (right to left):
 ```
 fn inc(x: Int) Int: x + 1
 fn twice(x: Int) Int: x * 2
-println("${(inc ~> twice)(5)} ${(twice <~ inc)(5)} ${(twice ~> inc)(5)} ${5 |> (inc ~> twice)()}")
+print("${(inc ~> twice)(5)} ${(twice <~ inc)(5)} ${(twice ~> inc)(5)} ")
+println("${5 |> (inc ~> twice)()}")
 ```
 
 Output: `12 12 11 12`. A tuple field of function type is called like a method:
@@ -961,7 +971,12 @@ ops = Dict[String, (Int, Int) -> Int]()
 ops(plus) = add
 ops(minus) = sub
 ops(times) = mul
-fn run_op(table: Dict[String, (Int, Int) -> Int], name: String, a: Int, b: Int) Unit:
+fn run_op(
+  table: Dict[String, (Int, Int) -> Int],
+  name: String,
+  a: Int,
+  b: Int
+) Unit:
   when table($name):
     Ok(f) -> println("$name: ${f(a, b)}")
     Err(e) -> println("unknown operation")
@@ -1090,13 +1105,18 @@ tuple Config:
   host: String,
   port: Int,
   limits: Limits
-base = Config(host: "localhost", port: 80, limits: Limits(retries: 3, timeout: 30))
+base = Config(
+  host: "localhost",
+  port: 80,
+  limits: Limits(retries: 3, timeout: 30)
+)
 label = base.do: "$host:$port"
 secure = base.update:
   port: 443
   limits:
     retries: retries * 2
-println("$label ${secure.host} ${secure.port} ${secure.limits.retries} ${secure.limits.timeout} ${base.port}")
+print("$label ${secure.host} ${secure.port} ${secure.limits.retries} ")
+println("${secure.limits.timeout} ${base.port}")
 ```
 
 Output: `localhost:80 localhost 443 6 30 80`. `base` is unchanged, `retries` inside the nested block is the old `3`, and `timeout` is carried over. Every right-hand side sees the original value, so the order of the lines doesn't matter. A function can take a receiver function and call it on a value:
@@ -1167,7 +1187,8 @@ impl Named for User
 impl Named for Pet
 fn greet[T: Named](x: T) String:
   "Hello, ${x.name}"
-println("${greet(User(id: 1, name: "Ada"))} / ${greet(Pet(name: "Rex", owner: "Bo"))}")
+print("${greet(User(id: 1, name: "Ada"))} / ")
+println("${greet(Pet(name: "Rex", owner: "Bo"))}")
 ```
 
 Output: `Hello, Ada / Hello, Rex`. An impl with nothing to define has no colon. A field with a delegate makes a computed property, there is no run-time cost, and `any Named` works too. **Mistakes:** `impl Named for T` where `T` has no `name` field of type `String`, a property satisfied by `fn name() String` (it must be a field), writing `x.name = ...` through a `Named` bound, and an enum whose cases carry different payloads.
@@ -1279,7 +1300,8 @@ Output: `Maybe.Just(42) Ok(42)`. And an applicative lift:
 fn lift2[F[_]: Applicative, A, B, C](f: (A, B) -> C, a: F[A], b: F[B]) F[C]:
   a.map(curry2(f)).ap(b)
 none: Maybe[Int] = Maybe.Nothing
-println("${lift2(add, Maybe.Just(2), Maybe.Just(3))} ${lift2(add, none, Maybe.Just(3))}")
+print("${lift2(add, Maybe.Just(2), Maybe.Just(3))} ")
+println("${lift2(add, none, Maybe.Just(3))}")
 ```
 
 Output: `Maybe.Just(5) Maybe.Nothing`. Return-type polymorphism needs an explicit type, so write `F.pure(x)` or `Maybe.pure(x)`; a bare `pure(x)` is not dispatched from context.
@@ -1524,7 +1546,11 @@ A stage with no explicit arguments takes a tuple that fits its whole parameter l
 ```
 fn fetch_sensor_data(id: Int) (Float, Float, Float):
   (12.5, 45.0, 0.8)
-fn calculate_velocity(x: Float, y: Float, z: Float) (speed: Float, angle: Float):
+fn calculate_velocity(
+  x: Float,
+  y: Float,
+  z: Float
+) (speed: Float, angle: Float):
   (95.2, 14.6)
 fn update_physics(speed: Float, angle: Float) Unit:
   println("Physics vector updated: speed $speed, angle $angle")
@@ -1586,7 +1612,8 @@ fn grade(score: Double) String:
     >= 90.0 -> "A"
     >= 80.0 -> "B"
     _ -> "C"
-println("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} ${grade(85.0)}")
+print("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} ")
+println("${grade(85.0)}")
 ```
 
 Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when:` with no value tests conditions in order:
@@ -1646,7 +1673,8 @@ Output: `value 7 nothing`. A **let-else**, `Pattern = expr else: value`, leaves 
 fn times_ten(m: Maybe[Int]) Maybe[Int]:
   Just(v) = m else: Maybe.Nothing
   Maybe.Just(v * 10)
-println("${times_ten(Maybe.Just(7))} ${times_ten(Maybe.Nothing)} ${times_ten(half(5))}")
+print("${times_ten(Maybe.Just(7))} ${times_ten(Maybe.Nothing)} ")
+println("${times_ten(half(5))}")
 ```
 
 Output: `Maybe.Just(70) Maybe.Nothing Maybe.Nothing` (using `Maybe` and `half` from chapter 10). **Mistakes:** a `when` that doesn't cover every case, a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
@@ -1658,7 +1686,14 @@ A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `n
 ```
 fn describe(packet: Array[Byte]) String:
   when packet:
-    Bin(0xCA, version: bits(4), kind: bits(4), size: u16be, body: bytes(size), rest: bytes) -> "v$version k$kind size $size body ${len(body)} rest ${len(rest)}"
+    Bin(
+      0xCA,
+      version: bits(4),
+      kind: bits(4),
+      size: u16be,
+      body: bytes(size),
+      rest: bytes
+    ) -> "v$version k$kind size $size body ${len(body)} rest ${len(rest)}"
     Bin(a: u8, b: i16le) -> "short $a $b"
     _ -> "no match"
 println(describe(b"\xCA\x21\x00\x02hiXYZ"))
@@ -1699,13 +1734,17 @@ s = nums |> to_stream()
 total = s |> sum()
 count_big = s |> filter(_ > 4) |> count()
 lowest = s |> min()
-println("$total $count_big ${lowest.get_or(0)} ${s |> any(_ == 8)} ${s |> all(_ > 0)}")
+print("$total $count_big ${lowest.get_or(0)} ${s |> any(_ == 8)} ")
+println("${s |> all(_ > 0)}")
 ```
 
 Output: `17 2 1 true true`. (Each terminal reruns the recipe, so one `s` feeding five terminals is a lint warning; here it is deliberate.) `scan` emits a running value after each element, and `enumerate` pairs each element with its index:
 
 ```
-running: List[Int] = List(1, 2, 3, 4) |> to_stream() |> scan(0, _1 + _2) |> collect()
+running: List[Int] = List(1, 2, 3, 4)
+  |> to_stream()
+  |> scan(0, _1 + _2)
+  |> collect()
 println("${running(0)} ${running(1)} ${running(2)} ${running(3)}")
 for (i, v) in List(10, 20) |> to_stream() |> enumerate():
   println("$i:$v")
@@ -1747,7 +1786,11 @@ Output: `3 2 1`, then `4 2 5`. The chunks are `[1, 2]`, `[3, 4]`, `[5]`, and the
 
 ```
 readings = List(3, 6, 9, 12, 15)
-avg: List[Int] = readings |> to_stream() |> windows(3) |> map(fn (w): (w |> to_stream() |> sum()) / 3) |> collect()
+avg: List[Int] = readings
+  |> to_stream()
+  |> windows(3)
+  |> map(fn (w): (w |> to_stream() |> sum()) / 3)
+  |> collect()
 println("${avg(0)} ${avg(1)} ${avg(2)}")
 ```
 
@@ -1783,8 +1826,14 @@ Output: `alice is 30`, then `bob is 25`. More stages shape a stream. `distinct()
 ```
 words = List("pear", "fig", "banana", "fig", "kiwi")
 println("${words |> to_stream() |> distinct() |> collect()}")
-println("${words |> to_stream() |> distinct() |> intersperse("|") |> reduce("", _1 + _2)}")
-println("${words |> to_stream() |> min_by(len)} ${words |> to_stream() |> max_by(len)}")
+joined = words
+  |> to_stream()
+  |> distinct()
+  |> intersperse("|")
+  |> reduce("", _1 + _2)
+println("$joined")
+print("${words |> to_stream() |> min_by(len)} ")
+println("${words |> to_stream() |> max_by(len)}")
 (short, rest) = words |> to_stream() |> span(fn (w): len(w) < 6)
 println("$short ${len(rest)}")
 ```
@@ -1859,7 +1908,11 @@ fn size[T](t: Tree[T]) Int:
   when t:
     Leaf -> 0
     Node(l, _, r) -> size(l) + 1 + size(r)
-small = Tree.Node(left: Node(left: Leaf, value: 1, right: Leaf), value: 2, right: Node(left: Leaf, value: 3, right: Leaf))
+small = Tree.Node(
+  left: Node(left: Leaf, value: 1, right: Leaf),
+  value: 2,
+  right: Node(left: Leaf, value: 3, right: Leaf)
+)
 println("${size(small)}")
 ```
 
@@ -2081,7 +2134,9 @@ println("hi $answer")
 Output: `name? hi Ada`. A stream of lines goes through the usual pipeline functions:
 
 ```
-total = with_stdin("3\n4\n5\n", fn(): stdin_lines() |> map(fn(s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2))
+fn read_total() Int:
+  stdin_lines() |> map(fn(s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2)
+total = with_stdin("3\n4\n5\n", read_total)
 println(total)
 ```
 
@@ -2232,7 +2287,12 @@ Output: `0.5 4`. An `Array` of any number type is passed as a pointer. A paramet
 
 ```
 foreign "c":
-  impure fn qsort(ref base: Array[Int32], n: UInt = len(base), size: UInt = size_of(base), cmp: (Ptr[Int32], Ptr[Int32]) -> Int32)
+  impure fn qsort(
+    ref base: Array[Int32],
+    n: UInt = len(base),
+    size: UInt = size_of(base),
+    cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
+  )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
 qsort(ref xs, fn(a, b): a - b)
 println(xs)
@@ -2302,7 +2362,8 @@ fn h1(text: String) Html:
 fn li(text: String) Li:
   Li(text: "<li>$text</li>")
 fn ul(items: ...Li) Html:
-  Html(text: "<ul>${items |> to_stream() |> map(_.text) |> reduce("", _1 + _2)}</ul>")
+  inner = items |> to_stream() |> map(_.text) |> reduce("", _1 + _2)
+  Html(text: "<ul>$inner</ul>")
 fn body(children: ...Html) Html:
   Html(text: "<body>${join(children)}</body>")
 fn html(child: Html) String:
@@ -2337,7 +2398,10 @@ You open a connection in the entry file with `Connection.open(path)`, which retu
 tuple Telemetry:
   id: Int,
   value: Double
-inline fn fetch_active_telemetry(conn: Connection, min_value: Double) Result[Stream[Telemetry], Error]:
+inline fn fetch_active_telemetry(
+  conn: Connection,
+  min_value: Double
+) Result[Stream[Telemetry], Error]:
   sql(conn):
     SELECT id, value FROM telemetry
     WHERE value >= $min_value AND active = true
@@ -2359,7 +2423,12 @@ fn load_config(conn: Connection) Result[Dict[String, String], Error]:
 A **transaction** commits when the lambda returns `Ok` and rolls back on `Err` or `?`:
 
 ```
-fn transfer(conn: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]:
+fn transfer(
+  conn: Connection,
+  from_id: Int,
+  to_id: Int,
+  amount: Int
+) Result[Unit, Error]:
   transaction(conn)(tx):
     debit = sql(tx):
       UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
@@ -2515,7 +2584,9 @@ Output: `true false false`, then `too big`. `|>>` and `?` are two spellings of t
 r1: Result[Int, Error] = Ok(1)
 r2: Result[Int, Error] = Ok(2)
 bad: Result[Int, Error] = fail(9, "bad")
-println("${(curry2(add) <$> r1) <*> r2} ${is_err((curry2(add) <$> bad) <*> r2)}")
+println(
+  "${(curry2(add) <$> r1) <*> r2} ${is_err((curry2(add) <$> bad) <*> r2)}"
+)
 ```
 
 Output: `Ok(3) true`. The parentheses are needed because `<$>` and `<*>` sit in the comparison tier. This is the applicative style: independent inputs combined by one function, with the first error winning. The prelude's `traverse(f, stream)` maps a `Result`-returning function and stops at the first error, and `sequence` turns a stream of `Result`s into a `Result` of a list:
@@ -2562,7 +2633,8 @@ impl Monad[Maybe]:
     when self:
       Just(v) -> f(v)
       Nothing -> Maybe.Nothing
-println("${Maybe.Just(3).map(fn (x): x + 1)} ${Maybe.pure(20).flat_map(half).flat_map(half)}")
+print("${Maybe.Just(3).map(fn (x): x + 1)} ")
+println("${Maybe.pure(20).flat_map(half).flat_map(half)}")
 ```
 
 Output: `Maybe.Just(4) Maybe.Just(5)`. The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `map`, `ap`, and `flat_map` for any such type. Code written once for every monad (`double_in`, `lift2`) is in chapter 8d. The compiler does not check the monad laws, evaluation is eager, and there is no return-type dispatch: write `Maybe.pure(42)`, never a bare `pure(42)`. A type that accumulates several errors should implement `Applicative` only.
@@ -2736,7 +2808,11 @@ Output: `120 105`. A **Writer** is a function that returns the value together wi
 Streams are recipes, so an infinite source costs nothing until a terminal runs it:
 
 ```
-total = Range(1.., 1) |> filter(_ % 3 == 0) |> map(fn (n): n * n) |> take(4) |> sum()
+total = Range(1.., 1)
+  |> filter(_ % 3 == 0)
+  |> map(fn (n): n * n)
+  |> take(4)
+  |> sum()
 under_50 = Range(1.., 1) |> map(fn (n): n * n) |> take_while(_ < 50) |> count()
 println("$total $under_50")
 ```

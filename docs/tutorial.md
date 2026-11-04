@@ -81,10 +81,18 @@ Moxie has no `struct` or `class`. A `tuple` is the record type: a named list of 
 ## Step 4. Many students
 
 ```moxie
-roster = List(ada, bob, Student(name: "Cy", score: 71), Student(name: "Di", score: 58))
+roster = List(
+  ada,
+  bob,
+  Student(name: "Cy", score: 71),
+  Student(name: "Di", score: 58)
+)
 total = roster |> to_stream() |> map(fn (s): s.score) |> sum()
 println("average ${total / len(roster)}")
-passing: List[Student][4] = roster |> to_stream() |> filter(fn (s): s.score >= 60) |> collect()
+passing: List[Student][4] = roster
+  |> to_stream()
+  |> filter(fn (s): s.score >= 60)
+  |> collect()
 for s in passing:
   println("${s.name}: ${s.score} ${letter(s.score)}")
 ```
