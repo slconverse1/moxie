@@ -155,7 +155,7 @@ fn apply_twice(f: (Int) -> Int, x: Int) Int:
   f(f(x))
 
 fn make_adder(n: Int) (Int) -> Int:
-  fn (x): x + n
+  (x): x + n
 ```
 
 - **Parameters** are written `name: Type`, with the same colon a tuple field uses, and they're separated by commas with none after the last. A default (`greeting: String = "Hello"`) must come after the parameters without one.
@@ -182,20 +182,20 @@ fn apply_twice(f: (Int) -> Int, x: Int) Int:
   f(f(x))
 
 fn run_it(g: ((Int) -> Int, Int) -> Int) Int:
-  g(fn (n): n + 3, 10)
+  g((n): n + 3, 10)
 
-println("${apply_twice(fn (n): n * 2, 5)} ${run_it(apply_twice)}")
+println("${apply_twice((n): n * 2, 5)} ${run_it(apply_twice)}")
 ```
 
-Output: `20 16`. In the first call, `f` is `fn (n): n * 2`, so `5` becomes `10` and then `20`. `run_it` takes a parameter `g` whose signature, `((Int) -> Int, Int) -> Int`, is exactly `apply_twice`'s own signature, so `run_it(apply_twice)` is legal: `g` adds `3` to `10` twice, giving `16`.
+Output: `20 16`. In the first call, `f` is `(n): n * 2`, so `5` becomes `10` and then `20`. `run_it` takes a parameter `g` whose signature, `((Int) -> Int, Int) -> Int`, is exactly `apply_twice`'s own signature, so `run_it(apply_twice)` is legal: `g` adds `3` to `10` twice, giving `16`.
 
-**Anonymous functions.** `fn (n): n * 2` is a function with no name, and the missing name is what makes it anonymous. Other languages call this a lambda, and in these pages the two words mean the same thing. Size has nothing to do with it: an anonymous function can be one expression or an indented block of many lines, it can have typed parameters and a return type, and it is a value like any other, so it can be passed, returned, or bound to a name. It is always written `fn (`, with a space, so that it can't be taken for a call to a function named `fn`. Two shorter forms cover the common cases: a placeholder (`_ * 2`, section 9) and a function written after a call (`map()(x): x * 3`).
+**Anonymous functions.** `(n): n * 2` is a function with no name, and the missing name is what makes it anonymous. Other languages call this a lambda, and in these pages the two words mean the same thing. Size has nothing to do with it: an anonymous function can be one expression or an indented block of many lines, it can have typed parameters and a return type, and it is a value like any other, so it can be passed, returned, or bound to a name. `fn` is for named declarations only, so a function written without it is a lambda. A lambda is pure (it can't print, park, or touch a file, a socket, a channel, or SQL), so a callback that does any of those is a named function. Two shorter forms cover the common cases: a placeholder (`_ * 2`, section 9) and a function written after a call (`map()(x): x * 3`).
 
 **A function that returns a function.** A function can give back another function as its result, and its signature shows it. The arrow reads right to left, so `(Int) -> (Int) -> Int` is "takes an `Int` and returns a function that takes an `Int` and returns an `Int`." The signature describes such a function: you give it one `Int`, and what you get back is not a final answer but a function still waiting for a second `Int`. Only when you supply that one do you get the final `Int`. `make_adder`, declared above, is such a function, and `add_curried` is another:
 
 ```
 fn add_curried(a: Int) (Int) -> Int:
-  fn (b): a + b
+  (b): a + b
 
 fn apply_curried(f: (Int) -> (Int) -> Int, a: Int, b: Int) Int:
   f(a)(b)
@@ -442,7 +442,7 @@ A path like `/User/firm/name` names a spot inside nested tuples, and it's an ord
 
 ```
 b = replace(a, /User/firm/name, "Acme")
-c = modify(a, /User/firm/name, fn (s): "$s Ltd")
+c = modify(a, /User/firm/name, (s): "$s Ltd")
 ```
 
 You never write the nested-copy boilerplate, and the original `a` is untouched.
@@ -946,7 +946,7 @@ Moxie is eager by default, so laziness is something you ask for, in two places.
 ```
 total = Range(1..)
   |> filter(_ % 3 == 0)
-  |> map(fn (n): n * n)
+  |> map((n): n * n)
   |> take(4)
   |> sum()
 ```
@@ -1126,7 +1126,7 @@ Here `half` returns a `Maybe`, and `<$>` and `<*>` get parentheses when mixed wi
 
 ```
 fn double_in[F[_]: Monad](m: F[Int]) F[Int]:
-  m.flat_map(fn (x): F.pure(x * 2))
+  m.flat_map((x): F.pure(x * 2))
 ```
 
 That works for `Maybe.Just(21)` and `Ok(21)` alike.
@@ -1144,14 +1144,14 @@ That works for `Maybe.Just(21)` and `Ok(21)` alike.
 ```
 factor = 5
 ops = Dict[String, (Int) -> Int]()
-ops(double) = fn (n): n * 2        // fine: captures nothing
-ops(scale) = fn (n): n * factor    // fine in moxie/gc: a closure in a Dict
+ops(double) = (n): n * 2        // fine: captures nothing
+ops(scale) = (n): n * factor    // fine in moxie/gc: a closure in a Dict
 
 fn pick(flag: Bool, a: Int, b: Double) (Int) -> Int:
   if flag:
-    fn (n): n + a                  // captures an Int
+    (n): n + a                  // captures an Int
   else:
-    fn (n): n + cast[Int](b)       // fine in moxie/gc: same type, (Int) -> Int
+    (n): n + cast[Int](b)       // fine in moxie/gc: same type, (Int) -> Int
 
 pure fn noisy(w: Int) Int:
   println("w is $w")               // error: pure fn calls println
@@ -1316,7 +1316,9 @@ Moxie programs read, write, and call C, and every one of those goes through a va
 fn greet(out: Io, name: String) Unit:
   println(out, "hello, $name")
 greet(stdout, "mixer")
-name = with_stdin("Ada\n", fn (): read_line().get_or("nobody"))
+fn read_name() String:
+  read_line().get_or("nobody")
+name = with_stdin("Ada\n", read_name)
 println("hi $name")
 ```
 
@@ -1341,7 +1343,7 @@ foreign "c":
     cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
-qsort(ref xs, fn (a, b): a - b)
+qsort(ref xs, (a, b): a - b)
 println(xs)
 ```
 

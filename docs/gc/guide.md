@@ -154,7 +154,7 @@ Output: `1`, `3`, `4`. Inside a `select:`, a bare `break` leaves the select, so 
 (a sketch, no output). A label cannot cross a function or lambda boundary, and `return` inside a lambda leaves that lambda, which is the moxie form of Kotlin's `return@forEach`:
 
 ```
-clamp = fn (n: Int):
+clamp = (n: Int):
   if n < 0:
     return 0
   n
@@ -480,7 +480,7 @@ tuple User:
 a = User(id: 1, firm: Firm(name: "Initech", floor: 2))
 firm_name = /User/firm/name
 b = replace(a, /User/firm/name, "Acme")
-c = modify(a, /User/firm/name, fn (s): "$s Ltd")
+c = modify(a, /User/firm/name, (s): "$s Ltd")
 name_of_user = /User/firm ~> /Firm/name
 println("${firm_name(a)} ${a.id} ${(/User/firm/floor)(a)} ${firm_name(b)}")
 println("${firm_name(c)} ${name_of_user(a)}")
@@ -647,7 +647,7 @@ Output: `6 5 5`. A `Char` is a Unicode scalar, not a grapheme cluster. **Mistake
 fn add(x: Int, y: Int) Int:
   x + y
 fn make_scaler(factor: Int) (Int) -> Int:
-  fn (n): n * factor
+  (n): n * factor
 fn bump(ref counter: Int) Unit:
   counter++
 fn pick(use_it: Bool, lazy costly: Int) Int:
@@ -661,7 +661,7 @@ bump(ref n)
 println("${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}")
 ```
 
-An anonymous function is a function with no name, written `fn (n): n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. It is always written `fn (` with a space.
+An anonymous function is a function with no name, written `(n): n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. `fn` begins only a named declaration, so a function with no `fn` in front is a lambda. Bind one with a typed name, `add: (Int, Int) -> Int = (a, b): a + b`, and the type supplies its parameter and result types. A lambda is pure: it can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic. A function that needs any of that is declared with `fn`.
 
 Output: `5 15 2 0`. Every function states its return type. A call may be positional, named, or positional followed by named (named arguments in any order, each parameter supplied once), trailing parameters can have defaults, and a list before the colon renames parameters inside the body:
 
@@ -692,7 +692,7 @@ total = numbers |> to_stream() |> reduce(0)(acc, x):
 println("$total")
 ```
 
-Output: `6`. `map` takes the function first and the stream second. In `stream |> map()(x): x * 3` the pipe fills the stream slot, and the lambda fills the last parameter left, which is the function. These three calls are the same: `map(fn (x): x * 3, stream)`, `stream |> map(fn (x): x * 3)`, and `stream |> map()(x): x * 3`. Writing the stream out (`map(fn, stream)`) has no trailing form. A same-line lambda body runs to the end of the line, and a following `|>` line continues the whole pipeline.
+Output: `6`. `map` takes the function first and the stream second. In `stream |> map()(x): x * 3` the pipe fills the stream slot, and the lambda fills the last parameter left, which is the function. These three calls are the same: `map((x): x * 3, stream)`, `stream |> map((x): x * 3)`, and `stream |> map()(x): x * 3`. Writing the stream out (`map(fn, stream)`) has no trailing form. A same-line lambda body runs to the end of the line, and a following `|>` line continues the whole pipeline.
 
 When a stream carries tuples, a lambda with two or more parameters takes each tuple apart, and a parameter may be a pattern:
 
@@ -702,14 +702,14 @@ ys = List(4, 5, 6)
 dot = zip(xs, ys) |> map()(x, y): x * y
   |> reduce(0, _1 + _2)
 named = (name: "Ada", age: 36)
-show = fn ((name: n, age: a)): "$n is $a"
+show = ((name: n, age: a)): "$n is $a"
 println("$dot ${show(named)}")
 ```
 
-Output: `32 Ada is 36`. A function built and called in the same place uses `fn (params)(args):`, and the last list is always the arguments:
+Output: `32 Ada is 36`. A lambda built and called in the same place goes in parentheses, followed by the arguments:
 
 ```
-double = fn (x: Int)(21): x * 2
+double = ((x: Int): x * 2)(21)
 println("$double")
 ```
 
@@ -757,7 +757,7 @@ Output: `one 1`. Inference runs in argument order, so a literal takes its types 
 ```
 fn apply_twice[T](x: T, f: (T) -> T) T:
   f(f(x))
-println("${apply_twice(3, fn (n): n * 2)} ${apply_twice(5, fn (n): n + 8)}")
+println("${apply_twice(3, (n): n * 2)} ${apply_twice(5, (n): n + 8)}")
 ```
 
 Output: `12 21`. A size parameter is a number that sizes a collection, and it can be read as an `Int`. A `where` clause limits the sizes allowed:
@@ -904,9 +904,9 @@ A function literal may use the locals around it. **[gc]** Captured values are sh
 
 ```
 factor = 5
-scale = fn (n: Int): n * factor
+scale = (n: Int): n * factor
 fn make_adder(k: Int) (Int) -> Int:
-  fn (n): n + k
+  (n): n + k
 add_n = make_adder(10)
 println("${scale(6)} ${add_n(5)}")
 ```
@@ -915,9 +915,9 @@ Output: `30 15`. The prelude has `curry(f)`, which works for a function of any n
 
 ```
 curried = curry2(add)
-add40 = fn (y: Int): add(40, y)
+add40 = (y: Int): add(40, y)
 print("${add(40, 60)} ${curried(40)(60)} ${add40(60)} ${60 |> add(40, &)} ")
-println("${fn (x: Int, y: Int)(40, 60): x + y}")
+println("${((x: Int, y: Int): x + y)(40, 60)}")
 ```
 
 Output: `100 100 100 100 100`.
@@ -960,7 +960,7 @@ Output: `12 12 11 12`. A tuple field of function type is called like a method:
 ```
 tuple Op:
   apply: (Int) -> Int
-op = Op(apply: fn (n): n * 2)
+op = Op(apply: (n): n * 2)
 println("${op.apply(21)}")
 ```
 
@@ -994,8 +994,8 @@ Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. *
 ```
 fn pick(flag: Bool, k: Int) (Int) -> Int:
   when flag:
-    true -> fn (n): n + k
-    false -> fn (n): n * k
+    true -> (n): n + k
+    false -> (n): n * k
 fns = List(pick(true, 3), pick(false, 3))
 println("${fns(0)(10)} ${fns(1)(10)}")
 ```
@@ -1130,7 +1130,7 @@ bumped = apply(base)(): Config(...self, port: port + 1)
 println("${bumped.port}")
 ```
 
-Output: `81`. Name lookup inside a receiver body is locals first, then the receiver's fields and methods, then the module; `self` is the innermost receiver. **Mistakes:** `port = 443` inside an `update` block (that binds a local), a field line in a plain `do:` block, a misspelled or repeated field name, a nested block on a field that isn't a declared tuple, and expecting an outer receiver's fields to need `self`.
+Output: `81`. The lambda can also go inside the call, `apply(base, (): Config(...self, port: port + 1))`; its receiver comes from the expected type, and there is no `fn Config.()` form. Name lookup inside a receiver body is locals first, then the receiver's fields and methods, then the module; `self` is the innermost receiver. **Mistakes:** `port = 443` inside an `update` block (that binds a local), a field line in a plain `do:` block, a misspelled or repeated field name, a nested block on a field that isn't a declared tuple, and expecting an outer receiver's fields to need `self`.
 
 **8b. Composing interfaces, and extending without editing**
 
@@ -1250,7 +1250,7 @@ impl Monoid for Max:
   static fn empty() Max:
     Max(value: -1000000)
 fn mconcat[T: Monoid, N](xs: Array[T][N]) T:
-  xs |> to_stream() |> reduce(T.empty(), fn (a, b): a.combine(b))
+  xs |> to_stream() |> reduce(T.empty(), (a, b): a.combine(b))
 nums: Array[Int] = (1, 2, 3)
 maxes: Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
 println("${mconcat(nums)} ${mconcat(maxes).value}")
@@ -1291,7 +1291,7 @@ A class over a type constructor takes `F[_]`, and an instance names the construc
 
 ```
 fn double_in[F[_]: Monad](m: F[Int]) F[Int]:
-  m.flat_map(fn (x): F.pure(x * 2))
+  m.flat_map((x): F.pure(x * 2))
 r: Result[Int, Error] = Ok(21)
 println("${double_in(Maybe.Just(21))} ${double_in(r)}")
 ```
@@ -1481,16 +1481,16 @@ Output: `Maybe.Just(5) Maybe.Nothing`. (`10 → 5`, then `5` is odd.) Result hel
 ```
 fn parse_ok(n: Int) Result[Int, Error]:
   if n < 0: fail(1, "negative") else: Ok(n)
-r1 = parse_ok(5) |>> (fn (v): Ok(v * 2))
-m = map_ok(parse_ok(20), fn (v): v + 1)
-bad = map_err(parse_ok(-1), fn (e): e)
+r1 = parse_ok(5) |>> ((v): Ok(v * 2))
+m = map_ok(parse_ok(20), (v): v + 1)
+bad = map_err(parse_ok(-1), (e): e)
 println("${is_ok(r1)} ${is_err(bad)} ${m.get_or(-1)}")
 ```
 
 Output: `true true 21`. The prelude defines `<$>` (map), `<*>` (apply), and `|>>` (bind) for every type with a `Functor`, `Applicative`, or `Monad` impl, `Result` among them. Both `<$>` and `<*>` start with `<`, so parenthesize them with other operators:
 
 ```
-inc = fn (x: Int): x + 1
+inc = (x: Int): x + 1
 two: Result[Int, Error] = Ok(2)
 f: Result[(Int) -> Int, Error] = Ok(inc)
 println("${(inc <$> two)} ${(f <*> two)}")
@@ -1791,7 +1791,7 @@ readings = List(3, 6, 9, 12, 15)
 avg: List[Int] = readings
   |> to_stream()
   |> windows(3)
-  |> map(fn (w): (w |> to_stream() |> sum()) / 3)
+  |> map((w): (w |> to_stream() |> sum()) / 3)
   |> collect()
 println("${avg(0)} ${avg(1)} ${avg(2)}")
 ```
@@ -1836,7 +1836,7 @@ joined = words
 println("$joined")
 print("${words |> to_stream() |> min_by(len)} ")
 println("${words |> to_stream() |> max_by(len)}")
-(short, rest) = words |> to_stream() |> span(fn (w): len(w) < 6)
+(short, rest) = words |> to_stream() |> span((w): len(w) < 6)
 println("$short ${len(rest)}")
 ```
 
@@ -1893,7 +1893,7 @@ Nothing is memoized for you. A bottom-up `reduce` builds a result from the base 
 
 ```
 fn fib(n: Int) Int:
-  (a, _) = Range(1..=n, 1) |> reduce((0, 1), fn (s, _): (s(1), s(0) + s(1)))
+  (a, _) = Range(1..=n, 1) |> reduce((0, 1), (s, _): (s(1), s(0) + s(1)))
   a
 println("${fib(10)}")
 ```
@@ -2015,7 +2015,7 @@ fn start_counter(tx: ChanW[Int], start: Int) Unit:
     _ = write(out, first + 1)
 ```
 
-Without `run`, the same shape is a function called on the spot, which takes its parameters first (`fn (x)(5): ...`). There is no structured-concurrency block: to wait for fibers, read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), an inline fiber body that ends in a value other than `Unit`, `return` in a daemon cycle (before `daemon:` in the entry file it ends the program), and a literal in the short form (`run fn (5):` needs the full form, `run fn (5)(x):`).
+Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5): ...`). There is no structured-concurrency block: to wait for fibers, read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), an inline fiber body that ends in a value other than `Unit`, `return` in a daemon cycle (before `daemon:` in the entry file it ends the program), and a literal in the short form (`run fn (5):` needs the full form, `run fn (5)(x):`).
 
 **Chapter 18: Errors and `?`**
 
@@ -2126,10 +2126,10 @@ greet(stderr, "mixer")
 Output: `hello, mixer` on standard output, and the same line on standard error. `print` and `println` with no stream write to `stdout`, and `eprint` and `eprintln` write to `stderr`. Reading is `read_line()`, which returns a `Result` (the line without its newline), `read_all()`, and `stdin_lines()`, a stream of lines. They all `parks`: only the fiber that waits is held up. `with_stdin(text, f)` runs `f` with `text` as the input, so a test can feed a program:
 
 ```
-fn ask(question: String) String:
-  print("$question ")
+fn ask_name() String:
+  print("name? ")
   read_line().get_or("nobody")
-answer = with_stdin("Ada\n", fn (): ask("name?"))
+answer = with_stdin("Ada\n", ask_name)
 println("hi $answer")
 ```
 
@@ -2137,7 +2137,7 @@ Output: `name? hi Ada`. A stream of lines goes through the usual pipeline functi
 
 ```
 fn read_total() Int:
-  stdin_lines() |> map(fn (s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2)
+  stdin_lines() |> map((s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2)
 total = with_stdin("3\n4\n5\n", read_total)
 println(total)
 ```
@@ -2145,7 +2145,7 @@ println(total)
 Output: `12`. End of input is not a crash. `read_line()` returns `Err` with the code `CLOSED`:
 
 ```
-when with_stdin("", fn (): read_line()):
+when with_stdin("", read_line):
   Ok(line) -> println("got $line")
   Err(e) -> println("end of input: ${e.message}")
 ```
@@ -2296,7 +2296,7 @@ foreign "c":
     cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
-qsort(ref xs, fn (a, b): a - b)
+qsort(ref xs, (a, b): a - b)
 println(xs)
 ```
 
@@ -2330,7 +2330,7 @@ foreign "sensor":
   impure fn on_query(cb: Handler[(Int32) -> Int32])
 rx, tx = Chan[(Int32, Double)][16]()
 on_reading(move tx)
-on_query(fn (id): id * 2i32)
+on_query((id): id * 2i32)
 for i in 1..=3:
   println(read(rx)?)
 ```
@@ -2422,26 +2422,33 @@ fn load_config(conn: Connection) Result[Dict[String, String], Error]:
   rows? |> collect()
 ```
 
-A **transaction** commits when the lambda returns `Ok` and rolls back on `Err` or `?`:
+A **transaction** commits when its function returns `Ok` and rolls back on `Err` or `?`:
 
 ```
+fn move_funds(
+  tx: Connection,
+  from_id: Int,
+  to_id: Int,
+  amount: Int
+) Result[Unit, Error]:
+  debit = sql(tx):
+    UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
+  _ = debit?
+  credit = sql(tx):
+    UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
+  _ = credit?
+  Ok(())
+
 fn transfer(
   conn: Connection,
   from_id: Int,
   to_id: Int,
   amount: Int
 ) Result[Unit, Error]:
-  transaction(conn)(tx):
-    debit = sql(tx):
-      UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
-    _ = debit?
-    credit = sql(tx):
-      UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
-    _ = credit?
-    Ok(())
+  transaction(conn, move_funds(_, from_id, to_id, amount))
 ```
 
-**Mistakes:** an unknown column (compile error), `${table}` as a table name (identifiers can't be parameters), nesting transactions, capturing a channel in the transaction lambda, and returning a query stream from a plain `fn`.
+**Mistakes:** an unknown column (compile error), `${table}` as a table name (identifiers can't be parameters), nesting transactions, passing a channel to the transaction function, and returning a query stream from a plain `fn`.
 
 **Chapter 23: Tests, assertions, `dbg`**
 
@@ -2524,7 +2531,7 @@ Output: `4` (0 becomes 1, then 2, then 4). Currying is a library function, and c
 
 ```
 add5 = curry2(add)(5)
-make_adder = fn (k: Int): fn (n: Int): n + k
+make_adder = (k: Int): (n: Int): n + k
 println("${add5(1)} ${make_adder(10)(1)}")
 ```
 
@@ -2555,8 +2562,8 @@ fn fold_tree[T, R](t: Tree[T], base: R, f: (R, T, R) -> R) R:
   when t:
     Leaf -> base
     Node(l, v, r) -> f(fold_tree(l, base, f), v, fold_tree(r, base, f))
-sum = fold_tree(small, 0, fn (a, v, b): a + v + b)
-depth = fold_tree(small, 0, fn (a, _, b): 1 + (if a > b: a else: b))
+sum = fold_tree(small, 0, (a, v, b): a + v + b)
+depth = fold_tree(small, 0, (a, _, b): 1 + (if a > b: a else: b))
 println("$sum $depth")
 ```
 
@@ -2635,7 +2642,7 @@ impl Monad[Maybe]:
     when self:
       Just(v) -> f(v)
       Nothing -> Maybe.Nothing
-print("${Maybe.Just(3).map(fn (x): x + 1)} ")
+print("${Maybe.Just(3).map((x): x + 1)} ")
 println("${Maybe.pure(20).flat_map(half).flat_map(half)}")
 ```
 
@@ -2646,8 +2653,8 @@ Output: `Maybe.Just(4) Maybe.Just(5)`. The operators `<$>`, `<*>`, and `|>>` are
 ```
 fn dec(n: Int) Maybe[Int]:
   if n > 0: Maybe.Just(n - 1) else: Maybe.Nothing
-sq = fn (x: Int): x * x
-dup = fn (x: Int): List(x, x)
+sq = (x: Int): x * x
+dup = (x: Int): List(x, x)
 fn pos(n: Int) Result[Int, Error]:
   if n > 0: Ok(n) else: fail(1, "not positive")
 fn under(n: Int) Result[Int, Error]:
@@ -2656,8 +2663,8 @@ println("${Maybe.Just(3) |>> dec |>> dec} ${Maybe.Just(1) |>> dec |>> dec}")
 println("${sq <$> Maybe.Just(7)} ${sq <$> Maybe.Nothing}")
 lifted = curry2(add) <$> Maybe.Just(4)
 println("${lifted <*> Maybe.Just(5)} ${lifted <*> Maybe.Nothing}")
-good = Ok(4) |>> pos |>> under |>> (fn (v): Ok(v * 3))
-bad = Ok(40) |>> pos |>> under |>> (fn (v): Ok(v * 3))
+good = Ok(4) |>> pos |>> under |>> ((v): Ok(v * 3))
+bad = Ok(40) |>> pos |>> under |>> ((v): Ok(v * 3))
 println("$good ${is_err(bad)}")
 println("${List(1, 2) |>> dup} ${sq <$> (List(1, 2, 3) |>> dup)}")
 ```
@@ -2781,15 +2788,15 @@ fn bind_state[S, A, B](m: State[S, A], f: (A) -> State[S, B], s: S) (B, S):
   f(a).run(s2)
 impl[S] Monad[State[S, _]]:
   fn map[A, B](self: State[S, A], f: (A) -> B) State[S, B]:
-    State(run: fn (s): map_state(self, f, s))
+    State(run: (s): map_state(self, f, s))
   static fn pure[A](a: A) State[S, A]:
-    State(run: fn (s): (a, s))
+    State(run: (s): (a, s))
   fn ap[A, B](self: State[S, (A) -> B], x: State[S, A]) State[S, B]:
-    self.flat_map(fn (g): x.map(g))
+    self.flat_map((g): x.map(g))
   fn flat_map[A, B](self: State[S, A], f: (A) -> State[S, B]) State[S, B]:
-    State(run: fn (s): bind_state(self, f, s))
-next_id = State(run: fn (c: Int): (c + 1, c + 1))
-two = next_id.flat_map(fn (a): next_id.map(fn (b): (a, b)))
+    State(run: (s): bind_state(self, f, s))
+next_id = State(run: (c: Int): (c + 1, c + 1))
+two = next_id.flat_map((a): next_id.map((b): (a, b)))
 r = two.run(0)
 println("${r(0)(0)} ${r(0)(1)} ${r(1)}")
 ```
@@ -2812,10 +2819,10 @@ Streams are recipes, so an infinite source costs nothing until a terminal runs i
 ```
 total = Range(1.., 1)
   |> filter(_ % 3 == 0)
-  |> map(fn (n): n * n)
+  |> map((n): n * n)
   |> take(4)
   |> sum()
-under_50 = Range(1.., 1) |> map(fn (n): n * n) |> take_while(_ < 50) |> count()
+under_50 = Range(1.., 1) |> map((n): n * n) |> take_while(_ < 50) |> count()
 println("$total $under_50")
 ```
 

@@ -471,7 +471,9 @@ class ExprParser(PBase):
             new_args.append(a)
         call = Call(fn, new_args, None, line=line)
         if partial:
-            return ph_lambda(call, line)
+            lam = ph_lambda(call, line)
+            lam.partial = True
+            return lam
         return call
 
     # ------------------------------------------------------------ atoms
@@ -568,6 +570,8 @@ class ExprParser(PBase):
         if k == "OP":
             v = t.val
             if v == "(":
+                if not self.no_trailing and self._bare_lambda_ahead():
+                    return self.parse_bare_lambda()
                 return self.parse_paren()
             if v == "&":
                 self.next()
@@ -613,7 +617,8 @@ class ExprParser(PBase):
         if v == "run":
             return self.parse_run()
         if v == "fn":
-            return self.parse_lambda()
+            self.err("'fn' declares a named function; an anonymous function is written (x): body "
+                     "(only an inline fiber is written run fn (...))")
         if v == "todo":
             self.next()
             msg = None
@@ -654,6 +659,38 @@ class ExprParser(PBase):
             self.err(f"unexpected '{v}'")
         self.next()
         return Name(v, line=line)
+
+    _NOT_RET = ("if", "else", "and", "or", "in", "is", "not", "for", "while", "when", "elif", "as")
+
+    def _bare_lambda_ahead(self):
+        """`(params): body` or `(params) Ret: body` where an expression may start."""
+        m = self.matching(0)
+        if m is None or m + 1 >= len(self.toks):
+            return False
+        after = self.toks[m + 1]
+        if after.kind == "OP" and after.val == ":":
+            return True
+        if (after.kind == "NAME" and after.val not in self._NOT_RET) or (after.kind == "OP" and after.val == "("):
+            save = self.p
+            self.p = m + 1
+            try:
+                self.parse_type()
+                return self.at_op(":")
+            except Exception:
+                return False
+            finally:
+                self.p = save
+        return False
+
+    def parse_bare_lambda(self):
+        line = self.peek().line
+        params = self.parse_params()
+        ret = None
+        if not self.at_op(":"):
+            ret = self.parse_type()
+        self.expect_op(":")
+        body = self.parse_lambda_body()
+        return Lambda(params, body, None, None, ret, line=line)
 
     def parse_paren(self):
         t = self.next()
@@ -716,16 +753,12 @@ class ExprParser(PBase):
         return TupleE(cur, line=line)
 
     # ------------------------------------------------------------ lambda
-    def parse_lambda(self, run=False):
+    def parse_lambda(self, run=True):
+        """The inline fiber `run fn (args)(params): body` (the arguments come first, like `run name(args)`).
+        An anonymous function elsewhere is written `(params): body` (parse_bare_lambda)."""
         t = self.next()   # fn
         line = t.line
-        recv = None
-        nt = self.peek()
-        if nt.kind == "NAME" and self.at_op(".", 1) and self.at_op("(", 2):
-            recv = self.parse_type_prim_name()
-            self.expect_op(".")
-        # inline fiber: run fn (args)(params): body  (the arguments come first, like the call run name(args))
-        if run and recv is None and self.at_op("("):
+        if self.at_op("("):
             m = self.matching(0)
             t2 = self.toks[m + 1] if m is not None else None
             if t2 is not None and t2.kind == "OP" and t2.val == "(" and not t2.sp:
@@ -737,28 +770,13 @@ class ExprParser(PBase):
                     self.expect_op(":")
                     body = self.parse_lambda_body()
                     lam = Lambda(params, body, None, None, None, line=line)
+                    lam.fiber = True
                     return Call(lam, args, None, line=line)
         params = self.parse_params()
-        # immediately-called: fn (params)(args): body
-        if not run and self.at_op("(") and not self.peek().sp:
-            m = self.matching(0)
-            if m is not None and self.toks[m + 1].kind == "OP" and self.toks[m + 1].val == ":":
-                args = self.parse_args()
-                self.expect_op(":")
-                body = self.parse_lambda_body()
-                lam = Lambda(params, body, None, None, None, line=line)
-                return Call(lam, args, None, line=line)
-        ret = None
-        if not self.at_op(":") and not self.at_op("("):
-            ret = self.parse_type()
-        elif self.at_op("(") and self._paren_is_type():
-            ret = self.parse_type()
-        locals_ = None
-        if self.at_op("("):
-            locals_ = [p.name for p in self.parse_params()]
         self.expect_op(":")
         body = self.parse_lambda_body()
-        lam = Lambda(params, body, recv, locals_, ret, line=line)
+        lam = Lambda(params, body, None, None, None, line=line)
+        lam.fiber = True
         return lam
 
     def _paren_is_type(self):

@@ -96,7 +96,7 @@ chk("the denial names the package", runp(MAIN, {"reader": READER}, ALL + '[permi
 chk("the ceiling still allows what it grants", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "Ok(\"hello\")")
 chk("the program itself is not limited by a package ceiling", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "Ok(\"hello\")\nOk(\"hello\")")
 chk("the program's grants limit the package too", runp(MAIN, {"reader": READER}, '[permissions]\nfs.read = ["data"]\n[permissions.packages.reader]\nfs.read = ["data", "other"]\n'), 0, "code: 10")
-CB = 'import applier\nprintln(applier.apply(fn(p): read_file(p), "other/b.txt"))\n'
+CB = 'import applier\nfn rd(p: String) Result[String, Error]: read_file(p)\nprintln(applier.apply(rd, "other/b.txt"))\n'
 APPLIER = 'export fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error]: f(p)\n'
 chk("a function written in the program keeps the program's rights", runp(CB, {"applier": APPLIER}, ALL + '[permissions.packages.applier]\n'), 0, "Ok(\"secret\")")
 chk("a ceiling for a package nobody imports is a warning", runp('println(1)\n', {}, ALL + '[permissions.packages.ghost]\n', cmd="check"), 0, "warning: no imported package is named 'ghost'")

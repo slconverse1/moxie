@@ -74,9 +74,13 @@ def _space_line(text, toks):
         v = t.val
         if i > 0 and toks[i - 1].kind == "NAME" and toks[i - 1].val == "fn":
             if v == "(":
-                want(gap_before(p), " ")    # an anonymous function is always written `fn (`
+                want(gap_before(p), " ")    # an inline fiber is always written `run fn (`
             continue                        # fn +(other: Money) names an operator; leave it as written
-        if v == ",":
+        if v == ":" and i > 0 and toks[i - 1].kind == "OP" and toks[i - 1].val == ")" \
+                and i + 1 < len(toks) and toks[i + 1].kind != "SQL":
+            want(gap_before(p), "")         # `(x): body`, `f(a)(x): body`: no space before the colon, one after
+            want(gap_after(e), " ")
+        elif v == ",":
             want(gap_before(p), "")
             g = gap_after(e)
             if g is not None:

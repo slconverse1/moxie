@@ -26,7 +26,8 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
   unknown and never an error.
 * The prelude interfaces `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable` and `Numeric`, including
   `T.zero()`, `T.one()` and `T.read(text)` inside generic code.
-* Argument-first `run` (`run fn (tx, start)(out, first): ...`) and params-first plain calls (`fn (x: Int)(21)`).
+* Argument-first `run` (`run fn (tx, start)(out, first): ...`). The parameters-first immediately-called form is gone; wrap the lambda, `((x: Int): x * 2)(21)`.
+* Lambdas have no `fn`: `(params): body` is recognized in `pexpr.parse_atom` by looking past the matching `)` for a colon (or a return type and a colon), except at the top level of a header, where the colon belongs to the header. `fn (` outside `run` is a syntax error. A typed binding may carry a function type, `add: (Int, Int) -> Int = (a, b): a + b`. `Lambda` has two flags the parser sets, `partial` (a call with `_`) and `fiber` (an inline `run fn`). `effects.check_lambdas` reports an effect in any other lambda, a bound lambda that mentions its own name, and `run` of a name bound to a lambda. A builder callback takes its receiver from the expected function type.
 
 ## Since the first release
 The prelude has `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `reduce_right`, `min_by`, `max_by`, `span`, and `split_at`. A function clause may carry an `if` guard, and `tailrec fn` makes a self-call outside tail position a compile error. Doctests and property tests are designed in the Spec (section 22) but not built.

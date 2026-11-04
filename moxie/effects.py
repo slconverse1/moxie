@@ -410,7 +410,48 @@ class Effects:
             for d in ds:
                 self.run_def(d, Summary())
         self.run_top()
+        self.lamnames = set()
+        self.collect_lamnames(self.prog)
+        self.check_lambdas(self.prog)
         return self.diags
+
+    @staticmethod
+    def _plain(lam):
+        return lam.__class__ is Lambda and not getattr(lam, "partial", False) and not getattr(lam, "fiber", False)
+
+    def collect_lamnames(self, n):
+        if n is None:
+            return
+        if n.__class__ is Assign and self._plain(n.value) and n.targets.__class__ is PBind:
+            self.lamnames.add(n.targets.name)
+            if self._mentions(n.value.body, n.targets.name):
+                self.diags.append((n.line, f"a lambda cannot call itself: '{n.targets.name}' is not bound until its body is "
+                                           "compiled; declare it with fn if it needs recursion"))
+        for ch in _children(n):
+            self.collect_lamnames(ch)
+
+    def _mentions(self, n, name):
+        if n.__class__ is Name:
+            return n.name == name
+        return any(self._mentions(c, name) for c in _children(n)) if n is not None else False
+
+    def check_lambdas(self, n):
+        """A lambda is pure: it may not print, park, or otherwise have an effect (a partial call
+        takes its callee's effects, and an inline fiber is a function of its own)."""
+        if n is None:
+            return
+        if n.__class__ is Lambda and not getattr(n, "partial", False) and not getattr(n, "fiber", False):
+            acc = {}
+            self.walk(n.body, None, acc, None)
+            for eff, (callee, ln, root) in acc.items():
+                self.diags.append((ln or n.line, f"a lambda must be pure, but it {eff} (calls '{root}'); "
+                                                 "declare a function with fn, which can carry prints, parks or impure"))
+        if n.__class__ is RunE and n.target.__class__ is Call and n.target.fn.__class__ is Name \
+                and n.target.fn.name in self.lamnames and n.target.fn.name not in self.defs:
+            self.diags.append((n.line, f"'{n.target.fn.name}' is bound to a lambda and cannot be run; "
+                                       "declare it with fn (fiber limits attach to declarations)"))
+        for ch in _children(n):
+            self.check_lambdas(ch)
 
     def run_top(self):
         acc = {}

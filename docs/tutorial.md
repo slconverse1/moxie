@@ -87,11 +87,11 @@ roster = List(
   Student(name: "Cy", score: 71),
   Student(name: "Di", score: 58)
 )
-total = roster |> to_stream() |> map(fn (s): s.score) |> sum()
+total = roster |> to_stream() |> map((s): s.score) |> sum()
 println("average ${total / len(roster)}")
 passing: List[Student][4] = roster
   |> to_stream()
-  |> filter(fn (s): s.score >= 60)
+  |> filter((s): s.score >= 60)
   |> collect()
 for s in passing:
   println("${s.name}: ${s.score} ${letter(s.score)}")
@@ -258,7 +258,10 @@ fn report(input: Io) Result[Unit, Error]:
       Err(e) -> eprintln("skipped '$line': ${e.message}")
   Ok(())
 
-with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", fn (): report(stdin))?
+fn report_stdin() Result[Unit, Error]:
+  report(stdin)
+
+with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", report_stdin)?
 write_file("roster.csv", "Di,58\nEd,77\n")?
 f = open_file("roster.csv", ReadOnly)?
 report(f)?

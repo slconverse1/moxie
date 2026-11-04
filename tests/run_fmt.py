@@ -79,7 +79,8 @@ check("commas inside strings do not split", format_source('x = compute_something
       'x = compute_something_long(\n  "a, b, c, d, e, f, g, h, i",\n  second_argument_name,\n  third_argument_name,\n  fourth_arg_xx\n)\n')
 check("a trailing comma stays", format_source("x = compute_something_long(first_argument_name, second_argument_name, third_argument_name, fourth_a,)\n"),
       "x = compute_something_long(\n  first_argument_name,\n  second_argument_name,\n  third_argument_name,\n  fourth_a,\n)\n")
-check("an anonymous function is written fn (", format_source("x = map(xs, fn(a): a + 1)\ny = map(xs, fn   (a): a)\n"), "x = map(xs, fn (a): a + 1)\ny = map(xs, fn (a): a)\n")
+check("an inline fiber is written run fn (", format_source("run fn(tx)(out): write(out, 1)\nrun fn   (tx)(out): write(out, 2)\n"), "run fn (tx)(out): write(out, 1)\nrun fn (tx)(out): write(out, 2)\n")
+check("a lambda keeps its colon form", format_source("x = map(xs,(a):a+1)\ny: (Int) -> Int = (a) :a\n"), "x = map(xs, (a): a + 1)\ny: (Int) -> Int = (a): a\n")
 from moxie.fmt import _comments
 msg = "// a  b\nfn f() Int:\n    /* x\n         y */\n    1  // t,u=1\n// end\n"
 check("every comment survives, in order", _comments(format_source(msg), "x"), _comments(msg, "x"))

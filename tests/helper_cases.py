@@ -5,7 +5,7 @@ CASES = [
 ("flatten", 'println("${List(List(1, 2), List(3), List(4, 5)) |> to_stream() |> flatten() |> collect()}")\n', ["List(1, 2, 3, 4, 5)"], 0),
 ("cycle", 'println("${List(1, 2, 3) |> to_stream() |> cycle() |> take(7) |> collect()}")\n', ["List(1, 2, 3, 1, 2, 3, 1)"], 0),
 ("zip_with", 'println("${zip_with(_1 + _2, List(1, 2, 3), List(10, 20, 30)) |> collect()}")\n', ["List(11, 22, 33)"], 0),
-("reduce_right", 'println("${List(1, 2, 3, 4) |> to_stream() |> reduce_right(0, fn (x, acc): x - acc)}")\n', ["-2"], 0),
+("reduce_right", 'println("${List(1, 2, 3, 4) |> to_stream() |> reduce_right(0, (x, acc): x - acc)}")\n', ["-2"], 0),
 ("min_by and max_by", 'ws = List("pear", "fig", "banana")\nprintln("${ws |> to_stream() |> min_by(len)} ${ws |> to_stream() |> max_by(len)}")\n', ['Ok("fig") Ok("banana")'], 0),
 ("span", '(a, b) = List(1, 2, 5, 1) |> to_stream() |> span(_ < 3)\nprintln("$a $b")\n', ["List(1, 2) List(5, 1)"], 0),
 ("split_at", '(c, d) = List(1, 2, 3, 4) |> to_stream() |> split_at(1)\nprintln("$c $d")\n', ["List(1) List(2, 3, 4)"], 0),
@@ -43,7 +43,7 @@ println("${non_empty(List())}")
 ("curry for any arity", '''
 fn add7(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int) Int: a + b + c + d + e + f + g
 println("${curry(add7)(1)(2)(3)(4)(5)(6)(7)}")
-println("${(curry(fn (a: Int, b: Int): a * b)(6))(7)}")
+println("${(curry((a: Int, b: Int): a * b)(6))(7)}")
 ''', ["28", "42"], 0),
 ("uncurry for any arity", '''
 fn add(a: Int, b: Int) Int: a + b

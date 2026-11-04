@@ -23,8 +23,12 @@ def _make(name, fields):
         if kw:
             raise TypeError(f"{name}: unknown fields {list(kw)}")
         self.line = line
+        if name == "Lambda":
+            self.partial = False     # made by a call with `_` (takes the callee's effects)
+            self.fiber = False       # the body of an inline `run fn (...)`
 
-    cls = type(name, (N,), {"__slots__": fields, "_fields": fields, "__init__": __init__})
+    extra = ("partial", "fiber") if name == "Lambda" else ()
+    cls = type(name, (N,), {"__slots__": fields + extra, "_fields": fields, "__init__": __init__})
     return cls
 
 

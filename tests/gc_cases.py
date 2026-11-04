@@ -3,14 +3,14 @@ CASES = [
 ("closures in a list, branches return different closures", '''
 fn pick(flag: Bool, k: Int) (Int) -> Int:
   when flag:
-    true -> fn (n): n + k
-    false -> fn (n): n * k
+    true -> (n): n + k
+    false -> (n): n * k
 fns = List(pick(true, 3), pick(false, 3))
 println("${fns(0)(10)} ${fns(1)(10)}")
 ''', ["13 30"], 0),
 ("capturing closures stored in a Dict", '''
 fn make(k: Int) (Int) -> Int:
-  fn (n): n + k
+  (n): n + k
 table = Dict[String, (Int) -> Int]()
 table(a) = make(1)
 table(b) = make(10)
@@ -23,8 +23,8 @@ when table(b):
 tuple Op:
   apply: (Int) -> Int
 k = 7
-op = Op(apply: fn (n): n * k)
-a = Atom[(Int) -> Int](fn (n): n + k)
+op = Op(apply: (n): n * k)
+a = Atom[(Int) -> Int]((n): n + k)
 f = @a
 println("${op.apply(6)} ${f(1)}")
 ''', ["42 8"], 0),
@@ -71,7 +71,9 @@ rx, tx = Chan[Int][8]()
 for i in 1..=5:
   _ = run worker(i, clone(tx))
 drop = move tx
-total = Range(1..=5, 1) |> reduce(0, fn (acc, _): acc + read(rx).get_or(0))
+fn drain(rx: ChanR[Int], n: Int) Int:
+  if n == 0: 0 else: read(rx).get_or(0) + drain(rx, n - 1)
+total = drain(rx, 5)
 println("$total")
 ''', ["150"], 0),
 ("a stream can be returned", '''

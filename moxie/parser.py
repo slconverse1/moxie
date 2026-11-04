@@ -144,6 +144,7 @@ class Parser(ExprParser):
             i += 1
         ann_at = i + 1
         found = None
+        seen_ann = False
         n = len(self.toks)
         while i < n:
             k = self.toks[i]
@@ -162,6 +163,10 @@ class Parser(ExprParser):
                         found = i
                         break
                     if v == ":" and i == ann_at:
+                        seen_ann = True
+                        i += 1
+                        continue
+                    if v == "->" and seen_ann:
                         i += 1
                         continue
                     if v in ("->", "|>", "?", ":"):
@@ -288,7 +293,7 @@ class Parser(ExprParser):
             return None
         if t.val == "fn":
             nt = self.peek(i + 1)
-            # lambda used as expression statement: fn (x): ...  /  fn Type.(..)
+            # `fn (` here is a ref receiver declaration, `fn (ref Self) name(...)`; a lambda no longer starts with fn
             if nt.kind == "OP" and nt.val == "(":
                 # receiver declaration: fn (ref Self) name(...)
                 m = self.matching(i + 1)

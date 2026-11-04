@@ -13,7 +13,7 @@ CASES = [
  ("stdout may be passed to a function", 'fn say(out, s: String) Unit:\n  println(out, s)\nsay(stdout, "hi")\nsay(stdout, "again")\n', b"", "run", 0, "hi\nagain\n", ""),
  ("a stream cannot be closed", 'close(stdout)\n', b"", "run", 1, "", "cannot be closed"),
  ("pure fn may not read", 'pure fn f() String: read_all()?\n', b"", "check", 2, "", "parks"),
- ("with_stdin feeds a test", 'test "t":\n  assert_eq(with_stdin("Bob\\n", fn(): read_line()), Ok("Bob"))\n', b"", "test", 0, "1 passed, 0 failed", ""),
+ ("with_stdin feeds a test", 'test "t":\n  assert_eq(with_stdin("Bob\\n", read_line), Ok("Bob"))\n', b"", "test", 0, "1 passed, 0 failed", ""),
 ]
 fails = []
 for name, src, stdin, cmd, rc_want, out_w, err_w in CASES:
