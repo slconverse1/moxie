@@ -102,6 +102,7 @@ class Gen:
         self.ast = ast
         self.side = side
         self.typedefs = {}      # name -> node (the TypeDecl inside)
+        self.fn_info = {}       # function -> facts for --wrap
         self.fn_handles = {}    # function -> handle types it mentions
         self.structs = {}       # struct tag -> list of (field, type node) or None (opaque)
         self.enums = []         # (name, value)
@@ -327,6 +328,7 @@ class Gen:
         out, i = [], 0
         outh = None
         hs = set()
+        info = {"ps": [], "outh": None}          # for --wrap: the visible parameters, in order
         self.fn_handles[name] = hs
         while i < len(params):
             pn, d = params[i]
@@ -347,30 +349,38 @@ class Gen:
                     raise Todo(f"parameter '{pn}' is a byte pointer with no length parameter next to it (set pair = [\"{pn}\", \"<length>\"] in bindgen.toml)")
                 out.append(f"{'' if d[3] else 'ref '}{pn}: Array[Byte]")
                 out.append(f"{pair[0]}: {pair[1]} = len({pn})")
+                info["ps"].append((pn, "bytes_ro" if d[3] else "bytes_rw", "Array[Byte]"))
                 i += 2
                 continue
             if k == "scalar":
                 out.append(f"{pn}: {d[1]}")
+                info["ps"].append((pn, "val", d[1]))
             elif k == "cstring":
                 out.append(f"{pn}: CString")
+                info["ps"].append((pn, "cstring", "CString"))
             elif k == "struct":
                 out.append(f"{pn}: {d[1]}")
+                info["ps"].append((pn, "val", d[1]))
             elif k in ("scalar_ptr", "struct_ptr"):
                 if d[3]:
                     # const pointer to a scalar: an array of them, which is not supported yet
                     raise Todo(f"parameter '{pn}' is a const pointer to {d[2]} (an array input), which is not supported yet")
                 out.append(f"ref {pn}: {d[1]}")
+                info["ps"].append((pn, "ref_" + ("scalar" if k == "scalar_ptr" else "struct"), d[1]))
             elif k == "out_handle":
                 if outh is not None:
                     raise Todo("more than one out-handle parameter is not supported")
                 outh = d[1]
                 out.append(f"ref {pn}: {d[1]}")
                 hs.add(d[1])
+                info["outh"] = d[1]
             elif k == "callback":
                 out.append(f"{pn}: {d[1]}")
+                info["ps"].append((pn, "val", d[1]))
             elif k == "opaque_ptr":
                 out.append(f"{pn}: {d[1]}")
                 hs.add(d[1])
+                info["ps"].append((pn, "val", d[1]))
             else:
                 raise Todo(f"parameter '{pn}' has an unsupported type")
             i += 1
@@ -394,7 +404,150 @@ class Gen:
         eff = sc.get("effects", "impure")
         if eff not in ("pure", "prints", "parks", "impure", "prints parks", "parks prints"):
             eff = "impure"
+        info.update(eff=eff, rtxt=rtxt.strip(), rk=rk, rt=ret[1] if len(ret) > 1 else None, sc=sc)
+        self.fn_info[name] = info
         return f"internal {eff} fn {name}({', '.join(out)}){rtxt}"
+
+
+ZERO = {"Int8": "0i8", "Int16": "0i16", "Int32": "0i32", "Int64": "0i64", "UInt8": "0u8", "UInt16": "0u16",
+        "UInt32": "0u32", "UInt64": "0u64", "Int": "0", "UInt": "cast[UInt](0)", "Float": "0.0f", "Double": "0.0",
+        "Bool": "false", "Byte": "0u8"}
+OUT_NAMES = re.compile(r"^(out|result|res|ret)$|(^|_)(out|result|res|ret)$|^p?out(put)?", re.I)
+STATUS_TYPES = ("Int32", "Int", "Int64", "UInt32")
+
+
+def wrapper_names(decls, lib, taken):
+    """The exported name for each raw function: the library prefix removed, or `lib_name` when that would clash."""
+    from .prelude import REG
+    pre = re.sub(r"[^a-z0-9]", "", lib.lower())
+    names, used = {}, set(decls) | set(taken)
+    for n in decls:
+        cand = n
+        if pre and n.startswith(pre + "_") and len(n) > len(pre) + 1:
+            cand = n[len(pre) + 1:]
+        elif pre and n.startswith(pre) and len(n) > len(pre) and n[len(pre)].isupper():
+            cand = n[len(pre)].lower() + n[len(pre) + 1:]
+        clash = (not cand or not cand[0].islower() or cand in HARD or cand in REG or cand in ("open", "main")
+                 or cand in used or cand in names.values())
+        if cand == n:                       # no prefix to remove: the raw name is taken by the declaration
+            cand = f"{pre}_{n}"
+        elif clash:                         # would hide a prelude function or repeat a name
+            cand = cand + "_" if cand and cand[0].islower() else f"{pre}_{n}"
+        while cand in used or cand in names.values():
+            cand += "_"
+        names[n] = cand
+    return names
+
+
+def clean_cb(ty):
+    """A callback's type as the moxie function sees it: no UserData, and no length after an Array[Byte]."""
+    if not ty.startswith("(") or " -> " not in ty:
+        return ty
+    inner, ret = ty[1:].split(") -> ", 1)
+    ps = [x.strip() for x in inner.split(",")] if inner.strip() else []
+    out, i = [], 0
+    while i < len(ps):
+        if ps[i] == "UserData":
+            i += 1
+        elif ps[i] == "Array[Byte]":
+            out.append(ps[i])
+            i += 2
+        else:
+            out.append(ps[i])
+            i += 1
+    return "(" + ", ".join(out) + ") -> " + ret
+
+
+def make_wrappers(g, decls, lib, side, comments):
+    """Default wrappers (Spec 19a): text conversion, and a Result for the usual C conventions.
+    Returns (text, report lines)."""
+    taken = set(g.tuples) | set(n for n, _ in g.enums)
+    names = wrapper_names(decls, lib, taken)
+    lines = [f"// Generated by moxie bindgen --wrap for the {lib} bindings.",
+             "// Wrappers follow common C habits: a CString parameter is a String; an int status where 0 is success,",
+             "// with out-parameters, becomes a Result; everything else is passed through.  Correct a guess with",
+             "// returns = \"status\" | \"value\" or outs = [\"name\"] under [functions.NAME] in bindgen.toml, then run again.",
+             ""]
+    report = []
+    for name in decls:
+        info = g.fn_info.get(name)
+        if info is None:
+            continue
+        sc = info["sc"]
+        w = names[name]
+        ps = info["ps"]
+        forced_outs = sc.get("outs")
+        def is_out(p):
+            if not p[1].startswith("ref_") or p[1] != "ref_scalar":
+                return False
+            return (p[0] in forced_outs) if forced_outs is not None else bool(OUT_NAMES.search(p[0]))
+        outs = [p for p in ps if is_out(p)]
+        mode = sc.get("returns")
+        if mode is None:
+            mode = "status" if (outs and info["rk"] == "scalar" and info["rt"] in STATUS_TYPES) else "value"
+        if mode == "status" and not (info["rk"] == "scalar" and info["rt"] in STATUS_TYPES):
+            mode = "value"
+        if info["outh"] is not None:
+            mode = "value"                      # an out-handle is already a Result from the raw declaration
+        if mode == "value":
+            outs = []
+        sig, call = [], []
+        for p in ps:
+            pn, kind, ty = p
+            if p in outs:
+                call.append(f"ref {pn}")
+                continue
+            if kind == "cstring":
+                sig.append(f"{pn}: String")
+                call.append(f"cstr({pn})")
+            elif kind in ("bytes_rw", "ref_scalar", "ref_struct"):
+                sig.append(f"ref {pn}: {ty}")
+                call.append(f"ref {pn}")
+            else:
+                sig.append(f"{pn}: {clean_cb(ty)}")
+                call.append(pn)
+        for cl in comments.get(name, "").split("\n"):
+            if cl.strip():
+                lines.append(f"/// {cl.strip()}")
+        head = f"export {info['eff']} fn {w}({', '.join(sig)})"
+        callx = f"{name}({', '.join(call)})"
+        zero_ok = all(ZERO.get(p[2]) for p in outs)
+        if mode == "status" and zero_ok:
+            tys = [p[2] for p in outs]
+            rt = tys[0] if len(tys) == 1 else "(" + ", ".join(tys) + ")" if tys else "Unit"
+            lines.append(f"{head} Result[{rt}, Error]:")
+            for p in outs:
+                lines.append(f"  {p[0]} = {ZERO[p[2]]}")
+            lines.append(f"  status = {callx}")
+            lines.append(f"  if status ~= {ZERO.get(info['rt'], '0')}:")
+            lines.append(f"    return fail(status, \"{name} failed\")")
+            val = outs[0][0] if len(outs) == 1 else "(" + ", ".join(p[0] for p in outs) + ")" if outs else "()"
+            lines.append(f"  Ok({val})")
+            report.append(f"  status:  {name} -> {w} (0 is success; result is {rt})")
+        else:
+            if mode == "status":
+                report.append(f"  skipped status for {name}: an out-parameter has no starting value known to bindgen")
+            if outs:
+                sig2, call2 = [], []
+                for p in ps:
+                    if p in outs:
+                        sig2.append(f"ref {p[0]}: {p[2]}")
+                        call2.append(f"ref {p[0]}")
+                    elif p[1] == "cstring":
+                        sig2.append(f"{p[0]}: String")
+                        call2.append(f"cstr({p[0]})")
+                    elif p[1] in ("bytes_rw", "ref_scalar", "ref_struct"):
+                        sig2.append(f"ref {p[0]}: {p[2]}")
+                        call2.append(f"ref {p[0]}")
+                    else:
+                        sig2.append(f"{p[0]}: {clean_cb(p[2])}")
+                        call2.append(p[0])
+                head = f"export {info['eff']} fn {w}({', '.join(sig2)})"
+                callx = f"{name}({', '.join(call2)})"
+            r = (" " + info["rtxt"]) if info["rtxt"] else ""
+            lines.append(f"{head}{r}: {callx}")
+        lines.append("")
+    return "\n".join(lines), report
 
 
 def c_ellipsis(c):
@@ -481,6 +634,7 @@ def generate(header, lib, side, defines=(), includes=()):
     for name, why in todos:
         lines.append(f"  // todo: {name}: {why}")
     lines.append("")
+    generate.last = (g, comments)
     return "\n".join(lines), decls, todos
 
 
@@ -508,6 +662,7 @@ def main(argv, out=None, err=None):
         return 2
     header = lib = target = pkg = None
     check = False
+    wrap = False
     defines, includes = [], []
     i = 0
     while i < len(argv):
@@ -520,6 +675,8 @@ def main(argv, out=None, err=None):
             lib = argv[i + 1]; i += 1
         elif a == "--check":
             check = True
+        elif a == "--wrap":
+            wrap = True
         elif a == "-D":
             defines.append(argv[i + 1]); i += 1
         elif a == "-I":
@@ -528,7 +685,7 @@ def main(argv, out=None, err=None):
             header = a
         i += 1
     if not header or not (target or pkg):
-        err.write("usage: moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [-D NAME] [-I DIR]\n")
+        err.write("usage: moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [--wrap] [-D NAME] [-I DIR]\n")
         return 2
     lib = lib or re.sub(r"\.h$", "", os.path.basename(header))
     outdir = pkg if pkg else os.path.dirname(os.path.abspath(target))
@@ -547,7 +704,8 @@ def main(argv, out=None, err=None):
         name = os.path.basename(os.path.normpath(pkg))
         mf = os.path.join(pkg, "Moxie.toml")
         if not os.path.exists(mf):
-            open(mf, "w").write(f'name = "{name}"\nfiles = ["bindings.mxi", "api.mxi"]\n\n[native]\nlibs = ["{lib}"]\n')
+            fl = '"bindings.mxi", "wrappers.mxi", "api.mxi"' if wrap else '"bindings.mxi", "api.mxi"'
+            open(mf, "w").write(f'name = "{name}"\nfiles = [{fl}]\n\n[native]\nlibs = ["{lib}"]\n')
         api = os.path.join(pkg, "api.mxi")
         if not os.path.exists(api):
             open(api, "w").write("// Write your wrappers here: exported moxie functions over the internal declarations in bindings.mxi.\n")
@@ -555,4 +713,12 @@ def main(argv, out=None, err=None):
     out.write(f"wrote {bind_path}: {len(decls)} functions declared, {len(todos)} left as todo\n")
     for n, why in todos:
         out.write(f"  todo: {n}: {why}\n")
+    if wrap:
+        g, comments = generate.last
+        wtext, report = make_wrappers(g, decls, lib, side, comments)
+        wpath = os.path.join(os.path.dirname(os.path.abspath(bind_path)), "wrappers.mxi")
+        open(wpath, "w", encoding="utf-8").write(wtext)
+        out.write(f"wrote {wpath}: {len(decls)} wrappers\n")
+        for line in report:
+            out.write(line + "\n")
     return 0

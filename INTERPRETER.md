@@ -140,7 +140,7 @@ abort for a plain `Name`), and handles still open at program end are closed.
 `moxie bindgen` emits handle declarations and finds the closer by name or from
 `[handles.NAME] closes` in `bindgen.toml`. Tests: `tests/run_handles.py`.
 
-    moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [-D X] [-I DIR]
+    moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check] [--wrap] [-D X] [-I DIR]
 
 writes the declarations from a C header (needs `gcc` and `pip install pycparser`).
 Corrections go in `bindgen.toml` next to the output: `[functions.NAME]` with
@@ -223,3 +223,15 @@ hidden from callers (the checker and `effects.py` leave it out of the argument l
 and C is given NULL. `moxie bindgen` recognizes `void *` next to a callback as
 `UserData` and a byte pointer followed by an integer in a callback as a buffer.
 Tests: `tests/run_callbacks.py`, `tests/run_bindgen.py`.
+
+## `moxie bindgen --wrap`
+
+`bindgen.make_wrappers` writes `wrappers.mxi` next to the bindings. The generator
+records, for every declared function, its visible parameters and result
+(`Gen.fn_info`); a wrapper converts `CString` to `String` (calling `cstr`), hides
+`UserData` and length parameters in callback types (`clean_cb`), keeps the raw effect
+declaration, and for an int status with out-parameters (names `out`/`result`/`res`/`ret`,
+or `outs = [...]` in `bindgen.toml`) returns `Result[T, Error]` using `fail(status, ...)`.
+`returns = "status" | "value"` overrides the guess. Names: library prefix removed, a
+trailing underscore when the result would hide a prelude function or repeat a name
+(`wrapper_names`). The report lists each status guess. Tests: `tests/run_bindgen.py`.

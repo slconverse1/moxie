@@ -119,6 +119,33 @@ r = subprocess.run([sys.executable, "-m", "moxie", "run", p], cwd=ROOT, capture_
 exp_sum = (((7 * 31 + 97) * 31 + 98) * 31 + 99) & 0xFFFFFFFF
 chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout and "apply 42" in r.stdout and "item 3" in r.stdout and "feed 3" in r.stdout and "connected 101" in r.stdout and "code: 5" in r.stdout, r.stdout + r.stderr)
 
+# --wrap: default wrappers over the generated bindings
+r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--wrap")
+wtext = open(os.path.join(d, "wrappers.mxi")).read() if os.path.exists(os.path.join(d, "wrappers.mxi")) else ""
+btext = open(os.path.join(d, "bindings.mxi")).read()
+chk("--wrap strips the library prefix and converts text", "fn add(a: Int32, b: Int32) Int32: mini_add(a, b)" in wtext and "fn open_(name: String) Result[MiniCtx, Error]: mini_open(cstr(name))" in wtext, wtext[:900])
+chk("--wrap turns status plus out-parameter into a Result", "fn parse(s: String) Result[Int32, Error]:" in wtext and "return fail(status," in wtext, wtext)
+chk("--wrap hides user data in callback types", "fn each(f: (Int32) -> Unit) Int32: mini_each(f)" in wtext and "f: (Array[Byte]) -> Int32" in wtext, wtext)
+chk("--wrap reports its guesses", "status:  mini_parse -> parse" in r.stdout, r.stdout)
+prog2 = btext + wtext + '''
+println("${add(2i32, 3i32)} ${parse("42")} ${parse("x")}")
+c = connect_("db")?
+println("hits ${hits(c)}")
+close_(move c)
+println("each ${each(fn(v): println("item $v"))}")
+println("feed ${feed(b"abcd", fn(data): len(data))}")
+'''
+p2 = os.path.join(d, "wrapped.mxi")
+open(p2, "w").write(prog2)
+r2 = subprocess.run([sys.executable, "-m", "moxie", "run", p2], cwd=ROOT, capture_output=True, text=True)
+chk("--wrap: the generated wrappers run", r2.returncode == 0 and "5 Ok(42) Err(Error(code: 22" in r2.stdout and "hits 101" in r2.stdout and "item 3" in r2.stdout and "feed 4" in r2.stdout, r2.stdout + r2.stderr)
+# sidecar override
+open(os.path.join(d, "bindgen.toml"), "w").write('[functions.mini_parse]\nreturns = "value"\n')
+bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--wrap")
+w2 = open(os.path.join(d, "wrappers.mxi")).read()
+chk("returns = value keeps the raw shape", "fn parse(s: String, ref out: Int32) Int32: mini_parse(cstr(s), ref out)" in w2, w2)
+os.remove(os.path.join(d, "bindgen.toml"))
+
 # --check drift
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")
 chk("--check finds no drift on a fresh file", r.returncode == 0 and "0 new, 0 removed, 0 changed" in r.stdout, r.stdout)
