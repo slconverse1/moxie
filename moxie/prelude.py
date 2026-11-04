@@ -1,5 +1,6 @@
 """The Moxie prelude: built-in functions and types."""
 import math
+import os
 from functools import cmp_to_key
 from .ast import *   # noqa
 from .values import *   # noqa
@@ -2132,3 +2133,144 @@ def b_bin_build(I, a, kw, ta):
                 raise Abort(f"Bin: {v} does not fit in {kind}")
             out.extend(int(v).to_bytes(width, "little" if kind.endswith("le") else "big", signed=signed))
     return ArrayV([INT_CLASSES["Byte"](b) for b in out])
+
+
+# ---------------------------------------------------------------- directories and paths (Spec 19c)
+def _fs_guard(I, kind, *paths):
+    for pth in paths:
+        if not I.perms.path_ok(kind, pth):
+            return denied(pth, kind)
+    return None
+
+
+@bi("list_dir")
+def b_list_dir(I, a, kw, ta):
+    d = _fs_guard(I, "fs.read", a[0])
+    if d is not None:
+        return d
+    try:
+        names = sorted(os.listdir(a[0]))
+    except OSError as e:
+        return io_error(e, a[0])
+    return Ok(ArrayV(names))
+
+
+@bi("file_info")
+def b_file_info(I, a, kw, ta):
+    d = _fs_guard(I, "fs.read", a[0])
+    if d is not None:
+        return d
+    try:
+        st = os.stat(a[0])
+    except OSError as e:
+        return io_error(e, a[0])
+    import stat as _st
+    kind = "dir" if _st.S_ISDIR(st.st_mode) else "file" if _st.S_ISREG(st.st_mode) else "other"
+    return Ok(TupleV([kind, st.st_size], ["kind", "size"], "FileInfo"))
+
+
+@bi("path_exists")
+def b_path_exists(I, a, kw, ta):
+    d = _fs_guard(I, "fs.read", a[0])
+    if d is not None:
+        return d
+    try:
+        return Ok(os.path.exists(a[0]))
+    except OSError as e:
+        return io_error(e, a[0])
+
+
+@bi("make_dir")
+def b_make_dir(I, a, kw, ta):
+    d = _fs_guard(I, "fs.write", a[0])
+    if d is not None:
+        return d
+    try:
+        os.makedirs(a[0], exist_ok=True)
+    except OSError as e:
+        return io_error(e, a[0])
+    return Ok(UNIT)
+
+
+@bi("remove_file")
+def b_remove_file(I, a, kw, ta):
+    d = _fs_guard(I, "fs.write", a[0])
+    if d is not None:
+        return d
+    try:
+        if os.path.isdir(a[0]) and not os.path.islink(a[0]):
+            return err_reserved("IO_ERROR", a[0] + ": is a directory (use remove_dir)")
+        os.remove(a[0])
+    except OSError as e:
+        return io_error(e, a[0])
+    return Ok(UNIT)
+
+
+@bi("remove_dir")
+def b_remove_dir(I, a, kw, ta):
+    d = _fs_guard(I, "fs.write", a[0])
+    if d is not None:
+        return d
+    try:
+        os.rmdir(a[0])
+    except OSError as e:
+        return io_error(e, a[0])
+    return Ok(UNIT)
+
+
+@bi("rename_path")
+def b_rename_path(I, a, kw, ta):
+    d = _fs_guard(I, "fs.write", a[0], a[1])
+    if d is not None:
+        return d
+    try:
+        os.replace(a[0], a[1])
+    except OSError as e:
+        return io_error(e, a[0] + " -> " + a[1])
+    return Ok(UNIT)
+
+
+@bi("path_join")
+def b_path_join(I, a, kw, ta):
+    base, rest = a[0], a[1]
+    if rest.startswith("/") or base == "":
+        return rest
+    if rest == "":
+        return base
+    return base.rstrip("/") + "/" + rest if base.rstrip("/") != "" else "/" + rest
+
+
+@bi("path_parent")
+def b_path_parent(I, a, kw, ta):
+    p = a[0]
+    if p.strip("/") == "":
+        return "/" if p.startswith("/") else ""
+    q = p.rstrip("/")
+    i = q.rfind("/")
+    if i < 0:
+        return ""
+    return q[:i].rstrip("/") or "/"
+
+
+def _base(p):
+    q = p.rstrip("/")
+    return q[q.rfind("/") + 1:]
+
+
+@bi("path_name")
+def b_path_name(I, a, kw, ta):
+    return _base(a[0])
+
+
+@bi("path_ext")
+def b_path_ext(I, a, kw, ta):
+    n = _base(a[0])
+    i = n.rfind(".")
+    return n[i + 1:] if i > 0 else ""
+
+
+@bi("path_stem")
+def b_path_stem(I, a, kw, ta):
+    n = _base(a[0])
+    i = n.rfind(".")
+    return n[:i] if i > 0 else n

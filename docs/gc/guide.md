@@ -2137,6 +2137,25 @@ close(c)
 
 Output: `hello from server`. **Mistake:** writing to a file after `close`, which aborts, and forgetting that `connect` can fail: it returns a `Result`.
 
+
+Directories and paths have their own small set of functions. All of them take `/`-separated `String` paths and return a `Result` when the system can refuse: `make_dir(path)` creates a directory and any missing parents (and is fine if it already exists), `list_dir(path)` gives the names in it as a sorted `Array[String]`, `file_info(path)` gives a `FileInfo` with `kind` (`"file"`, `"dir"`, or `"other"`), `size`, and the methods `is_file()` and `is_dir()`, `path_exists(path)` gives `Ok(true)` or `Ok(false)`, `rename_path(from, to)` moves a file or directory (replacing a file at the target), and `remove_file(path)` and `remove_dir(path)` delete a file and an empty directory. Five functions work on the text of a path and touch nothing, so they need no permission and cannot fail: `path_join(base, rest)`, `path_parent(p)`, `path_name(p)`, `path_stem(p)`, and `path_ext(p)`:
+
+```
+make_dir("out/logs")?
+write_file(path_join("out", "report.txt"), "done")?
+write_file("out/logs/run.log", "ok")?
+println(list_dir("out"))
+for name in list_dir("out")?:
+  info = file_info(path_join("out", name))?
+  println("${name}: ${info.kind}")
+p = "out/logs/run.log"
+println("${path_parent(p)} ${path_name(p)} ${path_stem(p)} ${path_ext(p)}")
+rename_path(p, "out/run.old")?
+println(list_dir("out/logs"))
+```
+
+Output: `Ok(Array("logs", "report.txt"))`, then `logs: dir`, `report.txt: file`, then `out/logs run.log run log`, then `Ok(Array())`. Reading a directory needs `fs.read` and changing one needs `fs.write` (a rename needs it for both paths), as for files. `remove_file` refuses a directory and `remove_dir` refuses one that is not empty, with `IO_ERROR`; a missing path is `NOT_FOUND`. **Mistakes:** treating a name from `list_dir` as a path (join it with its directory first), and using `\` as a separator: paths use `/` on every system.
+
 **20c. Permissions**
 
 A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:

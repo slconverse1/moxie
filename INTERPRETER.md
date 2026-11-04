@@ -385,3 +385,12 @@ ignores the line numbers kept inside interpolations.
 The lexer also records each comment's text in `Lexer.comments` (a line comment as written, a block comment with the
 indentation of its inner lines removed). `format_source` compares the list before and after formatting and refuses to
 write if it differs, so a comment can neither be lost nor altered.
+
+## Directories and paths
+
+`prelude.py` adds `list_dir`, `file_info`, `path_exists`, `make_dir`, `remove_file`, `remove_dir`, `rename_path`
+(each guarded by `I.perms.path_ok` for `fs.read` or `fs.write`, and mapping `OSError` through `io_error`) and the
+text-only `path_join`, `path_parent`, `path_name`, `path_stem`, `path_ext`. `FileInfo` and its `is_file`/`is_dir`
+methods are declared in `mxprelude.py`; `file_info` builds the tuple directly. `effects.py` lists the seven file
+system functions as `parks` and as `fs` needs, so a restricted program that reaches one without a grant is a compile
+error. Tests: `tests/run_fs.py`.

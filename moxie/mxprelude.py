@@ -7,6 +7,14 @@ enum FileMode:
   Append
   ReadWrite
 
+tuple FileInfo:
+  kind: String
+  size: Int
+
+impl FileInfo:
+  fn is_file(self) Bool: self.kind == "file"
+  fn is_dir(self) Bool: self.kind == "dir"
+
 tuple NonEmpty[T]:
   head: T
   tail: List[T]
