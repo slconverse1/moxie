@@ -2796,6 +2796,8 @@ All fibers share one heap. You never size a collection, count a resource, or ask
 heap = "256MiB"
 ```
 
+When the live data passes `heap`, the program stops with an `out of memory` message that gives the limit and the kinds of value that hold the most. The reference interpreter works this out by measuring what the program can still reach, so the figure follows a model of moxie/gc's layout rather than the machine's.
+
 A name that is finished with holds nothing. The collector counts a local only until its last use, so a variable you have finished with doesn't keep its value alive:
 
 ```

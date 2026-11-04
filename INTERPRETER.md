@@ -36,8 +36,8 @@ The prelude has `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `redu
 have no fixed capacity (a size in brackets is only a hint, and `Array` keeps its size), `put` returns the updated
 collection, a variadic parameter is a `List`, a channel capacity may be any `Int` expression, and `Chan[T][#unbounded]()`
 is accepted. `copy` is an error. The prelude additions `Ring[T](n)` and `take_last(n)` are available. Closures, streams, and recursive values already behave as moxie/gc describes, because
-this interpreter never enforced the memory-space rules. It has no collector, no heap limit, and no allocation report, so
-those parts of moxie/gc are not modeled.
+this interpreter never enforced the memory-space rules. It has no collector and no allocation report. `[memory] heap` is enforced by `moxie/heap.py` (below);
+`slice` and the generations are not modeled.
 
 ## Tests
     python tests/run_guide.py     every Guide example against its hand-computed output (174 blocks)
@@ -440,3 +440,13 @@ effects into the caller and applies the effects of arguments to the callee's `pa
 package's top-level needs at its import line. `check_program(prog, names, search_dir)`, `permission_needs`, and
 `check_effects` pass the entry file's directory through; `Interp.package_diags` builds `Needs(pp)` without it, so a
 ceiling is checked against what a package's own code does. Tests: `tests/run_pkgeffects.py`.
+
+## The moxie/gc heap limit
+
+`moxie/heap.py` enforces `[memory] heap` under `--gc`. `model_size` walks everything the program can still reach (the
+fibers' generators and Python frames, `Env` scopes, the value classes of `values.py`, `sched.py` and `streams.py`, and
+plain containers), ignoring syntax trees and the interpreter, and adds 16 bytes per value, 8 per slot and a string's bytes.
+`heap.tick` is called on each user call, each `for`/`while` turn and each scheduler step; every `heap_gap` ticks
+(at least 4000, one hundredth of the last measurement) `check` measures, and over the limit runs `gc.collect()` and
+measures again before raising `ProgramExit` with the `out of memory` summary. `header.prepare` sets `heap_limit` and
+refuses `[memory]` without `--gc`. Tests: `tests/run_heap.py`.

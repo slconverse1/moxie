@@ -3,6 +3,7 @@ from .ast import *   # noqa
 from .values import *   # noqa
 from .core import *   # noqa
 from .types_ import *   # noqa
+from . import heap
 
 
 class _Sentinel:
@@ -971,6 +972,8 @@ class CallsMixin:
                     ok = yield from self.ev(expr, cenv0.child())
                     if ok is not True:
                         raise Abort(f"requires failed in {node.name}: {text} (caller bug)", line)
+        if self.heap_limit is not None:
+            heap.tick(self)
         depth = self.depth = getattr(self, "depth", 0) + 1
         try:
             if node.__class__ is FnDecl and node.ret is not None:

@@ -8,6 +8,7 @@ from .values import *   # noqa
 from .core import *   # noqa
 from .calls import END, USING, SLOT, NOPIPE
 from .streams import StreamV
+from . import heap
 
 
 class ExtFail:
@@ -451,6 +452,8 @@ class Scheduler:
         return main.result
 
     def step(self, f):
+        if self.I.heap_limit is not None:
+            heap.tick(self.I)
         self.cur = f
         self.I.cur_fiber = f
         f.state = "running"

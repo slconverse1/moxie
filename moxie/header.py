@@ -59,7 +59,13 @@ def prepare(I, src, name, manifest, header_flag=None):
     if GC[0]:
         if path is not None or manifest.get("program", {}).get("memory") is not None:
             raise HeaderError("a pool header and [program] memory belong to moxie without a collector; moxie/gc has neither")
+        from .manifest import parse_size
+        hp = manifest.get("memory", {}).get("heap")
+        if hp is not None:
+            I.heap_limit = parse_size(hp)
         return
+    if manifest.get("memory"):
+        raise HeaderError("[memory] belongs to moxie/gc (run with --gc); moxie without a collector sizes memory with [fibers] and [pools]")
     if path is None and manifest.get("pools", {}).get("header"):
         path = os.path.join(os.path.dirname(manifest["path"]), manifest["pools"]["header"])
     wants_budget = manifest.get("program", {}).get("memory") is not None

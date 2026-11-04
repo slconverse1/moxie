@@ -1,9 +1,10 @@
-"""The entry package's Moxie.toml, as far as the reference interpreter uses it: [fibers] and [pools]."""
+"""The entry package's Moxie.toml, as far as the reference interpreter uses it: [fibers], [pools], [program], [memory]."""
 import os
 
 FIBER_KEYS = {"limit", "memory", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
 PROGRAM_KEYS = {"memory"}
+MEMORY_KEYS = {"heap", "slice"}
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "KIB": 1024, "MIB": 1024 ** 2, "GIB": 1024 ** 3}
 
 
@@ -47,8 +48,8 @@ def load(path):
             data = tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
         raise ManifestError(f"{m}: {e}")
-    out = {"path": m, "fibers": {}, "pools": {}, "program": {}}
-    for table, keys in (("fibers", FIBER_KEYS), ("pools", POOL_KEYS), ("program", PROGRAM_KEYS)):
+    out = {"path": m, "fibers": {}, "pools": {}, "program": {}, "memory": {}}
+    for table, keys in (("fibers", FIBER_KEYS), ("pools", POOL_KEYS), ("program", PROGRAM_KEYS), ("memory", MEMORY_KEYS)):
         t = data.get(table, {})
         if not isinstance(t, dict):
             raise ManifestError(f"{m}: [{table}] must be a table")
@@ -56,9 +57,14 @@ def load(path):
             if k not in keys:
                 raise ManifestError(f"{m}: unknown key '{k}' in [{table}] (known: {', '.join(sorted(keys))})")
         out[table] = dict(t)
-    for table, key in (("fibers", "memory"), ("fibers", "stack"), ("program", "memory")):
+    for table, key in (("fibers", "memory"), ("fibers", "stack"), ("program", "memory"), ("memory", "heap")):
         if key in out[table] and parse_size(out[table][key]) is None:
             raise ManifestError(f"{m}: [{table}] {key} must be a size such as \"64KiB\" (1024-based) or \"64KB\" (1000-based)")
+    if "slice" in out["memory"]:
+        sl = out["memory"]["slice"]
+        mt = __import__("re").fullmatch(r"\s*(\d+)\s*(ns|us|ms|s)?\s*", sl) if isinstance(sl, str) else None
+        if not mt and not (isinstance(sl, int) and not isinstance(sl, bool) and sl >= 0):
+            raise ManifestError(f"{m}: [memory] slice must be a time such as \"2ms\"")
     if "header" in out["pools"] and not isinstance(out["pools"]["header"], str):
         raise ManifestError(f"{m}: [pools] header must be a file name")
     lim = out["fibers"].get("limit")

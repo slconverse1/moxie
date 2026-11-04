@@ -8,6 +8,7 @@ from .types_ import *   # noqa
 from .lexer import MoxieSyntaxError, tokenize
 from .calls import CallsMixin, LazyV, SLOT, USING, RecvCell, END
 from .decls import DeclsMixin
+from . import heap
 from .patterns import PatternsMixin
 from .places import PlacesMixin
 from .parser import parse_program
@@ -28,6 +29,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.mod_pkg = {}             # id(module env) -> package name
         self.cur_mod = None
         self.manifest = {}
+        self.heap_limit = None        # moxie/gc: [memory] heap, in bytes (heap.py)
+        self.heap_count = 0
+        self.heap_gap = heap.EVERY
         self.tuples = {}
         self.enums = {}
         self.ifaces = {}
@@ -917,6 +921,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             x = yield from self.iter_next(it)
             if x is END:
                 break
+            if self.heap_limit is not None:
+                heap.tick(self)
             I = Env(L)
             b = {}
             if not self.pmatch(n.pat, x, b, env):
@@ -951,6 +957,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 c = yield from self.ev(n.cond, L)
                 if not c:
                     break
+            if self.heap_limit is not None:
+                heap.tick(self)
             I = Env(L)
             try:
                 yield from self.loop_body(n.body, I)
