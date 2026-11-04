@@ -27,6 +27,14 @@ def park_thread(I, fn):
     return r
 
 
+class EventSink:
+    """A channel write end that a C-kept callback posts to (Spec 19a, Events[T])."""
+    __slots__ = ("w", "dropped", "name")
+
+    def __init__(self, w, name):
+        self.w, self.dropped, self.name = w, 0, name
+
+
 class Fiber:
     __slots__ = ("gen", "id", "name", "state", "sendval", "done", "result", "error", "entry", "owned", "wake")
 
@@ -268,6 +276,7 @@ class Scheduler:
         self.nextid = 1
         self.entry = None
         self.ext = 0                 # helper-thread calls in flight
+        self.listeners = 0           # C-kept callbacks that may post events at any time
         self.extq = queue.Queue()
 
     def start_ext(self, f, fn):
@@ -281,14 +290,34 @@ class Scheduler:
                 q.put((f, None, e))
         threading.Thread(target=work, daemon=True).start()
 
+    def post_event(self, sink, value):
+        """Called from any thread: a C-kept callback was called."""
+        self.extq.put((("event", sink), value, None))
+
+    def deliver_event(self, sink, v):
+        c = sink.w.chan
+        if c.rcount <= 0:
+            sink.dropped += 1
+        elif c.readers:
+            self.wake(c.readers.popleft(), Ok(v))
+        elif len(c.buf) < c.cap:
+            c.buf.append(v)
+            self.notify_sel(c)
+        else:
+            sink.dropped += 1            # a full channel drops the event; C cannot be made to wait
+
     def drain_ext(self, block):
-        """Wake the fibers whose helper-thread calls have finished (waiting for the first if `block`)."""
-        while self.ext:
+        """Wake the fibers whose helper-thread calls have finished, and deliver C-kept callback events
+        (waiting for the first if `block`)."""
+        while self.ext or self.listeners:
             try:
                 f, r, e = self.extq.get(block=block)
             except queue.Empty:
                 return
             block = False
+            if isinstance(f, tuple):
+                self.deliver_event(f[1], r)
+                continue
             self.ext -= 1
             self.wake(f, ExtFail(e) if e is not None else r)
 
@@ -378,10 +407,10 @@ class Scheduler:
         main = self.spawn(gen, "main", entry=True)
         I.cur_fiber = main
         while not main.done:
-            if self.ext:
+            if self.ext or self.listeners:
                 self.drain_ext(False)
             if not self.ready:
-                if self.ext:                 # real time: wait for an OS helper thread before advancing virtual time
+                if self.ext or self.listeners:                 # real time: wait for an OS helper thread before advancing virtual time
                     self.drain_ext(True)
                     continue
                 if not self.advance():

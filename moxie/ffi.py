@@ -196,6 +196,52 @@ def run_sync(I, g):
     raise Abort("a callback called from C must not park (read, write, sleep, select, a query, ...)")
 
 
+def convert_args(I, plan, cargs):
+    vals, k = [], 0
+    for e in plan:
+        if e[0] == "val":
+            vals.append(from_c(I, e[1], cargs[k]))
+            k += 1
+        elif e[0] == "bytes":
+            ptr, n = cargs[k], int(cargs[k + 1])
+            raw = ctypes.string_at(ptr, n) if ptr and n else b""
+            cls = INT_CLASSES.get("UInt8")
+            vals.append(ArrayV([cls(x) if cls else x for x in raw]))
+            k += 2
+        else:
+            k += 1
+    return vals
+
+
+class _EvType:
+    """The function type of a C-kept callback that is delivered as events: Events[T] means (T...) -> Unit."""
+    def __init__(self, t):
+        g = t.groups[0][0] if t.groups and t.groups[0] else None
+        if g is None:
+            raise Abort("Events needs a payload type, such as Events[Int32] or Events[(Int32, Double)]")
+        self.single = g.__class__.__name__ != "TTuple"
+        self.params = [(None, g)] if self.single else list(g.items)
+        self.ret = None
+
+
+def is_events(t):
+    return tname(t) == "Events"
+
+
+def make_event_thunk(I, ev, sink):
+    plan = cb_plan(I, ev)
+
+    def thunk(*cargs):
+        try:
+            vals = convert_args(I, plan, cargs)
+            v = vals[0] if ev.single else TupleV(vals)
+            I.sched.post_event(sink, v)
+        except BaseException:      # noqa: never let an exception unwind into C
+            sink.dropped += 1
+        return None
+    return thunk
+
+
 def make_thunk(I, t, fnv, box):
     """A Python function C can call: converts the arguments, runs the moxie function, converts the result."""
     plan = cb_plan(I, t)
@@ -203,19 +249,7 @@ def make_thunk(I, t, fnv, box):
 
     def thunk(*cargs):
         try:
-            vals, k = [], 0
-            for e in plan:
-                if e[0] == "val":
-                    vals.append(from_c(I, e[1], cargs[k]))
-                    k += 1
-                elif e[0] == "bytes":
-                    ptr, n = cargs[k], int(cargs[k + 1])
-                    raw = ctypes.string_at(ptr, n) if ptr and n else b""
-                    cls = INT_CLASSES.get("UInt8")
-                    vals.append(ArrayV([cls(x) if cls else x for x in raw]))
-                    k += 2
-                else:
-                    k += 1
+            vals = convert_args(I, plan, cargs)
             r = run_sync(I, I.apply(fnv, vals, {}))
             return to_c(I, rt, r) if rt is not None else None
         except BaseException as e:      # noqa: carried out of C and re-raised by the caller
@@ -294,7 +328,9 @@ def make_foreign(I, lib_name, d):
         raise Abort(f"native library '{lib_name}' has no function '{d.name}'")
     cargs = []
     for p in d.params or []:
-        if is_fn_type(p.type):
+        if is_events(p.type):
+            cargs.append(cb_ctype(I, _EvType(p.type)))
+        elif is_fn_type(p.type):
             from .effects import Effects as _E
             if "parks" in (_E.declared(d) or ()):
                 raise Abort(f"'{d.name}' takes a callback, so it cannot be declared parks: "
@@ -394,7 +430,18 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         if p.name not in values:
             raise Abort(f"missing argument '{p.name}' for {f.name}", line)
         v = values[p.name]
-        if is_fn_type(p.type):
+        if is_events(p.type):
+            from .sched import EventSink
+            if not hasattr(v, "chan") or not hasattr(v, "write"):
+                raise Abort(f"'{p.name}' of {f.name} keeps a channel write end: pass move tx", line)
+            ev = _EvType(p.type)
+            sink = EventSink(v, f"{f.name}.{p.name}")
+            I_of(f).__dict__.setdefault("event_sinks", []).append(sink)
+            th = cb_ctype(I_of(f), ev)(make_event_thunk(I_of(f), ev, sink))
+            I_of(f).__dict__.setdefault("kept_thunks", []).append(th)     # C may call it at any time: never freed
+            I_of(f).sched.listeners += 1
+            cargs.append(th)
+        elif is_fn_type(p.type):
             ctype = cb_ctype(I_of(f), p.type)
             th = ctype(make_thunk(I_of(f), p.type, v, cbbox))
             keep.append(th)

@@ -117,6 +117,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             try:
                 self.sched.run_main(body())
             finally:
+                for sk in self.__dict__.get("event_sinks", []):
+                    if sk.dropped:
+                        self.err.write(f"warning: {sk.dropped} event(s) from {sk.name} were dropped because the channel was full\n")
                 if self.__dict__.get("live_io"):
                     from .prelude import close_live_io
                     close_live_io(self)

@@ -243,3 +243,16 @@ Keys: top-level `lib`; `[functions.NAME]` with `effects`, `skip`, `pair`, `retur
 shape on every run (errors name the file and key and suggest the nearest valid key;
 exit code 2), and `unused_sidecar` warns about entries that match no function or handle
 in the header. Tests: `tests/run_bindgen.py`.
+
+## Callbacks that C keeps (`Events[T]`)
+
+A foreign parameter `cb: Events[T]` takes a channel write end (`move tx`; the checker
+requires `move`). `ffi.make_event_thunk` builds a C-callable thunk that converts the
+arguments (`convert_args`, the same plan as ordinary callbacks) and calls
+`Scheduler.post_event`, which puts the message on the thread-safe queue; the scheduler
+loop (`drain_ext`) delivers it with `deliver_event`: wake a waiting reader, else buffer
+it, else drop it (counted in `EventSink.dropped` and reported at exit). The thunk is
+kept in `Interp.kept_thunks` forever and `Scheduler.listeners` is incremented, so an
+idle loop waits for events instead of reporting a deadlock. Tests:
+`tests/run_callbacks.py` (a C library that calls from its own pthread),
+`tests/run_bindgen.py` (`keeps`).

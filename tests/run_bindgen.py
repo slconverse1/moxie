@@ -23,6 +23,8 @@ int mini_printf(const char *fmt, ...);
 int mini_fill(unsigned char *buf, unsigned long n);
 int mini_bad(unsigned char *buf);
 int mini_apply(int (*f)(int), int x);
+void mini_subscribe(void (*f)(int, double, void *), void *user);
+int mini_subscribe_bad(int (*f)(int));
 int mini_connect(const char *name, mini_ctx **out);
 void mini_make(int v, mini_ctx **out);
 int mini_each(void (*f)(int, void *), void *user);
@@ -40,6 +42,8 @@ mini_ctx *mini_open(const char *name) { mini_ctx *c = malloc(sizeof *c); c->hits
 int mini_hits(mini_ctx *c) { return ++c->hits; }
 void mini_close(mini_ctx *c) { free(c); }
 int mini_apply(int (*f)(int), int x) { return f(x); }
+void mini_subscribe(void (*f)(int, double, void *), void *user) { f(7, 2.5, user); }
+int mini_subscribe_bad(int (*f)(int)) { return f(1); }
 int mini_each(void (*f)(int, void *), void *user) { for (int i = 1; i <= 3; i++) f(i, user); return 3; }
 int mini_feed(const unsigned char *buf, unsigned long n, int (*f)(const unsigned char *, unsigned long, void *), void *ud) { return f(buf, n, ud); }
 int mini_connect(const char *name, mini_ctx **out) { if (name[0] == 'x') { *out = NULL; return 5; } *out = malloc(sizeof **out); (*out)->hits = 100; return 0; }
@@ -167,6 +171,12 @@ w3 = open(os.path.join(d, "wrappers.mxi")).read()
 b3 = open(os.path.join(d, "bindings.mxi")).read()
 chk("lib in the file, rename, handles all work", r.returncode == 0 and 'foreign "mini"' in b3 and "fn plus(a: Int32, b: Int32) Int32: mini_add(a, b)" in w3 and "handle MiniCtx closes mini_close" in b3, r.stdout + r.stderr + w3[:300])
 
+# keeps: a callback the library keeps becomes Events
+r = toml_run('[functions.mini_subscribe]\nkeeps = ["f"]\n[functions.mini_subscribe_bad]\nkeeps = ["f"]\n', "--lib", "mini", "--wrap")
+b4 = open(os.path.join(d, "bindings.mxi")).read()
+w4 = open(os.path.join(d, "wrappers.mxi")).read()
+chk("keeps turns a callback into Events", "fn mini_subscribe(f: Events[(Int32, Double, UserData)], user: UserData)" in b4 and "todo: mini_subscribe_bad" in b4, b4[-700:])
+chk("the wrapper takes a channel end and moves it", "fn subscribe(f: ChanW[(Int32, Double)]): mini_subscribe(move f)" in w4, w4[-600:])
 # --check drift
 bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")

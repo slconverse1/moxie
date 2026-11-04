@@ -40,7 +40,8 @@ def pascal(name):
 EFFECT_VALUES = ("pure", "prints", "parks", "impure", "prints parks", "parks prints")
 FUNCTION_KEYS = {"effects": "one of " + ", ".join(f'"{e}"' for e in EFFECT_VALUES),
                  "skip": "true or false", "pair": 'a list of two names, ["buf", "len"]',
-                 "returns": '"status" or "value"', "outs": "a list of parameter names", "rename": "a name"}
+                 "returns": '"status" or "value"', "outs": "a list of parameter names", "rename": "a name",
+                 "keeps": "a list of callback parameter names that the library keeps"}
 HANDLE_KEYS = {"closes": "the name of a C function"}
 TOP_KEYS = {"lib": "the library name", "functions": "tables, one per C function",
             "handles": "tables, one per handle type"}
@@ -86,7 +87,7 @@ def validate_sidecar(side):
                     ok = isinstance(v, list) and len(v) == 2 and all(isinstance(x, str) for x in v)
                 elif k == "returns":
                     ok = v in ("status", "value")
-                elif k == "outs":
+                elif k in ("outs", "keeps"):
                     ok = isinstance(v, list) and all(isinstance(x, str) for x in v)
                 elif k in ("rename", "closes"):
                     ok = isinstance(v, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", v) is not None
@@ -346,7 +347,7 @@ class Gen:
             rt = r[1]
         else:
             raise Todo("a callback returns a pointer, which is not supported")
-        return ("callback", f"({', '.join(ps)}) -> {rt}", "callback", False)
+        return ("callback", f"({', '.join(ps)}) -> {rt}", "callback", False, ps, rt)
 
     def bad(self, why):
         raise Todo(why)
@@ -452,6 +453,16 @@ class Gen:
                 out.append(f"ref {pn}: {d[1]}")
                 hs.add(d[1])
                 info["outh"] = d[1]
+            elif k == "callback" and pn in (sc.get("keeps") or []):
+                if d[5] != "Unit":
+                    raise Todo(f"callback '{pn}' is kept by the library but returns a value, so it cannot be delivered as events")
+                vals = [x for x in clean_cb(d[1]).split(") -> ")[0][1:].split(", ") if x]
+                if not vals:
+                    raise Todo(f"callback '{pn}' is kept by the library but carries no values to deliver")
+                payload = d[4][0] if len(d[4]) == 1 else "(" + ", ".join(d[4]) + ")"
+                wpayload = vals[0] if len(vals) == 1 else "(" + ", ".join(vals) + ")"
+                out.append(f"{pn}: Events[{payload}]")
+                info["ps"].append((pn, "events", wpayload))
             elif k == "callback":
                 out.append(f"{pn}: {d[1]}")
                 info["ps"].append((pn, "val", d[1]))
@@ -582,6 +593,9 @@ def make_wrappers(g, decls, lib, side, comments):
             elif kind in ("bytes_rw", "ref_scalar", "ref_struct"):
                 sig.append(f"ref {pn}: {ty}")
                 call.append(f"ref {pn}")
+            elif kind == "events":
+                sig.append(f"{pn}: ChanW[{ty}]")
+                call.append(f"move {pn}")
             else:
                 sig.append(f"{pn}: {clean_cb(ty)}")
                 call.append(pn)
@@ -618,6 +632,9 @@ def make_wrappers(g, decls, lib, side, comments):
                     elif p[1] in ("bytes_rw", "ref_scalar", "ref_struct"):
                         sig2.append(f"ref {p[0]}: {p[2]}")
                         call2.append(f"ref {p[0]}")
+                    elif p[1] == "events":
+                        sig2.append(f"{p[0]}: ChanW[{p[2]}]")
+                        call2.append(f"move {p[0]}")
                     else:
                         sig2.append(f"{p[0]}: {clean_cb(p[2])}")
                         call2.append(p[0])

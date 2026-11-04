@@ -12,7 +12,7 @@ RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accep
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
                "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",
-               "Locale", "Connection", "true", "false", "UserData", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener"}
+               "Locale", "Connection", "true", "false", "UserData", "Events", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener"}
 
 
 INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte", "BigInt"}
@@ -1049,6 +1049,9 @@ class Checker:
                 self.err(n.line, f"parameter `{p.name}` is `ref`; write `ref {self.arg_name(a)}`")
             elif a.mod == "ref" and p.mod != "ref":
                 self.err(n.line, f"parameter `{p.name}` is not `ref`; drop the `ref`")
+            if id(fd) in self.foreign_ids and p.type.__class__ is TName and p.type.path[-1] == "Events" \
+                    and a.expr.__class__ is not Move and a.mod != "move":
+                self.err(n.line, f"parameter `{p.name}` is kept by the library; write `move {self.arg_name(a)}`")
             if p.type is not None:
                 self.compat(self.ty_of_type(p.type), t, c, n.line)
         return self.ret_of(fd), None
