@@ -221,7 +221,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
 
     def static_check(self, prog):
         from .check import check_program, Diag
-        diags = check_program(prog, set(self.prelude.vars))
+        diags = check_program(prog, set(self.prelude.vars), self.search_dir)
         from .values import GC
         if not GC[0]:
             from .tally import tally_problems
@@ -251,7 +251,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def unmet_needs(self, pm, prog):
         from .effects import permission_needs
         out = []
-        for kind, (line, name) in sorted(permission_needs(prog).items(), key=lambda kv: kv[1][0]):
+        for kind, (line, name) in sorted(permission_needs(prog, self.search_dir).items(), key=lambda kv: kv[1][0]):
             want = self.kind_unmet(pm, kind)
             if want:
                 out.append((line, name, want))
@@ -288,7 +288,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 if ceil is None:
                     continue
                 pm = Combined(self._perms, ceil, key)
-                nd = Needs(pp)
+                nd = Needs(pp)          # a package is held to what its own code does; a called package has its own ceiling
                 acc = dict(nd.solve())
                 for s in nd.sum.values():
                     for eff, w in s.eff.items():

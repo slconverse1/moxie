@@ -13,6 +13,8 @@ Consumers: `pure fn` (and `tailrec` is unaffected), the function given to
 `swap` (must not park), `debug_assert` conditions, and contract conditions
 (must be pure).
 """
+import os
+
 from .ast import *   # noqa
 
 PARKS, PRINTS = "parks", "prints"
@@ -50,10 +52,25 @@ class Summary:
         self.param_calls = set()  # indices of parameters the body calls
 
 
+def find_package(search_dir, parts):
+    base = search_dir or "."
+    cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
+    return next((p for p in cands if os.path.exists(p)), None)
+
+
 class Effects:
     BUILT = BUILTIN
-    def __init__(self, prog):
+
+    def __init__(self, prog, search_dir=None, _shared=None):
         self.prog = prog
+        self.search_dir = search_dir
+        self.label = ""                       # "" for the entry file, else the package key
+        self._shared = _shared if _shared is not None else {}       # package key -> analysis of that package
+        self.pkgs = {}                        # alias -> analysis of an imported package
+        self.imported = {}                    # name brought in by `import p (name)` -> (analysis, name)
+        self.import_line = {}
+        self.methods = set()                  # names defined in impl blocks, reachable as x.name(...) by UFCS
+        self._done = False
         self.defs = {}           # name -> [FnDecl]
         self.sum = {}            # name -> Summary
         self.diags = []
@@ -61,6 +78,99 @@ class Effects:
         self.bounds = {}
         self.callbacks = {}          # foreign fn name -> indices of its callback parameters
         self._collect(prog)
+        self._collect_methods(prog, False)
+        self._imports()
+
+    def _collect_methods(self, n, in_impl):
+        if n.__class__ is FnDecl and in_impl and n.name:
+            self.methods.add(n.name)
+        for ch in _children(n):
+            self._collect_methods(ch, in_impl or n.__class__ is ImplDecl)
+
+    def _imports(self):
+        """Analyse each imported package once (shared by key), so a call into it can use its function summaries."""
+        if self.search_dir is None:
+            return
+        from .parser import parse_program
+        for st in self.prog.stmts:
+            if st.__class__ is not ImportDecl:
+                continue
+            key = ".".join(st.pkg)
+            self.import_line.setdefault(key, st.line)
+            sub = self._shared.get(key)
+            if sub is None:
+                path = find_package(self.search_dir, st.pkg)
+                if path is None:
+                    continue
+                try:
+                    pp = parse_program(open(path, encoding="utf-8").read(), path)
+                except Exception:
+                    continue
+                sub = type(self).__new__(type(self))
+                self._shared[key] = sub                      # registered first, so an import cycle cannot recurse
+                sub.__init__(pp, self.search_dir, self._shared)
+                sub.label = key
+            if st.names:
+                for nm in st.names:
+                    if isinstance(nm, str):
+                        self.imported[nm] = (sub, nm)
+            else:
+                self.pkgs[st.alias or st.pkg[-1]] = sub
+
+    def _subs(self):
+        seen, out = set(), []
+        for s in list(self.pkgs.values()) + [s for s, _n in self.imported.values()]:
+            if id(s) not in seen:
+                seen.add(id(s))
+                out.append(s)
+        return out
+
+    def ensure_subs(self):
+        for s in self._subs():
+            s.ensure()
+
+    def ensure(self):
+        if self._done:
+            return
+        self._done = True
+        self.ensure_subs()
+        self.compute()
+
+    def compute(self):
+        self.summaries()
+
+    def pk(self, f):
+        """(analysis, function name) when the callee `f` is a function of an imported package, else None."""
+        c = f.__class__
+        if c is GenApp:
+            return self.pk(f.base)
+        if c is Field and f.obj.__class__ is Name and f.obj.name in self.pkgs:
+            sub = self.pkgs[f.obj.name]
+            return (sub, f.name) if f.name in sub.defs else None
+        if c is Name and f.name in self.imported and f.name not in self.defs:
+            sub, orig = self.imported[f.name]
+            return (sub, orig) if orig in sub.defs else None
+        return None
+
+    def pk_methods(self, f):
+        """UFCS: `x.name(...)` can reach an impl method of that name in any imported package."""
+        if f.__class__ is GenApp:
+            return self.pk_methods(f.base)
+        if f.__class__ is not Field or (f.obj.__class__ is Name and f.obj.name in self.pkgs):
+            return []
+        return [(s, f.name) for s in self._subs() if f.name in s.methods]
+
+    def add_pkg(self, sub, nm, args, fnnames, acc, line, is_method):
+        s = sub.sum.get(nm)
+        if not s:
+            return
+        for eff, (callee, ln, root) in s.eff.items():
+            acc.setdefault(eff, (f"{sub.label}.{nm}", line, root))
+        ds = sub.defs.get(nm) or []
+        for idx in s.param_calls:
+            off = idx - (1 if is_method and ds and ds[0].params and getattr(ds[0].params[0], "name", None) == "self" else 0)
+            if 0 <= off < len(args):
+                self.arg_effects(args[off], fnnames, acc)
 
     def _collect(self, n, ctx="top"):
         c = n.__class__
@@ -129,7 +239,11 @@ class Effects:
         if c is Lambda:
             self.walk(e.body, fnnames, acc, None)
         elif c is Name:
-            self.add_named(e.name, 0, acc, fnnames=None)
+            if e.name in self.imported and e.name not in self.defs:
+                sub, orig = self.imported[e.name]
+                self.add_pkg(sub, orig, [], fnnames, acc, 0, False)
+            else:
+                self.add_named(e.name, 0, acc, fnnames=None)
         else:
             self.walk(e, fnnames, acc, None)
 
@@ -152,7 +266,10 @@ class Effects:
             else:
                 args = [extra] + args
         line = getattr(call, "line", 0)
-        if name is None:
+        definite = self.pk(fn)
+        if definite is not None:
+            self.add_pkg(definite[0], definite[1], args, fnnames, acc, line, is_method)
+        elif name is None:
             self.walk(fn, fnnames, acc, summ)
         elif not is_method and fnnames is not None and name in fnnames:
             if summ is not None:
@@ -177,6 +294,8 @@ class Effects:
             for a in args:
                 if a.__class__ is Lambda or (a.__class__ is Name and (a.name in self.defs or a.name in self.BUILT)):
                     self.arg_effects(a, fnnames, acc)
+        for sub, nm in self.pk_methods(fn):
+            self.add_pkg(sub, nm, args, fnnames, acc, line, True)
         if name in self.callbacks and not is_method:
             for i in self.callbacks[name]:
                 if i < len(args):
@@ -249,6 +368,11 @@ class Effects:
 
     # ---------------------------------------------------------------- solving
     def solve(self):
+        self.ensure_subs()
+        self.summaries()
+        return self.finish()
+
+    def summaries(self):
         for name in self.defs:
             self.sum[name] = Summary()
         for name, ds in self.defs.items():
@@ -274,6 +398,8 @@ class Effects:
                             s.eff.setdefault(eff, w)
                     if (len(s.eff), len(s.param_calls)) != before:
                         changed = True
+
+    def finish(self):
         self.diags = []          # discard diagnostics from the iteration rounds
         for name, ds in self.defs.items():
             for d in ds:
@@ -345,9 +471,9 @@ class Needs(Effects):
     or file (`lines`, `read_line(io)`) is not a need of its own: the stream was opened with one."""
     BUILT = NEEDS
 
-    def __init__(self, prog):
-        super().__init__(prog)
+    def __init__(self, prog, search_dir=None, _shared=None):
         self.foreign = []
+        super().__init__(prog, search_dir, _shared)
         self._foreign(prog)
 
     def _foreign(self, n):
@@ -372,7 +498,7 @@ class Needs(Effects):
             return                       # a read from a file or socket was permitted when it was opened
         super().handle_call(call, extra, fnnames, acc, summ)
 
-    def solve(self):
+    def summaries(self):
         for name in self.defs:
             self.sum[name] = Summary()
         for lib, names in self.foreign:
@@ -390,23 +516,39 @@ class Needs(Effects):
                         changed = True
             if not changed:
                 break
+
+    def top_acc(self):
         acc = {}
         for st in self.prog.stmts:
             if st.__class__ not in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl):
                 self.walk(st, None, acc, None)
         return acc
 
+    def compute(self):
+        self.summaries()
+        self.top = self.top_acc()
 
-def permission_needs(prog):
+    def solve(self):
+        self.ensure_subs()
+        self.summaries()
+        acc = self.top_acc()
+        for key, sub in self._shared.items():          # a package runs its top level when it is imported
+            sub.ensure()
+            for kind, w in sub.top.items():
+                acc.setdefault(kind, (key, self.import_line.get(key, 1), w[2]))
+        return acc
+
+
+def permission_needs(prog, search_dir=None):
     """{kind: (line, name)} for what the program's top-level code can reach."""
-    acc = Needs(prog).solve()
+    acc = Needs(prog, search_dir).solve()
     return {k: (w[1], w[2]) for k, w in acc.items()}
 
 
-def check_effects(prog):
+def check_effects(prog, search_dir=None):
     """Return [(line, message)] for effect violations."""
     seen, out = set(), []
-    for line, msg in Effects(prog).solve():
+    for line, msg in Effects(prog, search_dir).solve():
         if (line, msg) not in seen:
             seen.add((line, msg))
             out.append((line, msg))

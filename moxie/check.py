@@ -1535,11 +1535,11 @@ class Checker:
         return None, None
 
 
-def check_program(prog, prelude_names):
+def check_program(prog, prelude_names, search_dir=None):
     diags = Checker(prelude_names).check(prog)
     from .effects import check_effects
     seen = {(d.line, d.msg) for d in diags}
-    for line, msg in check_effects(prog):
+    for line, msg in check_effects(prog, search_dir):
         if (line, msg) not in seen:
             diags.append(Diag(line, msg))
     return diags

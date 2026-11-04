@@ -429,3 +429,14 @@ search_dir, prog)` hashes the tokens of the entry file and of every package from
 UFCS: `x.name(...)` and `name(x)` reach the same function, so `Tally.pk_methods` adds, for a field-style call that is
 not on a package alias, every `impl` method of that name in the imported packages (`Tally.methods` is the set of
 names defined inside impl blocks). Like the by-name counting inside one file, this can over-count, never under-count.
+
+## Effects and needs across packages
+
+`Effects` and `Needs` take a `search_dir` and analyse each imported package once (`_shared`, registered before
+construction so an import cycle cannot recurse), as `Tally` does. `ensure()` computes a package's summaries (and,
+for `Needs`, its top-level needs) after the packages it imports. `pk(f)` resolves `lib.f` and `import lib (f)`
+names, `pk_methods(f)` adds the `impl` methods of that name for UFCS `x.f()`, and `add_pkg` copies the callee's
+effects into the caller and applies the effects of arguments to the callee's `param_calls`. `Needs.solve` adds each
+package's top-level needs at its import line. `check_program(prog, names, search_dir)`, `permission_needs`, and
+`check_effects` pass the entry file's directory through; `Interp.package_diags` builds `Needs(pp)` without it, so a
+ceiling is checked against what a package's own code does. Tests: `tests/run_pkgeffects.py`.
