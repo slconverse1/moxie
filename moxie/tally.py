@@ -355,13 +355,21 @@ def tally_problems(prog):
     return t.problems
 
 
-def format_header(t, cnt):
+def header_dict(t, cnt, src=None):
     """The pool header: what the runtime needs to size the pools and the fiber blocks before the first line runs."""
-    import json
+    import hashlib
     n, exact = t.fiber_count()
     pools = {k: (e[0] if not e[1] else None) for k, e in sorted(cnt.k.items())}
-    return json.dumps({"pools": pools, "fibers": {"largest": n if exact else None, "functions": dict(t.fibers)},
-                       "exact": exact and all(v is not None for v in pools.values())}, indent=2) + "\n"
+    d = {"version": 1, "pools": pools, "fibers": {"largest": n if exact else None, "functions": dict(t.fibers)},
+         "exact": exact and all(v is not None for v in pools.values())}
+    if src is not None:
+        d["program"] = hashlib.sha256(src.encode("utf-8")).hexdigest()
+    return d
+
+
+def format_header(t, cnt, src=None):
+    import json
+    return json.dumps(header_dict(t, cnt, src), indent=2) + "\n"
 
 
 def format_fibers(t):

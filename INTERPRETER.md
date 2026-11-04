@@ -405,3 +405,15 @@ and handshake failures into `IO_ERROR` messages. The server loads the certificat
 thread, returning `Err` for a failed handshake. The result is an ordinary `IoV` socket, so the pool tally,
 permissions, and static `net` needs treat the new functions like `connect` and `listen`. Tests: `tests/run_tls.py`
 (skipped when `openssl` is missing). The guide runners skip blocks that start with `// not run`.
+
+## The pool header at start
+
+`tally.header_dict` builds the header (version 1, `pools` counts with `null` for unknown, `fibers.largest`, and a
+SHA-256 of the program text); `format_header` writes it for `moxie pools FILE --header OUT`. `moxie/header.py`
+reads it. `prepare(I, src, name, manifest, header_flag)` runs in `__main__` before `run_source`: it picks the file
+(`--header=FILE`, else `[pools] header`), refuses one whose hash is not the source's, builds the header from a tally
+when only `[program] memory` is set, applies `budget_error` (largest fiber count times `[fibers]` `memory` plus
+`stack` against `[program] memory`; sizes come from `manifest.parse_size`), and then sets `Pools.caps` (acquire
+aborts past a count) and `Scheduler.fiber_cap` (`run` aborts when that many fibers are alive). Kinds the header
+lists as `null` or does not list are not capped. Under `--gc` the options are refused, since moxie/gc has no pool
+header. Tests: `tests/run_header.py`.

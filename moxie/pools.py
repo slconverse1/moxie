@@ -11,9 +11,14 @@ class Pools:
         self.open = {}
         self.peak = {}
         self.total = {}
+        self.caps = {}               # kind -> most that may be open at once, from the pool header
 
     def acquire(self, kind):
         n = self.open.get(kind, 0) + 1
+        cap = self.caps.get(kind)
+        if cap is not None and n > cap:
+            from .values import Abort
+            raise Abort(f"the pool for {kind} is full: the pool header allows {cap} open at once")
         self.open[kind] = n
         self.total[kind] = self.total.get(kind, 0) + 1
         if n > self.peak.get(kind, 0):

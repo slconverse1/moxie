@@ -556,6 +556,9 @@ def run_op(I, n, env):
     key = id(node)
     if limit is not None and node is not None and live.get(key, 0) >= limit:
         return err_reserved("NO_SLOT", f"fiber function {name}: all {limit} slots are alive")
+    cap = getattr(S, "fiber_cap", None)
+    if cap is not None and sum(1 for x in S.fibers if not x.done) >= cap:
+        raise Abort(f"the fiber blocks are all in use: the pool header allows {cap} fibers")
     gen = I.apply(callee, pos, named)
     counted = limit is not None and node is not None
     if counted:

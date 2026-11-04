@@ -2034,6 +2034,38 @@ println(util.greeting)
 
 Output: `hello`. Everything is linked statically from source and unreachable code is pruned, a link report lists what each package contributed, and a lockfile records dependency hashes. **Mistake:** `util.retry_limit` from another package is an error, because it is `internal`.
 
+**19a. Limits, pools, and the memory budget**
+
+A moxie program has no garbage collector, so the compiler works out ahead of time how much of each counted resource it can have: channels, timers, atoms, files and sockets, listeners, and the fibers themselves. A fiber function says how many copies may run at once with `fiber[n]` (or the manifest gives a default with `[fibers] limit`), and `run` returns `Err(NO_SLOT)` when all the slots are alive:
+
+```
+fiber[2] fn w(tx: ChanW[Int]):
+  write(tx, 2)
+rx, tx = Chan[Int][1]()
+run w(tx)
+println(read(rx)?)
+```
+
+Output: `2`. `moxie pools FILE` prints the counts, and `--header OUT` writes them as the **pool header**, a small JSON file:
+
+```
+$ moxie pools main.mxi --header pools.json
+$ moxie --header=pools.json run main.mxi
+```
+
+Running with `--header` (or naming the file in the manifest, `[pools]` `header = "pools.json"`) checks that the header was made for this exact source text and refuses to start if it was not, then holds the program to the header's numbers: a pool that would go over its count, or one more fiber than the header allows, aborts with a message that names the pool. For a correct program that never happens, because the counts are an upper bound; if it does, the tally has a bug. The manifest can also set a memory budget:
+
+```
+[fibers]
+memory = "64KiB"
+stack = "16KiB"
+
+[program]
+memory = "1MiB"
+```
+
+Each fiber needs its `memory` plus its `stack`, and the program needs that for the largest number of fibers it can have, so the start is refused when `[program] memory` is too small, with the sum in the message. A budget needs every fiber function to have a limit, since a count that is unknown cannot be checked, and it needs both `memory` and `stack`. Sizes are `"64KiB"` (1024-based), `"64KB"` (1000-based), or a plain number of bytes. **Mistakes:** keeping an old header after changing the program (it is refused as stale), and setting a budget while a fiber function has no `fiber[n]`.
+
 **Chapter 20: Arguments and environment**
 
 ```

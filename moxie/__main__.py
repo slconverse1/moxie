@@ -9,6 +9,7 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
        moxie pools FILE [--header OUT]  the static pool tally: how many of each counted resource the program creates
+       moxie --header=FILE run FILE     start with a pool header: refuse a stale one, hold the program to its counts
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
                                     write foreign declarations from a C header
        moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
@@ -46,8 +47,11 @@ def main(argv=None):
     want_pools = "--pools" in argv
     argv = [a for a in argv if a != "--pools"]
     # permission flags come before the file name; after it they belong to the program
-    pflags, rest, seen_file = [], [], False
+    pflags, rest, seen_file, header_flag = [], [], False, None
     for a in argv:
+        if not seen_file and a.startswith("--header="):
+            header_flag = a[len("--header="):]
+            continue
         if not seen_file and (a.split("=")[0] in ("--allow-read", "--allow-write", "--allow-connect", "--allow-listen",
                                                   "--allow-ffi", "--allow-stdin", "--allow-env", "--allow-all", "--deny-all")):
             pflags.append(a)
@@ -108,7 +112,7 @@ def main(argv=None):
         if "--header" in argv:
             i = argv.index("--header")
             with open(argv[i + 1], "w") as hf:
-                hf.write(format_header(t, cnt))
+                hf.write(format_header(t, cnt, src))
         return 1 if t.problems else 0
     if cmd not in ("run", "test", "check"):
         cmd, argv = "run", ["run"] + argv
@@ -133,6 +137,12 @@ def main(argv=None):
     if cmd == "run":
         I = make_interp(path, [a for a in argv[2:] if a != "--no-check"], perms, ceilings)
         I.manifest = manifest
+        from .header import prepare, HeaderError
+        try:
+            prepare(I, src, os.path.basename(path), manifest, header_flag)
+        except HeaderError as e:
+            sys.stderr.write(f"moxie: {e}\n")
+            return 2
         code = I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
         if want_pools:
             sys.stderr.write(I.pools.report())
