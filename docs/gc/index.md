@@ -58,7 +58,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Go:** interfaces, goroutines, channels, and `select`, and (in moxie/gc) the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and (designed, not yet built) doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks, Domain-Specific Languages, and labeled `break` and `continue`.
-- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, an `if` that gives back a value, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
+- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, operator precedence rules, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts (all designed, not yet built).
 - **Clojure:** lock-free state through Atoms and `swap`, `cond`, and (in moxie/gc) persistent collections that share structure. **[gc]**
