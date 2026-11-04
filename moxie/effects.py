@@ -50,6 +50,7 @@ class Summary:
 
 
 class Effects:
+    BUILT = BUILTIN
     def __init__(self, prog):
         self.prog = prog
         self.defs = {}           # name -> [FnDecl]
@@ -137,8 +138,8 @@ class Effects:
             if s:
                 for eff, (callee, ln, root) in s.eff.items():
                     acc.setdefault(eff, (name, line, root))
-        elif name in BUILTIN:
-            acc.setdefault(BUILTIN[name], (name, line, name))
+        elif name in self.BUILT:
+            acc.setdefault(self.BUILT[name], (name, line, name))
 
     def handle_call(self, call, extra, fnnames, acc, summ):
         fn = call.fn
@@ -167,13 +168,13 @@ class Effects:
                         if 0 <= off < len(args):
                             self.arg_effects(args[off], fnnames, acc)
                     break
-        elif name in BUILTIN:
+        elif name in self.BUILT:
             if not (name == "read" and fn.__class__ is GenApp):     # read[T](text) parses, it does not park
-                acc.setdefault(BUILTIN[name], (name, line, name))
+                acc.setdefault(self.BUILT[name], (name, line, name))
         else:
             # any other builtin: a function passed to it is assumed to be called
             for a in args:
-                if a.__class__ is Lambda or (a.__class__ is Name and (a.name in self.defs or a.name in BUILTIN)):
+                if a.__class__ is Lambda or (a.__class__ is Name and (a.name in self.defs or a.name in self.BUILT)):
                     self.arg_effects(a, fnnames, acc)
         if name in self.callbacks and not is_method:
             for i in self.callbacks[name]:
@@ -329,6 +330,75 @@ class Effects:
                     self.walk(expr, [getattr(p, "name", None) for p in (d.params or [])], acc, None)
                     for eff, (callee, l2, root) in acc.items():
                         self.diags.append((ln, f"the condition of {kw} must be pure, but it {eff} (calls '{root}')"))
+
+
+# ---------------------------------------------------------------- permissions needed (Spec 19d)
+NEEDS = {"open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net",
+         "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
+
+
+class Needs(Effects):
+    """Which permission kinds the program can reach from its top-level code: fs, net, stdin, env, ffi:LIB.
+    The same walk as effects, with permissions in place of parks/prints.  Reading from a given stream
+    or file (`lines`, `read_line(io)`) is not a need of its own: the stream was opened with one."""
+    BUILT = NEEDS
+
+    def __init__(self, prog):
+        super().__init__(prog)
+        self.foreign = []
+        self._foreign(prog)
+
+    def _foreign(self, n):
+        if n.__class__ is ForeignDecl:
+            self.foreign.append((n.lib, [d.name for d in n.fns]))
+        for ch in _children(n):
+            self._foreign(ch)
+
+    def walk(self, n, fnnames, acc, summ):
+        if n.__class__ is Name and n.name == "env" and "env" not in (fnnames or []):
+            acc.setdefault("env", ("env", getattr(n, "line", 0), "env"))
+        super().walk(n, fnnames, acc, summ)
+
+    def handle_call(self, call, extra, fnnames, acc, summ):
+        name, is_method = self.callee_name(call.fn)
+        if name in ("read_line", "read_all", "read_bytes", "lines") and not is_method and name not in self.defs:
+            args = [a.expr for a in call.args if a.expr is not None]
+            if extra is None and (not args or (args[0].__class__ is Name and args[0].name == "stdin")):
+                acc.setdefault("stdin", (name, getattr(call, "line", 0), name))
+            for a in call.args:
+                self.walk(a.expr, fnnames, acc, summ)
+            return                       # a read from a file or socket was permitted when it was opened
+        super().handle_call(call, extra, fnnames, acc, summ)
+
+    def solve(self):
+        for name in self.defs:
+            self.sum[name] = Summary()
+        for lib, names in self.foreign:
+            for nm in names:
+                self.sum[nm].eff.setdefault("ffi:" + lib, (nm, 0, nm))
+        for _ in range(50):
+            changed = False
+            for name, ds in self.defs.items():
+                s = self.sum[name]
+                for d in ds:
+                    before = (len(s.eff), len(s.param_calls))
+                    for eff, w in self.run_def(d, s).items():
+                        s.eff.setdefault(eff, w)
+                    if (len(s.eff), len(s.param_calls)) != before:
+                        changed = True
+            if not changed:
+                break
+        acc = {}
+        for st in self.prog.stmts:
+            if st.__class__ not in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl):
+                self.walk(st, None, acc, None)
+        return acc
+
+
+def permission_needs(prog):
+    """{kind: (line, name)} for what the program's top-level code can reach."""
+    acc = Needs(prog).solve()
+    return {k: (w[1], w[2]) for k, w in acc.items()}
 
 
 def check_effects(prog):

@@ -3,6 +3,9 @@ import os
 import sys
 
 USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
+       moxie [--allow-read[=PATHS]] [--allow-write[=PATHS]] [--allow-connect[=HOST:PORT]] [--allow-listen[=PORTS]]
+             [--allow-ffi[=LIBS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
+                                    restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
@@ -13,12 +16,14 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
 """
 
 
-def make_interp(path, args):
+def make_interp(path, args, perms=None):
     from .interp import Interp
     from .values import ArrayV, DictV
     I = Interp(search_dir=os.path.dirname(os.path.abspath(path)) if path else ".")
     I.prelude.vars["args"] = ArrayV(list(args))
-    env = {k: v for k, v in os.environ.items()}
+    if perms is not None:
+        I.perms = perms
+    env = {k: v for k, v in os.environ.items()} if I.perms.env_ok() else {}
     I.prelude.vars["env"] = DictV(env, len(env))
     return I
 
@@ -35,6 +40,17 @@ def main(argv=None):
         argv = [a for a in argv if a != "--release"]
     want_pools = "--pools" in argv
     argv = [a for a in argv if a != "--pools"]
+    # permission flags come before the file name; after it they belong to the program
+    pflags, rest, seen_file = [], [], False
+    for a in argv:
+        if not seen_file and (a.split("=")[0] in ("--allow-read", "--allow-write", "--allow-connect", "--allow-listen",
+                                                  "--allow-ffi", "--allow-stdin", "--allow-env", "--allow-all", "--deny-all")):
+            pflags.append(a)
+            continue
+        if not seen_file and not a.startswith("-") and a not in ("run", "test", "check", "bindgen", "doc"):
+            seen_file = True
+        rest.append(a)
+    argv = rest
     sys.setrecursionlimit(100000)
     if not argv or argv[0] in ("-h", "--help", "help"):
         sys.stdout.write(USAGE)
@@ -61,14 +77,20 @@ def main(argv=None):
     except OSError as e:
         sys.stderr.write(f"moxie: cannot read {path}: {e.strerror}\n")
         return 2
+    from .perms import load_for, PermError
+    try:
+        perms = load_for(path, pflags)
+    except PermError as e:
+        sys.stderr.write(f"moxie: {e}\n")
+        return 2
     if cmd == "run":
-        I = make_interp(path, [a for a in argv[2:] if a != "--no-check"])
+        I = make_interp(path, [a for a in argv[2:] if a != "--no-check"], perms)
         code = I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
         if want_pools:
             sys.stderr.write(I.pools.report())
         return code
     if cmd == "test":
-        I = make_interp(path, [])
+        I = make_interp(path, [], perms)
         p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)
         if "/// >" in src and len(argv) <= 2:
             from .doc import collect, run_doctests
@@ -78,7 +100,7 @@ def main(argv=None):
                 code = code or (0 if ok else 1)
         return code
     if cmd == "check":
-        I = make_interp(path, [])
+        I = make_interp(path, [], perms)
         return I.check_source(src, os.path.basename(path))
     return 2
 

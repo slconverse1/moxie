@@ -425,6 +425,9 @@ def from_c(I, t, c):
 
 
 def make_foreign(I, lib_name, d):
+    if not I.perms.ffi_ok(lib_name):
+        raise Abort(f"permission denied: the native library '{lib_name}' is not permitted (ffi); "
+                    f"grant it with ffi = [\"{lib_name}\"] under [permissions] or --allow-ffi={lib_name}")
     lib = load_library(lib_name, I)
     try:
         cfn = getattr(lib, d.name)

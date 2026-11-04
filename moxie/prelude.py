@@ -202,6 +202,17 @@ def b_flush(I, a, kw, ta):
     return UNIT
 
 
+class _DeniedIn:
+    """Stands in for standard input when it is not permitted: every read fails with DENIED."""
+    def readline(self):
+        raise PermissionError(13, "standard input is not permitted (stdin)")
+    read = readline
+
+
+def denied(what, kind):
+    return err_reserved("DENIED", f"{what}: {kind} is not permitted")
+
+
 def _inp(I, a):
     if a and isinstance(a[0], IoV):
         if a[0].closed:
@@ -209,6 +220,9 @@ def _inp(I, a):
         return a[0].f
     if a and a[0] is not STDIN:
         raise Abort("a read needs stdin or an open file or socket")
+    import io as _io
+    if not isinstance(I.inp, (_io.StringIO, _io.BytesIO)) and not I.perms.stdin_ok():
+        return _DeniedIn()
     return I.inp
 
 
@@ -317,6 +331,10 @@ def b_open_file(I, a, kw, ta):
     pm = {"ReadOnly": "rb", "Create": "wb", "Append": "ab", "ReadWrite": "r+b"}.get(mode)
     if pm is None:
         raise Abort(f"open_file: unknown mode {mode}")
+    need = ["fs.read"] if mode == "ReadOnly" else (["fs.write"] if mode in ("Create", "Append") else ["fs.read", "fs.write"])
+    for k in need:
+        if not I.perms.path_ok(k, path):
+            return denied(path, k)
     try:
         return Ok(IoV(I, "file", open(path, pm)))
     except OSError as e:
@@ -325,6 +343,8 @@ def b_open_file(I, a, kw, ta):
 
 @bi("read_file")
 def b_read_file(I, a, kw, ta):
+    if not I.perms.path_ok("fs.read", a[0]):
+        return denied(a[0], "fs.read")
     try:
         raw = open(a[0], "rb").read()
     except OSError as e:
@@ -337,6 +357,8 @@ def b_read_file(I, a, kw, ta):
 
 @bi("write_file")
 def b_write_file(I, a, kw, ta):
+    if not I.perms.path_ok("fs.write", a[0]):
+        return denied(a[0], "fs.write")
     try:
         with open(a[0], "wb") as f:
             f.write(a[1].encode("utf-8"))
@@ -378,6 +400,8 @@ def b_write_bytes(I, a, kw, ta):
 @bi("connect", "first", True)
 def b_connect(I, a, kw, ta):
     import socket
+    if not I.perms.connect_ok(a[0], a[1]):
+        return denied(f"{a[0]}:{a[1]}", "net.connect")
 
     def work():
         try:
@@ -395,6 +419,8 @@ def b_connect(I, a, kw, ta):
 @bi("listen")
 def b_listen(I, a, kw, ta):
     import socket
+    if not I.perms.listen_ok(a[0]):
+        return denied(f"port {a[0]}", "net.listen")
     try:
         s = socket.socket()
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

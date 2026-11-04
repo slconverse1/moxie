@@ -20,7 +20,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.search_dir = search_dir
         self.test_mode = test_mode
         from .pools import Pools
+        from .perms import Perms
         self.pools = Pools()
+        self.perms = Perms.open()
         self.tuples = {}
         self.enums = {}
         self.ifaces = {}
@@ -199,8 +201,23 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return passed, failed, (1 if failed else 0)
 
     def static_check(self, prog):
-        from .check import check_program
-        return check_program(prog, set(self.prelude.vars))
+        from .check import check_program, Diag
+        diags = check_program(prog, set(self.prelude.vars))
+        pm = self.perms
+        if pm.restricted:
+            from .effects import permission_needs
+            for kind, (line, name) in sorted(permission_needs(prog).items(), key=lambda kv: kv[1][0]):
+                if kind == "fs":
+                    ok, want = pm.allows_kind("fs.read") or pm.allows_kind("fs.write"), "fs.read or fs.write"
+                elif kind == "net":
+                    ok, want = pm.allows_kind("net.connect") or pm.allows_kind("net.listen"), "net.connect or net.listen"
+                elif kind.startswith("ffi:"):
+                    ok, want = pm.ffi_ok(kind[4:]), f"ffi for '{kind[4:]}'"
+                else:
+                    ok, want = pm.allows_kind(kind), kind
+                if not ok:
+                    diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
+        return diags
 
     def check_source(self, src, file="<input>"):
         """`moxie check`: parse and run the core static checks. Returns an exit code."""

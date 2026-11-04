@@ -277,3 +277,18 @@ one and a sleeper pending, `run_main` advances virtual time instead of blocking 
 thread queue (otherwise a sleeping handler and a thread waiting on it would deadlock).
 Aborts on the scheduler thread are kept in `Interp.handler_exc` and re-raised when the foreign
 call returns. Tests: `tests/run_callbacks.py` (a C pthread calling back), `tests/run_bindgen.py`.
+
+## Permissions (Spec 19d)
+
+`moxie/perms.py`: `Perms` (kinds `fs.read fs.write net.connect net.listen ffi stdin env`; `restricted`
+flag; `path_ok` resolves with `realpath` against the manifest directory, `connect_ok` uses
+`fnmatch` on the host, `listen_ok` takes ports and ranges), `from_manifest` (validates the
+`[permissions]` table), `from_flags`, and `load_for(path, flags)` (flags, else the nearest
+`Moxie.toml` with a `[permissions]` table, else unrestricted). `__main__` strips the
+`--allow-*`/`--deny-all` flags that come before the file name and hands `Interp.perms` to
+`make_interp` (which also empties `env` without the grant). Runtime checks: `prelude.py`
+(`open_file`, `read_file`, `write_file`, `connect`, `listen`, stdin through `_inp` returning
+`_DeniedIn` unless the input is in memory), `calls.py` (`Connection.open`), `ffi.make_foreign`
+(abort before the program runs). Static: `effects.Needs`, a subclass of `Effects` whose builtin table
+maps calls to permission kinds (`fs`, `net`, `stdin`, `env`, `ffi:LIB`); `Interp.static_check` turns
+a needed kind with no grant into an error. Tests: `tests/run_perms.py`.

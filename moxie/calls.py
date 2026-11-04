@@ -515,7 +515,12 @@ class CallsMixin:
             from .sqlrt import open_connection
             if name == "memory":
                 return Builtin(lambda I, a, kw, ta: _counted(I, open_connection(":memory:")), "memory")
-            return Builtin(lambda I, a, kw, ta: _counted(I, open_connection(a[0])), "open")
+            def _open_db(I, a, kw, ta):
+                if a[0] != ":memory:" and not (I.perms.path_ok("fs.read", a[0]) and I.perms.path_ok("fs.write", a[0])):
+                    from .prelude import denied
+                    return denied(a[0], "fs.read and fs.write")
+                return _counted(I, open_connection(a[0]))
+            return Builtin(_open_db, "open")
         if name == "pure" and t.name in ("Result", "List", "Array", "Stream"):
             if t.name == "Result":
                 return Builtin(lambda I, a, kw, ta: Ok(a[0]), "pure")
