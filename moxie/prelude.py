@@ -2419,7 +2419,7 @@ def b_path_stem(I, a, kw, ta):
 
 # ---------------------------------------------------------------- property-test generators (Spec 22)
 class GenR:
-    """The `Gen` a user's `arbitrary` receives: a seeded source of values."""
+    """The `Gen` a user's `generate` receives: a seeded source of values."""
     __slots__ = ("rng", "size", "depth")
     tname_ = "Gen"
 

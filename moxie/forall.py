@@ -23,7 +23,7 @@ def _args(t):
 
 
 def _user(I, n, name):
-    """A closure the mixer wrote in `impl Arbitrary for n` (static `arbitrary`, method `shrink`)."""
+    """A closure the mixer wrote in `impl Generatable for n` (static `generate`, method `shrink`)."""
     for table in (I.statics.get(n), I.impls.get(n)):
         if table and name in table and table[name]:
             return table[name][0]
@@ -33,7 +33,7 @@ def _user(I, n, name):
 def gen(I, t, rng, size, depth=0):
     """A generator function: it returns a value of type t (user impls run moxie code)."""
     if depth > 24:
-        raise NoGen("a type that nests too deeply (a recursive Arbitrary needs a depth limit)")
+        raise NoGen("a type that nests too deeply (a recursive Generatable needs a depth limit)")
     cls = t.__class__.__name__
     if cls == "TUnit":
         return TupleV([], None)
@@ -46,7 +46,7 @@ def gen(I, t, rng, size, depth=0):
     if cls != "TName":
         raise NoGen("a function or union type")
     n = _path(t)
-    cl = _user(I, n, "arbitrary")
+    cl = _user(I, n, "generate")
     if cl is not None:
         from .prelude import GenR
         v = yield from I.apply(cl, [GenR(rng, size, depth + 1)])
@@ -75,10 +75,17 @@ def gen(I, t, rng, size, depth=0):
         return ListV(items, max(len(items), 1)) if n == "List" else ArrayV(items)
     if n in I.tuples and not I.tuples[n].tparams:
         info = I.tuples[n]
-        vals = []
-        for f in info.fields:
-            vals.append((yield from gen(I, f.type, rng, size, depth)))
-        return TupleV(vals, None if info.positional is not None else [f.name for f in info.fields], n)
+        for _try in range(50):
+            vals = []
+            for f in info.fields:
+                vals.append((yield from gen(I, f.type, rng, size, depth)))
+            try:
+                # built through the constructor, so an invariant rejects an invalid draw
+                return (yield from I.construct_tuple(info, vals, {}, [], 0))
+            except Abort as a:
+                if not a.msg.startswith("invariant of"):
+                    raise
+        raise NoGen(f"a valid {n}: 50 draws all broke its invariant (write impl Generatable for {n})")
     if n in I.enums:
         et = I.enums[n].et
         cs = [et.cases[c] for c in et.order]
@@ -91,7 +98,7 @@ def gen(I, t, rng, size, depth=0):
         if len(vals) < len(ci.fields):
             raise NoGen(f"enum {n}")
         return EnumV(et, ci.name, vals, list(ci.fields) if ci.fields else None)
-    raise NoGen(f"the type {n} (write impl Arbitrary for {n})")
+    raise NoGen(f"the type {n} (write impl Generatable for {n})")
 
 
 def _int(rng, size, lo, hi):

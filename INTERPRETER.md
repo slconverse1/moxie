@@ -490,7 +490,7 @@ the limits) into the range; shrinking moves toward 0 by halving steps, lists dro
 elements, strings shorten. The checker binds the names with their declared types (`e_ForAll`), and
 the effects pass reports a `forall` outside a `test` and a body that prints, parks, or has any
 other effect. 
-A mixer-written `Arbitrary` is found through `I.statics[T]["arbitrary"]` and `I.impls[T]["shrink"]`
+A mixer-written `Generatable` is found through `I.statics[T]["generate"]` and `I.impls[T]["shrink"]`
 and takes precedence over the built-in generator for `T`, wherever `T` appears (`gen` and
 `shrink_list` are generator functions so they can run moxie code). `Gen` is `GenR` in `prelude.py`
 (a `random.Random`, the size, and the nesting depth); `gen_int`, `gen_bool`, `gen_pick`, and
