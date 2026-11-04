@@ -23,7 +23,7 @@ BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRI
            "read_line": PARKS, "read_all": PARKS, "stdin_lines": PARKS,
            "lines": PARKS, "open_file": PARKS, "read_file": PARKS, "write_file": PARKS, "read_bytes": PARKS,
            "write_bytes": PARKS, "list_dir": PARKS, "file_info": PARKS, "path_exists": PARKS, "make_dir": PARKS,
-           "remove_file": PARKS, "remove_dir": PARKS, "rename_path": PARKS, "connect": PARKS, "listen": PARKS, "connect_tls": PARKS, "listen_tls": PARKS, "accept": PARKS}
+           "remove_file": PARKS, "remove_dir": PARKS, "rename_path": PARKS, "connect": PARKS, "listen": PARKS, "bind_udp": PARKS, "send_to": PARKS, "receive": PARKS, "connect_tls": PARKS, "listen_tls": PARKS, "accept": PARKS}
 EXEMPT = {"dbg", "trace"}
 
 
@@ -501,7 +501,7 @@ class Effects:
 
 
 # ---------------------------------------------------------------- permissions needed (Spec 19d)
-NEEDS = {"open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net", "connect_tls": "net", "listen_tls": "net",
+NEEDS = {"open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net", "bind_udp": "net", "send_to": "net", "connect_tls": "net", "listen_tls": "net",
          "list_dir": "fs", "file_info": "fs", "path_exists": "fs", "make_dir": "fs", "remove_file": "fs",
          "remove_dir": "fs", "rename_path": "fs", "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
 

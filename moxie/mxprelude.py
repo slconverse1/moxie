@@ -15,6 +15,11 @@ impl FileInfo:
   fn is_file(self) Bool: self.kind == "file"
   fn is_dir(self) Bool: self.kind == "dir"
 
+tuple Packet:
+  host: String
+  port: Int
+  data: Array[Byte]
+
 tuple NonEmpty[T]:
   head: T
   tail: List[T]

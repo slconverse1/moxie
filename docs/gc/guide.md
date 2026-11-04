@@ -2233,6 +2233,19 @@ close(l)
 
 `connect_tls` is checked against `net.connect` as `connect` is, and `listen_tls` against `net.listen`, plus `fs.read` for the certificate and key files. A client that trusts a self-made certificate passes `ca: "cert.pem"`. **Mistakes:** turning to plain `connect` to get around a certificate error (fix the certificate or pass `ca`), and a certificate whose name does not match the host you connect to: the check is on the name, so use the name in the certificate.
 
+**UDP.** TCP gives you a connection and a stream of bytes. UDP gives you separate datagrams: each `send_to` is one packet, each `receive` gets one packet, and packets may arrive out of order, more than once, or not at all. A `Udp` socket comes from `bind_udp(port)` (port 0 picks a free port, and `port_of` says which):
+
+```
+// not run: needs a peer
+sock = bind_udp(5300)?
+p = receive(sock, timeout: 2s)?
+println("${p.host}:${p.port} sent ${len(p.data)} bytes")
+_ = send_to(sock, p.host, p.port, p.data)
+close(sock)
+```
+
+`receive` parks only its own fiber and returns a `Packet` (`host`, `port`, and `data`, an `Array[Byte]`). The `timeout:` argument turns a wait into an `Err` after that long, which is how a program notices a lost packet. `send_to` takes the bytes as an `Array[Byte]` or a `String` (sent as UTF-8), and a datagram holds at most 65507 bytes. `bind_udp` is checked against `net.listen` and `send_to` against `net.connect`. A `Udp` is a resource like an `Io`: close it, or the runtime closes it when the program ends. **Mistakes:** treating a datagram as a stream (one `receive` is one `send_to`, never half of one), waiting with no `timeout:` for a packet that may have been lost, sending more than one datagram can hold, and passing a `Udp` to `read_line`.
+
 **20c. Permissions**
 
 A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:

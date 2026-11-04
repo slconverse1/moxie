@@ -1301,7 +1301,7 @@ name = with_stdin("Ada\n", fn (): read_line().get_or("nobody"))
 println("hi $name")
 ```
 
-**Files and sockets are the same kind of value.** `open_file`, `read_file`, `write_file`, `connect`, `listen`, and `accept` give back an `Io` (or a `Result` holding one), and `read_line`, `lines`, and `println(io, x)` work on any of them. A read waits in its own fiber only, so a server and its clients can be fibers of one program. A file or a socket is a resource, so it is closed once, and it counts in the pool tally like a database connection does; `moxie --pools run` reports how many you really used.
+**Files and sockets are the same kind of value.** `open_file`, `read_file`, `write_file`, `connect`, `listen`, and `accept` give back an `Io` (or a `Result` holding one), and `read_line`, `lines`, and `println(io, x)` work on any of them. A read waits in its own fiber only, so a server and its clients can be fibers of one program. A file or a socket is a resource, so it is closed once, and it counts in the pool tally like a database connection does; `moxie --pools run` reports how many you really used. UDP is the one exception to "same kind of value": a datagram is not a stream, so `bind_udp`, `send_to`, and `receive` work on a `Udp` and give back whole packets.
 
 **Permissions are granted when you run.** A program can reach `fs.read`, `fs.write`, `net.connect`, `net.listen`, `ffi`, `stdin`, and `env` only if it was given them, in the manifest or on the command line (`moxie --allow-read=data run report.mxi`). A call outside the grant returns `Err` with the code `DENIED`, and the compiler follows the permissions through function calls the way it follows effects, so a missing grant is a compile error, not a surprise at run time:
 

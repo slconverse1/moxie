@@ -26,7 +26,7 @@ from .effects import _children, _last
 
 MAKERS = {"Atom": "Atom", "Timer": "Timer", "after": "Timer", "Future": "Future", "Chan": "Chan",
           "open_file": "Io file", "connect": "Io socket", "accept": "Io socket", "listen": "Listener",
-          "connect_tls": "Io socket", "listen_tls": "Listener"}
+          "connect_tls": "Io socket", "listen_tls": "Listener", "bind_udp": "Io socket"}
 LOOPS = (ForE, WhileE, CompE, ForM)
 
 

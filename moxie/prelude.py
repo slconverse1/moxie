@@ -496,6 +496,8 @@ def b_listen(I, a, kw, ta):
 
 @bi("port_of")
 def b_port_of(I, a, kw, ta):
+    if getattr(a[0], "closed", False):
+        raise Abort("port_of needs an open Listener or Udp socket")
     return a[0].sock.getsockname()[1]
 
 
@@ -521,6 +523,79 @@ def b_accept(I, a, kw, ta):
     if isinstance(c, OSError):
         return io_error(c)
     return Ok(IoV(I, "socket", c.makefile("rwb"), c))
+
+
+class UdpV:
+    """A UDP socket: a move-only resource that sends and receives datagrams (Spec 19c)."""
+    __slots__ = ("sock", "closed", "I")
+    tname_ = "Udp"
+
+    def __init__(self, sock, I):
+        self.sock, self.closed, self.I = sock, False, I
+        I.pools.acquire("Io socket")
+
+    def drop(self, sched=None):
+        if not self.closed:
+            self.closed = True
+            self.I.pools.release("Io socket")
+            try:
+                self.sock.close()
+            except Exception:
+                pass
+
+
+@bi("bind_udp")
+def b_bind_udp(I, a, kw, ta):
+    import socket
+    if not I.perms.listen_ok(a[0]):
+        return denied(f"port {a[0]}", "net.listen")
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.bind(("", int(a[0])))
+        return Ok(UdpV(s, I))
+    except OSError as e:
+        return io_error(e, f"port {a[0]}")
+
+
+@bi("send_to")
+def b_send_to(I, a, kw, ta):
+    u, host, port, data = a[0], a[1], a[2], a[3]
+    if not isinstance(u, UdpV) or u.closed:
+        raise Abort("send_to needs an open Udp socket")
+    if not I.perms.connect_ok(host, port):
+        return denied(f"{host}:{port}", "net.connect")
+    raw = data.encode("utf-8") if isinstance(data, str) else bytes(int(x) for x in data.items)
+    if len(raw) > 65507:
+        return err_reserved("IO_ERROR", f"{host}:{port}: a datagram holds at most 65507 bytes, not {len(raw)}")
+    try:
+        u.sock.sendto(raw, (host, int(port)))
+    except OSError as e:
+        return io_error(e, f"{host}:{port}")
+    return Ok(UNIT)
+
+
+@bi("receive", "first", True)
+def b_receive(I, a, kw, ta):
+    u = a[0]
+    if not isinstance(u, UdpV) or u.closed:
+        raise Abort("receive needs an open Udp socket")
+    tmo = kw.get("timeout")
+
+    def work():
+        try:
+            u.sock.settimeout(None if tmo is None else tmo.ns / 1e9)
+            return u.sock.recvfrom(65535)
+        except OSError as e:
+            return e
+    r = yield from S_.park_thread(I, work)
+    if isinstance(r, OSError):
+        import socket
+        if isinstance(r, socket.timeout):
+            return err_reserved("IO_ERROR", "receive: timed out")
+        return io_error(r)
+    raw, (host, port) = r[0], r[1][:2]
+    cls = INT_CLASSES.get("UInt8")
+    return Ok(TupleV([host, port, ArrayV([cls(b) if cls else b for b in raw])], ["host", "port", "data"], "Packet"))
 
 
 @bi("with_stdin", "first", True)
