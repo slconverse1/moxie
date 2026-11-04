@@ -61,6 +61,24 @@ check("a fragment that does not parse still gets layout only", format_source("x=
 check("a block under a continuation line stays deeper than it", format_source("x = 5\n    |> seq:\n      a -> b\n      c -> d\ny = 1\n"), "x = 5\n    |> seq:\n      a -> b\n      c -> d\ny = 1\n")
 check("an operator method name keeps its form", format_source("impl Money:\n  fn +(other: Money) Money:\n    other\n"), "impl Money:\n  fn +(other: Money) Money:\n    other\n")
 check("a fragment that changes meaning when spaced is left with layout only", format_source("x = 1\ny = 2\n"), "x = 1\ny = 2\n")
+LONG = "fn main() Unit:\n  result = compute_something_long(first_argument_name, second_argument_name, third_argument_name, fourth_arg)\n  println(result)\n"
+check("a long call breaks one argument to a line", format_source(LONG),
+      "fn main() Unit:\n  result = compute_something_long(\n    first_argument_name,\n    second_argument_name,\n    third_argument_name,\n    fourth_arg\n  )\n  println(result)\n")
+check("a line that fits is left alone", format_source("x = foo(a, b)\n"), "x = foo(a, b)\n")
+check("breaking is stable", format_source(format_source(LONG)), format_source(LONG))
+check("a long parameter list breaks and the body stays put",
+      format_source("fn very_long_function_name(first_parameter: Int, second_parameter: String, third_parameter: List[Int]) Int:\n  first_parameter\n"),
+      "fn very_long_function_name(\n  first_parameter: Int,\n  second_parameter: String,\n  third_parameter: List[Int]\n) Int:\n  first_parameter\n")
+check("nested groups break from the outside in", format_source("total = alpha(beta(gamma(delta_value_with_long_name, epsilon_value_with_long_name), zeta_value_with_long_name), eta_value_xx)\n"),
+      "total = alpha(\n  beta(gamma(delta_value_with_long_name, epsilon_value_with_long_name), zeta_value_with_long_name),\n  eta_value_xx\n)\n")
+LS = 's = "' + "a very long string that cannot be broken because it is one token " * 2 + '"\n'
+check("a long string alone is left", format_source(LS), LS)
+check("a line with a comment is left", format_source("x = compute_something_long(first_argument_name, second_argument_name, third_argument_name, fourth_arg_)  // c\n"),
+      "x = compute_something_long(first_argument_name, second_argument_name, third_argument_name, fourth_arg_)  // c\n")
+check("commas inside strings do not split", format_source('x = compute_something_long("a, b, c, d, e, f, g, h, i", second_argument_name, third_argument_name, fourth_arg_xx)\n'),
+      'x = compute_something_long(\n  "a, b, c, d, e, f, g, h, i",\n  second_argument_name,\n  third_argument_name,\n  fourth_arg_xx\n)\n')
+check("a trailing comma stays", format_source("x = compute_something_long(first_argument_name, second_argument_name, third_argument_name, fourth_a,)\n"),
+      "x = compute_something_long(\n  first_argument_name,\n  second_argument_name,\n  third_argument_name,\n  fourth_a,\n)\n")
 from moxie.fmt import _comments
 msg = "// a  b\nfn f() Int:\n    /* x\n         y */\n    1  // t,u=1\n// end\n"
 check("every comment survives, in order", _comments(format_source(msg), "x"), _comments(msg, "x"))

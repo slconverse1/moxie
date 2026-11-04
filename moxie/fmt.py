@@ -222,6 +222,87 @@ def _once(src, file, spacing=True):
     return "\n".join(res) + "\n" if res else ""
 
 
+WIDTH = 100
+OPENS, CLOSES = "([{", ")]}"
+
+
+def _break(text, marks, indent):
+    """Lines for `text` (whose brackets and commas are `marks`, (index, char) pairs): the text itself when it fits
+    or cannot be made shorter, else the outermost bracket group that reaches past the width opened with one item
+    to a line, each item and the closing line broken again if they are still too long."""
+    if len(text) <= WIDTH:
+        return [text]
+    stack, groups = [], []
+    for i, ch in marks:
+        if ch in OPENS:
+            stack.append(i)
+        elif ch in CLOSES and stack:
+            o = stack.pop()
+            if not stack:
+                groups.append((o, i))
+    groups = [(o, c) for o, c in groups if text[o + 1:c].strip()]
+    if not groups:
+        return [text]
+    hit = [g for g in groups if g[0] < WIDTH <= g[1]]
+    before = [g for g in groups if g[0] < WIDTH]
+    o, c = (hit or before or groups)[-1 if not hit else 0]
+    depth, cuts = 0, [o]
+    for i, ch in marks:
+        if i <= o or i >= c:
+            continue
+        if ch in OPENS:
+            depth += 1
+        elif ch in CLOSES:
+            depth -= 1
+        elif ch == "," and depth == 0:
+            cuts.append(i)
+    cuts.append(c)
+    pieces = []                                     # (start, end, trailing comma) in the original text
+    for a, b in zip(cuts, cuts[1:]):
+        pieces.append((a + 1, b, b < c))
+    last = pieces[-1]
+    if text[last[0]:last[1]].strip() == "" and len(pieces) > 1:       # an existing trailing comma stays
+        pieces.pop()
+        pieces[-1] = (pieces[-1][0], pieces[-1][1], True)
+    head = text[:o + 1].rstrip()
+    lines = _break(head, [(i, ch) for i, ch in marks if i <= o], indent)
+    pad = " " * (indent + 2)
+    for a, b, comma in pieces:
+        raw = text[a:b]
+        lead = len(raw) - len(raw.lstrip())
+        item = pad + raw.strip() + ("," if comma else "")
+        sub = [(i - a - lead + len(pad), ch) for i, ch in marks if a + lead <= i < b]
+        lines.extend(_break(item, sub, indent + 2))
+    tail = " " * indent + text[c:]
+    sub = [(i - c + indent, ch) for i, ch in marks if i >= c]
+    lines.extend(_break(tail, sub, indent))
+    if max(len(x) for x in lines) >= len(text):
+        return [text]
+    return lines
+
+
+def _wrap(src, file):
+    """Break the lines that are longer than WIDTH (one bracket group at a time, one item to a line)."""
+    lx = Lexer(src, file)
+    lx.tokenize()
+    marks = {}
+    for t in lx.raw:
+        if t.kind == "OP" and t.val in ("(", ")", "[", "]", "{", "}", ","):
+            marks.setdefault(t.line, []).append((t.col - 1, t.val))
+    interior = set()
+    for a, b in lx.spans:
+        interior.update(range(a, b + 1))
+    out = []
+    for ln, text in enumerate(src.split("\n"), 1):
+        if (len(text) <= WIDTH or ln in interior or ln not in lx.info or ln not in marks or "//" in text or "/*" in text
+                or text.rstrip().endswith("\\")):
+            out.append(text)
+            continue
+        indent = len(text) - len(text.lstrip(" "))
+        out.extend(_break(text.rstrip(), marks[ln], indent))
+    return "\n".join(out)
+
+
 def _ast(src, file):
     try:
         return repr(parse_program(src, file))
@@ -237,11 +318,14 @@ def format_source(src, file="<input>"):
         if before is None or _ast(a, file) != before:
             use = False                      # spacing is applied only when the program is shown to be unchanged
             a = _once(src, file, spacing=False)
+        a = _wrap(a, file)
+        if before is not None and _ast(a, file) != before:
+            raise FmtError("breaking long lines changed the program")
         if _tokens(a, file) != _tokens(src, file):
             raise FmtError("the formatted text does not lex to the same tokens")
         if _comments(a, file) != _comments(src, file):
             raise FmtError("the formatted text does not keep every comment")
-        if _once(a, file, spacing=use) != a:
+        if _once(a, file, spacing=use) != a or _wrap(a, file) != a:
             raise FmtError("formatting is not stable on this file")
     except MoxieSyntaxError as e:
         raise FmtError(str(e))

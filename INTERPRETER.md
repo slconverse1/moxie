@@ -29,7 +29,7 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 * Argument-first `run` (`run fn (tx, start)(out, first): ...`) and params-first plain calls (`fn (x: Int)(21)`).
 
 ## Since the first release
-The prelude has `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `reduce_right`, `min_by`, `max_by`, `span`, and `split_at`. A function clause may carry an `if` guard, and `tailrec fn` makes a self-call outside tail position a compile error. `moxie fmt`, doctests, and property tests are designed in the Spec (section 22) but not built.
+The prelude has `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `reduce_right`, `min_by`, `max_by`, `span`, and `split_at`. A function clause may carry an `if` guard, and `tailrec fn` makes a self-call outside tail position a compile error. Doctests and property tests are designed in the Spec (section 22) but not built.
 
 ## moxie/gc mode
 `--gc` (or `MOXIE_GC=1`) runs a program under the moxie/gc rules that an interpreter can show: `List`, `Set`, and `Dict`
@@ -450,3 +450,9 @@ plain containers), ignoring syntax trees and the interpreter, and adds 16 bytes 
 (at least 4000, one hundredth of the last measurement) `check` measures, and over the limit runs `gc.collect()` and
 measures again before raising `ProgramExit` with the `out of memory` summary. `header.prepare` sets `heap_limit` and
 refuses `[memory]` without `--gc`. Tests: `tests/run_heap.py`.
+
+`fmt.py` also has `_wrap` and `_break` for lines over `WIDTH` (100). They run after `_once`, using the lexer's bracket and
+comma tokens (`Tok.col`, so strings are never split). `_break(text, marks, indent)` picks the outermost group that reaches
+past the width (or the last one that starts before it), puts each top-level item of that group on its own line two
+deeper, and calls itself on the head line, every item, and the closing line; it gives the original back when the result
+is not shorter. `format_source` then checks the parse tree, tokens, comments and that both `_once` and `_wrap` are stable.
