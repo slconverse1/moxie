@@ -12,7 +12,7 @@ RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accep
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
                "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",
-               "Locale", "Connection", "true", "false", "UserData", "Events", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener", "Ptr", "size_of", "Handler"}
+               "Locale", "Connection", "true", "false", "UserData", "Events", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener", "Ptr", "size_of", "Handler", "bin_build"}
 
 
 INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte", "BigInt"}
@@ -925,6 +925,9 @@ class Checker:
         for a, p in pats:
             if a.guard is None and self.catch_all(p, names):
                 return
+        if enum is None and pats and all(q.__class__ is PBin for _, q in pats):
+            self.bin_cover(n, pats)
+            return
         if enum is None:
             if st in ("Int", "String", "Char", "Bool") and pats:
                 if st == "Bool":
@@ -954,6 +957,41 @@ class Checker:
         miss = [c for c in required if c not in covered]
         if miss:
             self.err(n.line, "`when` does not cover " + ", ".join(f"`{m}`" for m in miss))
+
+    def bin_cover(self, n, pats):
+        """A `when` of only Bin arms: the arms without literals or field-sized runs, and without a guard, cover byte lengths."""
+        iv = []
+        for a, p in pats:
+            if a.guard is not None:
+                continue
+            m, open_, ok = 0, False, True
+            for e in p.elems:
+                if e[0] == "lit":
+                    ok = False
+                    break
+                _t, nm, kind, arg = e
+                if kind == "bits":
+                    m += arg
+                elif kind == "bytes":
+                    if arg is None:
+                        open_ = True
+                    elif isinstance(arg, int):
+                        m += 8 * arg
+                    else:
+                        ok = False
+                        break
+                else:
+                    m += 8 * (1 if kind in ("u8", "i8") else int(kind[1:-2]) // 8)
+            if ok:
+                iv.append((m // 8, None if open_ else m // 8))
+        pos = 0
+        for lo, hi in sorted(iv, key=lambda t: t[0]):
+            if lo > pos:
+                break
+            if hi is None:
+                return
+            pos = max(pos, hi + 1)
+        self.err(n.line, f"`when` on bytes does not cover length {pos}: add a `_` arm")
 
     def bounded_cover(self, n, st, pats):
         lo, hi = st[1], st[2]

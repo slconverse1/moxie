@@ -1639,7 +1639,18 @@ println(describe(b"\x07\xFE\xFF"))
 println(describe(b"\x07"))
 ```
 
-Output: `v2 k1 size 2 body 2 rest 3`, then `no match`, then `short 7 -2`, then `no match`. A packet that is too short, has a wrong literal, or has bytes left over that no element describes (when the pattern does not end in `rest: bytes`) does not abort: the arm just fails and the next one is tried. Every field is an ordinary binding, so a guard works (`Bin(...) if size > 0 -> ...`), and `packet is Bin(b"MZ", rest: bytes)` is a Boolean test. **Mistakes:** a name that clashes with a prelude function you still need in the arm (a field called `len` hides `len`), bit fields that don't make whole bytes, and a `bytes(n)` that names a field that comes later. A `Bin` arm does not count toward coverage, so keep a `_` arm.
+Output: `v2 k1 size 2 body 2 rest 3`, then `no match`, then `short 7 -2`, then `no match`. A packet that is too short, has a wrong literal, or has bytes left over that no element describes (when the pattern does not end in `rest: bytes`) does not abort: the arm just fails and the next one is tried. Every field is an ordinary binding, so a guard works (`Bin(...) if size > 0 -> ...`), and `packet is Bin(b"MZ", rest: bytes)` is a Boolean test. **Mistakes:** a name that clashes with a prelude function you still need in the arm (a field called `len` hides `len`), bit fields that don't make whole bytes, and a `bytes(n)` that names a field that comes later.
+
+
+To go the other way, write `Bin` as an expression with a value in front of each kind. The packet above can be built and read back:
+
+```
+p = Bin(0xCA, 2: bits(4), 1: bits(4), 2: u16be, b"hi": bytes, b"XYZ": bytes)
+println(p)
+println(describe(p))
+```
+
+Output: `Array(202, 33, 0, 2, 104, 105, 88, 89, 90)`, then `v2 k1 size 2 body 2 rest 3`. A value that does not fit its kind (`300: u8`) aborts. Arms that cover every length need no `_`: `Bin()`, `Bin(a: u8)`, and `Bin(a: u8, b: u8, rest: bytes)` together do, and the compiler names the first length that no arm covers. An arm with a literal, a guard, or a `bytes(n)` sized by a field earns no credit, so those still need a `_` arm.
 
 **Chapter 13: Streams and loops**
 

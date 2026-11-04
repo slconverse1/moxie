@@ -337,3 +337,13 @@ each call in `curry(f)(a)(b)`. `Bin(...)` is parsed by `pbase.parse_bin_pattern`
 by `patterns.match_bin`: fields are read left to right over the byte values, `bits(n)` packs from the high bit,
 `bytes(n)` copies, a missing or wrong byte makes the arm fail, and leftover bytes fail unless the last element
 is `rest: bytes`. Tests: `tests/helper_cases.py`, `tests/run_contracts.py`.
+
+## Building bytes and Bin coverage
+
+`pexpr.parse_bin_build` reads `Bin(...)` in expression position (the name `Bin` followed by `(` with no space) and
+desugars it to `bin_build("lit:ca|bits:4|u16be|bytes", value, ...)`, so the checker, effects, and tally see an
+ordinary call. `prelude.b_bin_build` packs bits from the high bit, writes the fixed-width integers in the written
+byte order, aborts when a value does not fit, and returns an `Array[Byte]`. `check.bin_cover` runs from
+`exhaustive` when every arm of a `when` is a `Bin` pattern and none is a catch-all: arms without a literal, a
+guard, or a field-sized `bytes(n)` give a length interval (fixed size, or size and up with `rest: bytes`), and the
+first uncovered length is the error. Tests: `tests/helper_cases.py`.

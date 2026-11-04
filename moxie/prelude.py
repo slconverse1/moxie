@@ -2087,3 +2087,45 @@ def b_split_at(I, a, kw, ta):
     items = yield from drain(I, a[1])
     n = max(0, a[0])
     return TupleV([ListV(items[:n]), ListV(items[n:])])
+
+
+# ---------------------------------------------------------------- Bin(...) as an expression (Spec section 8)
+@bi("bin_build")
+def b_bin_build(I, a, kw, ta):
+    spec, vals = a[0], list(a[1:])
+    out, acc, nbits = [], 0, 0
+    vi = 0
+    for el in spec.split("|"):
+        if el.startswith("lit:"):
+            out.extend(bytes.fromhex(el[4:]))
+            continue
+        kind, _, arg = el.partition(":")
+        v = vals[vi]
+        vi += 1
+        if kind == "bits":
+            n = int(arg)
+            if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v < (1 << n):
+                raise Abort(f"Bin: {v} does not fit in bits({n})")
+            acc = (acc << n) | int(v)
+            nbits += n
+            while nbits >= 8:
+                nbits -= 8
+                out.append((acc >> nbits) & 0xFF)
+                acc &= (1 << nbits) - 1
+        elif kind == "bytes":
+            if not isinstance(v, Seq):
+                raise Abort(f"Bin: bytes needs an Array[Byte], not {type_name(v)}")
+            items = [int(x) for x in v.items]
+            if arg and len(items) != int(arg):
+                raise Abort(f"Bin: bytes({arg}) was given {len(items)} bytes")
+            out.extend(items)
+        else:
+            signed = kind.startswith("i")
+            width = 1 if kind in ("u8", "i8") else int(kind[1:-2]) // 8
+            if isinstance(v, bool) or not isinstance(v, int):
+                raise Abort(f"Bin: {kind} needs an integer, not {type_name(v)}")
+            lo, hi = (-(1 << (8 * width - 1)), (1 << (8 * width - 1)) - 1) if signed else (0, (1 << (8 * width)) - 1)
+            if not lo <= v <= hi:
+                raise Abort(f"Bin: {v} does not fit in {kind}")
+            out.extend(int(v).to_bytes(width, "little" if kind.endswith("le") else "big", signed=signed))
+    return ArrayV([INT_CLASSES["Byte"](b) for b in out])

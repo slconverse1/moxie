@@ -132,4 +132,43 @@ when b"ab":
   Bin(body: bytes(n), n: u8) -> println("x")
   _ -> println("y")
 ''', [], 2),
+("Bin builds bytes and round-trips with the pattern", '''
+p = Bin(0xCA, 2: bits(4), 1: bits(4), 2: u16be, b"hi": bytes(2), -2: i16le, b"XYZ": bytes)
+println(p)
+when p:
+  Bin(0xCA, v: bits(4), k: bits(4), n: u16be, body: bytes(n), d: i16le, rest: bytes) -> println("$v $k $n ${len(body)} $d ${len(rest)}")
+  _ -> println("no")
+''', ["Array(202, 33, 0, 2, 104, 105, 254, 255, 88, 89, 90)", "2 1 2 2 -2 3"], 0),
+("Bin builds with a value out of range aborts", '''
+n = 300
+println(Bin(n: u8))
+''', [], 1),
+("Bin bits out of range aborts", '''
+n = 16
+println(Bin(n: bits(4), 0: bits(4)))
+''', [], 1),
+("Bin arms that cover every length need no wildcard", '''
+fn f(x: Array[Byte]) Int:
+  when x:
+    Bin() -> 0
+    Bin(a: u8) -> 1
+    Bin(a: u8, b: u8, rest: bytes) -> 2
+println(f(b""))
+println(f(b"a"))
+println(f(b"abc"))
+''', ["0", "1", "2"], 0),
+("Bin arms that miss a length are a compile error", '''
+fn f(x: Array[Byte]) Int:
+  when x:
+    Bin(a: u8, b: u8) -> 2
+    Bin(a: u8, b: u8, c: u8, rest: bytes) -> 3
+println(f(b"ab"))
+''', [], 2),
+("a literal or a guarded Bin arm does not count toward coverage", '''
+fn f(x: Array[Byte]) Int:
+  when x:
+    Bin(0x01, rest: bytes) -> 1
+    Bin(rest: bytes) if len(rest) > 3 -> 2
+println(f(b"a"))
+''', [], 2),
 ]

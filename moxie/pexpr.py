@@ -475,6 +475,57 @@ class ExprParser(PBase):
         return call
 
     # ------------------------------------------------------------ atoms
+    def parse_bin_build(self, line):
+        """Bin(0xCA, v: bits(4), n: u16be, body: bytes): build an Array[Byte] (Spec section 8). Desugars to bin_build(spec, values...)."""
+        self.next()
+        self.expect_op("(")
+        spec, args, bitrun = [], [], 0
+        while not self.at_op(")"):
+            t = self.peek()
+            nt = self.toks[self.p + 1]
+            if t.kind in ("INT", "BYTES") and nt.kind == "OP" and nt.val in (",", ")"):
+                self.next()
+                if t.kind == "INT":
+                    if not 0 <= t.val <= 255:
+                        self.err("a literal in a Bin is one byte (0 to 255); write several, or use b\"...\"")
+                    spec.append("lit:" + format(t.val, "02x"))
+                else:
+                    spec.append("lit:" + bytes(t.val).hex())
+                if bitrun % 8:
+                    self.err("the bit fields before this literal do not add up to whole bytes")
+            else:
+                args.append(Arg(None, self.parse_expr(), None))
+                self.expect_op(":")
+                kt = self.peek()
+                if kt.kind != "NAME":
+                    self.err("expected a Bin kind such as u8, u16be, bits(4), or bytes")
+                kind = self.next().val
+                arg = None
+                if kind in ("bits", "bytes") and self.at_op("("):
+                    self.next()
+                    at = self.peek()
+                    if at.kind != "INT":
+                        self.err(f"the size of {kind}(...) in a built Bin is a number")
+                    arg = self.next().val
+                    self.expect_op(")")
+                if kind == "bits":
+                    if not isinstance(arg, int) or not 1 <= arg <= 64:
+                        self.err("bits(n) needs a literal n from 1 to 64")
+                    bitrun += arg
+                else:
+                    if kind != "bytes" and kind not in self.BIN_KINDS:
+                        self.err(f"unknown Bin kind '{kind}' (u8, i8, u16be, u16le, ..., bits(n), bytes)")
+                    if bitrun % 8:
+                        self.err("the bit fields before this one do not add up to whole bytes")
+                    bitrun = 0
+                spec.append(kind if arg is None else f"{kind}:{arg}")
+            if not self.eat_op(","):
+                break
+        self.expect_op(")")
+        if bitrun % 8:
+            self.err("the bit fields in this Bin do not add up to whole bytes")
+        return Call(Name("bin_build", line=line), [Arg(None, StrLit(["|".join(spec)], line=line), None)] + args, None, line=line)
+
     def parse_atom(self):
         t = self.peek()
         k = t.kind
@@ -497,6 +548,8 @@ class ExprParser(PBase):
         if k == "BYTES":
             self.next()
             return BytesLit(t.val, line=line)
+        if k == "NAME" and t.val == "Bin" and self.at_op("(", 1) and not self.toks[self.p + 1].sp:
+            return self.parse_bin_build(line)
         if k == "BCHAR":
             self.next()
             return ByteChar(t.val, line=line)
