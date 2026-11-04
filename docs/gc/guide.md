@@ -661,7 +661,7 @@ bump(ref n)
 println("${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}")
 ```
 
-An anonymous function is a function with no name, written `(n): n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. `fn` begins only a named declaration, so a function with no `fn` in front is a lambda. Bind one with a typed name, `add: (Int, Int) -> Int = (a, b): a + b`, and the type supplies its parameter and result types. A lambda is pure: it can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic. A function that needs any of that is declared with `fn`.
+An anonymous function is a function with no name, written `(n): n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. A function with no `fn` in front is a lambda, and a lambda is pure; with `fn` in front, `fn (line): println(line)`, it is an anonymous function that may have effects. Bind a lambda with a typed name, `add: (Int, Int) -> Int = (a, b): a + b`, and the type supplies its parameter and result types. A lambda can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic; for any of that, write `fn (...)` or declare a function with `fn`.
 
 Output: `5 15 2 0`. Every function states its return type. A call may be positional, named, or positional followed by named (named arguments in any order, each parameter supplied once), trailing parameters can have defaults, and a list before the colon renames parameters inside the body:
 
@@ -2126,10 +2126,10 @@ greet(stderr, "mixer")
 Output: `hello, mixer` on standard output, and the same line on standard error. `print` and `println` with no stream write to `stdout`, and `eprint` and `eprintln` write to `stderr`. Reading is `read_line()`, which returns a `Result` (the line without its newline), `read_all()`, and `stdin_lines()`, a stream of lines. They all `parks`: only the fiber that waits is held up. `with_stdin(text, f)` runs `f` with `text` as the input, so a test can feed a program:
 
 ```
-fn ask_name() String:
-  print("name? ")
+fn ask(question: String) String:
+  print("$question ")
   read_line().get_or("nobody")
-answer = with_stdin("Ada\n", ask_name)
+answer = with_stdin("Ada\n", fn (): ask("name?"))
 println("hi $answer")
 ```
 

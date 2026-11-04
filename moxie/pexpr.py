@@ -617,8 +617,7 @@ class ExprParser(PBase):
         if v == "run":
             return self.parse_run()
         if v == "fn":
-            self.err("'fn' declares a named function; an anonymous function is written (x): body "
-                     "(only an inline fiber is written run fn (...))")
+            return self.parse_anon_fn()
         if v == "todo":
             self.next()
             msg = None
@@ -753,6 +752,21 @@ class ExprParser(PBase):
         return TupleE(cur, line=line)
 
     # ------------------------------------------------------------ lambda
+    def parse_anon_fn(self):
+        """`fn (params) [Ret]: body`: an anonymous function that may have effects (a lambda, `(params): body`, is pure)."""
+        t = self.next()   # fn
+        if not self.at_op("("):
+            self.err("'fn' here begins an anonymous function, `fn (params): body`; a named function is a declaration", t)
+        params = self.parse_params()
+        ret = None
+        if not self.at_op(":"):
+            ret = self.parse_type()
+        self.expect_op(":")
+        body = self.parse_lambda_body()
+        lam = Lambda(params, body, None, None, ret, line=t.line)
+        lam.fiber = True        # effects allowed (the flag also marks an inline fiber)
+        return lam
+
     def parse_lambda(self, run=True):
         """The inline fiber `run fn (args)(params): body` (the arguments come first, like `run name(args)`).
         An anonymous function elsewhere is written `(params): body` (parse_bare_lambda)."""

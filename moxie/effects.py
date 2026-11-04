@@ -445,7 +445,7 @@ class Effects:
             self.walk(n.body, None, acc, None)
             for eff, (callee, ln, root) in acc.items():
                 self.diags.append((ln or n.line, f"a lambda must be pure, but it {eff} (calls '{root}'); "
-                                                 "declare a function with fn, which can carry prints, parks or impure"))
+                                                 "write fn (...) for an anonymous function that may have effects, or declare a function with fn"))
         if n.__class__ is RunE and n.target.__class__ is Call and n.target.fn.__class__ is Name \
                 and n.target.fn.name in self.lamnames and n.target.fn.name not in self.defs:
             self.diags.append((n.line, f"'{n.target.fn.name}' is bound to a lambda and cannot be run; "

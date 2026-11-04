@@ -32,10 +32,10 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 
 ## Lambdas
 
-A lambda is a function with no name, written `(params): body`. It is meant to be small, and it is pure.
+A lambda is a function with no name, written `(params): body`. It is meant to be small, and it is pure. When the body needs an effect, write an anonymous `fn`, `fn (params): body`, which may print, park, or touch a channel, a file, a socket, or SQL. The `fn` in front is the signal that something happens.
 
 - **Keep it to one expression, or a few lines.** Past that, declare a function with `fn` and give it a name. A name is documentation.
-- **Anything with an effect is a named function.** A lambda can't print, park, or touch a channel, a file, a socket, or SQL. `with_stdin(text, read_total)` and `transaction(conn, move_funds(_, from_id, to_id, amount))` take named functions, and a partial call fills in the rest.
+- **Anything with an effect is written with `fn`.** `with_stdin(text, fn (): read_line())` takes an anonymous `fn`. When the body is a block, or is used more than once, give it a name: `transaction(conn, move_funds(_, from_id, to_id, amount))`, with a partial call filling in the rest.
 - **Use `_` for the shortest cases.** `xs |> map(_ * 2)` is clearer than `xs |> map((x): x * 2)`. Once the body needs the value twice, or a name would help, write the lambda.
 - **Use a partial call instead of a lambda that only forwards.** `log("ERROR", _)` beats `(m): log("ERROR", m)`.
 - **Put the lambda after the call when it is the last argument and the body is longer than a few words:**

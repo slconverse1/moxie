@@ -11,3 +11,4 @@ for name,src,exp in CASES:
     ok = (not d) if exp is None else any(exp in x for x in d)
     if not ok: bad+=1; print("FAIL",name,d)
 print(len(CASES)-bad,"/",len(CASES))
+sys.exit(1 if bad else 0)
