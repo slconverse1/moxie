@@ -105,7 +105,7 @@ The `|>` pipe feeds the value on its left into the call on its right, so a calcu
 Two moxie-specific details:
 
 - **Collections have a size.** `List[Student][4]` means "a list of at most four students." Moxie has no garbage collector and no heap, so every list is a fixed block, and `collect()` needs to be told which one you want. A list built from `List(...)` is sized for what you gave it.
-- **No `total = total + s.score` in a loop.** Names are rebound at each pass, not accumulated, so a loop can't build up a sum. A stream ending in `sum()` or `reduce` is the idiom, and it is shorter anyway.
+- **No `total += s.score` in a loop.** Names are rebound at each pass, not accumulated, so a loop can't build up a sum. A stream ending in `sum()` or `reduce` is the idiom, and it is shorter anyway.
 
 ## Step 5. When things go wrong
 

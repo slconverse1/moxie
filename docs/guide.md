@@ -10,7 +10,7 @@ These are compact examples, not a tutorial; a longer teaching Guide comes later.
 
 ```
 x = 5
-x = x + 1
+x += 1
 a, b = 1, 2
 a, b = b, a
 count = 0
@@ -183,12 +183,12 @@ total = 0
 count = 0
 score = 80
 if score > 50:
-  gimme.1.total = total + score
-  gimme.1.count = count + 1
+  gimme.1.total += score
+  gimme.1.count += 1
 println("$total $count")
 ```
 
-Output: `80 1`. Without `gimme`, `total = total + score` would create a new `total` that disappears at the end of the block. When the block has its own binding of the name, `gimme` still reaches the outer one:
+Output: `80 1`. Without `gimme`, `total += score` would create a new `total` that disappears at the end of the block. When the block has its own binding of the name, `gimme` still reaches the outer one:
 
 ```
 n = 1
@@ -534,7 +534,7 @@ twice = List(1, 2) * 2
 println("${len(combined)} ${len(no_thirty)} ${no_second(1)} ${len(twice)}")
 ```
 
-Output: `6 5 30 4`. Lists are values: `list.push(4)` doesn't exist, so write `list = list + 4`. A list made from a literal grows to fit what `+` and `*` produce (`combined` above has capacity 6), while a list declared with a larger capacity keeps it and aborts if it fills.
+Output: `6 5 30 4`. Lists are values: `list.push(4)` doesn't exist, so write `list += 4`. A list made from a literal grows to fit what `+` and `*` produce (`combined` above has capacity 6), while a list declared with a larger capacity keeps it and aborts if it fills.
 
 **5c. Sets**
 
@@ -846,10 +846,10 @@ fn by_need(lazy x: Int) Int:
 fn maybe(use_it: Bool, lazy x: Int) Int:
   if use_it: x else: 0
 fn by_ref(ref n: Int) Int:
-  n = n + 5
+  n += 5
   n * 2
 fn by_copy(n: Int) Int:
-  n = n + 5
+  n += 5
   n * 2
 println("value: ${by_value(costly())}")
 println("name: ${by_name(costly())}")
@@ -879,7 +879,7 @@ tuple Player:
   score: Int,
   level: Int
 fn level_up(ref p: Player) Unit:
-  p.level = p.level + 1
+  p.level += 1
   p.score = 0
 fn add_points(ref p: Player, points: Int) Int:
   p = Player(...p, score: p.score + points)
@@ -1814,7 +1814,7 @@ A loop can return a value, with `break(value)` for an early exit and `else:` for
 i = 0
 sum = 0
 (last, final) = while i < 10:
-  sum = sum + i
+  sum += i
   i++
   if sum > 20:
     break(i, sum)
@@ -2702,7 +2702,7 @@ Recommended for state: `ref` threading, which does the job with the data flow vi
 
 ```
 fn push(ref stack: List[Int][8], x: Int) Unit:
-  stack = stack + x
+  stack += x
 fn pop(ref stack: List[Int][8]) Int:
   top = stack(len(stack) - 1)
   stack = remove_at(stack, len(stack) - 1)
@@ -2800,8 +2800,8 @@ Output: `6`.
 - **Early exit:** use `return` for guard clauses (chapter 1a), `break(value)` and `else:` for loops (1b), and `break #label` from nested loops.
 - **Update a field:** `p.score += 10` rebuilds the tuple, and `p.update:` changes several fields at once (8a). A function that changes its caller's variable takes `ref` (6b).
 - **Swap:** `a, b = b, a`. **Update an element:** `numbers(i) = v` and `numbers(i) += 1` rebind the array, and an update that rebinds a name to an update of itself never copies when the old value is dead afterwards (`moxie build --report` lists the exceptions).
-- **Push to a list:** `list = list + 4`. **Null:** there is none; use `Result`, `T | ()`, or a `Maybe` enum.
-- **Outer variable from a nested block:** `gimme.1.x = x + 1` (1c).
+- **Push to a list:** `list += 4`. **Null:** there is none; use `Result`, `T | ()`, or a `Maybe` enum.
+- **Outer variable from a nested block:** `gimme.1.x += 1` (1c).
 - **Pointers and linked structures:** use a recursive enum (chapter 15), a bounded `Dict` of ids, or a fiber that owns the data.
 - **Exceptions:** return a `Result` and use `?` (chapter 18). There is no `try`.
-The compiler teaches as it goes: `list.push(4)` gives "lists are values; write `list = list + 4`", a nested-block `x = x + 1` gives the shadow warning plus the `gimme` hint, and `null` gives "moxie has no null".
+The compiler teaches as it goes: `list.push(4)` gives "lists are values; write `list += 4`", a nested-block `x += 1` gives the shadow warning plus the `gimme` hint, and `null` gives "moxie has no null".

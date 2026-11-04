@@ -74,11 +74,11 @@ By synthesizing these features, and untold others, into an elegant mash-up, moxi
 
 ## Immutability, and the fine print
 
-Moxie's values are immutable, and the guarantee is simple: **once a value exists, it never changes.** No operation, anywhere, alters a tuple, list, string, or any other value in place. "Updating" something means building a new value and rebinding a name to it. That's why `p.score += 10` is shorthand for rebuilding `p`, why a `List` grows with `list = list + 4`, and why old versions of your data stay valid for as long as you hold them.
+Moxie's values are immutable, and the guarantee is simple: **once a value exists, it never changes.** No operation, anywhere, alters a tuple, list, string, or any other value in place. "Updating" something means building a new value and rebinding a name to it. That's why `p.score += 10` is shorthand for rebuilding `p`, why a `List` grows with `list += 4`, and why old versions of your data stay valid for as long as you hold them.
 
 The fine print:
 
-- **Names can be rebound.** `x = x + 1` doesn't change a value; it points `x` at a different one. Loops work the same way, carrying their bindings forward from one iteration to the next.
+- **Names can be rebound.** `x += 1` doesn't change a value; it points `x` at a different one. Loops work the same way, carrying their bindings forward from one iteration to the next.
 - **The compiler may update in place.** When the old value is dead (nothing can see it anymore), the compiler reuses its storage instead of copying. You can't observe the difference, and `moxie build --report` tells you where a copy was needed and why.
 - **Atoms are the only kind of mutable state.** An Atom is a managed cell that holds an immutable value and swaps in a new one, lock-free, through a pure function (`swap(counter, _ + 1)`). Readers always get an immutable snapshot.
 - **`ref` parameters look like mutation but aren't.** The callee gets a copy, rebinds it, and the final value is copied back out to the caller's variable. Nobody ever holds two names for one changing thing.

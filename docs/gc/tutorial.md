@@ -109,7 +109,7 @@ The `|>` pipe feeds the value on its left into the call on its right, so a calcu
 Two moxie-specific details:
 
 - **Collections grow as needed.** **[gc]** `List[Student]` is a list of students of any length, and `collect()` picks the container from the type you declare. You can add a size as a hint, `List[Student][4]`, but it only reserves room and changes nothing else. (In plain moxie that size is a hard limit, because there is no heap.) Only `Array` and `MultiArray` keep their sizes in their types. All fibers share one heap, and a garbage collector reclaims whatever nothing can reach, so you never plan your memory.
-- **No `total = total + s.score` in a loop.** Names are rebound at each pass, not accumulated, so a loop can't build up a sum. A stream ending in `sum()` or `reduce` is the idiom, and it is shorter anyway.
+- **No `total += s.score` in a loop.** Names are rebound at each pass, not accumulated, so a loop can't build up a sum. A stream ending in `sum()` or `reduce` is the idiom, and it is shorter anyway.
 
 ## Step 5. When things go wrong
 
