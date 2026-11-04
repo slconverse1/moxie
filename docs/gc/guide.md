@@ -2486,7 +2486,21 @@ test "reversing twice changes nothing":
     assert_eq(xs |> to_stream() |> reverse() |> reverse() |> collect(), xs)
 ```
 
-The values come from the types: whole numbers (with the edge cases mixed in), `Bool`, `Char`, `String`, `Float`, `Double`, lists and arrays of those, tuples, your own tuples, and enums. The run is seeded, so it repeats exactly. When a case fails, moxie shrinks it before reporting, so a failure reads `x = 1000` and not `x = 2030568236571276233`, along with the seed that replays it. `moxie test --seed 7 FILE` replays or varies the run, and `--cases 1000` runs more of them. The body must be pure, so it can't print or read a channel, and `forall` goes directly inside a `test`. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
+The values come from the types: whole numbers (with the edge cases mixed in), `Bool`, `Char`, `String`, `Float`, `Double`, lists and arrays of those, tuples, your own tuples, and enums. The run is seeded, so it repeats exactly. When a case fails, moxie shrinks it before reporting, so a failure reads `x = 1000` and not `x = 2030568236571276233`, along with the seed that replays it. `moxie test --seed 7 FILE` replays or varies the run, and `--cases 1000` runs more of them. The body must be pure, so it can't print or read a channel, and `forall` goes directly inside a `test`. A type with a rule needs its own generator, or `forall` would mostly make values the rule forbids. Implement `Arbitrary`, building a value from the `Gen` it is handed, and optionally list simpler values for shrinking:
+
+```
+tuple Pct:
+  n: Int
+
+impl Arbitrary for Pct:
+  static fn arbitrary(g: Gen) Self: Pct(gen_int(g, 0, 100))
+  fn shrink(self) List[Pct]:
+    when self.n:
+      0 -> List()
+      _ -> List(Pct(0), Pct(self.n - 1))
+```
+
+`gen_int(g, lo, hi)`, `gen_bool(g)`, and `gen_pick(g, list)` draw values, and `sample[T](g)` draws a `T` the usual way, so a sorted list is `xs = sample[List[Int]](g)` followed by sorting it. Once `Pct` has an impl, `forall p: Pct` and even `forall xs: List[Pct]` use it. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
 
 **23a. `moxie fmt`**
 

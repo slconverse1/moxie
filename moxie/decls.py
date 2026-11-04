@@ -7,7 +7,7 @@ from .types_ import *   # noqa
 from .calls import LazyV, CaseV, RecvCell, USING
 
 
-PRELUDE_IFACES = {"Functor", "Applicative", "Monad", "Equatable", "Ordered", "FieldHandler", "From", "Show", "Read", "Hashable", "Addable", "Numeric"}
+PRELUDE_IFACES = {"Functor", "Applicative", "Monad", "Equatable", "Ordered", "FieldHandler", "From", "Show", "Read", "Hashable", "Addable", "Numeric", "Arbitrary"}
 
 
 class DeclsMixin:

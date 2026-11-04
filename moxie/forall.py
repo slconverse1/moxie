@@ -22,17 +22,35 @@ def _args(t):
     return t.groups[0] if t.groups else []
 
 
+def _user(I, n, name):
+    """A closure the mixer wrote in `impl Arbitrary for n` (static `arbitrary`, method `shrink`)."""
+    for table in (I.statics.get(n), I.impls.get(n)):
+        if table and name in table and table[name]:
+            return table[name][0]
+    return None
+
+
 def gen(I, t, rng, size, depth=0):
+    """A generator function: it returns a value of type t (user impls run moxie code)."""
+    if depth > 24:
+        raise NoGen("a type that nests too deeply (a recursive Arbitrary needs a depth limit)")
     cls = t.__class__.__name__
     if cls == "TUnit":
         return TupleV([], None)
     if cls == "TTuple":
+        vals = []
+        for _, ty in t.items:
+            vals.append((yield from gen(I, ty, rng, size, depth)))
         names = [lab for lab, _ in t.items]
-        return TupleV([gen(I, ty, rng, size, depth) for _, ty in t.items],
-                      names if any(names) else None)
+        return TupleV(vals, names if any(names) else None)
     if cls != "TName":
         raise NoGen("a function or union type")
     n = _path(t)
+    cl = _user(I, n, "arbitrary")
+    if cl is not None:
+        from .prelude import GenR
+        v = yield from I.apply(cl, [GenR(rng, size, depth + 1)])
+        return v
     if n == "Int":
         return _int(rng, size, -(1 << 63), (1 << 63) - 1)
     if n in INT_CLASSES:
@@ -42,20 +60,24 @@ def gen(I, t, rng, size, depth=0):
     if n == "Bool":
         return rng.random() < 0.5
     if n == "Char":
-        return Char(rng.choice("abcxyz019 _-ABZéλ"))
+        return Char(rng.choice("abcxyz019 _-ABZ\u00e9\u03bb"))
     if n == "String":
-        return "".join(rng.choice("abcdefghijklmnopqrstuvwxyz 0123456789éλ")
+        return "".join(rng.choice("abcdefghijklmnopqrstuvwxyz 0123456789\u00e9\u03bb")
                        for _ in range(rng.randint(0, size)))
     if n in ("Double", "Float"):
         v = rng.choice([0.0, 1.0, -1.0, 0.5, rng.uniform(-size, size), rng.uniform(-1e6, 1e6)])
         return F32.of(v) if n == "Float" else v
     if n in ("List", "Array") and _args(t):
         k = 0 if depth > 3 else rng.randint(0, size)
-        items = [gen(I, _args(t)[0], rng, size, depth + 1) for _ in range(k)]
+        items = []
+        for _ in range(k):
+            items.append((yield from gen(I, _args(t)[0], rng, size, depth + 1)))
         return ListV(items, max(len(items), 1)) if n == "List" else ArrayV(items)
     if n in I.tuples and not I.tuples[n].tparams:
         info = I.tuples[n]
-        vals = [gen(I, f.type, rng, size, depth) for f in info.fields]
+        vals = []
+        for f in info.fields:
+            vals.append((yield from gen(I, f.type, rng, size, depth)))
         return TupleV(vals, None if info.positional is not None else [f.name for f in info.fields], n)
     if n in I.enums:
         et = I.enums[n].et
@@ -63,11 +85,13 @@ def gen(I, t, rng, size, depth=0):
         if depth > 3:
             cs = [c for c in cs if not c.ftypes] or cs
         ci = rng.choice(cs)
-        vals = [gen(I, ty, rng, size, depth + 1) for ty in ci.ftypes]
+        vals = []
+        for ty in ci.ftypes:
+            vals.append((yield from gen(I, ty, rng, size, depth + 1)))
         if len(vals) < len(ci.fields):
             raise NoGen(f"enum {n}")
         return EnumV(et, ci.name, vals, list(ci.fields) if ci.fields else None)
-    raise NoGen(f"the type {n}")
+    raise NoGen(f"the type {n} (write impl Arbitrary for {n})")
 
 
 def _int(rng, size, lo, hi):
@@ -81,22 +105,27 @@ def _int(rng, size, lo, hi):
     return max(lo, min(hi, v))
 
 
-def shrinks(I, t, v):
-    """Yield strictly simpler candidates for v, simplest first."""
+def shrink_list(I, t, v):
+    """A generator function returning strictly simpler candidates for v, simplest first."""
+    out = []
     cls = t.__class__.__name__
     if cls == "TTuple":
         for i, (_, ty) in enumerate(t.items):
-            for s in shrinks(I, ty, v.vals[i]):
-                yield TupleV(v.vals[:i] + [s] + v.vals[i + 1:], v.names, v.tname)
-        return
+            for x in (yield from shrink_list(I, ty, v.vals[i])):
+                out.append(TupleV(v.vals[:i] + [x] + v.vals[i + 1:], v.names, v.tname))
+        return out
     if cls != "TName":
-        return
+        return out
     n = _path(t)
+    cl = _user(I, n, "shrink")
+    if cl is not None:
+        r = yield from I.apply(cl, [v])
+        return list(getattr(r, "items", []))
     if n == "Int" or n in INT_CLASSES:
         c = type(v)
         x = int(v)
         if x == 0:
-            return
+            return out
         sign = 1 if x > 0 else -1
         cands = [0]
         d = x
@@ -110,57 +139,55 @@ def shrinks(I, t, v):
                 continue
             seen.add(y)
             try:
-                yield c(y) if c is not int else y
+                out.append(c(y) if c is not int else y)
             except Abort:
                 pass
-        return
+        return out
     if n == "Bool":
         if v:
-            yield False
-        return
+            out.append(False)
+        return out
     if n == "Char":
         if v != "a":
-            yield Char("a")
-        return
+            out.append(Char("a"))
+        return out
     if n == "String":
         if v:
-            yield ""
-            yield v[: len(v) // 2]
-            yield v[:-1]
-            yield v[1:]
-        return
+            out += ["", v[: len(v) // 2], v[:-1], v[1:]]
+        return out
     if n in ("Double", "Float"):
         if v != 0.0:
-            yield 0.0 if n == "Double" else F32.of(0.0)
+            out.append(0.0 if n == "Double" else F32.of(0.0))
             if abs(v) >= 2 and math.isfinite(v):
-                yield float(int(v / 2)) if n == "Double" else F32.of(int(v / 2))
-        return
+                out.append(float(int(v / 2)) if n == "Double" else F32.of(int(v / 2)))
+        return out
     if n in ("List", "Array") and _args(t):
         items = v.items
         mk = (lambda xs: ListV(xs, max(len(xs), 1))) if n == "List" else (lambda xs: ArrayV(xs))
         if items:
-            yield mk([])
-            yield mk(items[: len(items) // 2])
+            out.append(mk([]))
+            out.append(mk(items[: len(items) // 2]))
             for i in range(len(items)):
-                yield mk(items[:i] + items[i + 1:])
+                out.append(mk(items[:i] + items[i + 1:]))
             for i, x in enumerate(items):
-                for s in shrinks(I, _args(t)[0], x):
-                    yield mk(items[:i] + [s] + items[i + 1:])
-        return
+                for y in (yield from shrink_list(I, _args(t)[0], x)):
+                    out.append(mk(items[:i] + [y] + items[i + 1:]))
+        return out
     if n in I.tuples and not I.tuples[n].tparams:
         info = I.tuples[n]
         for i, f in enumerate(info.fields):
-            for s in shrinks(I, f.type, v.vals[i]):
-                yield TupleV(v.vals[:i] + [s] + v.vals[i + 1:], v.names, v.tname)
-        return
+            for y in (yield from shrink_list(I, f.type, v.vals[i])):
+                out.append(TupleV(v.vals[:i] + [y] + v.vals[i + 1:], v.names, v.tname))
+        return out
     if n in I.enums:
         et = I.enums[n].et
         ci = et.cases[v.case]
         for i, ty in enumerate(ci.ftypes):
             if i < len(v.vals):
-                for s in shrinks(I, ty, v.vals[i]):
-                    yield EnumV(et, v.case, v.vals[:i] + [s] + v.vals[i + 1:], v.names)
+                for y in (yield from shrink_list(I, ty, v.vals[i])):
+                    out.append(EnumV(et, v.case, v.vals[:i] + [y] + v.vals[i + 1:], v.names))
         for cn in et.order:
             if et.cases[cn].index < ci.index and not et.cases[cn].ftypes:
-                yield EnumV(et, cn, [], None)
+                out.append(EnumV(et, cn, [], None))
                 break
+    return out

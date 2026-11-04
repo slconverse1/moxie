@@ -2415,3 +2415,48 @@ def b_path_stem(I, a, kw, ta):
     n = _base(a[0])
     i = n.rfind(".")
     return n[:i] if i > 0 else n
+
+
+# ---------------------------------------------------------------- property-test generators (Spec 22)
+class GenR:
+    """The `Gen` a user's `arbitrary` receives: a seeded source of values."""
+    __slots__ = ("rng", "size", "depth")
+    tname_ = "Gen"
+
+    def __init__(self, rng, size, depth=0):
+        self.rng, self.size, self.depth = rng, size, depth
+
+
+@bi("gen_int")
+def b_gen_int(I, a, kw, ta):
+    g, lo, hi = a[0], a[1], a[2]
+    if lo > hi:
+        raise Abort(f"gen_int: the low end {lo} is above the high end {hi}")
+    v = g.rng.randint(int(lo), int(hi))
+    return type(lo)(v) if type(lo) is not int else v
+
+
+@bi("gen_bool")
+def b_gen_bool(I, a, kw, ta):
+    return a[0].rng.random() < 0.5
+
+
+@bi("gen_pick")
+def b_gen_pick(I, a, kw, ta):
+    xs = a[1].items
+    if not xs:
+        raise Abort("gen_pick: the list is empty")
+    return a[0].rng.choice(xs)
+
+
+@bi("sample", gen=True)
+def b_sample(I, a, kw, ta):
+    from . import forall as F
+    t = ta[0][0] if ta and ta[0] else None
+    if t is None:
+        raise Abort("sample needs a type: sample[T](g)")
+    g = a[0]
+    try:
+        return (yield from F.gen(I, t, g.rng, g.size, g.depth))
+    except F.NoGen as e:
+        raise Abort(f"sample cannot generate {e}")

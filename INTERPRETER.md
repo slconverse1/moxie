@@ -489,4 +489,10 @@ function type raises `NoGen` ("forall cannot generate ..."). Integers mix edge v
 the limits) into the range; shrinking moves toward 0 by halving steps, lists drop and shrink
 elements, strings shorten. The checker binds the names with their declared types (`e_ForAll`), and
 the effects pass reports a `forall` outside a `test` and a body that prints, parks, or has any
-other effect. A mixer-written `Arbitrary[T]` is not built. Tests: `tests/run_forall.py`.
+other effect. 
+A mixer-written `Arbitrary` is found through `I.statics[T]["arbitrary"]` and `I.impls[T]["shrink"]`
+and takes precedence over the built-in generator for `T`, wherever `T` appears (`gen` and
+`shrink_list` are generator functions so they can run moxie code). `Gen` is `GenR` in `prelude.py`
+(a `random.Random`, the size, and the nesting depth); `gen_int`, `gen_bool`, `gen_pick`, and
+`sample[T]` are builtins, and `sample` calls `forall.gen`. Nesting deeper than 24 raises `NoGen`.
+Tests: `tests/run_forall.py`.

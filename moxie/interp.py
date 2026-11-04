@@ -1022,7 +1022,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         for k in range(cases):
             size = 2 + (k * 30) // cases
             try:
-                vals = [F.gen(self, t, rng, size) for t in types]
+                vals = []
+                for t in types:
+                    vals.append((yield from F.gen(self, t, rng, size)))
             except F.NoGen as e:
                 raise Abort(f"forall cannot generate {e}", n.line)
             fail = yield from trial(vals)
@@ -1033,7 +1035,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             while progress and steps < 500:
                 progress = False
                 for i, t in enumerate(types):
-                    for cand in F.shrinks(self, t, vals[i]):
+                    for cand in (yield from F.shrink_list(self, t, vals[i])):
                         trial_vals = vals[:i] + [cand] + vals[i + 1:]
                         f2 = yield from trial(trial_vals)
                         steps += 1
