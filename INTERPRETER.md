@@ -417,3 +417,11 @@ when only `[program] memory` is set, applies `budget_error` (largest fiber count
 aborts past a count) and `Scheduler.fiber_cap` (`run` aborts when that many fibers are alive). Kinds the header
 lists as `null` or does not list are not capped. Under `--gc` the options are refused, since moxie/gc has no pool
 header. Tests: `tests/run_header.py`.
+
+The tally follows imported packages. `Tally(prog, limit, search_dir)` builds a `Tally` for each imported package
+(shared through `_shared`, registered before it is built so an import cycle cannot recurse) and `pk(f)` resolves a
+qualified call or a name from `import p (name)` to `(package tally, function)`; `call_in(..., owner=)` then asks the
+package's tally. Fiber functions are `(tally, name)` pairs, and a function's `starts` now flow to its callers, so a
+helper that runs a fiber function counts toward the largest fiber count. `program()` also adds each package's top
+level and merges the packages' `problems` (prefixed with the package name and file line). `program_hash(src,
+search_dir, prog)` hashes the tokens of the entry file and of every package from `load_packages`.

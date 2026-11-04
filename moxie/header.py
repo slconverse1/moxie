@@ -73,10 +73,10 @@ def prepare(I, src, name, manifest, header_flag=None):
         return                                  # the run reports the syntax error
     if path is not None:
         header = load(path)
-        if header.get("program") != program_hash(src):
+        if header.get("program") != program_hash(src, I.search_dir, prog):
             raise HeaderError(f"{path} was made for other source text; rebuild it with `moxie pools {name} --header {path}`")
     else:
-        t = Tally(prog, manifest.get("fibers", {}).get("limit"))
+        t = Tally(prog, manifest.get("fibers", {}).get("limit"), I.search_dir)
         header = header_dict(t, t.program(), src)
     msg = budget_error(header, manifest)
     if msg:

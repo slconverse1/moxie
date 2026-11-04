@@ -22,9 +22,11 @@ def moxie(d, *args):
     return r.returncode, r.stdout + r.stderr
 
 
-def project(src, manifest=None):
+def project(src, manifest=None, files=None):
     d = tempfile.mkdtemp()
     open(os.path.join(d, "main.mxi"), "w").write(src)
+    for nm, text in (files or {}).items():
+        open(os.path.join(d, nm), "w").write(text)
     if manifest is not None:
         open(os.path.join(d, "Moxie.toml"), "w").write(manifest)
     return d
@@ -80,5 +82,37 @@ chk("and a stale one from the manifest is refused", moxie(d, "run", "main.mxi"),
 d = project(PROG)
 moxie(d, "pools", "main.mxi", "--header", "h.json")
 chk("moxie/gc has no pool header", moxie(d, "--gc", "--header=h.json", "run", "main.mxi"), 2, "moxie/gc has neither")
+# ---- packages
+LIB = '''export fn mk() ChanW[Int]:
+  rx, tx = Chan[Int][1]()
+  tx
+fiber[2] fn work(tx: ChanW[Int]):
+  write(tx, 7)
+export fn go(tx: ChanW[Int]):
+  run work(tx)
+'''
+MAIN = '''import lib
+rx, tx = Chan[Int][4]()
+a = lib.mk()
+b = lib.mk()
+lib.go(tx)
+println(read(rx)?)
+'''
+d = project(MAIN, files={"lib.mxi": LIB})
+out = moxie(d, "pools", "main.mxi", "--header", "h.json")
+chk("the tally follows calls into an imported package", out, 0, "Chan     3", "lib.work (limit 2)", "largest possible fiber count: 3")
+chk("a program that uses a package runs under its header", moxie(d, "--header=h.json", "run", "main.mxi"), 0, "7")
+open(os.path.join(d, "lib.mxi"), "w").write(LIB.replace("write(tx, 7)", "write( tx,7 )  // reformatted\n"))
+chk("reformatting a package keeps the header valid", moxie(d, "--header=h.json", "run", "main.mxi"), 0, "7")
+open(os.path.join(d, "lib.mxi"), "w").write(LIB.replace("Chan[Int][1]", "Chan[Int][2]"))
+chk("changing a package makes the header stale", moxie(d, "--header=h.json", "run", "main.mxi"), 2, "other source text")
+d = project("import lib (mk)\ntx = mk()\nprintln(1)\n", files={"lib.mxi": LIB})
+chk("a function imported by name is followed", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
+d = project("import lib\nprintln(1)\n", files={"lib.mxi": "rx, tx = Chan[Int][1]()\nexport fn f() Int: 1\n"})
+chk("a package's top level is counted once it is imported", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
+d = project("import lib\nfor i in 0..3:\n  t = lib.mk()\nprintln(1)\n", files={"lib.mxi": LIB})
+chk("a kept resource from a package in a loop is an error naming the package", moxie(d, "pools", "main.mxi"), 1, "lib.mk' creates a Chan that outlives the call")
+d = project("fiber[3] fn w(tx: ChanW[Int]):\n  write(tx, 2)\nfn start(tx: ChanW[Int]):\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n")
+chk("fibers started by a helper function are counted", moxie(d, "pools", "main.mxi"), 0, "largest possible fiber count: 4")
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)

@@ -101,7 +101,7 @@ def main(argv=None):
         except ManifestError as e:
             sys.stderr.write(f"moxie: {e}\n")
             return 2
-        t = Tally(prog, man.get("fibers", {}).get("limit"))
+        t = Tally(prog, man.get("fibers", {}).get("limit"), I.search_dir)
         cnt = t.program()
         sys.stdout.write(format_tally(cnt))
         sys.stdout.write(format_fibers(t))
@@ -148,7 +148,7 @@ def main(argv=None):
             sys.stderr.write(I.pools.report())
             if getattr(I, "main_prog", None) is not None:
                 from .tally import static_tally, format_tally, compare
-                cnt = static_tally(I.main_prog, I.manifest.get("fibers", {}).get("limit"))
+                cnt = static_tally(I.main_prog, I.manifest.get("fibers", {}).get("limit"), I.search_dir)
                 sys.stderr.write(format_tally(cnt))
                 for w in compare(cnt, I.pools):
                     sys.stderr.write(w + "\n")

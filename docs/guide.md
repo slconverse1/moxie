@@ -2053,7 +2053,7 @@ $ moxie pools main.mxi --header pools.json
 $ moxie --header=pools.json run main.mxi
 ```
 
-Running with `--header` (or naming the file in the manifest, `[pools]` `header = "pools.json"`) checks that the header was made for this program (a hash of its tokens, so reformatting with `moxie fmt` or editing a comment does not matter) and refuses to start if it was not, then holds the program to the header's numbers: a pool that would go over its count, or one more fiber than the header allows, aborts with a message that names the pool. For a correct program that never happens, because the counts are an upper bound; if it does, the tally has a bug. The manifest can also set a memory budget:
+Running with `--header` (or naming the file in the manifest, `[pools]` `header = "pools.json"`) checks that the header was made for this program (a hash of the tokens of the file and of the packages it imports, so reformatting with `moxie fmt` or editing a comment does not matter, but changing a package does) and refuses to start if it was not, then holds the program to the header's numbers: a pool that would go over its count, or one more fiber than the header allows, aborts with a message that names the pool. For a correct program that never happens, because the counts are an upper bound; if it does, the tally has a bug. The manifest can also set a memory budget:
 
 ```
 [fibers]

@@ -225,7 +225,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         from .values import GC
         if not GC[0]:
             from .tally import tally_problems
-            for line, msg in tally_problems(prog):
+            for line, msg in tally_problems(prog, self.search_dir):
                 diags.append(Diag(line, msg))
         pm = self._perms
         if pm.restricted:

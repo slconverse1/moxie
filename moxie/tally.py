@@ -19,6 +19,8 @@ live fiber: what a fiber function creates is multiplied by its limit (`fiber[n]`
 `[fibers] limit`), and the fibers it starts are counted from their own limits, not from its.  A fiber function with
 no limit anywhere has an unknown multiplier, so its resources are reported with a plus sign and a warning.
 """
+import os
+
 from .ast import *   # noqa
 from .effects import _children, _last
 
@@ -78,10 +80,47 @@ def names_in(n):
     return out
 
 
+def find_package(search_dir, parts):
+    base = search_dir or "."
+    cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
+    return next((p for p in cands if os.path.exists(p)), None)
+
+
+def load_packages(prog, search_dir):
+    """{package key: (path, source text, program)} for every package the program imports, directly or not."""
+    from .parser import parse_program
+    out = {}
+    todo = [prog]
+    while todo:
+        cur = todo.pop(0)
+        for st in cur.stmts:
+            if st.__class__ is not ImportDecl:
+                continue
+            key = ".".join(st.pkg)
+            if key in out:
+                continue
+            path = find_package(search_dir, st.pkg)
+            if path is None:
+                continue
+            try:
+                src = open(path, encoding="utf-8").read()
+                pp = parse_program(src, path)
+            except Exception:
+                continue
+            out[key] = (path, src, pp)
+            todo.append(pp)
+    return out
+
+
 class Tally:
-    def __init__(self, prog, default_limit=None):
+    def __init__(self, prog, default_limit=None, search_dir=None, _shared=None):
         self.prog = prog
         self.default_limit = default_limit
+        self.search_dir = search_dir
+        self.label = ""                # "" for the entry file, else the package key
+        self._shared = _shared if _shared is not None else {}     # package key -> Tally, so a package is tallied once
+        self.pkgs = {}                 # alias -> Tally of an imported package
+        self.imported = {}             # name brought in by `import p (name)` -> (Tally, name)
         self.starts = {}             # function name -> set of fiber functions it starts with `run`
         self.start_sink = None
         self.defs = {}
@@ -93,6 +132,49 @@ class Tally:
         self.problems = []           # (line, message): a kept resource created in a loop or recursion
         self._seen_problem = set()
         self._collect(prog)
+        self._imports()
+
+    def _imports(self):
+        if self.search_dir is None:
+            return
+        from .parser import parse_program
+        for st in self.prog.stmts:
+            if st.__class__ is not ImportDecl:
+                continue
+            key = ".".join(st.pkg)
+            sub = self._shared.get(key)
+            if sub is None:
+                path = find_package(self.search_dir, st.pkg)
+                if path is None:
+                    continue
+                try:
+                    pp = parse_program(open(path, encoding="utf-8").read(), path)
+                except Exception:
+                    continue
+                sub = Tally.__new__(Tally)
+                self._shared[key] = sub                    # registered first, so an import cycle cannot recurse
+                sub.__init__(pp, self.default_limit, self.search_dir, self._shared)
+                sub.label = key
+                sub.path = path
+            if st.names:
+                for nm in st.names:
+                    if isinstance(nm, str):
+                        self.imported[nm] = (sub, nm)
+            else:
+                self.pkgs[st.alias or st.pkg[-1]] = sub
+
+    def pk(self, f):
+        """(Tally, function name) when the callee `f` is a function of an imported package, else None."""
+        c = f.__class__
+        if c is GenApp:
+            return self.pk(f.base)
+        if c is Field and f.obj.__class__ is Name and f.obj.name in self.pkgs:
+            sub = self.pkgs[f.obj.name]
+            return (sub, f.name) if f.name in sub.defs else None
+        if c is Name and f.name in self.imported and f.name not in self.defs:
+            sub, orig = self.imported[f.name]
+            return (sub, orig) if orig in sub.defs else None
+        return None
 
     def _collect(self, n):
         c = n.__class__
@@ -128,6 +210,8 @@ class Tally:
             if d.guard is not None:
                 total.merge(self.body(d.guard, d.body))
         self.starts[name] = self.start_sink
+        if saved is not None:
+            saved |= self.start_sink              # what a called function starts, its caller starts too
         self.start_sink = saved
         self.stack.pop()
         if name in self.cyclic:
@@ -207,9 +291,13 @@ class Tally:
                 for a in tgt.args:
                     self.walk(a.expr, loops, in_fiber, out, fnscope)
                 nm = tgt.fn.name if tgt.fn.__class__ is Name else None
-                if nm in self.defs:
+                own = self.pk(tgt.fn)
+                if own is not None:
                     if self.start_sink is not None:
-                        self.start_sink.add(nm)
+                        self.start_sink.add(own)
+                elif nm in self.defs:
+                    if self.start_sink is not None:
+                        self.start_sink.add((self, nm))
             elif tgt.__class__ is Lambda:
                 self.walk(tgt.body, loops, True, out, fnscope)          # an unnamed fiber has no limit
             return
@@ -220,18 +308,26 @@ class Tally:
                 val = val.e
             if val.__class__ is Call:
                 nm, kind = self.callee(val.fn)
+                own = self.pk(val.fn)
                 local = not self.escapes(v, scope, fnscope)
-                if kind is not None and closable(kind):
+                if kind is not None and closable(kind) and own is None:
                     self.site(out, kind, val, in_loop, fiber, kept=not local)
                     self.args(val, loops, fiber, out, fnscope)
                     return
-                if nm in self.defs and local:
+                if own is not None and local:
+                    self.call_in(out, own[1], val, in_loop, fiber, release=True, owner=own[0])
+                    self.args(val, loops, fiber, out, fnscope)
+                    return
+                if own is None and nm in self.defs and local:
                     self.call_in(out, nm, val, in_loop, fiber, release=True)
                     self.args(val, loops, fiber, out, fnscope)
                     return
         if c is Call:
             nm, kind = self.callee(n.fn)
-            if kind is not None:
+            own = self.pk(n.fn)
+            if own is not None:
+                self.call_in(out, own[1], n, in_loop, fiber, owner=own[0])
+            elif kind is not None:
                 self.site(out, kind, n, in_loop, fiber, kept=True)
             elif nm in self.defs:
                 self.call_in(out, nm, n, in_loop, fiber)
@@ -243,7 +339,10 @@ class Tally:
             self.walk(n.l, loops, in_fiber, out, fnscope)
             st = n.stage
             nm = st.fn.name if st.__class__ is Call and st.fn.__class__ is Name else (st.name if st.__class__ is Name else None)
-            if nm in self.defs:
+            own = self.pk(st.fn if st.__class__ is Call else st)
+            if own is not None:
+                self.call_in(out, own[1], st, in_loop, fiber, owner=own[0])
+            elif nm in self.defs:
                 self.call_in(out, nm, st, in_loop, fiber)
             self.walk(st, loops, in_fiber, out, fnscope)
             return
@@ -272,13 +371,16 @@ class Tally:
             reasons.add("fiber")
         out.add(kind, 1, reasons, kept)
 
-    def call_in(self, out, nm, call, in_loop, fiber, release=False):
-        callee = self.of_fn(nm)
+    def call_in(self, out, nm, call, in_loop, fiber, release=False, owner=None):
+        owner = owner or self
+        callee = owner.of_fn(nm)
+        if owner is not self and self.start_sink is not None:
+            self.start_sink |= {x for x in owner.starts.get(nm, ())}
         for kind, (n, rs, kept) in callee.k.items():
             if release and closable(kind):
                 kept = False
             if in_loop and kept:
-                self.problem(call.line, f"'{nm}' creates a {kind} that outlives the call, and it is called in a loop, so the number of {kind} cannot be counted")
+                self.problem(call.line, f"'{(owner.label + '.') if owner is not self else ''}{nm}' creates a {kind} that outlives the call, and it is called in a loop, so the number of {kind} cannot be counted")
         out.merge(callee, loop_reasons=("loop",) if in_loop else (), fiber=fiber, release=release)
 
     def callee(self, f):
@@ -305,22 +407,32 @@ class Tally:
                     return int(fl[6:])
         return self.default_limit
 
-    def program(self):
+    def _top(self):
+        """(counts, fiber functions started) for the file's own top-level statements."""
         top = Count()
         saved, self.start_sink = self.start_sink, set()
         scope = Block([s for s in self.prog.stmts if s.__class__ not in (FnDecl, FnGroup)])
         for st in self.prog.stmts:
-            if st.__class__ not in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl, ForeignDecl):
+            if st.__class__ not in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl, ForeignDecl, ImportDecl):
                 top.merge(self.body(st, scope))
-        todo, seen = list(self.start_sink), []
-        self.start_sink = saved
+        started, self.start_sink = self.start_sink, saved
+        return top, started
+
+    def program(self):
+        top, started = self._top()
+        for sub in self._shared.values():            # an imported package runs its top level when it is imported
+            c2, s2 = sub._top()
+            top.merge(c2)
+            started |= s2
+        todo, seen = list(started), []
         while todo:
-            f = todo.pop()
-            if f in seen:
+            item = todo.pop()
+            if item in seen:
                 continue
-            seen.append(f)
-            cnt = self.of_fn(f)
-            lim = self.limit_of(f)
+            seen.append(item)
+            own, f = item
+            cnt = own.of_fn(f)
+            lim = own.limit_of(f)
             part = Count()
             part.merge(cnt)
             if lim is not None:
@@ -329,9 +441,14 @@ class Tally:
             else:
                 top.merge(part, fiber=True)
                 if cnt.k:
-                    self.warnings.append(f"fiber function '{f}' creates resources but has no limit: write fiber[n] or set [fibers] limit in Moxie.toml")
-            todo.extend(self.starts.get(f, ()))
-        self.fibers = [(f, self.limit_of(f)) for f in seen]
+                    nm = (own.label + "." if own.label else "") + f
+                    self.warnings.append(f"fiber function '{nm}' creates resources but has no limit: write fiber[n] or set [fibers] limit in Moxie.toml")
+            todo.extend(own.starts.get(f, ()))
+        self.fibers = [((own.label + "." if own.label else "") + f, own.limit_of(f)) for own, f in seen]
+        lines = {".".join(st.pkg): st.line for st in self.prog.stmts if st.__class__ is ImportDecl}
+        for key, sub in self._shared.items():
+            for line, msg in sub.problems:
+                self.problem(lines.get(key, 1), f"in package '{key}' ({os.path.basename(sub.path)}:{line}): {msg}")
         return top
 
     @property
@@ -345,26 +462,32 @@ class Tally:
         return 1 + sum(l for _f, l in self.fibers), True
 
 
-def static_tally(prog, default_limit=None):
-    return Tally(prog, default_limit).program()
+def static_tally(prog, default_limit=None, search_dir=None):
+    return Tally(prog, default_limit, search_dir).program()
 
 
-def tally_problems(prog):
-    t = Tally(prog)
+def tally_problems(prog, search_dir=None):
+    t = Tally(prog, None, search_dir)
     t.program()
     return t.problems
 
 
-def program_hash(src):
-    """A hash of the program's tokens: layout, spacing, and comments do not change it, so `moxie fmt` leaves a header valid."""
+def program_hash(src, search_dir=None, prog=None):
+    """A hash of the program's tokens and those of every package it imports: layout, spacing, and comments do not
+    change it, so `moxie fmt` leaves a header valid, and a change in a package makes it stale."""
     import hashlib
-    try:
-        from .fmt import _tokens
-        text = "\n".join(f"{k} {v}" for k, v in _tokens(src, "<program>") if k not in ("NL", "INDENT", "DEDENT", "EOF"))
-        text = "tokens:" + text
-    except Exception:
-        text = "text:" + src
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+    from .fmt import _tokens
+
+    def toks(text, name):
+        try:
+            return "\n".join(f"{k} {v}" for k, v in _tokens(text, name) if k not in ("NL", "INDENT", "DEDENT", "EOF"))
+        except Exception:
+            return "text:" + text
+    parts = ["tokens:" + toks(src, "<program>")]
+    if prog is not None and search_dir is not None:
+        for key, (path, text, _p) in sorted(load_packages(prog, search_dir).items()):
+            parts.append(f"package {key}:" + toks(text, path))
+    return hashlib.sha256("\n--\n".join(parts).encode("utf-8")).hexdigest()
 
 
 def header_dict(t, cnt, src=None):
@@ -374,7 +497,7 @@ def header_dict(t, cnt, src=None):
     d = {"version": 1, "pools": pools, "fibers": {"largest": n if exact else None, "functions": dict(t.fibers)},
          "exact": exact and all(v is not None for v in pools.values())}
     if src is not None:
-        d["program"] = program_hash(src)
+        d["program"] = program_hash(src, t.search_dir, t.prog)
     return d
 
 
