@@ -201,6 +201,23 @@ println("$n")
 
 Output: `2 10`, then `10`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do:` the outer name has the value from whichever path ran; **loops, functions, and closures are boundaries**, so you can't write a name bound before a loop ("can't assign `total` outside the loop; return it with `break(...)` or `else:`"); there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `gimme.1.x = ...` when no enclosing block binds `x`, and writing across a loop.
 
+**1d. Comments**
+
+A `//` comment runs to the end of the line, and it is the one to use almost everywhere: on its own line above the code, or after it for a short note. Say why, not what: a comment that repeats the code is noise. `///` is for documentation; it sits directly above a declaration and `moxie doc` and the doctests read it (section on tooling). A `/* ... */` block comment nests, so it is the right tool for switching off a region of code that may already contain block comments:
+
+```
+// The total, with tax.
+fn total(price: Int, tax: Int) Int:
+  price + tax  // tax is in cents
+/* println("not run")
+   /* nested comments are fine */
+   println("also not run")
+*/
+println(total(100, 8))
+```
+
+Output: `108`. Use plain indentation for the lines of a block comment and not a column of `*`; `moxie fmt` moves a block comment as one unit and keeps its text exactly. A comment on its own line takes the indentation of the code it belongs to. **Mistakes:** forgetting to close a `/*` (the error points at the line where it opened), and leaving commented-out code in a file once it is no longer needed.
+
 **Chapter 2: Numbers, text, keywords**
 
 ```
