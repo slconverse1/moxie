@@ -394,3 +394,14 @@ text-only `path_join`, `path_parent`, `path_name`, `path_stem`, `path_ext`. `Fil
 methods are declared in `mxprelude.py`; `file_info` builds the tuple directly. `effects.py` lists the seven file
 system functions as `parks` and as `fs` needs, so a restricted program that reaches one without a grant is a compile
 error. Tests: `tests/run_fs.py`.
+
+## TLS
+
+`connect_tls` and `listen_tls` in `prelude.py` use Python's `ssl`. The client builds `ssl.create_default_context()`
+(or with `cafile=` from the named argument `ca`), connects on a helper thread like `connect`, and wraps the socket
+with `server_hostname=host`, so the certificate and the name are always checked; `_tls_error` turns verification
+and handshake failures into `IO_ERROR` messages. The server loads the certificate and key into an
+`SSLContext(PROTOCOL_TLS_SERVER)` kept in `ListenerV.ctx`, and `accept` wraps each accepted socket on the helper
+thread, returning `Err` for a failed handshake. The result is an ordinary `IoV` socket, so the pool tally,
+permissions, and static `net` needs treat the new functions like `connect` and `listen`. Tests: `tests/run_tls.py`
+(skipped when `openssl` is missing). The guide runners skip blocks that start with `// not run`.

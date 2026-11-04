@@ -118,11 +118,11 @@ class IoV:
 
 
 class ListenerV:
-    __slots__ = ("sock", "closed", "I")
+    __slots__ = ("sock", "closed", "I", "ctx")
     tname_ = "Listener"
 
-    def __init__(self, sock, I):
-        self.sock, self.closed, self.I = sock, False, I
+    def __init__(self, sock, I, ctx=None):
+        self.sock, self.closed, self.I, self.ctx = sock, False, I, ctx
         I.pools.acquire("Listener")
 
     def drop(self, sched=None):
@@ -420,6 +420,65 @@ def b_connect(I, a, kw, ta):
     return Ok(IoV(I, "socket", s.makefile("rwb"), s))
 
 
+def _tls_error(e, what):
+    import ssl
+    if isinstance(e, ssl.SSLCertVerificationError):
+        return err_reserved("IO_ERROR", f"{what}: certificate not trusted: {e.verify_message}")
+    if isinstance(e, ssl.SSLError):
+        return err_reserved("IO_ERROR", f"{what}: TLS failed: {e.reason or e}")
+    return io_error(e, what)
+
+
+@bi("connect_tls", "first", True)
+def b_connect_tls(I, a, kw, ta):
+    import socket, ssl
+    host, port = a[0], a[1]
+    if not I.perms.connect_ok(host, port):
+        return denied(f"{host}:{port}", "net.connect")
+    ca = kw.get("ca")
+    if ca is not None and not I.perms.path_ok("fs.read", ca):
+        return denied(ca, "fs.read")
+
+    def work():
+        try:
+            ctx = ssl.create_default_context(cafile=ca) if ca is not None else ssl.create_default_context()
+            raw = socket.create_connection((host, int(port)), timeout=30)
+            try:
+                s = ctx.wrap_socket(raw, server_hostname=host)
+            except Exception:
+                raw.close()
+                raise
+            s.settimeout(None)
+            return s
+        except OSError as e:
+            return e
+    s = yield from S_.park_thread(I, work)
+    if isinstance(s, OSError):
+        return _tls_error(s, f"{host}:{port}")
+    return Ok(IoV(I, "socket", s.makefile("rwb"), s))
+
+
+@bi("listen_tls")
+def b_listen_tls(I, a, kw, ta):
+    import socket, ssl
+    port, cert, key = a[0], a[1], a[2]
+    if not I.perms.listen_ok(port):
+        return denied(f"port {port}", "net.listen")
+    for pth in (cert, key):
+        if not I.perms.path_ok("fs.read", pth):
+            return denied(pth, "fs.read")
+    try:
+        ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx.load_cert_chain(cert, key)
+        s = socket.socket()
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind(("", int(port)))
+        s.listen(16)
+        return Ok(ListenerV(s, I, ctx))
+    except OSError as e:
+        return _tls_error(e, f"port {port}")
+
+
 @bi("listen")
 def b_listen(I, a, kw, ta):
     import socket
@@ -448,7 +507,14 @@ def b_accept(I, a, kw, ta):
 
     def work():
         try:
-            return l.sock.accept()[0]
+            c = l.sock.accept()[0]
+            if l.ctx is not None:
+                try:
+                    c = l.ctx.wrap_socket(c, server_side=True)
+                except OSError as e:
+                    c.close()
+                    return e
+            return c
         except OSError as e:
             return e
     c = yield from S_.park_thread(I, work)

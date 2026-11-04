@@ -8,7 +8,7 @@ from .ast import *   # noqa
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
 RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener"}
-RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept"}
+RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept", "connect_tls", "listen_tls"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
                "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",

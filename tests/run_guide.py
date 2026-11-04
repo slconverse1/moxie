@@ -19,7 +19,7 @@ def h(*a): raise TO()
 signal.signal(signal.SIGALRM,h)
 SKIP={_remap(141),_remap(146)}   # manifest examples, not moxie code
 # examples that are not runnable moxie: manifests, shell commands, and C libraries we do not have
-SKIP|={j for j,b in enumerate(blocks) if b[1].lstrip().startswith(('[','$ ','lib =')) or re.search(r'foreign "(?!m"|c")',b[1])}
+SKIP|={j for j,b in enumerate(blocks) if b[1].lstrip().startswith(('[','$ ','lib =','// not run')) or re.search(r'foreign "(?!m"|c")',b[1])}
 def run(src,name):
     out=io.StringIO(); err=io.StringIO()
     I=Interp(out=out,err=err)

@@ -2156,6 +2156,26 @@ println(list_dir("out/logs"))
 
 Output: `Ok(Array("logs", "report.txt"))`, then `logs: dir`, `report.txt: file`, then `out/logs run.log run log`, then `Ok(Array())`. Reading a directory needs `fs.read` and changing one needs `fs.write` (a rename needs it for both paths), as for files. `remove_file` refuses a directory and `remove_dir` refuses one that is not empty, with `IO_ERROR`; a missing path is `NOT_FOUND`. **Mistakes:** treating a name from `list_dir` as a path (join it with its directory first), and using `\` as a separator: paths use `/` on every system.
 
+
+For a connection that must be private, `connect_tls(host, port)` is `connect` over TLS, the protocol behind `https`: the server proves who it is with a certificate, the data is encrypted, and the result is the same `Io`, so `read_line`, `println(io, ...)`, and `close` work as before. The certificate is checked against the system's trusted authorities and against the name you gave, and one that fails is an `Err` (code `IO_ERROR`, with a message such as `certificate not trusted`), never a connection with a warning. To trust a particular certificate, such as your own server's, pass its file with `ca`, which needs `fs.read`. The server side is `listen_tls(port, cert_file, key_file)`, which gives a `Listener` whose `accept` finishes the handshake before it returns the `Io`:
+
+```
+// not run: needs a server and its certificate
+c = connect_tls("example.com", 443)?
+println(c, "GET / HTTP/1.0\r\nHost: example.com\r\n")
+println(read_line(c)?)
+close(c)
+
+// the server side, with a certificate you made yourself
+l = listen_tls(8443, "cert.pem", "key.pem")?
+c = accept(l)?
+println(c, "hello over tls")
+close(c)
+close(l)
+```
+
+`connect_tls` is checked against `net.connect` as `connect` is, and `listen_tls` against `net.listen`, plus `fs.read` for the certificate and key files. A client that trusts a self-made certificate passes `ca: "cert.pem"`. **Mistakes:** turning to plain `connect` to get around a certificate error (fix the certificate or pass `ca`), and a certificate whose name does not match the host you connect to: the check is on the name, so use the name in the certificate.
+
 **20c. Permissions**
 
 A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:
