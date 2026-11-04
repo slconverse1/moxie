@@ -9,7 +9,7 @@ header's numbers.  With `[program] memory` set and no header file, the numbers c
 import json
 import os
 
-from .manifest import parse_size
+from .manifest import parse_size, fiber_spaces
 
 
 class HeaderError(Exception):
@@ -39,7 +39,9 @@ def budget_error(header, manifest):
     if total is None:
         return None
     fib = manifest.get("fibers", {})
-    mem, stack = parse_size(fib.get("memory")), parse_size(fib.get("stack"))
+    sp = fiber_spaces(fib)
+    mem = sp[0] + sp[1] if sp is not None else parse_size(fib.get("memory"))
+    stack = parse_size(fib.get("stack"))
     n = header["fibers"]["largest"]
     if n is None:
         return ("[program] memory is set, but the largest number of fibers is not known: "
@@ -53,9 +55,10 @@ def budget_error(header, manifest):
             why = header["bytes"].get("unknown") or []
             return ("[program] memory is set, but the size of the pools is not known: " + "; ".join(why[:3]) +
                     (f"; and {len(why) - 3} more" if len(why) > 3 else ""))
+    split = f" ({sp[0]} strings + {sp[1]} temps)" if sp is not None and ("strings" in fib or "temps" in fib) else ""
     need = pools + n * (mem + stack)
     if need > total:
-        return (f"the program needs {need} bytes ({pools} for pools + {n} fibers of {mem} memory + {stack} stack) "
+        return (f"the program needs {need} bytes ({pools} for pools + {n} fibers of {mem} memory{split} + {stack} stack) "
                 f"but [program] memory is {total}")
     return None
 

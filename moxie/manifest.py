@@ -1,7 +1,7 @@
 """The entry package's Moxie.toml, as far as the reference interpreter uses it: [fibers], [pools], [program], [memory]."""
 import os
 
-FIBER_KEYS = {"limit", "memory", "stack"}
+FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
 PROGRAM_KEYS = {"memory"}
 MEMORY_KEYS = {"heap", "slice"}
@@ -57,7 +57,7 @@ def load(path):
             if k not in keys:
                 raise ManifestError(f"{m}: unknown key '{k}' in [{table}] (known: {', '.join(sorted(keys))})")
         out[table] = dict(t)
-    for table, key in (("fibers", "memory"), ("fibers", "stack"), ("program", "memory"), ("memory", "heap")):
+    for table, key in (("fibers", "memory"), ("fibers", "strings"), ("fibers", "temps"), ("fibers", "stack"), ("program", "memory"), ("memory", "heap")):
         if key in out[table] and parse_size(out[table][key]) is None:
             raise ManifestError(f"{m}: [{table}] {key} must be a size such as \"64KiB\" (1024-based) or \"64KB\" (1000-based)")
     if "slice" in out["memory"]:
@@ -67,7 +67,32 @@ def load(path):
             raise ManifestError(f"{m}: [memory] slice must be a time such as \"2ms\"")
     if "header" in out["pools"] and not isinstance(out["pools"]["header"], str):
         raise ManifestError(f"{m}: [pools] header must be a file name")
+    fb = out["fibers"]
+    if "strings" in fb or "temps" in fb:
+        sp, tp, mem = parse_size(fb.get("strings")), parse_size(fb.get("temps")), parse_size(fb.get("memory"))
+        if mem is not None and sp is not None and tp is not None and sp + tp != mem:
+            raise ManifestError(f"{m}: [fibers] strings ({sp}) plus temps ({tp}) is {sp + tp}, but memory says {mem}; "
+                                "give memory alone, or strings and temps alone")
+        if mem is not None and ((sp is not None and sp > mem) or (tp is not None and tp > mem)):
+            raise ManifestError(f"{m}: [fibers] strings or temps is larger than memory ({mem})")
+        if mem is None and (sp is None or tp is None):
+            raise ManifestError(f"{m}: [fibers] needs both strings and temps (or memory, which they divide)")
     lim = out["fibers"].get("limit")
     if lim is not None and (not isinstance(lim, int) or isinstance(lim, bool) or lim < 1):
         raise ManifestError(f"{m}: [fibers] limit must be a whole number of at least 1")
     return out
+
+
+def fiber_spaces(fib):
+    """(strings, temps) in bytes for one fiber from a [fibers] table, or None when it does not say.
+    `memory` is the two together; `strings` and `temps` divide it (one may be left out and is the rest)."""
+    mem, sp, tp = parse_size(fib.get("memory")), parse_size(fib.get("strings")), parse_size(fib.get("temps"))
+    if sp is not None and tp is not None:
+        return sp, tp
+    if mem is None:
+        return None
+    if sp is not None:
+        return sp, mem - sp
+    if tp is not None:
+        return mem - tp, tp
+    return None

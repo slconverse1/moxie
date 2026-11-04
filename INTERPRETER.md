@@ -470,3 +470,5 @@ kind, scaled and merged with the counts) and `why` (the sites whose size is not 
 The checker requires a type on every plain-name parameter of a named function (`check.e_FnDecl`), as it requires a return type; later clauses of a multi-clause function, foreign declarations and aliases, and lambdas are exempt.
 
 UDP (`prelude.UdpV`, `bind_udp`, `send_to`, `receive`): a `Udp` wraps a `SOCK_DGRAM` socket. `receive` reads up to 65535 bytes on the helper thread (so only its fiber parks) and honors `timeout:`; the `Packet` tuple is declared in `mxprelude`. It is a resource (`RES_TYPES`, `RES_MAKERS`), counts as an `Io socket` in the pool tally, has the `parks` effect, and needs `net` (`bind_udp` against `net.listen`, `send_to` against `net.connect`). `tests/run_udp.py` covers it over loopback. Not built: `select` over a socket, IPv6 and multicast, and connected UDP sockets.
+
+`[fibers]` takes `strings` and `temps` as a division of `memory` (`manifest.fiber_spaces`); the budget in `header.budget_error` adds them and shows the split in its message. The spaces themselves are not modeled, so neither is enforced.
