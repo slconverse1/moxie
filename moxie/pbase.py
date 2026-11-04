@@ -273,6 +273,77 @@ class PBase:
     def parse_pattern(self):
         return self.parse_pattern_primary()
 
+    BIN_KINDS = {f"{sg}{w}{en}" for sg in "ui" for w in (16, 32, 64) for en in ("be", "le")} | {"u8", "i8"}
+
+    def parse_bin_pattern(self, line):
+        """Bin(0xCA, version: bits(4), kind: bits(4), len: u16be, body: bytes(len), rest: bytes)  (Spec section 8)."""
+        self.next()
+        self.expect_op("(")
+        elems, names, bitrun = [], set(), 0
+        while not self.at_op(")"):
+            t = self.peek()
+            if t.kind == "INT":
+                self.next()
+                if not 0 <= t.val <= 255:
+                    self.err("a literal in a Bin pattern is one byte (0 to 255); write several, or use b\"...\"")
+                elems.append(("lit", [t.val]))
+                bitrun_ok = bitrun % 8 == 0
+            elif t.kind == "BYTES":
+                self.next()
+                elems.append(("lit", list(t.val)))
+                bitrun_ok = bitrun % 8 == 0
+            elif t.kind == "NAME":
+                name = self.next().val
+                self.expect_op(":")
+                kt = self.peek()
+                if kt.kind != "NAME":
+                    self.err("expected a Bin kind such as u8, u16be, bits(4), or bytes(n)")
+                kind = self.next().val
+                arg = None
+                if kind in ("bits", "bytes") and self.at_op("("):
+                    self.next()
+                    at = self.peek()
+                    if at.kind == "INT":
+                        arg = self.next().val
+                    elif at.kind == "NAME" and at.val in names:
+                        arg = self.next().val
+                    else:
+                        self.err(f"the size of {kind}(...) is a number or an earlier field")
+                    self.expect_op(")")
+                if kind == "bits":
+                    if not isinstance(arg, int) or not 1 <= arg <= 64:
+                        self.err("bits(n) needs a literal n from 1 to 64")
+                elif kind == "bytes":
+                    pass
+                elif kind not in self.BIN_KINDS:
+                    self.err(f"unknown Bin kind '{kind}' (u8, i8, u16be, u16le, ..., bits(n), bytes(n))")
+                nm = None if name == "_" else name
+                if nm is not None:
+                    if nm in names:
+                        self.err(f"the name '{nm}' is used twice in this Bin pattern")
+                    names.add(nm)
+                elems.append(("field", nm, kind, arg))
+                bitrun_ok = True
+                if kind == "bits":
+                    bitrun += arg
+                else:
+                    if bitrun % 8:
+                        self.err("the bit fields before this one do not add up to whole bytes")
+                    bitrun = 0
+            else:
+                self.err("expected a byte, a name, or ')' in a Bin pattern")
+            if elems[-1][0] == "lit" and bitrun % 8:
+                self.err("the bit fields before this literal do not add up to whole bytes")
+            if not self.eat_op(","):
+                break
+        self.expect_op(")")
+        if bitrun % 8:
+            self.err("the bit fields in this Bin pattern do not add up to whole bytes")
+        for i, e in enumerate(elems):
+            if e[0] == "field" and e[2] == "bytes" and e[3] is None and i != len(elems) - 1:
+                self.err("bytes with no size takes the rest, so it must be the last element")
+        return PBin(elems, line=line)
+
     def parse_pattern_primary(self):
         t = self.peek()
         line = t.line
@@ -286,6 +357,8 @@ class PBase:
                 return PLit(BoolLit(v == "true", line=line), line=line)
             if v in HARD and v not in ("Self", "self"):
                 self.err(f"expected a pattern but found '{v}'")
+            if v == "Bin" and self.at_op("(", 1):
+                return self.parse_bin_pattern(line)
             if self.at_op("@", 1):
                 self.next()
                 self.next()

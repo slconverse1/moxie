@@ -325,3 +325,15 @@ default, else unlimited). `Tally` no longer merges `run` callees into the starte
 `program()` walks the started functions once each, scaling their counts by `limit_of(f)`; no limit means the
 `fiber` reason and a warning. `fiber_count()` is 1 plus the limits. `format_header` writes JSON for
 `moxie pools FILE --header OUT`. Tests: `tests/run_tally.py`.
+
+## Language gaps: curry checks, binary patterns, constant `requires`
+
+`check.py` has a small constant evaluator (`const_eval`, `NOCONST`): numbers, text, booleans, arithmetic,
+comparisons, `and`/`or`/`not`. `check_const_requires` runs it on a direct call of a known function whose
+arguments are all constants and reports a failing `requires` as a compile error. Curry rules are shape checks
+(`curry_shape`, `check_curry_call`, `check_curried_application`): parameter count, excluded parameter kinds
+(`ref`, `lazy`, `using`, variadic), `uncurry[n]` with a constant n of at least 2, and the argument count of
+each call in `curry(f)(a)(b)`. `Bin(...)` is parsed by `pbase.parse_bin_pattern` into `PBin(elems)` and matched
+by `patterns.match_bin`: fields are read left to right over the byte values, `bits(n)` packs from the high bit,
+`bytes(n)` copies, a missing or wrong byte makes the arm fail, and leftover bytes fail unless the last element
+is `rest: bytes`. Tests: `tests/helper_cases.py`, `tests/run_contracts.py`.

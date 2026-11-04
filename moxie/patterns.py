@@ -87,12 +87,77 @@ class PatternsMixin:
             return self.match_tuple(p, v, b, env)
         if c is PCon:
             return self.match_con(p, v, b, env)
+        if c is PBin:
+            return self.match_bin(p, v, b)
         if c is PRest:
             b[p.name] = v
             return True
         if c is PPlace:
             raise Abort("a place cannot be used as a pattern")
         raise Abort(f"unsupported pattern {c.__name__}")
+
+    BIN_INT = {"u8": ("UInt8", 1, False), "i8": ("Int8", 1, True)}
+    for _w in (16, 32, 64):
+        for _sg, _nm in (("u", "UInt"), ("i", "Int")):
+            for _en in ("be", "le"):
+                BIN_INT[f"{_sg}{_w}{_en}"] = (f"{_nm}{_w}", _w // 8, _sg == "i")
+
+    def match_bin(self, p, v, b):
+        """A Bin(...) pattern on an Array[Byte]: fields are read left to right; too short or a wrong literal fails."""
+        if v.__class__ is not ArrayV:
+            return False
+        data = [int(x) for x in v.items]
+        pos, bitpos, vals = 0, 0, {}
+        bind = {}
+
+        def mk(tname, x):
+            cls = INT_CLASSES.get(tname)
+            return cls(x) if cls is not None else x
+        for e in p.elems:
+            if e[0] == "lit":
+                lit = e[1]
+                if data[pos:pos + len(lit)] != lit:
+                    return False
+                pos += len(lit)
+                continue
+            _tag, name, kind, arg = e
+            if kind == "bits":
+                nbits = arg
+                x = 0
+                for _ in range(nbits):
+                    if pos >= len(data):
+                        return False
+                    x = (x << 1) | ((data[pos] >> (7 - bitpos)) & 1)
+                    bitpos += 1
+                    if bitpos == 8:
+                        bitpos, pos = 0, pos + 1
+                tn = "UInt8" if nbits <= 8 else "UInt16" if nbits <= 16 else "UInt32" if nbits <= 32 else "UInt64"
+                val = mk(tn, x)
+                num = x
+            elif kind == "bytes":
+                n = arg if isinstance(arg, int) else (len(data) - pos if arg is None else vals.get(arg))
+                if n is None or n < 0 or pos + n > len(data):
+                    return False
+                val = ArrayV([mk("UInt8", x) for x in data[pos:pos + n]])
+                pos += n
+                num = None
+            else:
+                tname, width, signed = self.BIN_INT[kind]
+                if pos + width > len(data):
+                    return False
+                chunk = data[pos:pos + width]
+                pos += width
+                x = int.from_bytes(bytes(chunk), "little" if kind.endswith("le") else "big", signed=signed)
+                val = mk(tname, x)
+                num = x
+            if name:
+                bind[name] = val
+                if num is not None:
+                    vals[name] = num
+        if pos < len(data) and not (p.elems and p.elems[-1][0] == "field" and p.elems[-1][2] == "bytes" and p.elems[-1][3] is None):
+            return False             # trailing bytes that no element describes: the layout does not match
+        b.update(bind)
+        return True
 
     def match_tuple(self, p, v, b, env):
         items = p.items

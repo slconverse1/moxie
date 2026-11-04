@@ -39,6 +39,87 @@ def _tn(x):
     return path[-1] if path else None
 
 
+NOCONST = object()
+
+
+def names_of(e):
+    out, stack = set(), [e]
+    while stack:
+        x = stack.pop()
+        if x.__class__ is Name:
+            out.add(x.name)
+        for f in getattr(x, "_fields", ()):
+            v = getattr(x, f, None)
+            if isinstance(v, N):
+                stack.append(v)
+            elif isinstance(v, (list, tuple)):
+                stack.extend(y for y in v if isinstance(y, N))
+    return out
+
+
+def show_const(v):
+    return ("\"%s\"" % v) if isinstance(v, str) else (("true" if v else "false") if isinstance(v, bool) else str(v))
+
+
+def const_eval(e, env):
+    """The value of a constant expression (numbers, text, booleans, + - * / %, comparisons, and, or, not), else NOCONST."""
+    c = e.__class__
+    if c is IntLit:
+        return e.v
+    if c is FloatLit:
+        return e.v
+    if c is BoolLit:
+        return bool(e.b)
+    if c is StrLit:
+        return "".join(e.parts) if all(isinstance(x, str) for x in e.parts) else NOCONST
+    if c is Name:
+        return env.get(e.name, NOCONST)
+    if c is Unary:
+        v = const_eval(e.e, env)
+        if v is NOCONST:
+            return NOCONST
+        if e.op == "not" and isinstance(v, bool):
+            return not v
+        if e.op == "-" and isinstance(v, (int, float)) and not isinstance(v, bool):
+            return -v
+        return NOCONST
+    if c is AndE or c is OrE:
+        l = const_eval(e.l, env)
+        r = const_eval(e.r, env)
+        if isinstance(l, bool) and isinstance(r, bool):
+            return (l and r) if c is AndE else (l or r)
+        if c is AndE and (l is False or r is False):
+            return False
+        if c is OrE and (l is True or r is True):
+            return True
+        return NOCONST
+    if c is Binary:
+        l = const_eval(e.l, env)
+        r = const_eval(e.r, env)
+        if l is NOCONST or r is NOCONST or isinstance(l, bool) != isinstance(r, bool):
+            return NOCONST
+        if type(l) is str and type(r) is not str or type(r) is str and type(l) is not str:
+            return NOCONST
+        op = e.op
+        cmp = {"==": lambda: l == r, "~=": lambda: l != r, "<": lambda: l < r, "<=": lambda: l <= r,
+               ">": lambda: l > r, ">=": lambda: l >= r}
+        if op in cmp:
+            return cmp[op]()
+        if isinstance(l, (int, float)) and isinstance(r, (int, float)) and not isinstance(l, bool):
+            if op == "+":
+                return l + r
+            if op == "-":
+                return l - r
+            if op == "*":
+                return l * r
+            if op == "/" and r != 0:
+                return int(l / r) if isinstance(l, int) and isinstance(r, int) else l / r
+            if op == "%" and isinstance(l, int) and isinstance(r, int) and r > 0 and l >= 0:
+                return l % r
+        return NOCONST
+    return NOCONST
+
+
 class Diag:
     def __init__(self, line, msg, kind="error"):
         self.line, self.msg, self.kind = line, msg, kind
@@ -282,6 +363,8 @@ class Checker:
         elif c is PCon:
             for _, q in p.args or []:
                 self.pat_names(q, out)
+        elif c is PBin:
+            out.extend(e[1] for e in p.elems if e[0] == "field" and e[1])
         elif c is PTyped:
             self.pat_names(p.pat, out)
         return out
@@ -901,9 +984,104 @@ class Checker:
             self.err(n.line, f"`when` does not cover `{pos}..={hi}` of `{tshow(st)}`")
 
     # ------------------------------------------------------------ calls
+    # ---------------------------------------------------------------- curry and uncurry (Spec 11)
+    def fn_params(self, e, sc):
+        """The declared parameters of a function value that is a lambda or a plain named function, else None."""
+        if e.__class__ is Lambda:
+            return list(e.params or [])
+        if e.__class__ is Name and sc.find(e.name) is None and e.name in self.fns and len(self.fns[e.name]) == 1:
+            fd = self.fns[e.name][0]
+            if fd.tparams or fd.alias is not None:
+                return None
+            return list(fd.params or [])
+        return None
+
+    def curry_name(self, fn, sc):
+        if fn.__class__ is Name and fn.name in ("curry", "curry2", "curry3", "curry4", "curry5", "curry6") \
+                and sc.find(fn.name) is None and fn.name not in self.fns:
+            return fn.name
+        return None
+
+    def uncurry_count(self, fn, sc):
+        """For `uncurry[n]`, the constant n (or False when it is not a constant of 2 or more); None when fn is not uncurry."""
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "uncurry" \
+                and sc.find("uncurry") is None and "uncurry" not in self.fns:
+            g = fn.groups[0][0] if fn.groups and fn.groups[0] else None
+            v = const_eval(g.expr, {}) if g.__class__ is TExpr else NOCONST
+            return v if isinstance(v, int) and not isinstance(v, bool) and v >= 2 else False
+        return None
+
+    def curry_shape(self, e, sc):
+        """("curried", k): k one-argument calls remain.  ("uncurried", n): takes n arguments at once.  Else None."""
+        if e.__class__ is not Call:
+            return None
+        cn = self.curry_name(e.fn, sc)
+        if cn is not None and len(e.args or []) == 1:
+            ps = self.fn_params(e.args[0].expr, sc)
+            if ps is None:
+                return None
+            return ("curried", len(ps)) if len(ps) >= 2 else None
+        un = self.uncurry_count(e.fn, sc)
+        if un:
+            return ("uncurried", un)
+        inner = self.curry_shape(e.fn, sc)
+        if inner and inner[0] == "curried" and len(e.args or []) == 1 and inner[1] > 1:
+            return ("curried", inner[1] - 1) if inner[1] - 1 > 0 else None
+        return None
+
+    def check_curry_call(self, n, sc):
+        """Typing rules for `curry(f)`, `curryN(f)`, and `uncurry[n](g)` themselves."""
+        fn, args = n.fn, n.args or []
+        cn = self.curry_name(fn, sc)
+        if cn is not None:
+            if len(args) != 1:
+                self.err(n.line, f"`{cn}` takes one function")
+                return
+            ps = self.fn_params(args[0].expr, sc)
+            if ps is None:
+                return
+            bad = [p.name for p in ps if p.mod in ("ref", "lazy", "using") or p.variadic]
+            if bad:
+                self.err(n.line, f"`{cn}` cannot take a function with a ref, lazy, using, or variadic parameter (`{bad[0]}`)")
+            want = int(cn[5:]) if len(cn) > 5 else None
+            if len(ps) < 2:
+                self.err(n.line, f"`{cn}` needs a function of two or more parameters, but this one has {len(ps)}")
+            elif want is not None and len(ps) != want:
+                self.err(n.line, f"`{cn}` is for functions of {want} parameters, but this one has {len(ps)}")
+            return
+        un = self.uncurry_count(fn, sc)
+        if un is False:
+            self.err(n.line, "`uncurry[n]` needs a constant n of 2 or more, as in `uncurry[2](g)`")
+            return
+        if un:
+            if len(args) != 1:
+                self.err(n.line, "`uncurry[n]` takes one function")
+                return
+            ps = self.fn_params(args[0].expr, sc)
+            if ps is not None and len(ps) != 1:
+                self.err(n.line, f"`uncurry[{un}]` takes a function of one parameter that returns a function, but this one has {len(ps)} parameters")
+
+    def check_curried_application(self, n, sc):
+        shape = self.curry_shape(n.fn, sc)
+        args = n.args or []
+        if shape is None or any(getattr(a, "mod", None) for a in args) or any(self.has_ph(a.expr) for a in args):
+            return
+        if shape[0] == "curried" and len(args) != 1:
+            self.err(n.line, f"a curried function takes one argument at a time ({shape[1]} to go), but this call gives {len(args)}; "
+                             "write f(a)(b), or use the function itself for f(a, b)")
+        elif shape[0] == "uncurried" and len(args) != shape[1] and not any(a.expr.__class__ is TupleE for a in args):
+            self.err(n.line, f"`uncurry[{shape[1]}]` makes a function of {shape[1]} arguments, but this call gives {len(args)}")
+
     def e_Call(self, n, sc, extra=0):
         fn = n.fn
         args = n.args or []
+        if fn.__class__ is Call or fn.__class__ is Name:
+            if fn.__class__ is Call:
+                self.check_curried_application(n, sc)
+            else:
+                self.check_curry_call(n, sc)
+        elif fn.__class__ is GenApp:
+            self.check_curry_call(n, sc)
         # evaluate arguments
         ats = []
         indexing = fn.__class__ is not Name or sc.find(fn.name) is not None
@@ -944,8 +1122,35 @@ class Checker:
                 if fd.tparams:
                     self.check_bounds(fd, n, args, ats)
                 return None, None
-            return self.check_call(fd, n, args, ats, extra)
+            r = self.check_call(fd, n, args, ats, extra)
+            if fd.contracts and not extra and n.trailing is None:
+                self.check_const_requires(fd, n, args)
+            return r
         return None, None
+
+    def check_const_requires(self, fd, n, args):
+        """A `requires` whose arguments are all constants and that fails is a compile error (Spec 9b)."""
+        params = list(fd.params or [])
+        if any(getattr(a, "mod", None) for a in args) or len(args) > len(params) or any(p.variadic for p in params):
+            return
+        env = {}
+        for i, a in enumerate(args):
+            nm = a.label if getattr(a, "label", None) else params[i].name
+            v = const_eval(a.expr, {})
+            if v is NOCONST:
+                continue
+            env[nm] = v
+        for p in params:
+            if p.name not in env and p.default is not None:
+                v = const_eval(p.default, {})
+                if v is not NOCONST:
+                    env[p.name] = v
+        for kw, expr, ln, text in fd.contracts:
+            if kw != "requires":
+                continue
+            if const_eval(expr, env) is False:
+                used = ", ".join(f"{k} = {show_const(env[k])}" for k in sorted(names_of(expr)) if k in env)
+                self.err(n.line, f"this call to `{fd.name}` always fails its precondition `{text}` ({used})")
 
     def check_derivs(self, st):
         d = st.derivs or []

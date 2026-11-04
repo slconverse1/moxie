@@ -52,8 +52,84 @@ sums = zip_with(uncurry[2](curry(add)), List(1, 2, 3), List(10, 20, 30)) |> coll
 println("$sums")
 println("${uncurry[4](curry(add4))(1, 2, 3, 4)}")
 ''', ["List(11, 22, 33)", "10"], 0),
-("uncurry with the wrong argument count aborts", '''
+("uncurry with the wrong argument count is a compile error", '''
 fn add(a: Int, b: Int) Int: a + b
 println("${uncurry[2](curry(add))(1)}")
+''', [], 2),
+("uncurry with the wrong argument count aborts when the compiler cannot see it", '''
+fn add(a: Int, b: Int) Int: a + b
+h = uncurry[2](curry(add))
+println("${h(1)}")
 ''', [], 1),
+("curry gives one argument at a time", '''
+fn add(a: Int, b: Int) Int: a + b
+println("${curry(add)(1, 2)}")
+''', [], 2),
+("curry of a one-parameter function is a compile error", '''
+fn inc(a: Int) Int: a + 1
+f = curry(inc)
+''', [], 2),
+("curry2 checks its arity", '''
+fn add3(a: Int, b: Int, c: Int) Int: a + b + c
+f = curry2(add3)
+''', [], 2),
+("uncurry needs a constant count of two or more", '''
+fn add(a: Int, b: Int) Int: a + b
+f = uncurry[1](curry(add))
+''', [], 2),
+("a constant failing requires is a compile error", '''
+fn half(n: Int) Int:
+  requires n > 0
+  n / 2
+println(half(0))
+''', [], 2),
+("a requires that holds is fine, and a variable argument is checked when it runs", '''
+fn half(n: Int) Int:
+  requires n > 0
+  n / 2
+x = 0
+println(half(8))
+println(half(x))
+''', ["4"], 1),
+("binary patterns read fields left to right", '''
+fn describe(packet: Array[Byte]) String:
+  when packet:
+    Bin(0xCA, version: bits(4), kind: bits(4), size: u16be, body: bytes(size), rest: bytes) -> "v$version k$kind size $size body ${len(body)} rest ${len(rest)}"
+    Bin(a: u8, b: i16le) -> "short $a $b"
+    _ -> "no match"
+println(describe(b"\\xCA\\x21\\x00\\x02hiXYZ"))
+println(describe(b"\\xCA\\x21\\x00\\x09hi"))
+println(describe(b"\\x07\\xFE\\xFF"))
+println(describe(b"\\x07"))
+''', ["v2 k1 size 2 body 2 rest 3", "no match", "short 7 -2", "no match"], 0),
+("binary patterns: a byte string literal, a guard, and is", '''
+data = b"MZ\\x00\\x10\\x20\\x30"
+when data:
+  Bin(b"MZ", n: u8, _: u8, rest: bytes) if n > 100 -> println("big")
+  Bin(b"MZ", n: u8, _: u8, rest: bytes) -> println("MZ $n ${len(rest)}")
+  _ -> println("other")
+println(data is Bin(b"MZ", _: u8, _: u8, _: u16be))
+println(data is Bin(b"PK", rest: bytes))
+''', ["MZ 0 2", "true", "false"], 0),
+("binary patterns: big and little endian, signed, 32 bits", '''
+d = b"\\x01\\x02\\x03\\x04\\xFF\\xFF\\xFF\\xFE"
+when d:
+  Bin(a: u32be, b: i32le) -> println("$a $b")
+  _ -> println("no")
+''', ["16909060 -16777217"], 0),
+("a Bin pattern with bits that do not make whole bytes is a syntax error", '''
+when b"ab":
+  Bin(a: bits(3), b: u8) -> println("x")
+  _ -> println("y")
+''', [], 2),
+("bytes with no size must be last", '''
+when b"ab":
+  Bin(a: bytes, b: u8) -> println("x")
+  _ -> println("y")
+''', [], 2),
+("a Bin size must name an earlier field", '''
+when b"ab":
+  Bin(body: bytes(n), n: u8) -> println("x")
+  _ -> println("y")
+''', [], 2),
 ]

@@ -29,6 +29,8 @@ def chk(name, cond):
 rc, o = run('println("${inc(1)}")\n')
 chk("passing contracts", rc == 0 and o.strip() == "2")
 rc, o = run('println("${inc(0)}")\n')
+chk("a constant failing requires is a compile error", rc == 2 and "always fails its precondition" in o)
+rc, o = run('z = 0\nprintln("${inc(z)}")\n')
 chk("requires failure blames caller", rc != 0 and "requires failed in inc" in o and "caller bug" in o)
 rc, o = run('println("${bad(5)}")\n')
 chk("ensures failure blames supplier", rc != 0 and "ensures failed in bad" in o and "supplier bug" in o)
@@ -36,7 +38,7 @@ rc, o = run('println("${P(a: -1)}")\n')
 chk("invariant failure at construction", rc != 0 and "invariant of P failed" in o)
 rc, o = run('println("${P(a: 3)}")\n')
 chk("invariant holds", rc == 0 and "P(a: 3)" in o)
-rc, o = run('println("${inc(0)}")\n', "--release")
+rc, o = run('z = 0\nprintln("${inc(z)}")\n', "--release")
 chk("--release strips checks", rc == 0 and o.strip() == "1")
 IF = '''interface Named:
   fn name(self) String

@@ -888,7 +888,7 @@ add_n = make_adder(10)
 println("${scale(6)} ${add_n(5)}")
 ```
 
-Output: `30 15`. The prelude has `curry(f)`, which works for a function of any number of parameters (`curry2` to `curry6` are older names for it), and pipelines and closures cover the rest, so these five all give 100:
+Output: `30 15`. The prelude has `curry(f)`, which works for a function of any number of parameters (`curry2` to `curry6` are older names for it), and pipelines and closures cover the rest. The compiler checks `curry` and `uncurry` when it can see the function: `curry` of a function with fewer than two parameters, or with a `ref`, `lazy`, `using`, or variadic parameter, `curry3` of a two-parameter function, `uncurry[1]`, and a call such as `curry(add)(1, 2)` (which should be `curry(add)(1)(2)`) are compile errors. These five all give 100:
 
 ```
 curried = curry2(add)
@@ -1622,6 +1622,24 @@ println("${times_ten(Maybe.Just(7))} ${times_ten(Maybe.Nothing)} ${times_ten(hal
 ```
 
 Output: `Maybe.Just(70) Maybe.Nothing Maybe.Nothing` (using `Maybe` and `half` from chapter 10). **Mistakes:** a `when` that doesn't cover every case, a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
+
+**12a. Binary patterns**
+
+A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:
+
+```
+fn describe(packet: Array[Byte]) String:
+  when packet:
+    Bin(0xCA, version: bits(4), kind: bits(4), size: u16be, body: bytes(size), rest: bytes) -> "v$version k$kind size $size body ${len(body)} rest ${len(rest)}"
+    Bin(a: u8, b: i16le) -> "short $a $b"
+    _ -> "no match"
+println(describe(b"\xCA\x21\x00\x02hiXYZ"))
+println(describe(b"\xCA\x21\x00\x09hi"))
+println(describe(b"\x07\xFE\xFF"))
+println(describe(b"\x07"))
+```
+
+Output: `v2 k1 size 2 body 2 rest 3`, then `no match`, then `short 7 -2`, then `no match`. A packet that is too short, has a wrong literal, or has bytes left over that no element describes (when the pattern does not end in `rest: bytes`) does not abort: the arm just fails and the next one is tried. Every field is an ordinary binding, so a guard works (`Bin(...) if size > 0 -> ...`), and `packet is Bin(b"MZ", rest: bytes)` is a Boolean test. **Mistakes:** a name that clashes with a prelude function you still need in the arm (a field called `len` hides `len`), bit fields that don't make whole bytes, and a `bytes(n)` that names a field that comes later. A `Bin` arm does not count toward coverage, so keep a `_` arm.
 
 **Chapter 13: Streams and loops**
 

@@ -130,6 +130,7 @@ def _defs():
         "PRest": "name",
         "PPlace": "expr",
         "PTyped": "pat type",
+        "PBin": "elems",               # binary pattern: [("lit", [byte, ...]) | ("field", name|None, kind, arg)]
         # types
         "TName": "path groups",
         "TTuple": "items",

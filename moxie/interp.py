@@ -928,6 +928,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         elif c is PCon:
             for _, q in (p.args or []):
                 self._pnames(q, out)
+        elif c is PBin:
+            out.update(e[1] for e in p.elems if e[0] == "field" and e[1])
         elif c is PRest:
             out.add(p.name)
 
