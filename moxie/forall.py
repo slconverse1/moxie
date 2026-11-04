@@ -124,9 +124,9 @@ def shrink_list(I, t, v):
     if cls != "TName":
         return out
     n = _path(t)
-    cl = _user(I, n, "shrink")
-    if cl is not None:
-        r = yield from I.apply(cl, [v])
+    ms = I.methods_of(v, "shrink") if _user(I, n, "shrink") is not None else None
+    if ms:
+        r = yield from I.apply_method(ms[0], v, [])
         return list(getattr(r, "items", []))
     if n == "Int" or n in INT_CLASSES:
         c = type(v)

@@ -2515,10 +2515,10 @@ tuple Pct:
 
 impl Generatable for Pct:
   static fn generate(g: Gen) Self: Pct(gen_int(g, 0, 100))
-  fn shrink(self) List[Pct]:
-    when self.n:
+  fn shrink() List[Pct]:
+    when n:
       0 -> List()
-      _ -> List(Pct(0), Pct(self.n - 1))
+      _ -> List(Pct(0), Pct(n - 1))
 ```
 
 `gen_int(g, lo, hi)`, `gen_bool(g)`, and `gen_pick(g, list)` draw values, and `sample[T](g)` draws a `T` the usual way, so a sorted list is `xs = sample[List[Int]](g)` followed by sorting it. A type with an `invariant` does not need an impl for a loose rule: `forall` builds it through its constructor and draws again when the invariant rejects the value, so `invariant len(name) > 0` works as it is. A tight rule, such as sorted order, would reject nearly every draw, so give the type an impl. Once `Pct` has an impl, `forall p: Pct` and even `forall xs: List[Pct]` use it. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
