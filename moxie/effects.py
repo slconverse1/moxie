@@ -88,7 +88,7 @@ class Effects:
             self._collect_methods(ch, in_impl or n.__class__ is ImplDecl)
 
     def _imports(self):
-        """Analyse each imported package once (shared by key), so a call into it can use its function summaries."""
+        """Analyze each imported package once (shared by key), so a call into it can use its function summaries."""
         if self.search_dir is None:
             return
         from .parser import parse_program

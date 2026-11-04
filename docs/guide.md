@@ -293,7 +293,7 @@ Output: `1.234.567,89`. Without a `Locale` in scope, `n` is a compile error. `pa
 
 **2c. Overflow, division, floats, and big numbers**
 
-Integer arithmetic aborts on overflow (a constant that overflows is a compile error), and division or modulo by zero aborts. The other behaviours are explicit:
+Integer arithmetic aborts on overflow (a constant that overflows is a compile error), and division or modulo by zero aborts. The other behaviors are explicit:
 
 ```
 a: Int8 = 100
@@ -1763,7 +1763,7 @@ h = src |> to_stream() |> map(tag_map) |> filter(tag_keep) |> count()
 v = src |> to_stream() |> map(tag_map) |> sort() |> filter(tag_keep) |> count()
 ```
 
-The first prints `map 3`, `keep 6`, `map 1`, `keep 2`, `map 2`, `keep 4`, and `h` is `2`. The second prints `map 3`, `map 1`, `map 2`, then `keep 2`, `keep 4`, `keep 6`, and `v` is `2`. **Chunks and windows.** `chunks(n)` yields consecutive groups (each a `List[T][n]`, the last possibly shorter), and `windows(n)` yields every run of `n` neighbours (each an `Array[T][n]`):
+The first prints `map 3`, `keep 6`, `map 1`, `keep 2`, `map 2`, `keep 4`, and `h` is `2`. The second prints `map 3`, `map 1`, `map 2`, then `keep 2`, `keep 4`, `keep 6`, and `v` is `2`. **Chunks and windows.** `chunks(n)` yields consecutive groups (each a `List[T][n]`, the last possibly shorter), and `windows(n)` yields every run of `n` neighbors (each an `Array[T][n]`):
 
 ```
 nums5 = List(1, 2, 3, 4, 5)

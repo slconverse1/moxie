@@ -661,7 +661,7 @@ class Lexer:
                 self.err(f"unknown escape \\{nx}", line)
             if c == "$" and interp:
                 if i + 1 < n and body[i + 1] == "{":
-                    # find matching brace honouring nested strings
+                    # find matching brace honoring nested strings
                     j = self._match_interp(body, i + 2, line)
                     inner = body[i + 2:j]
                     expr, spec = self._split_spec(inner)

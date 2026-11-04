@@ -432,7 +432,7 @@ names defined inside impl blocks). Like the by-name counting inside one file, th
 
 ## Effects and needs across packages
 
-`Effects` and `Needs` take a `search_dir` and analyse each imported package once (`_shared`, registered before
+`Effects` and `Needs` take a `search_dir` and analyze each imported package once (`_shared`, registered before
 construction so an import cycle cannot recurse), as `Tally` does. `ensure()` computes a package's summaries (and,
 for `Needs`, its top-level needs) after the packages it imports. `pk(f)` resolves `lib.f` and `import lib (f)`
 names, `pk_methods(f)` adds the `impl` methods of that name for UFCS `x.f()`, and `add_pkg` copies the callee's
