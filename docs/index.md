@@ -58,7 +58,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **Go:** interfaces, goroutines, channels, and `select`, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and (designed, not yet built) doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), Domain-Specific Languages, and labeled `break` and `continue`.
-- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, operator precedence rules, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
+- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts (all designed, not yet built).
 - **Clojure:** lock-free state through Atoms and `swap`, and `cond`.
