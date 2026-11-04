@@ -129,7 +129,7 @@ value), `Array[Byte]` (a pointer, with `n: T = len(name)` as the length that the
 call fills in, and `ref` for a writable buffer), `CString` (made by `cstr(text)`),
 and `ref` out-parameters of scalars and tuples. A library is found by its name,
 in the program's directory (`libNAME.so`), or in `MOXIE_NATIVE_PATH`. Not yet
-built: handles through out-parameters, a pool tally for handles, callbacks, static linking, and the lockfile. `[native]` (`libs`, `paths`) is read for the entry package and for an imported package folder (`manifest.native_table`, `package_native`); `decls.ev_ForeignDecl` refuses a package whose manifest has no `[native]` or a library not in `libs`, and `paths` go first in `ffi.load_library`. Tests: `tests/run_ffi.py` and `tests/run_native.py`.
+built: handles through out-parameters, a pool tally for handles, callbacks, static linking, and the lockfile. `[native]` (`libs`, `paths`) is read for the entry package and for an imported package folder (`manifest.native_table`, `package_native`); `Interp.native_diags` reports a package whose manifest has no `[native]`, or a library not in `libs`, at check time (`moxie check` and before a run; `decls.ev_ForeignDecl` repeats the test as a backstop), and `paths` go first in `ffi.load_library`. Tests: `tests/run_ffi.py` and `tests/run_native.py`.
 
 Handles: `handle Name closes fn` in a `foreign` block makes `Name` an opaque
 pointer type (`HandleV` in `ffi.py`). The checker treats a function that returns

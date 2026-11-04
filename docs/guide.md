@@ -2380,7 +2380,7 @@ $ moxie bindgen sensor.h --package sensorx --lib sensor --wrap
 keeps = ["cb"]
 ```
 
-**Mistake:** a declaration that does not match the real C signature (an `Int32` where C takes a `Double`) is not detected, because the compiler cannot see C. Wrap every foreign call and test the wrapper. A package may contain `foreign` blocks only when its manifest has a `[native]` section, which lists the libraries it may name and where to look for them: `[native]`, `libs = ["z"]`, `paths = ["native"]`. A missing section, or a library the section does not list, stops the program when the package loads, with a message that says what to add.
+**Mistake:** a declaration that does not match the real C signature (an `Int32` where C takes a `Double`) is not detected, because the compiler cannot see C. Wrap every foreign call and test the wrapper. A package may contain `foreign` blocks only when its manifest has a `[native]` section, which lists the libraries it may name and where to look for them: `[native]`, `libs = ["z"]`, `paths = ["native"]`. A missing section, or a library the section does not list, is a compile-time error that says what to add.
 
 **Chapter 21: A DSL without macros**
 

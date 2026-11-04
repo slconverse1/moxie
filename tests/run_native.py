@@ -26,11 +26,12 @@ def chk(name, d, rc_want, *wants, cmd="run", entry="main.mxi"):
 FOREIGN = 'foreign "m":\n  pure fn cos(x: Double) Double\n'
 MAIN = FOREIGN + 'println(cos(0.0))\n'
 
+chk("the error is found by check, before anything runs", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n'}), 2, "no [native] section", cmd="check")
 chk("a script with no manifest may declare foreign functions", project({"main.mxi": MAIN}), 0, "1.0")
 chk("an entry manifest with [native] may", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\nfiles = ["main.mxi"]\n[native]\nlibs = ["m"]\n'}), 0, "1.0")
-chk("an entry manifest without [native] may not", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\nfiles = ["main.mxi"]\n'}), 1,
+chk("an entry manifest without [native] may not", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\nfiles = ["main.mxi"]\n'}), 2,
     "the entry package declares foreign functions", "no [native] section", 'libs = ["m"]')
-chk("a library not in libs is refused", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n[native]\nlibs = ["z"]\n'}), 1,
+chk("a library not in libs is refused", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n[native]\nlibs = ["z"]\n'}), 2,
     "names the native library 'm'", "not in its [native] libs (z)")
 chk("[native] without libs lists nothing to check", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n[native]\npaths = ["lib"]\n'}), 0, "1.0")
 chk("an unknown [native] key is an error", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n[native]\nlibraries = ["m"]\n'}), 2, "unknown key 'libraries' in [native]")
@@ -41,10 +42,10 @@ USE = 'import nat\nprintln(nat.root(0.0))\n'
 chk("an imported package with [native] may declare foreign functions",
     project({"main.mxi": USE, "nat/nat.mxi": FOREIGN + PKG, "nat/Moxie.toml": 'name = "nat"\nfiles = ["nat.mxi"]\n[native]\nlibs = ["m"]\n'}), 0, "1.0")
 chk("an imported package whose manifest has no [native] may not",
-    project({"main.mxi": USE, "nat/nat.mxi": FOREIGN + PKG, "nat/Moxie.toml": 'name = "nat"\nfiles = ["nat.mxi"]\n'}), 1,
+    project({"main.mxi": USE, "nat/nat.mxi": FOREIGN + PKG, "nat/Moxie.toml": 'name = "nat"\nfiles = ["nat.mxi"]\n'}), 2,
     "package 'nat' declares foreign functions", "no [native] section")
 chk("a package may only name the libraries it lists",
-    project({"main.mxi": USE, "nat/nat.mxi": FOREIGN + PKG, "nat/Moxie.toml": 'name = "nat"\n[native]\nlibs = ["z"]\n'}), 1,
+    project({"main.mxi": USE, "nat/nat.mxi": FOREIGN + PKG, "nat/Moxie.toml": 'name = "nat"\n[native]\nlibs = ["z"]\n'}), 2,
     "package 'nat' names the native library 'm'")
 chk("a package file with no manifest is as lenient as a script", project({"main.mxi": USE, "nat.mxi": FOREIGN + PKG}), 0, "1.0")
 

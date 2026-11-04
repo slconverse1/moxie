@@ -155,6 +155,7 @@ def main(argv=None):
         return code
     if cmd == "test":
         I = make_interp(path, [], perms, ceilings)
+        I.manifest = manifest
         p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)
         if "/// >" in src and len(argv) <= 2:
             from .doc import collect, run_doctests
@@ -165,6 +166,7 @@ def main(argv=None):
         return code
     if cmd == "check":
         I = make_interp(path, [], perms, ceilings)
+        I.manifest = manifest
         return I.check_source(src, os.path.basename(path))
     return 2
 

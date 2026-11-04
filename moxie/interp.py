@@ -239,6 +239,52 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
         if self.pkg_ceilings:
             diags.extend(self.package_diags(prog, Diag))
+        diags.extend(self.native_diags(prog, Diag))
+        return diags
+
+    def native_diags(self, prog, Diag):
+        """[native] (Spec 19a): a package may declare foreign functions only when its manifest has a [native] section,
+        and may name only the libraries in its `libs`.  Reported before anything runs."""
+        from .manifest import package_native, ManifestError
+        diags, seen, queue = [], set(), [(prog, 0, None)]
+        while queue:
+            cur, via, key = queue.pop(0)
+            if key is None:
+                man = self.manifest or {}
+                has, nat, where = ("path" in man), man.get("native"), "the entry package"
+            else:
+                path = self.find_package(key.split("."))
+                has, nat = False, None
+                if path is not None and os.path.basename(path) == key.split(".")[-1] + ".mxi" \
+                        and path != os.path.join(self.search_dir or ".", *key.split(".")) + ".mxi":
+                    try:
+                        has, nat = package_native(os.path.dirname(path))
+                    except ManifestError as e:
+                        diags.append(Diag(via, str(e)))
+                where = f"package '{key}'"
+            for st in cur.stmts:
+                if st.__class__ is ForeignDecl:
+                    at = (via or st.line)
+                    here = f" (line {st.line})" if via else ""
+                    if has and nat is None:
+                        diags.append(Diag(at, f"{where} declares foreign functions{here}, but its Moxie.toml has no [native] section; "
+                                              f"add one with libs = [\"{st.lib}\"]"))
+                    elif nat is not None and nat["libs"] is not None and st.lib not in nat["libs"]:
+                        diags.append(Diag(at, f"{where} names the native library '{st.lib}'{here}, which is not in its [native] libs "
+                                              f"({', '.join(nat['libs']) or 'none'})"))
+                elif st.__class__ is ImportDecl:
+                    k = ".".join(st.pkg)
+                    if k in seen:
+                        continue
+                    seen.add(k)
+                    path = self.find_package(st.pkg)
+                    if path is None:
+                        continue
+                    try:
+                        pp = parse_program(open(path, encoding="utf-8").read(), path)
+                    except (OSError, MoxieSyntaxError):
+                        continue
+                    queue.append((pp, via or st.line, k))
         return diags
 
     @staticmethod
