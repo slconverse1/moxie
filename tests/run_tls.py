@@ -26,7 +26,7 @@ def chk(name, got, rc, *words):
         fails.append(name)
 
 
-SERVER = '''fn server(tx: ChanW[Int]):
+SERVER = '''fn server(tx: ChanW[Int]) Unit:
   l = listen_tls(0, "cert.pem", "key.pem")?
   write(tx, port_of(l))
   c = accept(l)?

@@ -83,7 +83,7 @@ EVH = '''foreign "ev":
 '''
 EVCASES = [
  ("a C thread's callbacks arrive as channel messages", EVH + 'rx, tx = Chan[(Int32, Double)][16]()\nev_start(move tx, 3i32)\nfor i in 1..=3:\n  println(read(rx)?)\nev_finish()\n', 0, "(0, 0.0)\n(1, 1.5)\n(2, 3.0)"),
- ("a waiting fiber is not a deadlock while events can come", EVH + 'fn consumer(rx: ChanR[(Int32, Double)], out: ChanW[Int]):\n  for i in 1..=4:\n    r = read(rx)?\n    write(out, i)\nrx, tx = Chan[(Int32, Double)][2]()\ndone_r, done_w = Chan[Int][1]()\nrun consumer(rx, done_w)\nev_start(move tx, 4i32)\nfor i in 1..=4:\n  println(read(done_r)?)\nev_finish()\n', 0, "1\n2\n3\n4"),
+ ("a waiting fiber is not a deadlock while events can come", EVH + 'fn consumer(rx: ChanR[(Int32, Double)], out: ChanW[Int]) Unit:\n  for i in 1..=4:\n    r = read(rx)?\n    write(out, i)\nrx, tx = Chan[(Int32, Double)][2]()\ndone_r, done_w = Chan[Int][1]()\nrun consumer(rx, done_w)\nev_start(move tx, 4i32)\nfor i in 1..=4:\n  println(read(done_r)?)\nev_finish()\n', 0, "1\n2\n3\n4"),
  ("the library keeps the channel end, so move is required", EVH + 'rx, tx = Chan[(Int32, Double)][4]()\nev_start(tx, 1i32)\n', 2, "kept by the library"),
  ("a full channel drops events and says so", EVH + 'rx, tx = Chan[(Int32, Double)][1]()\nev_start(move tx, 50i32)\nev_finish()\nprintln(read(rx)?)\n', 0, "were dropped because the channel was full"),
 ]

@@ -1311,7 +1311,7 @@ Moxie programs read, write, and call C, and every one of those goes through a va
 **Standard streams are values.** `stdin`, `stdout`, and `stderr` can be passed to functions, so code that prints can be tested with something else, and `with_stdin` feeds a test its input:
 
 ```
-fn greet(out: Io, name: String):
+fn greet(out: Io, name: String) Unit:
   println(out, "hello, $name")
 greet(stdout, "mixer")
 name = with_stdin("Ada\n", fn(): read_line().get_or("nobody"))

@@ -2115,7 +2115,7 @@ println("editor $editor")
 `stdin`, `stdout`, and `stderr` are values the runtime owns. Any function can take one as a parameter, which is how output code gets tested:
 
 ```
-fn greet(out: Io, name: String):
+fn greet(out: Io, name: String) Unit:
   println(out, "hello, $name")
 greet(stdout, "mixer")
 greet(stderr, "mixer")
@@ -2176,7 +2176,7 @@ when read_file("missing.txt"):
 Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` gives a `Listener` (port 0 picks a free one, and `port_of` says which), `accept` waits for a client, and `connect(host, port)` is the client side. A server and a client can run as two fibers of one program, because `accept` and `read_line` park only their own fiber:
 
 ```
-fn server(tx: ChanW[Int]):
+fn server(tx: ChanW[Int]) Unit:
   l = listen(0)?
   write(tx, port_of(l))
   c = accept(l)?

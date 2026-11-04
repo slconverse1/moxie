@@ -2092,7 +2092,7 @@ Output: `hello`. Everything is linked statically from source and unreachable cod
 A moxie program has no garbage collector, so the compiler works out ahead of time how much of each counted resource it can have: channels, timers, atoms, files and sockets, listeners, and the fibers themselves. A fiber function says how many copies may run at once with `fiber[n]` (or the manifest gives a default with `[fibers] limit`), and `run` returns `Err(NO_SLOT)` when all the slots are alive:
 
 ```
-fiber[2] fn w(tx: ChanW[Int]):
+fiber[2] fn w(tx: ChanW[Int]) Unit:
   write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
@@ -2136,7 +2136,7 @@ println("editor $editor")
 `stdin`, `stdout`, and `stderr` are values the runtime owns. Any function can take one as a parameter, which is how output code gets tested:
 
 ```
-fn greet(out: Io, name: String):
+fn greet(out: Io, name: String) Unit:
   println(out, "hello, $name")
 greet(stdout, "mixer")
 greet(stderr, "mixer")
@@ -2197,7 +2197,7 @@ when read_file("missing.txt"):
 Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` gives a `Listener` (port 0 picks a free one, and `port_of` says which), `accept` waits for a client, and `connect(host, port)` is the client side. A server and a client can run as two fibers of one program, because `accept` and `read_line` park only their own fiber:
 
 ```
-fn server(tx: ChanW[Int]):
+fn server(tx: ChanW[Int]) Unit:
   l = listen(0)?
   write(tx, port_of(l))
   c = accept(l)?

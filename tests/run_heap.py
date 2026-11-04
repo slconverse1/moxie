@@ -17,7 +17,7 @@ GARBAGE = '''fn main() Unit:
   println(n)
 main()
 '''
-FIBER = '''fn hold(done: ChanW[Int]):
+FIBER = '''fn hold(done: ChanW[Int]) Unit:
   xs = List[Int]()
   for i in 0..40000:
     gimme.1.xs = xs + i
