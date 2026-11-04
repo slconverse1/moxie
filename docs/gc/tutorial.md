@@ -299,7 +299,7 @@ fn report(input: Io) Result[Unit, Error]:
       Err(e) -> eprintln("skipped '$line': ${e.message}")
   Ok(())
 
-with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", fn(): report(stdin))?
+with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", fn (): report(stdin))?
 write_file("roster.csv", "Di,58\nEd,77\n")?
 f = open_file("roster.csv", ReadOnly)?
 report(f)?

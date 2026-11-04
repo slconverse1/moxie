@@ -73,6 +73,8 @@ def _space_line(text, toks):
             return text                     # columns do not line up with the text; leave the line alone
         v = t.val
         if i > 0 and toks[i - 1].kind == "NAME" and toks[i - 1].val == "fn":
+            if v == "(":
+                want(gap_before(p), " ")    # an anonymous function is always written `fn (`
             continue                        # fn +(other: Money) names an operator; leave it as written
         if v == ",":
             want(gap_before(p), "")

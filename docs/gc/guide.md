@@ -661,6 +661,8 @@ bump(ref n)
 println("${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}")
 ```
 
+An anonymous function is a function with no name, written `fn (n): n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. It is always written `fn (` with a space.
+
 Output: `5 15 2 0`. Every function states its return type. A call may be positional, named, or positional followed by named (named arguments in any order, each parameter supplied once), trailing parameters can have defaults, and a list before the colon renames parameters inside the body:
 
 ```
@@ -2127,7 +2129,7 @@ Output: `hello, mixer` on standard output, and the same line on standard error. 
 fn ask(question: String) String:
   print("$question ")
   read_line().get_or("nobody")
-answer = with_stdin("Ada\n", fn(): ask("name?"))
+answer = with_stdin("Ada\n", fn (): ask("name?"))
 println("hi $answer")
 ```
 
@@ -2135,7 +2137,7 @@ Output: `name? hi Ada`. A stream of lines goes through the usual pipeline functi
 
 ```
 fn read_total() Int:
-  stdin_lines() |> map(fn(s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2)
+  stdin_lines() |> map(fn (s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2)
 total = with_stdin("3\n4\n5\n", read_total)
 println(total)
 ```
@@ -2143,7 +2145,7 @@ println(total)
 Output: `12`. End of input is not a crash. `read_line()` returns `Err` with the code `CLOSED`:
 
 ```
-when with_stdin("", fn(): read_line()):
+when with_stdin("", fn (): read_line()):
   Ok(line) -> println("got $line")
   Err(e) -> println("end of input: ${e.message}")
 ```
@@ -2294,7 +2296,7 @@ foreign "c":
     cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
-qsort(ref xs, fn(a, b): a - b)
+qsort(ref xs, fn (a, b): a - b)
 println(xs)
 ```
 
@@ -2328,7 +2330,7 @@ foreign "sensor":
   impure fn on_query(cb: Handler[(Int32) -> Int32])
 rx, tx = Chan[(Int32, Double)][16]()
 on_reading(move tx)
-on_query(fn(id): id * 2i32)
+on_query(fn (id): id * 2i32)
 for i in 1..=3:
   println(read(rx)?)
 ```
