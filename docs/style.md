@@ -48,7 +48,7 @@ A lambda is a function with no name, written `(params): body`. It is meant to be
   ```
 
   Inside the argument list, a short lambda reads fine: `filter((s): s >= 60)`.
-- **Spread a pair instead of destructuring it.** `zip(xs, ys) |> map((x, y): x * y)` needs one pair of parentheses. A tuple pattern, `((x, y)): ...`, is legal, but it stacks parentheses, and a nested one such as `(((x, y), z)): ...` is hard to read. Past one level of nesting, write a named function and take the tuple apart in its body.
+- **Spread a pair instead of destructuring it.** `zip(xs, ys) |> map((x, y): x * y)` needs one pair of parentheses. A tuple pattern, `((x, y)): ...`, is legal, but it stacks parentheses, and a nested one such as `(((x, y), z)): ...` is hard to read. Past one level of nesting, bind a named lambda with one parameter and take the tuple apart in its body: `sum3: (((Int, Int), Int)) -> Int = (p):`, then `((a, b), c) = p` on the next line. The name documents it, and no parentheses stack.
 - **Bind a lambda with a typed name:** `add: (Int, Int) -> Int = (a, b): a + b`. The type on the name gives the lambda its types, so the lambda writes none. If it needs to call itself or be generic, it is a function, so use `fn`.
 - **Parenthesize a lambda at the top level of a condition.** A header's colon belongs to the header, so write `if any(xs, (x): x > 2):`, with the lambda inside the call.
 
