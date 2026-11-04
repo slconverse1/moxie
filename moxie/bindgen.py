@@ -663,7 +663,7 @@ def make_wrappers(g, decls, lib, side, comments):
                         call2.append(p[0])
                 head = f"export {info['eff']} fn {w}({', '.join(sig2)})"
                 callx = f"{name}({', '.join(call2)})"
-            r = (" " + info["rtxt"]) if info["rtxt"] else ""
+            r = " " + (info["rtxt"] or "Unit")
             lines.append(f"{head}{r}: {callx}")
         lines.append("")
     return "\n".join(lines), report

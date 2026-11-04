@@ -180,6 +180,7 @@ class Checker:
         self.handle_types = {}     # handle type name -> closing fn name
         self.handle_makers = set() # foreign fns that return a handle
         self.foreign_ids = set()   # ids of foreign FnDecls
+        self._later = False
         self.loop_depth = 0
         self.exit_ctx = False
         self.fn_ret = None
@@ -1319,6 +1320,7 @@ class Checker:
 
     # ------------------------------------------------------------ declarations
     def e_FnDecl(self, n, sc):
+        later, self._later = self._later, False         # a later clause of a function takes the first clause's return type
         inner = Sc(sc)
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved)
         self.fn_tparams = tuple(t.name for t in (n.tparams or []))
@@ -1335,6 +1337,8 @@ class Checker:
         for nm in n.locals or []:
             inner.vars[nm] = Var(None, False, 0)
         self.fn_ret = self.ty_of_type(n.ret) if n.ret is not None else None
+        if n.ret is None and not later and n.body is not None and n.alias is None and id(n) not in self.foreign_ids:
+            self.err(n.line, f"function '{n.name}' has no return type: write it after the parameters, and write Unit if it returns nothing")
         if n.alias is not None:
             self.ev(n.alias, inner)
         elif n.body is not None:
@@ -1426,7 +1430,8 @@ class Checker:
         return r
 
     def e_FnGroup(self, n, sc):
-        for c in n.clauses or []:
+        for k, c in enumerate(n.clauses or []):
+            self._later = k > 0
             self.e_FnDecl(c, sc)
         self.group_cover(n)
         return None, None

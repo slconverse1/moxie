@@ -27,7 +27,7 @@ for name, src, stdin, cmd, rc_want, out_w, err_w in CASES:
     print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} out={o!r} err={e[:120]!r}"))
     if not good: fails.append(name)
 import time
-src = 'fn reader(tx: ChanW[String]) Unit:\n  line = read_line()?\n  write(tx, "got ${line}")\nfn ticker(tx: ChanW[Int]):\n  for i in 1..=3:\n    write(tx, i)\nrx, tx = Chan[String][1]()\nrx2, tx2 = Chan[Int][8]()\nrun reader(tx)\nrun ticker(tx2)\nprintln(read(rx2)?)\nprintln(read(rx2)?)\nprintln(read(rx2)?)\nprintln(read(rx)?)\n'
+src = 'fn reader(tx: ChanW[String]) Unit:\n  line = read_line()?\n  write(tx, "got ${line}")\nfn ticker(tx: ChanW[Int]) Unit:\n  for i in 1..=3:\n    write(tx, i)\nrx, tx = Chan[String][1]()\nrx2, tx2 = Chan[Int][8]()\nrun reader(tx)\nrun ticker(tx2)\nprintln(read(rx2)?)\nprintln(read(rx2)?)\nprintln(read(rx2)?)\nprintln(read(rx)?)\n'
 with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
     f.write(src)
 pr = subprocess.Popen([sys.executable, "-m", "moxie", "run", f.name], cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE)

@@ -193,7 +193,7 @@ b4 = open(os.path.join(d, "bindings.mxi")).read()
 w4 = open(os.path.join(d, "wrappers.mxi")).read()
 chk("keeps turns a callback into Events", "fn mini_subscribe(f: Events[(Int32, Double, UserData)], user: UserData)" in b4 and "fn mini_subscribe_bad(f: Handler[(Int32) -> Int32]) Int32" in b4, b4[-700:])
 chk("a kept callback that returns a value becomes a Handler", "fn subscribe_bad(f: Handler[(Int32) -> Int32]) Int32: mini_subscribe_bad(f)" in w4, w4[-700:])
-chk("the wrapper takes a channel end and moves it", "fn subscribe(f: ChanW[(Int32, Double)]): mini_subscribe(move f)" in w4, w4[-600:])
+chk("the wrapper takes a channel end and moves it", "fn subscribe(f: ChanW[(Int32, Double)]) Unit: mini_subscribe(move f)" in w4, w4[-600:])
 # --check drift
 bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")

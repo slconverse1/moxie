@@ -112,7 +112,7 @@ d = project("import lib\nprintln(1)\n", files={"lib.mxi": "rx, tx = Chan[Int][1]
 chk("a package's top level is counted once it is imported", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
 d = project("import lib\nfor i in 0..3:\n  t = lib.mk()\nprintln(1)\n", files={"lib.mxi": LIB})
 chk("a kept resource from a package in a loop is an error naming the package", moxie(d, "pools", "main.mxi"), 1, "lib.mk' creates a Chan that outlives the call")
-d = project("fiber[3] fn w(tx: ChanW[Int]) Unit:\n  write(tx, 2)\nfn start(tx: ChanW[Int]):\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n")
+d = project("fiber[3] fn w(tx: ChanW[Int]) Unit:\n  write(tx, 2)\nfn start(tx: ChanW[Int]) Unit:\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n")
 chk("fibers started by a helper function are counted", moxie(d, "pools", "main.mxi"), 0, "largest possible fiber count: 4")
 BOXLIB = '''export tuple Box:
   n: Int
