@@ -312,6 +312,8 @@ limit = 8
 memory = "64KiB"
 ```
 
+The manifest is also where a program's permissions live (superpower 20): a `[permissions]` table lists what it may read, write, connect to, and load.
+
 The values here are only examples. The `limit` is a default for each fiber function, not a total for the program. A fiber function that declares its own limit (`fiber[3] fn`) uses that number instead, which means at most three copies of it alive at a time. With a `limit` of 8, one unannotated fiber function and one `fiber[3]` function, a program can have at most 1 + 8 + 3 = 12 fibers (the entry fiber plus the sum of the limits). The limit says how many copies of a function can be alive, not how many fibers that function starts. A size like `"64KiB"` is 1024-based while `"64KB"` is 1000-based. The Manifest also names the database schema that SQL is checked against, but that's a story for another day.
 
 ## 3. Everything is an expression
@@ -1268,7 +1270,43 @@ The fine print:
 - **There's no structured concurrency and no cancellation, for now.** Nothing stops a fiber from outliving the block that started it, and nothing can tell one to quit.
 - **Everything shares one thread.** A long computation in one fiber holds up the others until it parks.
 
-## 20. FCFX
+## 20. The outside world
+
+Moxie programs read, write, and call C, and every one of those goes through a value you can see.
+
+**Standard streams are values.** `stdin`, `stdout`, and `stderr` can be passed to functions, so code that prints can be tested with something else, and `with_stdin` feeds a test its input:
+
+```
+fn greet(out: Io, name: String):
+  println(out, "hello, $name")
+greet(stdout, "mixer")
+name = with_stdin("Ada\n", fn(): read_line().get_or("nobody"))
+println("hi $name")
+```
+
+**Files and sockets are the same kind of value.** `open_file`, `read_file`, `write_file`, `connect`, `listen`, and `accept` give back an `Io` (or a `Result` holding one), and `read_line`, `lines`, and `println(io, x)` work on any of them. A read waits in its own fiber only, so a server and its clients can be fibers of one program. A file or a socket is a resource, so it is closed once, and it counts in the pool tally like a database connection does; `moxie --pools run` reports how many you really used.
+
+**Permissions are granted when you run.** A program can reach `fs.read`, `fs.write`, `net.connect`, `net.listen`, `ffi`, `stdin`, and `env` only if it was given them, in the manifest or on the command line (`moxie --allow-read=data run report.mxi`). A call outside the grant returns `Err` with the code `DENIED`, and the compiler follows the permissions through function calls the way it follows effects, so a missing grant is a compile error, not a surprise at run time:
+
+```
+[permissions]
+fs.read = ["data/"]
+net.connect = ["example.com:443"]
+```
+
+**C libraries are a declaration away.** A `foreign` block gives the signatures, each marked `pure`, `parks`, or `impure`, and the call looks like any other. Arrays of numbers, out-parameters, text, callbacks (even `qsort`'s comparator), handles that must be closed, and callbacks that C keeps and calls from its own thread are all covered, and `moxie bindgen` writes the declarations from a C header:
+
+```
+foreign "c":
+  impure fn qsort(ref base: Array[Int32], n: UInt = len(base), size: UInt = size_of(base), cmp: (Ptr[Int32], Ptr[Int32]) -> Int32)
+xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
+qsort(ref xs, fn(a, b): a - b)
+println(xs)
+```
+
+The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees, so the convention is a small moxie wrapper around each call. The Guide's sections 20a to 20d go through all of it.
+
+## 21. FCFX
 
 This is the one the whole language is built around.
 
@@ -1321,6 +1359,8 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 - **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..=100]` values can leave the range, so you say when to narrow it again.
 - **Transactions don't nest.** It keeps the commit-or-roll-back rule simple to state.
 - **Delegates apply only to declared tuple fields.** The field's layout has to be known.
+- **Permissions belong to the whole program.** A dependency doesn't get narrower rights than the program that uses it; per-package grants are parked until we know what they should look like.
+- **Foreign code is trusted.** The compiler cannot look inside a C library, so a `foreign` declaration is taken at its word, and a library that is granted runs with all the rights of the process.
 - **`ref` and `lazy` can't be combined.** One copies in and out, and the other re-runs the argument on every read, so they pull in opposite directions.
 
 And so it goes.

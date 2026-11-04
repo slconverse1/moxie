@@ -272,6 +272,43 @@ ok    letter grades
 
 Each test runs in its own fiber, and a failed `assert_eq` stops that test with a message that shows both values.
 
+## Step 10. Reading and saving
+
+So far the roster was written into the program. A real gradebook reads it, and the same function can read it from anywhere, because the keyboard, a file, and a network connection are all an `Io`:
+
+```moxie
+fn parse_line(line: String) Result[Student, Error]:
+  parts = split(line, ",")
+  name = get(parts, 0)?
+  text = get(parts, 1)?
+  make_student(name, text)
+
+fn report(input: Io) Result[Unit, Error]:
+  for line in lines(input):
+    when parse_line(line):
+      Ok(s) -> println("${s.name}: ${s.score} ${letter(s.score)}")
+      Err(e) -> eprintln("skipped '$line': ${e.message}")
+  Ok(())
+
+with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", fn(): report(stdin))?
+write_file("roster.csv", "Di,58\nEd,77\n")?
+f = open_file("roster.csv", ReadOnly)?
+report(f)?
+close(f)
+```
+
+```output
+Ada: 95 A
+Bob: 83 B
+Cy: 71 C
+Di: 58 F
+Ed: 77 C
+```
+
+(This step prints only its own lines; the skipped line goes to standard error.) `report` never asks where its lines come from. In a real run you would call `report(stdin)` and start the program with `python3 -m moxie run gradebook.mxi < grades.csv`; here `with_stdin` plays the part of the keyboard so the example is complete. `lines(input)` is a stream of lines that ends at the end of the input, `open_file` returns a `Result` because a file may be missing, and `close(f)` gives the file back. Failures are ordinary values, so a missing `roster.csv` would be an `Err` with the code `NOT_FOUND`, not a crash.
+
+If you want to be sure a program only touches what you expect, run it with `--allow-read=data`: any other read comes back as `Err` with the code `DENIED`.
+
 ## Where to go next
 
 You have now used most of the language. Here is where each idea goes deeper:
@@ -283,6 +320,7 @@ You have now used most of the language. Here is where each idea goes deeper:
 - **Interfaces** (`interface`, `impl`) are moxie's version of typeclasses and traits, and the prelude gives you `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, and `Numeric` to build on.
 - **Daemons, timers, `select`, and futures** are the rest of the concurrency story (chapters 16 and 17).
 - **SQL** is checked against your schema when you write `sql(conn):` (chapter 22).
+- **Input, files, sockets, permissions, and C libraries** are sections 20a to 20d of the Guide.
 - **Memory** in moxie/gc has its own chapter in the moxie/gc Guide (chapter 26), covering the heap, the collector's short pauses, and the `[memory]` settings.
 
 When you want a challenge, try these on your gradebook:
