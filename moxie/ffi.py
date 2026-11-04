@@ -95,6 +95,37 @@ def is_byte_array(t):
     return bool(g) and tname(g[0]) in ("Byte", "UInt8")
 
 
+def array_elem(t):
+    """The scalar element type name of an Array[T] / List[T] of numbers (or Bool), else None."""
+    if tname(t) not in ("Array", "List"):
+        return None
+    g = t.groups[0] if t.groups else None
+    n = tname(g[0]) if g else None
+    return n if n in SCALARS else None
+
+
+def is_ptr(t):
+    return tname(t) == "Ptr"
+
+
+def ptr_elem(t):
+    g = t.groups[0] if t.groups else None
+    return g[0] if g else None
+
+
+def array_to_c(I, elem, v):
+    items = v.items if hasattr(v, "items") else v
+    ct = SCALARS[elem]
+    conv = (lambda x: float(x)) if elem in ("Float", "Double") else (bool if elem == "Bool" else int)
+    return (ct * max(len(items), 1))(*[conv(x) for x in items])
+
+
+def array_from_c(I, elem, buf, n, old):
+    t = TName([elem], None)
+    data = [from_c(I, t, buf[i]) for i in range(n)]
+    return old.__class__(data, old.cap) if hasattr(old, "cap") else data
+
+
 def load_library(name, I=None):
     cands = []
     dirs = [d for d in os.environ.get("MOXIE_NATIVE_PATH", "").split(os.pathsep) if d]
@@ -155,7 +186,18 @@ def cb_plan(I, t):
             plan.append(("bytes", SCALARS[tname(ps[i + 1])]))
             i += 2
             continue
-        if tname(pt) == "UserData":
+        if array_elem(pt) is not None and not is_byte_array(pt):
+            if i + 1 >= len(ps) or tname(ps[i + 1]) not in SCALARS or tname(ps[i + 1]) in ("Float", "Double", "Bool"):
+                raise Abort("in a callback type, an Array[T] must be followed by its integer length type")
+            plan.append(("array", array_elem(pt), SCALARS[tname(ps[i + 1])]))
+            i += 2
+            continue
+        if is_ptr(pt):
+            et = ptr_elem(pt)
+            if et is None or ctype_of(I, et) is None:
+                raise Abort("Ptr[T] in a callback type needs a T that can cross the foreign boundary")
+            plan.append(("ptr", et))
+        elif tname(pt) == "UserData":
             plan.append(("ud",))
         else:
             if ctype_of(I, pt) is None:
@@ -171,8 +213,10 @@ def cb_ctype(I, t):
     for e in cb_plan(I, t):
         if e[0] == "val":
             args.append(ctype_of(I, e[1]))
-        elif e[0] == "bytes":
-            args += [ctypes.c_void_p, e[1]]
+        elif e[0] in ("bytes", "array"):
+            args += [ctypes.c_void_p, e[-1]]
+        elif e[0] == "ptr":
+            args.append(ctypes.c_void_p)
         else:
             args.append(ctypes.c_void_p)
     rn = tname(t.ret)
@@ -208,6 +252,20 @@ def convert_args(I, plan, cargs):
             cls = INT_CLASSES.get("UInt8")
             vals.append(ArrayV([cls(x) if cls else x for x in raw]))
             k += 2
+        elif e[0] == "array":
+            ptr, n = cargs[k], int(cargs[k + 1])
+            ct = SCALARS[e[1]]
+            arr = ctypes.cast(ptr, ctypes.POINTER(ct)) if ptr and n else None
+            t = TName([e[1]], None)
+            vals.append(ArrayV([from_c(I, t, arr[i]) for i in range(n)] if arr else []))
+            k += 2
+        elif e[0] == "ptr":
+            ptr = cargs[k]
+            if not ptr:
+                raise Abort("C passed a null pointer to a callback that takes Ptr")
+            ct = ctype_of(I, e[1])
+            vals.append(from_c(I, e[1], ctypes.cast(ptr, ctypes.POINTER(ct))[0]))
+            k += 1
         else:
             k += 1
     return vals
@@ -239,6 +297,52 @@ def make_event_thunk(I, ev, sink):
         except BaseException:      # noqa: never let an exception unwind into C
             sink.dropped += 1
         return None
+    return thunk
+
+
+def is_handler(t):
+    return tname(t) == "Handler"
+
+
+def handler_fn_type(t):
+    g = t.groups[0][0] if t.groups and t.groups[0] else None
+    if g is None or not is_fn_type(g):
+        raise Abort("Handler needs a function type, such as Handler[(Int32) -> Int32]")
+    return g
+
+
+def make_handler_thunk(I, ft, fnv):
+    """A Python function C keeps and may call from any thread, expecting an answer.  On the scheduler's thread
+    the moxie function runs at once (and may not park); on any other thread the call is posted to the scheduler,
+    which runs the function in a fiber of its own (it may park) while the calling thread waits for the result."""
+    import queue
+    import threading
+    plan = cb_plan(I, ft)
+    rt = ft.ret if ft.ret is not None and tname(ft.ret) != "Unit" else None
+    home = threading.get_ident()
+
+    def zero():
+        if rt is None:
+            return None
+        ct = ctype_of(I, rt)
+        return ct() if isinstance(ct, type) and issubclass(ct, ctypes.Structure) else (0.0 if ct in (ctypes.c_double, ctypes.c_float) else 0)
+
+    def thunk(*cargs):
+        try:
+            vals = convert_args(I, plan, cargs)
+            if threading.get_ident() == home:
+                r = run_sync(I, I.apply(fnv, vals, {}))
+            else:
+                reply = queue.Queue()
+                I.sched.post_call(I, fnv, vals, reply)
+                kind, r = reply.get()
+                if kind != "ok":
+                    return zero()
+            return to_c(I, rt, r) if rt is not None else None
+        except BaseException as e:      # noqa: re-raised by the next foreign call that returns on the scheduler thread
+            if I.__dict__.get("handler_exc") is None:
+                I.handler_exc = e
+            return zero()
     return thunk
 
 
@@ -328,7 +432,9 @@ def make_foreign(I, lib_name, d):
         raise Abort(f"native library '{lib_name}' has no function '{d.name}'")
     cargs = []
     for p in d.params or []:
-        if is_events(p.type):
+        if is_handler(p.type):
+            cargs.append(cb_ctype(I, handler_fn_type(p.type)))
+        elif is_events(p.type):
             cargs.append(cb_ctype(I, _EvType(p.type)))
         elif is_fn_type(p.type):
             from .effects import Effects as _E
@@ -336,7 +442,7 @@ def make_foreign(I, lib_name, d):
                 raise Abort(f"'{d.name}' takes a callback, so it cannot be declared parks: "
                             "the callback would run on the OS helper thread")
             cargs.append(cb_ctype(I, p.type))
-        elif is_byte_array(p.type):
+        elif is_byte_array(p.type) or array_elem(p.type) is not None:
             cargs.append(ctypes.c_void_p)
         elif is_userdata(p):
             cargs.append(ctypes.c_void_p)
@@ -380,6 +486,15 @@ def _decl_effects(d):
     return Effects.declared(d)
 
 
+def size_of_param(p):
+    """If `p` is written `size: UInt = size_of(name)`, the name of the array whose element size it gives."""
+    e = p.default
+    if e is not None and e.__class__.__name__ == "Call" and e.fn.__class__.__name__ == "Name" and e.fn.name == "size_of" \
+            and len(e.args) == 1 and e.args[0].expr.__class__.__name__ == "Name":
+        return e.args[0].expr.name
+    return None
+
+
 def length_of(p):
     """If `p` is written `n: T = len(name)`, the name of the array it measures."""
     e = p.default
@@ -394,7 +509,7 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
     named = dict(named or {})
     declared = f.params
     # which declared parameters the caller supplies: all but the length parameters
-    supplied = [p for p in declared if length_of(p) is None and not is_out_handle(I_of(f), p) and not is_userdata(p)]
+    supplied = [p for p in declared if length_of(p) is None and size_of_param(p) is None and not is_out_handle(I_of(f), p) and not is_userdata(p)]
     if len(pos) > len(supplied):
         raise Abort(f"{f.name} takes {len(supplied)} arguments but {len(pos)} were given", line)
     values = {}
@@ -422,6 +537,15 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
             outcell = ctypes.c_void_p()
             cargs.append(ctypes.byref(outcell))
             continue
+        sz = size_of_param(p)
+        if sz is not None:
+            arr = values.get(sz)
+            decl = next((q for q in declared if q.name == sz), None)
+            el = array_elem(decl.type) if decl is not None else None
+            if el is None:
+                raise Abort(f"size_of({sz}) in {f.name} needs an array of numbers")
+            cargs.append(ctypes.sizeof(SCALARS[el]))
+            continue
         n = length_of(p)
         if n is not None:
             arr = values.get(n)
@@ -430,7 +554,15 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         if p.name not in values:
             raise Abort(f"missing argument '{p.name}' for {f.name}", line)
         v = values[p.name]
-        if is_events(p.type):
+        if is_handler(p.type):
+            ft = handler_fn_type(p.type)
+            if not callable(getattr(v, "__class__", None)) and v is None:
+                raise Abort(f"'{p.name}' of {f.name} needs a function", line)
+            th = cb_ctype(I_of(f), ft)(make_handler_thunk(I_of(f), ft, v))
+            I_of(f).__dict__.setdefault("kept_thunks", []).append(th)     # C may call it at any time: never freed
+            I_of(f).sched.listeners += 1
+            cargs.append(th)
+        elif is_events(p.type):
             from .sched import EventSink
             if not hasattr(v, "chan") or not hasattr(v, "write"):
                 raise Abort(f"'{p.name}' of {f.name} keeps a channel write end: pass move tx", line)
@@ -453,6 +585,14 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
             cargs.append(ctypes.cast(buf, ctypes.c_void_p))
             if p.mod == "ref" and p.name in ref_by_param:
                 outs.append((p, buf, ref_by_param[p.name], len(items), v))
+        elif array_elem(p.type) is not None:
+            el = array_elem(p.type)
+            buf = array_to_c(I_of(f), el, v)
+            n = len(v.items if hasattr(v, "items") else v)
+            keep.append(buf)
+            cargs.append(ctypes.cast(buf, ctypes.c_void_p))
+            if p.mod == "ref" and p.name in ref_by_param:
+                outs.append((p, buf, ref_by_param[p.name], n, v, el))
         elif p.mod == "ref":
             ct = ctype_of(I_of(f), p.type)
             obj = ct(to_c(I_of(f), p.type, v)) if not issubclass(ct, ctypes.Structure) else to_c(I_of(f), p.type, v)
@@ -469,6 +609,11 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         r = f.cfn(*cargs)
     for o in outs:
         p, obj, cname = o[0], o[1], o[2]
+        if len(o) > 5:                       # a writable array of numbers: copy the elements back
+            newv = array_from_c(I_of(f), o[5], obj, o[3], o[4])
+            scope = cenv.find_scope(cname) if cenv is not None else None
+            (scope or cenv).vars[cname] = newv
+            continue
         if len(o) > 3:                       # a writable byte buffer: copy the bytes back
             old = o[4]
             cls = INT_CLASSES.get("UInt8")
@@ -481,6 +626,9 @@ def call_foreign(I, f, pos, named, refspec, cenv, line):
         newv = from_c(I_of(f), p.type, val)
         scope = cenv.find_scope(cname) if cenv is not None else None
         (scope or cenv).vars[cname] = newv
+    if I_of(f).__dict__.get("handler_exc") is not None:
+        e, I_of(f).handler_exc = I_of(f).handler_exc, None
+        raise e
     if cbbox.get("exc") is not None:       # a callback aborted: C ran on with zeros; now the abort ends the call
         raise cbbox["exc"]
     if outcell is not None:

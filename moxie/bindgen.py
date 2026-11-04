@@ -337,8 +337,14 @@ class Gen:
                     and raw[i + 1][1][1] not in ("Float", "Double", "Bool"):
                 ps += ["Array[Byte]", raw[i + 1][1][1]]
                 i += 1
+            elif d[0] == "scalar_ptr" and i + 1 < len(raw) and raw[i + 1][1][0] == "scalar" \
+                    and raw[i + 1][1][1] not in ("Float", "Double", "Bool") and LEN_NAMES.search(raw[i + 1][0]):
+                ps += [f"Array[{d[1]}]", raw[i + 1][1][1]]
+                i += 1
+            elif d[0] == "scalar_ptr" and d[3]:
+                ps.append(f"Ptr[{d[1]}]")
             else:
-                raise Todo("a callback takes a pointer that is neither user data nor a buffer with a length, which is not supported")
+                raise Todo("a callback takes a pointer that is neither user data, a buffer with a length, nor a const pointer to a number, which is not supported")
             i += 1
         r = self.desc(ft.type, False)
         if r[0] == "void":
@@ -440,6 +446,15 @@ class Gen:
             elif k == "struct":
                 out.append(f"{pn}: {d[1]}")
                 info["ps"].append((pn, "val", d[1]))
+            elif k == "scalar_ptr" and i + 1 < len(params) and params[i + 1][1][0] == "scalar" \
+                    and params[i + 1][1][1] not in ("Float", "Double", "Bool") \
+                    and (LEN_NAMES.search(params[i + 1][0]) or sc.get("pair") == [pn, params[i + 1][0]]):
+                qn, qd = params[i + 1]
+                out.append(f"{'' if d[3] else 'ref '}{pn}: Array[{d[1]}]")
+                out.append(f"{qn}: {qd[1]} = len({pn})")
+                info["ps"].append((pn, "bytes_ro" if d[3] else "bytes_rw", f"Array[{d[1]}]"))
+                i += 2
+                continue
             elif k in ("scalar_ptr", "struct_ptr"):
                 if d[3]:
                     # const pointer to a scalar: an array of them, which is not supported yet
@@ -454,15 +469,17 @@ class Gen:
                 hs.add(d[1])
                 info["outh"] = d[1]
             elif k == "callback" and pn in (sc.get("keeps") or []):
-                if d[5] != "Unit":
-                    raise Todo(f"callback '{pn}' is kept by the library but returns a value, so it cannot be delivered as events")
-                vals = [x for x in clean_cb(d[1]).split(") -> ")[0][1:].split(", ") if x]
-                if not vals:
-                    raise Todo(f"callback '{pn}' is kept by the library but carries no values to deliver")
-                payload = d[4][0] if len(d[4]) == 1 else "(" + ", ".join(d[4]) + ")"
-                wpayload = vals[0] if len(vals) == 1 else "(" + ", ".join(vals) + ")"
-                out.append(f"{pn}: Events[{payload}]")
-                info["ps"].append((pn, "events", wpayload))
+                if d[5] != "Unit":                # the library keeps it and wants an answer: a Handler
+                    out.append(f"{pn}: Handler[{d[1]}]")
+                    info["ps"].append((pn, "handler", d[1]))
+                else:
+                    vals = [x for x in clean_cb(d[1]).split(") -> ")[0][1:].split(", ") if x]
+                    if not vals:
+                        raise Todo(f"callback '{pn}' is kept by the library but carries no values to deliver")
+                    payload = d[4][0] if len(d[4]) == 1 else "(" + ", ".join(d[4]) + ")"
+                    wpayload = vals[0] if len(vals) == 1 else "(" + ", ".join(vals) + ")"
+                    out.append(f"{pn}: Events[{payload}]")
+                    info["ps"].append((pn, "events", wpayload))
             elif k == "callback":
                 out.append(f"{pn}: {d[1]}")
                 info["ps"].append((pn, "val", d[1]))
@@ -539,7 +556,7 @@ def clean_cb(ty):
     while i < len(ps):
         if ps[i] == "UserData":
             i += 1
-        elif ps[i] == "Array[Byte]":
+        elif ps[i].startswith("Array["):
             out.append(ps[i])
             i += 2
         else:
@@ -596,6 +613,9 @@ def make_wrappers(g, decls, lib, side, comments):
             elif kind == "events":
                 sig.append(f"{pn}: ChanW[{ty}]")
                 call.append(f"move {pn}")
+            elif kind == "handler":
+                sig.append(f"{pn}: Handler[{clean_cb(ty)}]")
+                call.append(pn)
             else:
                 sig.append(f"{pn}: {clean_cb(ty)}")
                 call.append(pn)
@@ -635,6 +655,9 @@ def make_wrappers(g, decls, lib, side, comments):
                     elif p[1] == "events":
                         sig2.append(f"{p[0]}: ChanW[{p[2]}]")
                         call2.append(f"move {p[0]}")
+                    elif p[1] == "handler":
+                        sig2.append(f"{p[0]}: Handler[{clean_cb(p[2])}]")
+                        call2.append(p[0])
                     else:
                         sig2.append(f"{p[0]}: {clean_cb(p[2])}")
                         call2.append(p[0])

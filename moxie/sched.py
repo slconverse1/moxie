@@ -276,6 +276,7 @@ class Scheduler:
         self.nextid = 1
         self.entry = None
         self.ext = 0                 # helper-thread calls in flight
+        self.handlers = 0            # handler fibers running for a C thread that is waiting for the answer
         self.listeners = 0           # C-kept callbacks that may post events at any time
         self.extq = queue.Queue()
 
@@ -293,6 +294,28 @@ class Scheduler:
     def post_event(self, sink, value):
         """Called from any thread: a C-kept callback was called."""
         self.extq.put((("event", sink), value, None))
+
+    def post_call(self, I, fnv, vals, reply):
+        """Called from a foreign thread: C wants an answer from a kept callback (Handler[F])."""
+        self.extq.put((("call", None), (fnv, vals, reply), None))
+
+    def deliver_call(self, req):
+        fnv, vals, reply = req
+        I = self.I
+
+        def runner():
+            try:
+                g = I.apply(fnv, vals, {})
+                r = g.v if isinstance(g, Done) else (yield from g)
+            except BaseException:
+                self.handlers -= 1
+                reply.put(("err", None))      # C gets zeros; the abort ends the program as usual
+                raise
+            self.handlers -= 1
+            reply.put(("ok", r))
+            return UNIT
+        self.handlers += 1
+        self.spawn(runner(), "handler")
 
     def deliver_event(self, sink, v):
         c = sink.w.chan
@@ -316,7 +339,10 @@ class Scheduler:
                 return
             block = False
             if isinstance(f, tuple):
-                self.deliver_event(f[1], r)
+                if f[0] == "call":
+                    self.deliver_call(r)
+                else:
+                    self.deliver_event(f[1], r)
                 continue
             self.ext -= 1
             self.wake(f, ExtFail(e) if e is not None else r)
@@ -410,7 +436,7 @@ class Scheduler:
             if self.ext or self.listeners:
                 self.drain_ext(False)
             if not self.ready:
-                if self.ext or self.listeners:                 # real time: wait for an OS helper thread before advancing virtual time
+                if (self.ext or self.listeners) and not (self.handlers and self.sleepers):   # real time: wait for an OS helper thread before advancing virtual time
                     self.drain_ext(True)
                     continue
                 if not self.advance():

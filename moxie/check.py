@@ -7,7 +7,7 @@ Anything the checker cannot type is "unknown" and never produces an error.
 from .ast import *   # noqa
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
-RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener"}
+RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Ptr", "size_of", "Handler"}
 RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
@@ -1017,7 +1017,7 @@ class Checker:
     def hidden_foreign_param(self, p):
         """A foreign parameter the caller does not supply: a length filled in by the call, or an out-handle."""
         d = p.default
-        if d is not None and d.__class__ is Call and d.fn.__class__ is Name and d.fn.name == "len":
+        if d is not None and d.__class__ is Call and d.fn.__class__ is Name and d.fn.name in ("len", "size_of"):
             return True
         if p.type.__class__ is TName and p.type.path[-1] == "UserData":
             return True

@@ -22,6 +22,10 @@ int mini_parse(const char *s, int *out);
 int mini_printf(const char *fmt, ...);
 int mini_fill(unsigned char *buf, unsigned long n);
 int mini_bad(unsigned char *buf);
+double mini_mean(const double *xs, unsigned long n);
+void mini_double_all(int *xs, unsigned long n);
+int mini_rows(const int *a, unsigned long n, int (*cb)(const int *r, unsigned long n));
+int mini_pick(int (*cmp)(const int *x, const int *y), int a, int b);
 int mini_apply(int (*f)(int), int x);
 void mini_subscribe(void (*f)(int, double, void *), void *user);
 int mini_subscribe_bad(int (*f)(int));
@@ -53,6 +57,10 @@ mini_u32 mini_sum(mini_u32 seed, const unsigned char *buf, unsigned long len) {
   mini_u32 s = seed; for (unsigned long i = 0; i < len; i++) s = s * 31u + buf[i]; return s; }
 double mini_dist(mini_point p, mini_point q) { return sqrt((p.x-q.x)*(p.x-q.x) + (p.y-q.y)*(p.y-q.y)); }
 int mini_fill(unsigned char *buf, unsigned long n) { for (unsigned long i = 0; i < n; i++) buf[i] = (unsigned char)(i * 2); return (int)n; }
+double mini_mean(const double *xs, unsigned long n) { double t = 0; for (unsigned long i = 0; i < n; i++) t += xs[i]; return n ? t / n : 0; }
+void mini_double_all(int *xs, unsigned long n) { for (unsigned long i = 0; i < n; i++) xs[i] *= 2; }
+int mini_rows(const int *a, unsigned long n, int (*cb)(const int *r, unsigned long n)) { return cb(a, n) + cb(a + 1, n - 1); }
+int mini_pick(int (*cmp)(const int *x, const int *y), int a, int b) { return cmp(&a, &b); }
 int mini_parse(const char *s, int *out) { char *e; long v = strtol(s, &e, 10); if (*e) return 22; *out = (int)v; return 0; }
 '''
 fails = []
@@ -90,6 +98,8 @@ open(os.path.join(d, "bindgen.toml"), "w").write('[functions.mini_add]\neffects 
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 text = open(os.path.join(d, "bindings.mxi")).read()
 chk("sidecar sets effects", "internal pure fn mini_add" in text)
+chk("number pointers with a length become arrays", "fn mini_mean(xs: Array[Double], n: UInt = len(xs)) Double" in text and "fn mini_double_all(ref xs: Array[Int32], n: UInt = len(xs))" in text, text)
+chk("callbacks may take number arrays and Ptr[T]", "fn mini_rows(a: Array[Int32], n: UInt = len(a), cb: (Array[Int32], UInt) -> Int32)" in text and "cmp: (Ptr[Int32], Ptr[Int32]) -> Int32" in text, text)
 chk("a writable buffer becomes ref Array[Byte]", "fn mini_fill(ref buf: Array[Byte], n: UInt = len(buf)) Int32" in text, text)
 
 # end to end: wrappers over the generated bindings, called from moxie
@@ -113,6 +123,12 @@ println(mini_connect(cstr("x")))
 println("each ${mini_each(fn(v): println(\"item $v\")) }")
 println("feed ${mini_feed(b\"abc\", fn(d): len(d))}")
 println("apply ${mini_apply(fn(v): v * 7i32, 6i32)}")
+println("mean ${mini_mean(Array(1.0, 2.0, 6.0))}")
+nums = Array(1i32, 2i32, 3i32)
+mini_double_all(ref nums)
+println("doubled $nums")
+println("rows ${mini_rows(nums, fn(r): len(r))}")
+println("pick ${mini_pick(fn(x, y): x - y, 9i32, 4i32)}")
 ctx = mini_open(cstr("A"))?
 println("hits ${mini_hits(ctx)}")
 mini_close(ctx)
@@ -121,7 +137,7 @@ p = os.path.join(d, "main.mxi")
 open(p, "w").write(prog)
 r = subprocess.run([sys.executable, "-m", "moxie", "run", p], cwd=ROOT, capture_output=True, text=True)
 exp_sum = (((7 * 31 + 97) * 31 + 98) * 31 + 99) & 0xFFFFFFFF
-chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout and "apply 42" in r.stdout and "item 3" in r.stdout and "feed 3" in r.stdout and "connected 101" in r.stdout and "code: 5" in r.stdout, r.stdout + r.stderr)
+chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum} 5.0" in r.stdout and "Ok(42)" in r.stdout and "Err(" in r.stdout and "4 " in r.stdout and "hits 66" in r.stdout and "apply 42" in r.stdout and "mean 3.0" in r.stdout and "doubled Array(2, 4, 6)" in r.stdout and "rows 5" in r.stdout and "pick 5" in r.stdout and "item 3" in r.stdout and "feed 3" in r.stdout and "connected 101" in r.stdout and "code: 5" in r.stdout, r.stdout + r.stderr)
 
 # --wrap: default wrappers over the generated bindings
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--wrap")
@@ -171,11 +187,12 @@ w3 = open(os.path.join(d, "wrappers.mxi")).read()
 b3 = open(os.path.join(d, "bindings.mxi")).read()
 chk("lib in the file, rename, handles all work", r.returncode == 0 and 'foreign "mini"' in b3 and "fn plus(a: Int32, b: Int32) Int32: mini_add(a, b)" in w3 and "handle MiniCtx closes mini_close" in b3, r.stdout + r.stderr + w3[:300])
 
-# keeps: a callback the library keeps becomes Events
+# keeps: a callback the library keeps becomes Events (or a Handler when it returns a value)
 r = toml_run('[functions.mini_subscribe]\nkeeps = ["f"]\n[functions.mini_subscribe_bad]\nkeeps = ["f"]\n', "--lib", "mini", "--wrap")
 b4 = open(os.path.join(d, "bindings.mxi")).read()
 w4 = open(os.path.join(d, "wrappers.mxi")).read()
-chk("keeps turns a callback into Events", "fn mini_subscribe(f: Events[(Int32, Double, UserData)], user: UserData)" in b4 and "todo: mini_subscribe_bad" in b4, b4[-700:])
+chk("keeps turns a callback into Events", "fn mini_subscribe(f: Events[(Int32, Double, UserData)], user: UserData)" in b4 and "fn mini_subscribe_bad(f: Handler[(Int32) -> Int32]) Int32" in b4, b4[-700:])
+chk("a kept callback that returns a value becomes a Handler", "fn subscribe_bad(f: Handler[(Int32) -> Int32]) Int32: mini_subscribe_bad(f)" in w4, w4[-700:])
 chk("the wrapper takes a channel end and moves it", "fn subscribe(f: ChanW[(Int32, Double)]): mini_subscribe(move f)" in w4, w4[-600:])
 # --check drift
 bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")

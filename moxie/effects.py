@@ -72,7 +72,7 @@ class Effects:
 
             def hidden(p):
                 df = p.default
-                if df is not None and df.__class__ is Call and df.fn.__class__ is Name and df.fn.name == "len":
+                if df is not None and df.__class__ is Call and df.fn.__class__ is Name and df.fn.name in ("len", "size_of"):
                     return True
                 tn = _last(p.type) if p.type.__class__ is TName else None
                 return tn == "UserData" or (p.mod == "ref" and tn in hnames)

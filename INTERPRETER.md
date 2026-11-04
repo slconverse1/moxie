@@ -256,3 +256,24 @@ kept in `Interp.kept_thunks` forever and `Scheduler.listeners` is incremented, s
 idle loop waits for events instead of reporting a deadlock. Tests:
 `tests/run_callbacks.py` (a C library that calls from its own pthread),
 `tests/run_bindgen.py` (`keeps`).
+
+## Arrays of numbers, `Ptr[T]`, and `Handler[F]`
+
+`ffi.array_elem` generalizes the byte-array path: any `Array[T]` of a scalar type is copied
+into a ctypes array (`array_to_c`), and a `ref` array is copied back (`array_from_c`). A
+parameter written `size: UInt = size_of(a)` (`size_of_param`; hidden from callers like `len`,
+in `check.hidden_foreign_param` and `effects`) is filled with `sizeof` of the element.
+In callback types `cb_plan` has two more entries: `("array", elem, lenctype)` and `("ptr", T)`
+(a `const T *` read once and passed as the value). `qsort` works from libc in
+`tests/run_callbacks.py`. bindgen maps a number pointer followed by a length to `Array[T]`
+and a callback's const number pointer to `Ptr[T]`.
+
+`Handler[F]` is a kept callback that must answer. `ffi.make_handler_thunk`: on the
+scheduler's thread the function runs at once through `run_sync`; on any other thread the
+call goes to `Scheduler.post_call`, `deliver_call` spawns a fiber (so the function may park)
+and the C thread waits on a `queue.Queue` for `("ok", result)` or `("err", None)` (zeros to C,
+then the abort ends the program). `Scheduler.handlers` counts waiting handler fibers: with
+one and a sleeper pending, `run_main` advances virtual time instead of blocking on the
+thread queue (otherwise a sleeping handler and a thread waiting on it would deadlock).
+Aborts on the scheduler thread are kept in `Interp.handler_exc` and re-raised when the foreign
+call returns. Tests: `tests/run_callbacks.py` (a C pthread calling back), `tests/run_bindgen.py`.
