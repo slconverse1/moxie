@@ -451,7 +451,7 @@ plain containers), ignoring syntax trees and the interpreter, and adds 16 bytes 
 measures again before raising `ProgramExit` with the `out of memory` summary. `header.prepare` sets `heap_limit` and
 refuses `[memory]` without `--gc`. Tests: `tests/run_heap.py`.
 
-`fmt.py` also has `_wrap` and `_break` for lines over `WIDTH` (100). They run after `_once`, using the lexer's bracket and
+`fmt.py` also has `_wrap` and `_break` for lines over `WIDTH` (80). They run after `_once`, using the lexer's bracket and
 comma tokens (`Tok.col`, so strings are never split). `_break(text, marks, indent)` picks the outermost group that reaches
 past the width (or the last one that starts before it), puts each top-level item of that group on its own line two
 deeper, and calls itself on the head line, every item, and the closing line; it gives the original back when the result

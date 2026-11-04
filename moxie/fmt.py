@@ -222,7 +222,7 @@ def _once(src, file, spacing=True):
     return "\n".join(res) + "\n" if res else ""
 
 
-WIDTH = 100
+WIDTH = 80
 OPENS, CLOSES = "([{", ")]}"
 
 
