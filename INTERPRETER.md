@@ -302,3 +302,15 @@ comprehensions, daemons, lambdas), `recursion` (the function is in a call cycle)
 `run`). Without reasons the number is an exact upper bound; with them it is printed `N+`. Kinds match
 `moxie/pools.py`. Tests: `tests/run_tally.py`, which also runs the examples and requires that no exact count is
 below the observed use.
+
+### The closing rule (tally)
+
+`Count` entries are `[n, reasons, kept]`. For a creation of a closable kind (`Io file`, `Io socket`, `Listener`,
+`Connection`, `handle X`) bound to a name by `Assign`, `Tally.escapes(v, scope)` decides whether it leaves the
+iteration or function: a `move v` (argument with `mod == "move"`, or a `Move` node) into anything but a closer
+(`close` and the foreign handle closers), a `Return` mentioning `v`, a closure that mentions `v`, or `v` in the
+function's tail expression. Not escaping means `kept = False`, so the loop and recursion reasons are not added
+and the count stays exact. A call to a user function bound to a name and not escaping clears `kept` for the
+callee's closable kinds (`release=True`). Atom, Chan, Timer, and Future are always kept. A kept creation in a
+loop, lambda, daemon, or recursion adds a `problem`; `Interp.static_check` turns the problems into errors unless
+`--gc` is set, and `moxie pools FILE` prints them and exits 1. Tests: `tests/run_tally.py`.

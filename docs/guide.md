@@ -2053,7 +2053,7 @@ close(r)
 println("$n letters, ${len(read_file("notes.txt")?)} bytes")
 ```
 
-Output: `11 letters, 14 bytes`. Paths use `/` on every system, and a write to a file is buffered until `flush` or `close`. An `Io` must be closed, like any resource, and the runtime closes one that is still open when the program ends. `Io` and `Listener` count in the pool tally like connections, and `moxie --pools run FILE` prints the most of each that were open at once. Failures are ordinary `Err` values with the reserved codes `NOT_FOUND`, `DENIED`, and `IO_ERROR`:
+Output: `11 letters, 14 bytes`. Paths use `/` on every system, and a write to a file is buffered until `flush` or `close`. An `Io` must be closed, like any resource, and the runtime closes one that is still open when the program ends. Because the pools are sized before the program starts, a file opened in a loop must be closed in the same iteration, where it counts once; keeping one past its iteration (sending it on a channel, say) is a compile error, and `moxie pools FILE` shows the count. `Io` and `Listener` count in the pool tally like connections, and `moxie --pools run FILE` prints the most of each that were open at once. Failures are ordinary `Err` values with the reserved codes `NOT_FOUND`, `DENIED`, and `IO_ERROR`:
 
 ```
 when read_file("missing.txt"):

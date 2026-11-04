@@ -13,12 +13,12 @@ def mx(args, src):
     return r.returncode, r.stdout + r.stderr
 
 
-def chk(name, args, src, *words, absent=()):
+def chk(name, args, src, *words, absent=(), want=0):
     rc, out = mx(args, src)
     import re
     def has(w):
         return re.search(w[3:], out) is not None if w.startswith("re:") else w in out
-    good = rc == 0 and all(has(w) for w in words) and not any(has(w) for w in absent)
+    good = rc == want and all(has(w) for w in words) and not any(has(w) for w in absent)
     print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} {out.strip()[:300]}"))
     if not good:
         fails.append(name)
@@ -27,15 +27,26 @@ def chk(name, args, src, *words, absent=()):
 chk("nothing created", ["pools"], 'println("hi")\n', "no counted resource")
 chk("sites are counted", ["pools"], 'rx, tx = Chan[Int][1]()\na = Atom(1)\nb = Atom(2)\n', "re:Atom\\s+2\\n", "re:Chan\\s+1\\n", absent=("re:\\d\\+",))
 chk("callees are included", ["pools"], 'fn make() ChanW[Int]:\n  rx, tx = Chan[Int][1]()\n  tx\na = make()\nb = make()\n', "re:Chan\\s+2\\n")
-chk("a loop gives N+", ["pools"], 'for i in 1..=3:\n  t = after(1ms)\n', "Timer", "1+", "created in a loop")
-chk("a call in a loop gives N+", ["pools"], 'fn one() Atom[Int]: Atom(1)\nfor i in 1..=3:\n  a = one()\n', "Atom", "1+", "created in a loop")
-chk("recursion gives N+", ["pools"], 'fn go(n: Int) Int:\n  a = Atom(n)\n  if n == 0: 0 else: go(n - 1)\nprintln(go(2))\n', "created in recursion")
+chk("a loop gives N+", ["pools"], 'for i in 1..=3:\n  t = after(1ms)\n', "Timer", "1+", "created in a loop", want=1)
+chk("a call in a loop gives N+", ["pools"], 'fn one() Atom[Int]: Atom(1)\nfor i in 1..=3:\n  a = one()\n', "Atom", "1+", "created in a loop", want=1)
+chk("recursion gives N+", ["pools"], 'fn go(n: Int) Int:\n  a = Atom(n)\n  if n == 0: 0 else: go(n - 1)\nprintln(go(2))\n', "created in recursion", want=1)
 chk("fiber code counts once per live fiber", ["pools"], 'fn w(tx: ChanW[Int]):\n  f = Future[Int]()\n  write(tx, 1)\nrx, tx = Chan[Int][1]()\nrun w(tx)\n', "Future", "fiber", "Chan")
 chk("files, sockets, and listeners", ["pools"], 'f = open_file("a", Create)?\nl = listen(0)?\nc = connect("127.0.0.1", port_of(l))?\ns = accept(l)?\n', "Io file", "re:Io socket\\s+2", "Listener")
 chk("a connection", ["pools"], 'c = Connection.memory()\n', "Connection")
 chk("foreign handles", ["pools"], 'foreign "c":\n  handle File closes fclose\n  impure fn fopen(path: CString, mode: CString) Result[File, Error]\n  impure fn fclose(f: File)\nf = fopen(cstr("/dev/null"), cstr("r"))?\nfclose(move f)\n', "handle File")
 chk("--pools run compares with the observed use", ["--pools", "run"], 'a = Atom(1)\nrx, tx = Chan[Int][1]()\nprintln("x")\n', "pool report (observed)", "pool tally (static)", absent=("warning",))
-chk("a loop that closes each file is observed as one open", ["--pools", "run"], 'for i in 1..=3:\n  f = open_file("a", Create)?\n  close(f)\n', "Io file", "1+", "created in a loop")
+# the closing rule
+chk("a file closed in its iteration counts once", ["pools"], 'for i in 1..=3:\n  f = open_file("a", Create)?\n  close(f)\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+",))
+chk("a file kept past its iteration is an error", ["pools"], 'tx_r, tx = Chan[Io][4]()\nfor i in 1..=3:\n  f = open_file("a", Create)?\n  write(tx, move f)\n', "outlives the iteration", want=1)
+chk("the same error stops a run", ["run"], 'rx, tx = Chan[Io][4]()\nfor i in 1..=3:\n  f = open_file("a", Create)?\n  write(tx, move f)\n', "outlives the iteration", want=2)
+chk("a timer made in a loop is an error", ["pools"], 'for i in 1..=3:\n  t = after(1ms)\n', "Timer is created in a loop", want=1)
+chk("a callee that opens and closes may be called in a loop", ["pools"], 'fn peek() Result[Int, Error]:\n  f = open_file("a", Create)?\n  close(f)\n  Ok(1)\nfor i in 1..=3:\n  r = peek()\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
+chk("a callee that returns its file is fine when the caller closes it", ["pools"], 'fn opened() Result[Io, Error]: open_file("a", Create)\nfor i in 1..=3:\n  f = opened()?\n  close(f)\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
+chk("a callee that returns its file is an error when the caller keeps it", ["pools"], 'fn opened() Result[Io, Error]: open_file("a", Create)\nrx, tx = Chan[Io][4]()\nfor i in 1..=3:\n  f = opened()?\n  write(tx, move f)\n', "outlives the call", want=1)
+chk("a returned file counts for the caller, not as a loop", ["pools"], 'fn opened() Result[Io, Error]: open_file("a", Create)\nf = opened()?\nclose(f)\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
+chk("recursion that keeps a resource is an error", ["pools"], 'fn go(n: Int) Int:\n  a = Atom(n)\n  if n == 0: 0 else: go(n - 1)\nprintln(go(2))\n', "is recursive", want=1)
+chk("recursion that closes its file is exact", ["pools"], 'fn go(n: Int) Int:\n  f = open_file("a", Create)?\n  close(f)\n  if n == 0: 0 else: go(n - 1)\nprintln(go(2))\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
+chk("moxie/gc has no pools, so no rule", ["--gc", "run"], 'for i in 1..=3:\n  t = after(1ms)\nprintln("ok")\n', "ok")
 # the exact static count is never below what a run observes
 for name in sorted(os.listdir(os.path.join(ROOT, "examples"))):
     if name.endswith(".mxi") and name not in ("echo_server.mxi", "stdin_to_socket.mxi"):

@@ -83,9 +83,12 @@ def main(argv=None):
         except MoxieSyntaxError as e:
             sys.stderr.write(str(e) + "\n")
             return 2
-        from .tally import static_tally, format_tally
-        sys.stdout.write(format_tally(static_tally(prog)))
-        return 0
+        from .tally import Tally, format_tally
+        t = Tally(prog)
+        sys.stdout.write(format_tally(t.program()))
+        for line, msg in t.problems:
+            sys.stdout.write(f"{os.path.basename(argv[1])}:{line}: error: {msg}\n")
+        return 1 if t.problems else 0
     if cmd not in ("run", "test", "check"):
         cmd, argv = "run", ["run"] + argv
     if len(argv) < 2:

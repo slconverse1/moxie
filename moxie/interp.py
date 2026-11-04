@@ -203,6 +203,11 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def static_check(self, prog):
         from .check import check_program, Diag
         diags = check_program(prog, set(self.prelude.vars))
+        from .values import GC
+        if not GC[0]:
+            from .tally import tally_problems
+            for line, msg in tally_problems(prog):
+                diags.append(Diag(line, msg))
         pm = self.perms
         if pm.restricted:
             from .effects import permission_needs
