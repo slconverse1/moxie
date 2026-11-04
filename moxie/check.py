@@ -797,6 +797,13 @@ class Checker:
         self.ev(n.else_, sc)
         return None, None
 
+    def e_ForAll(self, n, sc):
+        inner = Sc(sc)
+        for nm, ty in n.binds:
+            inner.vars[nm] = Var(self.ty_of_type(ty), False, self.loop_depth)
+        self.ev(n.body, inner)
+        return None, None
+
     def e_DaemonE(self, n, sc):
         self.loop([n.body], sc)
         return None, None

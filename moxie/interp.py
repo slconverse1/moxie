@@ -996,6 +996,58 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             return (yield from self.ev_body(n.else_, L))
         return UNIT
 
+    def ev_ForAll(self, n, env):
+        """Property test: run the body for generated values; on failure shrink, then abort with the report."""
+        import random
+        from . import forall as F
+        seed = getattr(self, "forall_seed", None)
+        seed = F.DEFAULT_SEED if seed is None else seed
+        cases = getattr(self, "forall_cases", None) or F.DEFAULT_CASES
+        rng = random.Random(f"{seed}:{n.line}")
+        types = [t for _, t in n.binds]
+        names = [nm for nm, _ in n.binds]
+
+        def trial(vals):
+            L = Env(env)
+            for nm, v in zip(names, vals):
+                L.bind(nm, v)
+            try:
+                yield from self.ev(n.body, L)
+            except Abort as a:
+                return a
+            return None
+
+        def shown(vals):
+            return ", ".join(f"{nm} = {show(v, self)}" for nm, v in zip(names, vals))
+        for k in range(cases):
+            size = 2 + (k * 30) // cases
+            try:
+                vals = [F.gen(self, t, rng, size) for t in types]
+            except F.NoGen as e:
+                raise Abort(f"forall cannot generate {e}", n.line)
+            fail = yield from trial(vals)
+            if fail is None:
+                continue
+            first = shown(vals)
+            steps, progress = 0, True
+            while progress and steps < 500:
+                progress = False
+                for i, t in enumerate(types):
+                    for cand in F.shrinks(self, t, vals[i]):
+                        trial_vals = vals[:i] + [cand] + vals[i + 1:]
+                        f2 = yield from trial(trial_vals)
+                        steps += 1
+                        if f2 is not None:
+                            vals, fail, progress = trial_vals, f2, True
+                            break
+                    if progress:
+                        break
+            msg = f"property failed on case {k + 1} of {cases} (seed {seed}): {shown(vals)}: {fail.msg}"
+            if shown(vals) != first:
+                msg += f" [first failure: {first}]"
+            raise Abort(msg, n.line)
+        return UNIT
+
     def ev_WhileE(self, n, env):
         L = Env(env, hidden=True)
         broke = False

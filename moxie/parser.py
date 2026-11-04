@@ -65,6 +65,8 @@ class Parser(ExprParser):
                 return InitDecl(self.parse_block(), line=line)
             if v == "using" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2)):
                 return self.parse_using()
+            if v == "forall" and self.peek(1).kind == "NAME" and self.at_op(":", 2):
+                return self.parse_forall()
             if v == "return":
                 self.next()
                 e = None
@@ -259,6 +261,18 @@ class Parser(ExprParser):
         self.expect_op("=")
         e = self.parse_expr()
         return UsingDecl(name, e, line=line)
+
+    def parse_forall(self):
+        line = self.next().line
+        binds = []
+        while True:
+            name = self.expect_ident("a name").val
+            self.expect_op(":")
+            binds.append((name, self.parse_type()))
+            if not self.eat_op(","):
+                break
+        self.expect_op(":")
+        return ForAll(binds, self.parse_block_or_inline(), line=line)
 
     def parse_test(self):
         line = self.next().line

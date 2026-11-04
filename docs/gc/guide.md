@@ -2478,6 +2478,16 @@ println("$total")
 
 `moxie test` runs each `test` block in its own fiber, one after another, without running the entry file; a failed assertion aborts that test with a diagnostic. A normal run type-checks the test blocks but generates no code for them. In a normal run the program prints `8` to the output, and `dbg` prints something like `[main.mxi:7] double(2) = 4` to the error stream (and warns that `dbg` was left in). `dbg(expr)` returns its argument, so it can wrap any sub-expression, or sit in a pipeline as `|> dbg()`. `assert`, `assert_eq`, and `assert_ne` stay on in `--release` builds, while `debug_assert(cond)` is removed there, and its condition must be pure. **Mistakes:** a `debug_assert` whose condition reads a channel, and leaving `dbg` in committed code.
 
+**Property tests.** A `forall` inside a `test` checks a rule for many values at once, where an `assert` checks it for one. Name the values and their types, and the body runs for 100 generated cases:
+
+```
+test "reversing twice changes nothing":
+  forall xs: List[Int]:
+    assert_eq(xs |> to_stream() |> reverse() |> reverse() |> collect(), xs)
+```
+
+The values come from the types: whole numbers (with the edge cases mixed in), `Bool`, `Char`, `String`, `Float`, `Double`, lists and arrays of those, tuples, your own tuples, and enums. The run is seeded, so it repeats exactly. When a case fails, moxie shrinks it before reporting, so a failure reads `x = 1000` and not `x = 2030568236571276233`, along with the seed that replays it. `moxie test --seed 7 FILE` replays or varies the run, and `--cases 1000` runs more of them. The body must be pure, so it can't print or read a channel, and `forall` goes directly inside a `test`. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
+
 **23a. `moxie fmt`**
 
 `moxie fmt FILE-or-DIR...` rewrites files into one layout and has no layout options. It fixes the shape of the file: every block is indented two spaces per level, a continuation line keeps its offset from the statement it continues, multi-line strings, SQL bodies, and block comments move together with their text unchanged, trailing spaces go, blank lines are limited to two at the top level and one inside a block, and the file ends with a single newline. A comment takes the level of the code it belongs to. Inside a line it puts one space around `=`, `==`, `~=`, `<=`, `>=`, `->`, `|>` and the arithmetic operators, none before a comma and one after, and it adds a blank line before a top-level `fn`, `type`, `impl`, or `test` that follows a block. A line longer than 80 columns is broken at its outermost bracket group, one item to a line, with the closing bracket on a line of its own (nothing is added or removed, so no trailing comma appears); a line with a comment on it is left alone. The width is not an option.

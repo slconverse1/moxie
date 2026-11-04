@@ -435,7 +435,7 @@ class Effects:
             return n.name == name
         return any(self._mentions(c, name) for c in _children(n)) if n is not None else False
 
-    def check_lambdas(self, n):
+    def check_lambdas(self, n, in_test=False):
         """A lambda is pure: it may not print, park, or otherwise have an effect (a partial call
         takes its callee's effects, and an inline fiber is a function of its own)."""
         if n is None:
@@ -450,8 +450,16 @@ class Effects:
                 and n.target.fn.name in self.lamnames and n.target.fn.name not in self.defs:
             self.diags.append((n.line, f"'{n.target.fn.name}' is bound to a lambda and cannot be run; "
                                        "declare it with fn (fiber limits attach to declarations)"))
+        if n.__class__ is ForAll:
+            if not in_test:
+                self.diags.append((n.line, "forall belongs inside a test block"))
+            acc = {}
+            self.walk(n.body, [nm for nm, _ in n.binds], acc, None)
+            for eff, (callee, ln, root) in acc.items():
+                self.diags.append((ln or n.line, f"the body of forall must be pure, but it {eff} (calls '{root}')"))
+        inside = in_test or n.__class__ is TestDecl
         for ch in _children(n):
-            self.check_lambdas(ch)
+            self.check_lambdas(ch, inside)
 
     def run_top(self):
         acc = {}

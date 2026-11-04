@@ -79,6 +79,7 @@ def _defs():
         "SelArm": "kind bind expr body",   # kind: read closed default expr
         "ForE": "pat iter body else_ label",
         "WhileE": "cond body else_ label",
+        "ForAll": "binds body",          # binds: list of (name, type)
         "DaemonE": "body",
         "DoE": "body label",
         "DoRecv": "recv kind body",    # kind: do | update

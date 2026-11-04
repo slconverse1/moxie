@@ -4,7 +4,8 @@ A pure-Python interpreter for the frozen Moxie language. No C extensions, no thr
 (`sqlite3` for SQL), so it also runs in the browser under Pyodide.
 
     python -m moxie run FILE [args...]   run a program (core static checks run first; --no-check skips them)
-    python -m moxie test FILE [name]     run the `test` blocks, each in its own fiber; the entry body does not run
+    python -m moxie test [--seed N] [--cases N] FILE [name]
+                                         run the `test` blocks, each in its own fiber; the entry body does not run
     python -m moxie check FILE           parse and run the static checks only
     python -m moxie -e 'println("hi")'   run a snippet
     python -m moxie --gc run FILE        run under the moxie/gc rules (or set MOXIE_GC=1)
@@ -471,3 +472,21 @@ The checker requires a type on every plain-name parameter of a named function (`
 UDP (`prelude.UdpV`, `bind_udp`, `send_to`, `receive`): a `Udp` wraps a `SOCK_DGRAM` socket. `receive` reads up to 65535 bytes on the helper thread (so only its fiber parks) and honors `timeout:`; the `Packet` tuple is declared in `mxprelude`. It is a resource (`RES_TYPES`, `RES_MAKERS`), counts as an `Io socket` in the pool tally, has the `parks` effect, and needs `net` (`bind_udp` against `net.listen`, `send_to` against `net.connect`). `tests/run_udp.py` covers it over loopback. Not built: `select` over a socket, IPv6 and multicast, and connected UDP sockets.
 
 `[fibers]` takes `strings` and `temps` as a division of `memory` (`manifest.fiber_spaces`); the budget in `header.budget_error` adds them and shows the split in its message. The spaces themselves are not modeled, so neither is enforced.
+
+## Property tests (`forall`)
+
+`forall a: T, b: U:` is a statement parsed in `parse_stmt_core` (node `ForAll(binds, body)`) and
+meant for `test` blocks. `ev_ForAll` in `interp.py` makes `--cases` (default 100) argument sets with
+`random.Random(f"{seed}:{line}")`, so each `forall` has its own stream and a run repeats exactly;
+`--seed` and `--cases` come from `__main__` as `I.forall_seed` and `I.forall_cases`. A case that
+aborts is shrunk greedily: the first smaller candidate that still fails is taken, and the search
+restarts from it (at most 500 trials). The report names the case, the seed, and the shrunk input,
+with the first failing input beside it when they differ.
+
+`moxie/forall.py` holds the generators (`gen`) and shrinkers (`shrinks`). Both walk the type AST, so
+a declared tuple (`I.tuples`) or enum (`I.enums`) is built from its field types, and a generic or
+function type raises `NoGen` ("forall cannot generate ..."). Integers mix edge values (0, 1, -1,
+the limits) into the range; shrinking moves toward 0 by halving steps, lists drop and shrink
+elements, strings shorten. The checker binds the names with their declared types (`e_ForAll`), and
+the effects pass reports a `forall` outside a `test` and a body that prints, parks, or has any
+other effect. A mixer-written `Arbitrary[T]` is not built. Tests: `tests/run_forall.py`.

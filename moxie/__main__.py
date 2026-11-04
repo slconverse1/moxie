@@ -6,7 +6,8 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
        moxie [--allow-read[=PATHS]] [--allow-write[=PATHS]] [--allow-connect[=HOST:PORT]] [--allow-listen[=PORTS]]
              [--allow-ffi[=LIBS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
                                     restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
-       moxie test FILE [name]       run the test blocks (the entry body does not run)
+       moxie test [--seed N] [--cases N] FILE [name]
+                                    run the test blocks (the entry body does not run); forall runs N cases (default 100)
        moxie check FILE             parse and check without running
        moxie pools FILE [--header OUT]  the static pool tally: how many of each counted resource the program creates
        moxie --header=FILE run FILE     start with a pool header: refuse a stale one, hold the program to its counts
@@ -44,6 +45,20 @@ def main(argv=None):
         from .values import CONTRACTS
         CONTRACTS[0] = False
         argv = [a for a in argv if a != "--release"]
+    fa_seed = fa_cases = None
+    for opt in ("--seed", "--cases"):
+        if opt in argv:
+            i = argv.index(opt)
+            try:
+                val = int(argv[i + 1])
+            except (IndexError, ValueError):
+                sys.stderr.write(f"moxie: {opt} needs a whole number\n")
+                return 2
+            del argv[i:i + 2]
+            if opt == "--seed":
+                fa_seed = val
+            else:
+                fa_cases = val
     want_pools = "--pools" in argv
     argv = [a for a in argv if a != "--pools"]
     # permission flags come before the file name; after it they belong to the program
@@ -156,6 +171,7 @@ def main(argv=None):
     if cmd == "test":
         I = make_interp(path, [], perms, ceilings)
         I.manifest = manifest
+        I.forall_seed, I.forall_cases = fa_seed, fa_cases
         p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)
         if "/// >" in src and len(argv) <= 2:
             from .doc import collect, run_doctests
