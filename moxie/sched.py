@@ -549,15 +549,36 @@ def run_op(I, n, env):
         else:
             callee, pos, named = yield from I.ev_Call(t, env, defer=True)
     owned = [a for a in pos if hasattr(a, "drop")] + [a for a in named.values() if hasattr(a, "drop")]
-    name = getattr(getattr(callee, "node", None), "name", None) or "fiber"
+    node = getattr(callee, "node", None)
+    name = getattr(node, "name", None) or "fiber"
+    limit = fiber_limit(I, node)
+    live = S.__dict__.setdefault("live_fibers", {})
+    key = id(node)
+    if limit is not None and node is not None and live.get(key, 0) >= limit:
+        return err_reserved("NO_SLOT", f"fiber function {name}: all {limit} slots are alive")
     gen = I.apply(callee, pos, named)
-    f = S.spawn(_fiber_body(I, gen), name)
+    counted = limit is not None and node is not None
+    if counted:
+        live[key] = live.get(key, 0) + 1
+    f = S.spawn(_fiber_body(I, gen, live, key if counted else None), name)
     f.owned = owned
     return Ok(UNIT)
 
 
-def _fiber_body(I, gen):
-    r = yield from gen
+def fiber_limit(I, node):
+    """The most instances of a fiber function that may be alive: `fiber[n]`, else the manifest's [fibers] limit."""
+    for fl in (getattr(node, "flags", None) or ()):
+        if isinstance(fl, str) and fl.startswith("fiber:"):
+            return int(fl[6:])
+    return (getattr(I, "manifest", None) or {}).get("fibers", {}).get("limit")
+
+
+def _fiber_body(I, gen, live=None, key=None):
+    try:
+        r = yield from gen
+    finally:
+        if key is not None:
+            live[key] = live.get(key, 1) - 1
     return r
 
 

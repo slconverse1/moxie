@@ -15,7 +15,9 @@ A count is *exact* when no creation is in a loop, a comprehension, a recursive f
 it is then a true upper bound on the number ever created, and so on the number open at once.  Otherwise it is
 reported with a reason and a plus sign ("2+"): the tally knows a creation site but not how many times it runs,
 and the observed run (`moxie --pools run`) says how many were open together.  Fiber code counts once per possible
-live fiber, so a creation reached from `run` is reported as a multiple.
+live fiber: what a fiber function creates is multiplied by its limit (`fiber[n]`, else the manifest's
+`[fibers] limit`), and the fibers it starts are counted from their own limits, not from its.  A fiber function with
+no limit anywhere has an unknown multiplier, so its resources are reported with a plus sign and a warning.
 """
 from .ast import *   # noqa
 from .effects import _children, _last
@@ -43,6 +45,10 @@ class Count:
         e[0] += n
         e[1] |= set(reasons)
         e[2] = e[2] or kept
+
+    def scale(self, m):
+        for e in self.k.values():
+            e[0] *= m
 
     def merge(self, other, loop_reasons=(), fiber=False, release=False):
         """Add a callee's counts.  Loop and recursion reasons apply to what is kept; a fiber reason to all;
@@ -72,8 +78,11 @@ def names_in(n):
 
 
 class Tally:
-    def __init__(self, prog):
+    def __init__(self, prog, default_limit=None):
         self.prog = prog
+        self.default_limit = default_limit
+        self.starts = {}             # function name -> set of fiber functions it starts with `run`
+        self.start_sink = None
         self.defs = {}
         self.handle_fns = {}
         self.closers = {"close"}
@@ -112,10 +121,13 @@ class Tally:
             return Count()
         self.stack.append(name)
         total = Count()
+        saved, self.start_sink = self.start_sink, set()
         for d in self.defs.get(name, []):
             total.merge(self.body(d.body, d.body))
             if d.guard is not None:
                 total.merge(self.body(d.guard, d.body))
+        self.starts[name] = self.start_sink
+        self.start_sink = saved
         self.stack.pop()
         if name in self.cyclic:
             for kind, e in total.k.items():
@@ -195,7 +207,10 @@ class Tally:
                     self.walk(a.expr, loops, in_fiber, out, fnscope)
                 nm = tgt.fn.name if tgt.fn.__class__ is Name else None
                 if nm in self.defs:
-                    out.merge(self.of_fn(nm), loop_reasons=("loop",) if in_loop else (), fiber=True)
+                    if self.start_sink is not None:
+                        self.start_sink.add(nm)
+            elif tgt.__class__ is Lambda:
+                self.walk(tgt.body, loops, True, out, fnscope)          # an unnamed fiber has no limit
             return
         if c is Assign and n.targets.__class__ is PBind:
             v = n.targets.name
@@ -282,22 +297,79 @@ class Tally:
             return f.name, None
         return None, None
 
+    def limit_of(self, name):
+        for d in self.defs.get(name, []):
+            for fl in d.flags or ():
+                if isinstance(fl, str) and fl.startswith("fiber:"):
+                    return int(fl[6:])
+        return self.default_limit
+
     def program(self):
         top = Count()
+        saved, self.start_sink = self.start_sink, set()
+        scope = Block([s for s in self.prog.stmts if s.__class__ not in (FnDecl, FnGroup)])
         for st in self.prog.stmts:
             if st.__class__ not in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl, ForeignDecl):
-                top.merge(self.body(st, Block([s for s in self.prog.stmts if s.__class__ not in (FnDecl, FnGroup)])))
+                top.merge(self.body(st, scope))
+        todo, seen = list(self.start_sink), []
+        self.start_sink = saved
+        while todo:
+            f = todo.pop()
+            if f in seen:
+                continue
+            seen.append(f)
+            cnt = self.of_fn(f)
+            lim = self.limit_of(f)
+            part = Count()
+            part.merge(cnt)
+            if lim is not None:
+                part.scale(lim)
+                top.merge(part)
+            else:
+                top.merge(part, fiber=True)
+                if cnt.k:
+                    self.warnings.append(f"fiber function '{f}' creates resources but has no limit: write fiber[n] or set [fibers] limit in Moxie.toml")
+            todo.extend(self.starts.get(f, ()))
+        self.fibers = [(f, self.limit_of(f)) for f in seen]
         return top
 
+    @property
+    def warnings(self):
+        return self.__dict__.setdefault("_warnings", [])
 
-def static_tally(prog):
-    return Tally(prog).program()
+    def fiber_count(self):
+        """(largest possible number of fibers, exact?): the entry fiber plus every fiber function's limit."""
+        if any(l is None for _f, l in self.fibers):
+            return 1 + sum(l for _f, l in self.fibers if l is not None), False
+        return 1 + sum(l for _f, l in self.fibers), True
+
+
+def static_tally(prog, default_limit=None):
+    return Tally(prog, default_limit).program()
 
 
 def tally_problems(prog):
     t = Tally(prog)
     t.program()
     return t.problems
+
+
+def format_header(t, cnt):
+    """The pool header: what the runtime needs to size the pools and the fiber blocks before the first line runs."""
+    import json
+    n, exact = t.fiber_count()
+    pools = {k: (e[0] if not e[1] else None) for k, e in sorted(cnt.k.items())}
+    return json.dumps({"pools": pools, "fibers": {"largest": n if exact else None, "functions": dict(t.fibers)},
+                       "exact": exact and all(v is not None for v in pools.values())}, indent=2) + "\n"
+
+
+def format_fibers(t):
+    n, exact = t.fiber_count()
+    lines = []
+    if t.fibers:
+        lines.append("fibers: entry, " + ", ".join(f"{f} (limit {l if l is not None else 'none'})" for f, l in t.fibers))
+    lines.append(f"largest possible fiber count: {n}{'' if exact else '+ (a fiber function has no limit)'}")
+    return "\n".join(lines) + "\n"
 
 
 def format_tally(cnt):
@@ -309,7 +381,7 @@ def format_tally(cnt):
         n, rs, kept = cnt.k[k]
         note = ""
         if rs:
-            why = {"loop": "created in a loop and kept", "recursion": "created in recursion and kept", "fiber": "created in fiber code (once per live fiber)"}
+            why = {"loop": "created in a loop and kept", "recursion": "created in recursion and kept", "fiber": "created in a fiber function with no limit"}
             note = "  " + "; ".join(why[r] for r in sorted(rs))
         out.append(f"  {k.ljust(w)}  {str(n) + ('+' if rs else ''):>4}{note}")
     out.append("  (N is the number of creation sites reached through calls; N+ means a site runs an unknown number of times,")

@@ -8,7 +8,7 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
                                     restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
-       moxie pools FILE             the static pool tally: how many of each counted resource the program creates
+       moxie pools FILE [--header OUT]  the static pool tally: how many of each counted resource the program creates
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
                                     write foreign declarations from a C header
        moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
@@ -83,11 +83,25 @@ def main(argv=None):
         except MoxieSyntaxError as e:
             sys.stderr.write(str(e) + "\n")
             return 2
-        from .tally import Tally, format_tally
-        t = Tally(prog)
-        sys.stdout.write(format_tally(t.program()))
+        from .tally import Tally, format_tally, format_fibers, format_header
+        from .manifest import load as load_manifest, ManifestError
+        try:
+            man = load_manifest(argv[1])
+        except ManifestError as e:
+            sys.stderr.write(f"moxie: {e}\n")
+            return 2
+        t = Tally(prog, man.get("fibers", {}).get("limit"))
+        cnt = t.program()
+        sys.stdout.write(format_tally(cnt))
+        sys.stdout.write(format_fibers(t))
+        for w in t.warnings:
+            sys.stdout.write(f"{os.path.basename(argv[1])}: warning: {w}\n")
         for line, msg in t.problems:
             sys.stdout.write(f"{os.path.basename(argv[1])}:{line}: error: {msg}\n")
+        if "--header" in argv:
+            i = argv.index("--header")
+            with open(argv[i + 1], "w") as hf:
+                hf.write(format_header(t, cnt))
         return 1 if t.problems else 0
     if cmd not in ("run", "test", "check"):
         cmd, argv = "run", ["run"] + argv
@@ -101,19 +115,22 @@ def main(argv=None):
         sys.stderr.write(f"moxie: cannot read {path}: {e.strerror}\n")
         return 2
     from .perms import load_for, PermError
+    from .manifest import load as load_manifest, ManifestError
     try:
         perms = load_for(path, pflags)
-    except PermError as e:
+        manifest = load_manifest(path)
+    except (PermError, ManifestError) as e:
         sys.stderr.write(f"moxie: {e}\n")
         return 2
     if cmd == "run":
         I = make_interp(path, [a for a in argv[2:] if a != "--no-check"], perms)
+        I.manifest = manifest
         code = I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
         if want_pools:
             sys.stderr.write(I.pools.report())
             if getattr(I, "main_prog", None) is not None:
                 from .tally import static_tally, format_tally, compare
-                cnt = static_tally(I.main_prog)
+                cnt = static_tally(I.main_prog, I.manifest.get("fibers", {}).get("limit"))
                 sys.stderr.write(format_tally(cnt))
                 for w in compare(cnt, I.pools):
                     sys.stderr.write(w + "\n")

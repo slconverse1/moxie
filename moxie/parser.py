@@ -278,6 +278,10 @@ class Parser(ExprParser):
         mods = []
         while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val in EFFMODS and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn"})):
             mods.append(self.peek(i).val)
+            if self.peek(i).val == "fiber" and self.peek(i + 1).kind == "OP" and self.peek(i + 1).val == "[" \
+                    and self.peek(i + 2).kind == "INT" and self.peek(i + 3).kind == "OP" and self.peek(i + 3).val == "]":
+                mods.append("fiber:" + str(self.peek(i + 2).val))        # fiber[3] fn: at most 3 alive at once
+                i += 3
             i += 1
         t = self.peek(i)
         if t.kind != "NAME":

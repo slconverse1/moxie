@@ -23,6 +23,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         from .perms import Perms
         self.pools = Pools()
         self.perms = Perms.open()
+        self.manifest = {}
         self.tuples = {}
         self.enums = {}
         self.ifaces = {}
