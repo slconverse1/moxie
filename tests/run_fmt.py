@@ -61,5 +61,9 @@ check("a fragment that does not parse still gets layout only", format_source("x=
 check("a block under a continuation line stays deeper than it", format_source("x = 5\n    |> seq:\n      a -> b\n      c -> d\ny = 1\n"), "x = 5\n    |> seq:\n      a -> b\n      c -> d\ny = 1\n")
 check("an operator method name keeps its form", format_source("impl Money:\n  fn +(other: Money) Money:\n    other\n"), "impl Money:\n  fn +(other: Money) Money:\n    other\n")
 check("a fragment that changes meaning when spaced is left with layout only", format_source("x = 1\ny = 2\n"), "x = 1\ny = 2\n")
+from moxie.fmt import _comments
+msg = "// a  b\nfn f() Int:\n    /* x\n         y */\n    1  // t,u=1\n// end\n"
+check("every comment survives, in order", _comments(format_source(msg), "x"), _comments(msg, "x"))
+check("comments are listed", _comments(msg, "x"), ["// a  b", "/* x\ny */", "// t,u=1", "// end"])
 print(f"fmt: {total - fails} / {total}" if fails else "fmt: all passed")
 sys.exit(1 if fails else 0)

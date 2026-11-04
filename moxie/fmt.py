@@ -21,6 +21,12 @@ class FmtError(Exception):
 _LINE_IN_PART = re.compile(r"(\('e', '(?:[^'\\]|\\.)*', (?:None|'[^']*')), \d+\)")
 
 
+def _comments(src, file):
+    lx = Lexer(src, file)
+    lx.tokenize()
+    return lx.comments
+
+
 def _tokens(src, file):
     """Token kinds and values; the line numbers inside string interpolations are not part of the comparison."""
     return [(t.kind, _LINE_IN_PART.sub(r"\1)", repr(t.val)) if t.kind == "STR" else repr(t.val))
@@ -233,6 +239,8 @@ def format_source(src, file="<input>"):
             a = _once(src, file, spacing=False)
         if _tokens(a, file) != _tokens(src, file):
             raise FmtError("the formatted text does not lex to the same tokens")
+        if _comments(a, file) != _comments(src, file):
+            raise FmtError("the formatted text does not keep every comment")
         if _once(a, file, spacing=use) != a:
             raise FmtError("formatting is not stable on this file")
     except MoxieSyntaxError as e:

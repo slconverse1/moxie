@@ -381,3 +381,7 @@ stack (`info["after"]`), so a block opened under a continuation line goes two sp
 the line pass, a blank line is added before a top-level declaration word that follows a block. `format_source`
 applies spacing only when `repr(parse_program(...))` is the same before and after; the string-token comparison
 ignores the line numbers kept inside interpolations.
+
+The lexer also records each comment's text in `Lexer.comments` (a line comment as written, a block comment with the
+indentation of its inner lines removed). `format_source` compares the list before and after formatting and refuses to
+write if it differs, so a comment can neither be lost nor altered.

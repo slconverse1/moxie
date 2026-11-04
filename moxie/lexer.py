@@ -83,6 +83,7 @@ class Lexer:
         self.line = 1
         self.col0 = 0           # index of the start of the current line
         self.raw = []           # raw tokens including NL tokens
+        self.comments = []      # the text of each comment in order, for the formatter's check
         self.spans = []         # (first, last) physical lines inside a multi-line token, for the formatter
         self.info = {}          # first physical line of a code line -> layout facts, for the formatter
         self.depth = 0
@@ -180,11 +181,14 @@ class Lexer:
 
     # ------------------------------------------------------------------
     def _skip_line_comment(self):
+        s = self.i
         while self.i < self.n and self.src[self.i] != "\n":
             self.i += 1
+        self.comments.append(self.src[s:self.i].rstrip())
 
     def _skip_block_comment(self):
         start_line = self.line
+        first = self.i
         self.i += 2
         depth = 1
         while self.i < self.n and depth:
@@ -201,6 +205,7 @@ class Lexer:
                 self.i += 1
         if depth:
             self.err("unterminated /* comment", start_line)
+        self.comments.append("\n".join(x.strip() for x in self.src[first:self.i].split("\n")))
         if self.line > start_line:
             self.spans.append((start_line + 1, self.line))
 
@@ -267,6 +272,7 @@ class Lexer:
                 self.i += 1
                 continue
             if src.startswith("//", self.i):
+                self.comments.append(src[self.i:stop].rstrip())
                 self.i = stop
                 break
             self._token()

@@ -2342,7 +2342,7 @@ $ moxie fmt src
 formatted src/parse.mxi
 ```
 
-`--check` changes nothing and exits 1 when a file would change, so it fits a build script; `--stdout` prints the result instead of writing. Before a file is written, the formatter checks that the tokens match the original, that the spacing changes left the parsed program the same (otherwise only the layout rules are applied), and that a second run changes nothing; if a check fails it reports the file and leaves it alone. A file with a tab in its indentation or an unterminated string is reported and not touched. **Mistakes:** expecting it to join or split lines (it never does, so a long argument list stays as written), or to rewrap long lines (the line width is not settled).
+`--check` changes nothing and exits 1 when a file would change, so it fits a build script; `--stdout` prints the result instead of writing. Before a file is written, the formatter checks that the tokens match the original, that every comment is kept with its text unchanged and in order, that the spacing changes left the parsed program the same (otherwise only the layout rules are applied), and that a second run changes nothing; if a check fails it reports the file and leaves it alone. A file with a tab in its indentation or an unterminated string is reported and not touched. **Mistakes:** expecting it to join or split lines (it never does, so a long argument list stays as written), or to rewrap long lines (the line width is not settled).
 
 **Chapter 24: Functional programming**
 
