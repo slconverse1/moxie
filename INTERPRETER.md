@@ -409,9 +409,9 @@ permissions, and static `net` needs treat the new functions like `connect` and `
 ## The pool header at start
 
 `tally.header_dict` builds the header (version 1, `pools` counts with `null` for unknown, `fibers.largest`, and a
-SHA-256 of the program text); `format_header` writes it for `moxie pools FILE --header OUT`. `moxie/header.py`
+SHA-256 of the program's tokens, from `tally.program_hash`, so layout, spacing, and comments do not change it); `format_header` writes it for `moxie pools FILE --header OUT`. `moxie/header.py`
 reads it. `prepare(I, src, name, manifest, header_flag)` runs in `__main__` before `run_source`: it picks the file
-(`--header=FILE`, else `[pools] header`), refuses one whose hash is not the source's, builds the header from a tally
+(`--header=FILE`, else `[pools] header`), refuses one whose hash is not the program's, builds the header from a tally
 when only `[program] memory` is set, applies `budget_error` (largest fiber count times `[fibers]` `memory` plus
 `stack` against `[program] memory`; sizes come from `manifest.parse_size`), and then sets `Pools.caps` (acquire
 aborts past a count) and `Scheduler.fiber_cap` (`run` aborts when that many fibers are alive). Kinds the header

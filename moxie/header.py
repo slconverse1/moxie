@@ -6,7 +6,6 @@ Moxie.toml) reads it before the first line runs: a header made for other source 
 need is checked against the manifest's `[program] memory`, and the pools and the fiber count are then held to the
 header's numbers.  With `[program] memory` set and no header file, the numbers come from the tally of the program.
 """
-import hashlib
 import json
 import os
 
@@ -67,14 +66,14 @@ def prepare(I, src, name, manifest, header_flag=None):
     if path is None and not wants_budget:
         return
     from .lexer import MoxieSyntaxError
-    from .tally import Tally, header_dict
+    from .tally import Tally, header_dict, program_hash
     try:
         prog = I.load_source(src, name)
     except MoxieSyntaxError:
         return                                  # the run reports the syntax error
     if path is not None:
         header = load(path)
-        if header.get("program") != hashlib.sha256(src.encode("utf-8")).hexdigest():
+        if header.get("program") != program_hash(src):
             raise HeaderError(f"{path} was made for other source text; rebuild it with `moxie pools {name} --header {path}`")
     else:
         t = Tally(prog, manifest.get("fibers", {}).get("limit"))

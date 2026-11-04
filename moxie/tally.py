@@ -355,15 +355,26 @@ def tally_problems(prog):
     return t.problems
 
 
+def program_hash(src):
+    """A hash of the program's tokens: layout, spacing, and comments do not change it, so `moxie fmt` leaves a header valid."""
+    import hashlib
+    try:
+        from .fmt import _tokens
+        text = "\n".join(f"{k} {v}" for k, v in _tokens(src, "<program>") if k not in ("NL", "INDENT", "DEDENT", "EOF"))
+        text = "tokens:" + text
+    except Exception:
+        text = "text:" + src
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def header_dict(t, cnt, src=None):
     """The pool header: what the runtime needs to size the pools and the fiber blocks before the first line runs."""
-    import hashlib
     n, exact = t.fiber_count()
     pools = {k: (e[0] if not e[1] else None) for k, e in sorted(cnt.k.items())}
     d = {"version": 1, "pools": pools, "fibers": {"largest": n if exact else None, "functions": dict(t.fibers)},
          "exact": exact and all(v is not None for v in pools.values())}
     if src is not None:
-        d["program"] = hashlib.sha256(src.encode("utf-8")).hexdigest()
+        d["program"] = program_hash(src)
     return d
 
 
