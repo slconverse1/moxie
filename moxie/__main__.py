@@ -13,6 +13,8 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
                                     write foreign declarations from a C header
        moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
                                     generate documentation from /// comments; checks examples
+       moxie fmt [--check] [--stdout] FILE-or-DIR...
+                                    rewrite files with canonical layout (2-space indentation, blank lines, no trailing spaces)
        moxie -e 'code'              run a snippet
 """
 
@@ -67,6 +69,9 @@ def main(argv=None):
         from .doc import doc_main
         return doc_main(argv[1:], lambda: make_interp(argv[1] if len(argv) > 1 else None, []),
                         sys.stdout, sys.stderr)
+    if cmd == "fmt":
+        from .fmt import fmt_main
+        return fmt_main(argv[1:], sys.stdout, sys.stderr)
     if cmd == "pools":
         if len(argv) < 2:
             sys.stderr.write(USAGE)

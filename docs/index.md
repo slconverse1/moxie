@@ -55,7 +55,7 @@ Assume this code lives in its own file. Notice the two-space moxie indentation. 
 
 Moxie's elegance rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
 
-- **Go:** interfaces, goroutines, channels, and `select`, and (designed, not yet built) `moxie fmt`, a formatter with no options, in the spirit of `gofmt`.
+- **Go:** interfaces, goroutines, channels, and `select`, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (the first version fixes indentation and blank lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and (designed, not yet built) doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), Domain-Specific Languages, and labeled `break` and `continue`.
 - **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, an `if` that gives back a value, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.

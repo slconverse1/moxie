@@ -347,3 +347,15 @@ byte order, aborts when a value does not fit, and returns an `Array[Byte]`. `che
 `exhaustive` when every arm of a `when` is a `Bin` pattern and none is a catch-all: arms without a literal, a
 guard, or a field-sized `bytes(n)` give a length interval (fixed size, or size and up with `rest: bytes`), and the
 first uncovered length is the error. Tests: `tests/helper_cases.py`.
+
+## `moxie fmt`
+
+`moxie/fmt.py` formats from the lexer's own view of the file. `Lexer.spans` lists the physical lines inside a
+multi-line token (triple-quoted and raw strings, SQL bodies, block comments) and `Lexer.info` gives, for the first
+line of each code line, whether it continues the one before (`cont`), the indentation its place in the indent stack
+calls for (`canon`, two spaces per level), its old indentation, and the stack and bracket depth before it. The
+formatter keeps two shifts: the one of the last statement start, applied to continuation lines, and the one of the
+last non-span line, applied to span lines. A comment-only line takes the level of its old indentation in the stack
+before the next code line, or that line's level. `format_source` lexes the result and compares the token kinds and
+values with the original, formats a second time and compares, and raises `FmtError` if either differs. The command
+(`fmt_main`) handles `--check` and `--stdout` and walks directories for `.mxi` and `.mx`. Tests: `tests/run_fmt.py`.

@@ -2310,6 +2310,19 @@ println("$total")
 
 `moxie test` runs each `test` block in its own fiber, one after another, without running the entry file; a failed assertion aborts that test with a diagnostic. A normal run type-checks the test blocks but generates no code for them. In a normal run the program prints `8` to the output, and `dbg` prints something like `[main.mxi:7] double(2) = 4` to the error stream (and warns that `dbg` was left in). `dbg(expr)` returns its argument, so it can wrap any sub-expression, or sit in a pipeline as `|> dbg()`. `assert`, `assert_eq`, and `assert_ne` stay on in `--release` builds, while `debug_assert(cond)` is removed there, and its condition must be pure. **Mistakes:** a `debug_assert` whose condition reads a channel, and leaving `dbg` in committed code.
 
+**23a. `moxie fmt`**
+
+`moxie fmt FILE-or-DIR...` rewrites files into one layout and has no layout options. In this first version it fixes the shape of the file and leaves the spacing inside a line alone: every block is indented two spaces per level, a continuation line keeps its offset from the statement it continues, multi-line strings, SQL bodies, and block comments move together with their text unchanged, trailing spaces go, blank lines are limited to two at the top level and one inside a block, and the file ends with a single newline. A comment takes the level of the code it belongs to.
+
+```
+$ moxie fmt --check src
+would change src/parse.mxi
+$ moxie fmt src
+formatted src/parse.mxi
+```
+
+`--check` changes nothing and exits 1 when a file would change, so it fits a build script; `--stdout` prints the result instead of writing. Before a file is written, the formatter lexes the result and checks that the tokens match the original and that a second run changes nothing; if either check fails it reports the file and leaves it alone. A file with a tab in its indentation or an unterminated string is reported and not touched. **Mistakes:** expecting it to add spaces around operators (not yet), or to join or split lines (it never does).
+
 **Chapter 24: Functional programming**
 
 Moxie's support for functional programming is ordinary prelude code over a few language features: immutable values, higher-order functions, pipelines, `for:` comprehensions, and interfaces over type constructors. Outputs were computed by hand, and several snippets reuse names from earlier chapters (`add`, `Maybe`, `half`, `Tree`, `User`).

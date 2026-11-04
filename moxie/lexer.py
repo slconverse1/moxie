@@ -83,6 +83,8 @@ class Lexer:
         self.line = 1
         self.col0 = 0           # index of the start of the current line
         self.raw = []           # raw tokens including NL tokens
+        self.spans = []         # (first, last) physical lines inside a multi-line token, for the formatter
+        self.info = {}          # first physical line of a code line -> layout facts, for the formatter
         self.depth = 0
 
     def err(self, msg, line=None, col=None):
@@ -199,6 +201,8 @@ class Lexer:
                 self.i += 1
         if depth:
             self.err("unterminated /* comment", start_line)
+        if self.line > start_line:
+            self.spans.append((start_line + 1, self.line))
 
     def _maybe_sql_line(self):
         """If this physical line is `... sql(conn):` capture the indented lines that follow as raw text."""
@@ -246,6 +250,8 @@ class Lexer:
                 e = self.n
             p = e + 1
         self.i = min(p, self.n)
+        if consumed:
+            self.spans.append((first_line, first_line + consumed - 1))
         self.line = first_line + consumed
         self.col0 = self.i
         tk = Tok("SQL", "\n".join(lines), first_line, 1)
@@ -500,6 +506,7 @@ class Lexer:
         body = "\n".join(out)
         # count lines consumed
         consumed = body.count("\n") + len(lines) - body.count("\n")  # = len(lines)
+        self.spans.append((start_line + 1, start_line + len(lines) + 1))
         self.line = start_line + len(lines) + 1
         self.i = after
         self.col0 = pos + margin + 3 - (margin + 3)
@@ -526,6 +533,8 @@ class Lexer:
         if j < 0:
             self.err("unterminated raw string")
         text = src[i + 1:j]
+        if "\n" in text:
+            self.spans.append((self.line + 1, self.line + text.count("\n")))
         self.line += text.count("\n")
         self.i = j + len(close)
         add("STR", [text])
@@ -553,6 +562,7 @@ class Lexer:
                 self.err("unterminated raw string")
             pos = e + 1
         out = [ln[margin:] if ln.strip() else "" for ln in lines]
+        self.spans.append((start_line + 1, start_line + len(lines) + 1))
         self.line = start_line + len(lines) + 1
         self.i = after
         add("STR", ["\n".join(out)])
@@ -774,6 +784,7 @@ class Lexer:
                 continue
             first = toks[0]
             was_open_depth = depth
+            snap = (list(stack), depth)
             # compute continuation
             is_cont = False
             if have_line:
@@ -812,6 +823,8 @@ class Lexer:
                         raise MoxieSyntaxError("a dedent must match an indentation already on the stack",
                                                first.line, ind + 1, self.file)
                 stmt_indent = ind
+            self.info[L["line"]] = {"cont": is_cont, "canon": None if is_cont else 2 * (len(stack) - 1),
+                                    "indent": L["indent"], "before": snap}
             for t in toks:
                 if t.kind == "OP":
                     if t.val in ("(", "[", "{"):
