@@ -1,4 +1,5 @@
 """The Moxie tree-walking evaluator (generator based, so fibers can park)."""
+import os
 import sys
 from .ast import *   # noqa
 from .values import *   # noqa
@@ -22,7 +23,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         from .pools import Pools
         from .perms import Perms
         self.pools = Pools()
-        self.perms = Perms.open()
+        self._perms = Perms.open()
+        self.pkg_ceilings = {}        # package name -> Perms (Spec 19d, per-package ceilings)
+        self.mod_pkg = {}             # id(module env) -> package name
+        self.cur_mod = None
         self.manifest = {}
         self.tuples = {}
         self.enums = {}
@@ -88,6 +92,20 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             if c is DoE:
                 return self.ev_DoE(n, env, hint)
         return self.disp[c](n, env)
+
+    @property
+    def perms(self):
+        if self.pkg_ceilings:
+            key = self.mod_pkg.get(id(self.cur_mod))
+            ceil = self.pkg_ceilings.get(key)
+            if ceil is not None:
+                from .perms import Combined
+                return Combined(self._perms, ceil, key)
+        return self._perms
+
+    @perms.setter
+    def perms(self, pm):
+        self._perms = pm
 
     def new_module_env(self):
         env = Env(self.prelude)
@@ -209,20 +227,80 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             from .tally import tally_problems
             for line, msg in tally_problems(prog):
                 diags.append(Diag(line, msg))
-        pm = self.perms
+        pm = self._perms
         if pm.restricted:
-            from .effects import permission_needs
-            for kind, (line, name) in sorted(permission_needs(prog).items(), key=lambda kv: kv[1][0]):
-                if kind == "fs":
-                    ok, want = pm.allows_kind("fs.read") or pm.allows_kind("fs.write"), "fs.read or fs.write"
-                elif kind == "net":
-                    ok, want = pm.allows_kind("net.connect") or pm.allows_kind("net.listen"), "net.connect or net.listen"
-                elif kind.startswith("ffi:"):
-                    ok, want = pm.ffi_ok(kind[4:]), f"ffi for '{kind[4:]}'"
-                else:
-                    ok, want = pm.allows_kind(kind), kind
-                if not ok:
-                    diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
+            for line, name, want in self.unmet_needs(pm, prog):
+                diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
+        if self.pkg_ceilings:
+            diags.extend(self.package_diags(prog, Diag))
+        return diags
+
+    @staticmethod
+    def kind_unmet(pm, kind):
+        """The description of what `kind` needs if `pm` grants nothing that satisfies it, else None."""
+        if kind == "fs":
+            ok, want = pm.allows_kind("fs.read") or pm.allows_kind("fs.write"), "fs.read or fs.write"
+        elif kind == "net":
+            ok, want = pm.allows_kind("net.connect") or pm.allows_kind("net.listen"), "net.connect or net.listen"
+        elif kind.startswith("ffi:"):
+            ok, want = pm.ffi_ok(kind[4:]), f"ffi for '{kind[4:]}'"
+        else:
+            ok, want = pm.allows_kind(kind), kind
+        return None if ok else want
+
+    def unmet_needs(self, pm, prog):
+        from .effects import permission_needs
+        out = []
+        for kind, (line, name) in sorted(permission_needs(prog).items(), key=lambda kv: kv[1][0]):
+            want = self.kind_unmet(pm, kind)
+            if want:
+                out.append((line, name, want))
+        return out
+
+    def find_package(self, parts):
+        base = self.search_dir or "."
+        cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
+        return next((p for p in cands if os.path.exists(p)), None)
+
+    def package_diags(self, prog, Diag):
+        """Per-package ceilings (Spec 19d): everything a package's code can reach must fit its own table and the program's."""
+        from .effects import Needs
+        from .perms import Combined
+        diags, seen, queue = [], set(), [(prog, 0)]
+        while queue:
+            cur, via = queue.pop(0)
+            for st in cur.stmts:
+                if st.__class__ is not ImportDecl:
+                    continue
+                key = ".".join(st.pkg)
+                if key in seen:
+                    continue
+                seen.add(key)
+                path = self.find_package(st.pkg)
+                if path is None:
+                    continue
+                try:
+                    pp = parse_program(open(path, encoding="utf-8").read(), path)
+                except (OSError, MoxieSyntaxError):
+                    continue
+                queue.append((pp, via or st.line))
+                ceil = self.pkg_ceilings.get(key)
+                if ceil is None:
+                    continue
+                pm = Combined(self._perms, ceil, key)
+                nd = Needs(pp)
+                acc = dict(nd.solve())
+                for s in nd.sum.values():
+                    for eff, w in s.eff.items():
+                        acc.setdefault(eff, w)
+                for kind, w in sorted(acc.items(), key=lambda kv: kv[1][1]):
+                    want = self.kind_unmet(pm, kind)
+                    if want:
+                        diags.append(Diag(via or st.line, f"package '{key}' ({os.path.basename(path)}:{w[1]}): '{w[2]}' needs {want}, "
+                                                       f"which is not granted to it ({ceil.source})"))
+        for key, ceil in self.pkg_ceilings.items():
+            if key not in seen:
+                diags.append(Diag(1, f"no imported package is named '{key}' ({ceil.source})", "warning"))
         return diags
 
     def check_source(self, src, file="<input>"):

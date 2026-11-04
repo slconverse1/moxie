@@ -19,13 +19,15 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
 """
 
 
-def make_interp(path, args, perms=None):
+def make_interp(path, args, perms=None, ceilings=None):
     from .interp import Interp
     from .values import ArrayV, DictV
     I = Interp(search_dir=os.path.dirname(os.path.abspath(path)) if path else ".")
     I.prelude.vars["args"] = ArrayV(list(args))
     if perms is not None:
         I.perms = perms
+    if ceilings:
+        I.pkg_ceilings = ceilings
     env = {k: v for k, v in os.environ.items()} if I.perms.env_ok() else {}
     I.prelude.vars["env"] = DictV(env, len(env))
     return I
@@ -119,16 +121,17 @@ def main(argv=None):
     except OSError as e:
         sys.stderr.write(f"moxie: cannot read {path}: {e.strerror}\n")
         return 2
-    from .perms import load_for, PermError
+    from .perms import load_for, load_ceilings, PermError
     from .manifest import load as load_manifest, ManifestError
     try:
         perms = load_for(path, pflags)
+        ceilings = load_ceilings(path)
         manifest = load_manifest(path)
     except (PermError, ManifestError) as e:
         sys.stderr.write(f"moxie: {e}\n")
         return 2
     if cmd == "run":
-        I = make_interp(path, [a for a in argv[2:] if a != "--no-check"], perms)
+        I = make_interp(path, [a for a in argv[2:] if a != "--no-check"], perms, ceilings)
         I.manifest = manifest
         code = I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
         if want_pools:
@@ -141,7 +144,7 @@ def main(argv=None):
                     sys.stderr.write(w + "\n")
         return code
     if cmd == "test":
-        I = make_interp(path, [], perms)
+        I = make_interp(path, [], perms, ceilings)
         p_, f_, code = I.run_tests(src, os.path.basename(path), argv[2] if len(argv) > 2 else None)
         if "/// >" in src and len(argv) <= 2:
             from .doc import collect, run_doctests
@@ -151,7 +154,7 @@ def main(argv=None):
                 code = code or (0 if ok else 1)
         return code
     if cmd == "check":
-        I = make_interp(path, [], perms)
+        I = make_interp(path, [], perms, ceilings)
         return I.check_source(src, os.path.basename(path))
     return 2
 

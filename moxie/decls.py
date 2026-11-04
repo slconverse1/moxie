@@ -364,6 +364,7 @@ class DeclsMixin:
         src = open(path, encoding="utf-8").read()
         prog = self.load_source(src, path)
         menv = self.new_module_env()
+        self.mod_pkg[id(menv)] = key
         self.run_sync(self.exec_stmts(prog.stmts, menv))
         exp = self.exports.get(id(menv), set())
         pe = Env(None)

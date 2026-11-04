@@ -69,5 +69,40 @@ chk("fs = true grants everything in fs", run(RD, manifest="[permissions]\nfs = t
 chk("an unknown permission is an error", run(RD, manifest="[permissions]\nfiles = true\n"), 2, "unknown permission")
 chk("a bad value is an error", run(RD, manifest='[permissions]\nstdin = "yes"\n'), 2, "true or false")
 chk("moxie check reports a missing grant", run(RD, "--deny-all", cmd="check"), 1, "needs fs")
+# ---- per-package ceilings (Spec 19d)
+def runp(main, pkgs, manifest, *flags, cmd="run"):
+    d = tempfile.mkdtemp(dir=D)
+    for sub, name, text in (("data", "a.txt", "hello"), ("other", "b.txt", "secret")):
+        os.makedirs(os.path.join(d, sub))
+        open(os.path.join(d, sub, name), "w").write(text)
+    open(os.path.join(d, "Moxie.toml"), "w").write(manifest)
+    for nm, text in pkgs.items():
+        open(os.path.join(d, nm + ".mxi"), "w").write(text)
+    p = os.path.join(d, "main.mxi")
+    open(p, "w").write(main)
+    r = subprocess.run([sys.executable, "-m", "moxie", *flags, cmd, p], cwd=d, capture_output=True, text=True,
+                       env=dict(os.environ, PYTHONPATH=ROOT), input="")
+    return r.returncode, r.stdout + r.stderr
+
+
+READER = 'export fn slurp(p: String) Result[String, Error]: read_file(p)\nexport fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error]: f(p)\n'
+MAIN = 'import reader\nprintln(read_file("data/a.txt"))\nprintln(reader.slurp("data/a.txt"))\nprintln(reader.slurp("other/b.txt"))\n'
+ALL = '[permissions]\nall = true\n'
+chk("a package with an empty table cannot read (static)", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\n'), 2, "package 'reader' (reader.mxi:1): 'read_file' needs fs.read or fs.write")
+chk("the static error stands on the import line", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\n'), 2, "main.mxi:1: error: package 'reader'")
+chk("a package with no table keeps the program's grants", runp(MAIN, {"reader": READER}, ALL), 0, "Ok(\"secret\")")
+chk("a package ceiling limits paths at run time", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "code: 10")
+chk("the denial names the package", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "for package reader")
+chk("the ceiling still allows what it grants", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "Ok(\"hello\")")
+chk("the program itself is not limited by a package ceiling", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "Ok(\"hello\")\nOk(\"hello\")")
+chk("the program's grants limit the package too", runp(MAIN, {"reader": READER}, '[permissions]\nfs.read = ["data"]\n[permissions.packages.reader]\nfs.read = ["data", "other"]\n'), 0, "code: 10")
+CB = 'import applier\nprintln(applier.apply(fn(p): read_file(p), "other/b.txt"))\n'
+APPLIER = 'export fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error]: f(p)\n'
+chk("a function written in the program keeps the program's rights", runp(CB, {"applier": APPLIER}, ALL + '[permissions.packages.applier]\n'), 0, "Ok(\"secret\")")
+chk("a ceiling for a package nobody imports is a warning", runp('println(1)\n', {}, ALL + '[permissions.packages.ghost]\n', cmd="check"), 0, "warning: no imported package is named 'ghost'")
+chk("a package table with an unknown kind is an error", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfiles = true\n'), 2, "unknown permission")
+chk("flags replace the program's grants but not the ceilings", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n', "--allow-all"), 0, "code: 10")
+chk("a package that needs ffi is checked against its ceiling", runp('import m\nprintln(m.f())\n', {"m": 'foreign "m":\n  pure fn cos(x: Double) Double\nexport fn f() Double: cos(0.0)\n'}, ALL + '[permissions.packages.m]\n'), 2, "ffi for 'm'")
+
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)

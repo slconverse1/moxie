@@ -2127,7 +2127,17 @@ or on the command line, which replaces the manifest:
 $ moxie --allow-read=data --allow-write=out run report.mxi
 ```
 
-With no `[permissions]` table and no flag a program is unrestricted, as a script is; any table or flag restricts it to what is granted, and `--deny-all` grants nothing. A call outside a grant returns `Err` with `DENIED` and a message that names the call and the permission: `read_file("other/b.txt")` under `--allow-read=data` is `Err(Error(code: 10, ...))`, and a path that climbs out with `..` is refused too. The compiler also follows the permissions through function calls, as it does effects. If `main` can reach `read_file` and nothing grants a file permission, `moxie check` and `moxie run` stop with a compile error such as `'read_file' needs fs.read or fs.write, which is not granted (Moxie.toml)`, before anything runs. It checks the kinds and the libraries, not the paths, which depend on values and are checked when the call is made. **Mistake:** granting `ffi` for convenience: a native library runs with all the rights of the process, so the permissions guard against mistakes in moxie code, not against hostile C.
+With no `[permissions]` table and no flag a program is unrestricted, as a script is; any table or flag restricts it to what is granted, and `--deny-all` grants nothing. A call outside a grant returns `Err` with `DENIED` and a message that names the call and the permission: `read_file("other/b.txt")` under `--allow-read=data` is `Err(Error(code: 10, ...))`, and a path that climbs out with `..` is refused too. The compiler also follows the permissions through function calls, as it does effects. If `main` can reach `read_file` and nothing grants a file permission, `moxie check` and `moxie run` stop with a compile error such as `'read_file' needs fs.read or fs.write, which is not granted (Moxie.toml)`, before anything runs. It checks the kinds and the libraries, not the paths, which depend on values and are checked when the call is made. A package can be given less than the program. Add a table named for the package inside `[permissions]`:
+
+```
+[permissions]
+all = true
+
+[permissions.packages.reader]
+fs.read = ["data"]
+```
+
+Code written in `reader` can then read only under `data`, whatever the program grants; an empty table gives it nothing, and a package with no table gets what the program has. The rule follows where the code is written: a function the program hands to `reader` keeps the program's rights. A denied call says which package was refused (`... fs.read is not permitted for package reader`), and `moxie check` finds a package that reaches more than its table allows before anything runs, as `package 'reader' (reader.mxi:1): 'read_file' needs fs.read or fs.write, which is not granted to it`. Flags replace the program's grants but not the package tables. **Mistake:** granting `ffi` for convenience: a native library runs with all the rights of the process, so the permissions guard against mistakes in moxie code, not against hostile C.
 
 **20d. Calling C**
 

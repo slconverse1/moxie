@@ -1397,7 +1397,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 - **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..=100]` values can leave the range, so you say when to narrow it again.
 - **Transactions don't nest.** It keeps the commit-or-roll-back rule simple to state.
 - **Delegates apply only to declared tuple fields.** The field's layout has to be known.
-- **Permissions belong to the whole program.** A dependency doesn't get narrower rights than the program that uses it; per-package grants are parked until we know what they should look like.
+- **Permissions belong to the program, and a package can be given less.** By default a dependency has the program's rights. A `[permissions.packages.NAME]` table in `Moxie.toml` sets a ceiling for code written in that package, and the compiler checks the whole package against it.
 - **Foreign code is trusted.** The compiler cannot look inside a C library, so a `foreign` declaration is taken at its word, and a library that is granted runs with all the rights of the process.
 - **`ref` and `lazy` can't be combined.** One copies in and out, and the other re-runs the argument on every read, so they pull in opposite directions.
 

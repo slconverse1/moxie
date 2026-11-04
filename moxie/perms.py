@@ -45,10 +45,16 @@ class Perms:
         """`table` is the parsed [permissions] table."""
         pm = cls(True, base)
         pm.source = where
-        known = {"fs", "net", "ffi", "stdin", "env"}
+        known = {"fs", "net", "ffi", "stdin", "env", "all", "packages"}
         for k in table:
             if k not in known:
                 raise PermError(f"{where}: unknown permission '{k}' in [permissions] (known: {', '.join(sorted(known))})")
+        if "all" in table:
+            if not isinstance(table["all"], bool):
+                raise PermError(f"{where}: 'all' must be true or false")
+            if table["all"]:
+                for kind in KINDS:
+                    pm.grant(kind)
         for k, subs in (("fs", ("read", "write")), ("net", ("connect", "listen"))):
             v = table.get(k)
             if v is None:
@@ -204,3 +210,74 @@ def load_for(path, flags):
                     raise PermError(f"{m}: [permissions] must be a table")
                 return Perms.from_manifest(data["permissions"], os.path.dirname(m), m)
     return Perms.open()
+
+
+class Combined:
+    """What code in a package may do: the program's grants and the package's own ceiling must both allow it."""
+    restricted = True
+
+    def __init__(self, program, ceiling, pkg):
+        self.program, self.ceiling, self.pkg = program, ceiling, pkg
+        self.source = ceiling.source
+
+    def _both(self, ok_a, ok_b):
+        if not (ok_a and ok_b):
+            CURRENT[0] = self.pkg
+            return False
+        return True
+
+    def allows_kind(self, kind):
+        return self._both(self.program.allows_kind(kind), self.ceiling.allows_kind(kind))
+
+    def path_ok(self, kind, path):
+        return self._both(self.program.path_ok(kind, path), self.ceiling.path_ok(kind, path))
+
+    def connect_ok(self, host, port):
+        return self._both(self.program.connect_ok(host, port), self.ceiling.connect_ok(host, port))
+
+    def listen_ok(self, port):
+        return self._both(self.program.listen_ok(port), self.ceiling.listen_ok(port))
+
+    def ffi_ok(self, lib):
+        return self._both(self.program.ffi_ok(lib), self.ceiling.ffi_ok(lib))
+
+    def stdin_ok(self):
+        return self._both(self.program.stdin_ok(), self.ceiling.stdin_ok())
+
+    def env_ok(self):
+        return self._both(self.program.env_ok(), self.ceiling.env_ok())
+
+    def describe(self):
+        return f"package {self.pkg}: {self.ceiling.describe()}, within the program's {self.program.describe()}"
+
+
+CURRENT = [None]          # the package named in the last refusal, for the message of `denied`
+
+
+def load_ceilings(path):
+    """{package name: Perms} from [permissions.packages.NAME] tables in the nearest Moxie.toml."""
+    if not path:
+        return {}
+    m = find_manifest(path)
+    if not m:
+        return {}
+    import tomllib
+    try:
+        with open(m, "rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as e:
+        raise PermError(f"{m}: {e}")
+    perm = data.get("permissions")
+    if not isinstance(perm, dict) or "packages" not in perm:
+        return {}
+    pk = perm["packages"]
+    if not isinstance(pk, dict):
+        raise PermError(f"{m}: [permissions.packages] must hold one table per package")
+    out = {}
+    for name, table in pk.items():
+        if not isinstance(table, dict):
+            raise PermError(f"{m}: [permissions.packages.{name}] must be a table")
+        if "packages" in table or "all" in table:
+            raise PermError(f"{m}: [permissions.packages.{name}] cannot contain 'all' or 'packages'")
+        out[name] = Perms.from_manifest(table, os.path.dirname(m), f"{m} [permissions.packages.{name}]")
+    return out

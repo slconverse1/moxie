@@ -402,6 +402,8 @@ class CallsMixin:
                 spreads = []
         if defer:
             return callee, pos, named
+        if self.pkg_ceilings:
+            self.cur_mod = env.mod
         r = yield from self.apply(callee, pos, named, refspec=refspec, env=env, targs=targs,
                                   spreads=spreads, line=n.line, hint=hint)
         # ref Self methods: rebind the receiver

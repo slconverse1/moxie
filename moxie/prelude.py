@@ -210,7 +210,10 @@ class _DeniedIn:
 
 
 def denied(what, kind):
-    return err_reserved("DENIED", f"{what}: {kind} is not permitted")
+    from . import perms as _pm
+    pkg, _pm.CURRENT[0] = _pm.CURRENT[0], None
+    who = f" for package {pkg}" if pkg else ""
+    return err_reserved("DENIED", f"{what}: {kind} is not permitted{who}")
 
 
 def _inp(I, a):

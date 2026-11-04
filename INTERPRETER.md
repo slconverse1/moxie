@@ -359,3 +359,17 @@ last non-span line, applied to span lines. A comment-only line takes the level o
 before the next code line, or that line's level. `format_source` lexes the result and compares the token kinds and
 values with the original, formats a second time and compares, and raises `FmtError` if either differs. The command
 (`fmt_main`) handles `--check` and `--stdout` and walks directories for `.mxi` and `.mx`. Tests: `tests/run_fmt.py`.
+
+## Per-package permission ceilings
+
+`perms.load_ceilings(path)` reads `[permissions.packages.NAME]` tables from the nearest `Moxie.toml` into
+`Interp.pkg_ceilings` (name to `Perms`); `[permissions]` also takes `all = true`. `Interp.perms` is now a property:
+with no ceilings it returns the program's `Perms`; otherwise it looks up the package of `cur_mod` (`mod_pkg` maps a
+module env's id to the package name, filled in `load_package`) and, if that package has a ceiling, returns
+`perms.Combined(program, ceiling, name)`, whose checks need both to allow. `ev_Call` sets `cur_mod = env.mod`
+just before applying the callee, only when ceilings exist, so the package is the one the call is written in (a
+builtin passed to `map` is attributed to the call to `map`). A refusal sets `perms.CURRENT` so `prelude.denied`
+can name the package. Statically, `Interp.package_diags` follows the entry's imports through the search path,
+parses each package, runs `effects.Needs` over its top level and over every function summary, and reports the
+kinds the combined grants do not allow at the import line; ceilings for packages never imported are warnings.
+`kind_unmet` and `unmet_needs` are shared with the program-level check. Tests: `tests/run_perms.py`.
