@@ -373,3 +373,11 @@ can name the package. Statically, `Interp.package_diags` follows the entry's imp
 parses each package, runs `effects.Needs` over its top level and over every function summary, and reports the
 kinds the combined grants do not allow at the import line; ceilings for packages never imported are warnings.
 `kind_unmet` and `unmet_needs` are shared with the program-level check. Tests: `tests/run_perms.py`.
+
+`fmt.py` now also has `_space_line`, which works on the gaps next to operator tokens (columns come from `Tok.col`):
+one space around the always-binary operators and around `+ - * / %` after a value, none before a comma and one after.
+`_once(src, file, spacing)` computes each code line's new indentation in a first pass that mirrors the lexer's indent
+stack (`info["after"]`), so a block opened under a continuation line goes two spaces deeper than that line. After
+the line pass, a blank line is added before a top-level declaration word that follows a block. `format_source`
+applies spacing only when `repr(parse_program(...))` is the same before and after; the string-token comparison
+ignores the line numbers kept inside interpolations.

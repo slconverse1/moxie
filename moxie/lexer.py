@@ -824,7 +824,7 @@ class Lexer:
                                                first.line, ind + 1, self.file)
                 stmt_indent = ind
             self.info[L["line"]] = {"cont": is_cont, "canon": None if is_cont else 2 * (len(stack) - 1),
-                                    "indent": L["indent"], "before": snap}
+                                    "indent": L["indent"], "before": snap, "after": list(stack)}
             for t in toks:
                 if t.kind == "OP":
                     if t.val in ("(", "[", "{"):

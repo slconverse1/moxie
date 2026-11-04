@@ -2333,7 +2333,7 @@ println("$total")
 
 **23a. `moxie fmt`**
 
-`moxie fmt FILE-or-DIR...` rewrites files into one layout and has no layout options. In this first version it fixes the shape of the file and leaves the spacing inside a line alone: every block is indented two spaces per level, a continuation line keeps its offset from the statement it continues, multi-line strings, SQL bodies, and block comments move together with their text unchanged, trailing spaces go, blank lines are limited to two at the top level and one inside a block, and the file ends with a single newline. A comment takes the level of the code it belongs to.
+`moxie fmt FILE-or-DIR...` rewrites files into one layout and has no layout options. It fixes the shape of the file: every block is indented two spaces per level, a continuation line keeps its offset from the statement it continues, multi-line strings, SQL bodies, and block comments move together with their text unchanged, trailing spaces go, blank lines are limited to two at the top level and one inside a block, and the file ends with a single newline. A comment takes the level of the code it belongs to. Inside a line it puts one space around `=`, `==`, `~=`, `<=`, `>=`, `->`, `|>` and the arithmetic operators, none before a comma and one after, and it adds a blank line before a top-level `fn`, `type`, `impl`, or `test` that follows a block.
 
 ```
 $ moxie fmt --check src
@@ -2342,7 +2342,7 @@ $ moxie fmt src
 formatted src/parse.mxi
 ```
 
-`--check` changes nothing and exits 1 when a file would change, so it fits a build script; `--stdout` prints the result instead of writing. Before a file is written, the formatter lexes the result and checks that the tokens match the original and that a second run changes nothing; if either check fails it reports the file and leaves it alone. A file with a tab in its indentation or an unterminated string is reported and not touched. **Mistakes:** expecting it to add spaces around operators (not yet), or to join or split lines (it never does).
+`--check` changes nothing and exits 1 when a file would change, so it fits a build script; `--stdout` prints the result instead of writing. Before a file is written, the formatter checks that the tokens match the original, that the spacing changes left the parsed program the same (otherwise only the layout rules are applied), and that a second run changes nothing; if a check fails it reports the file and leaves it alone. A file with a tab in its indentation or an unterminated string is reported and not touched. **Mistakes:** expecting it to join or split lines (it never does, so a long argument list stays as written), or to rewrap long lines (the line width is not settled).
 
 **Chapter 24: Functional programming**
 

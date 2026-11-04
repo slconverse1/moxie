@@ -7,23 +7,97 @@ ends with one newline. Spacing inside a line is left alone. Before it returns, t
 give the same tokens, and formatting it a second time must change nothing; otherwise `FmtError` is raised and
 nothing is written."""
 import os
+import re
 import sys
 
 from .lexer import Lexer, MoxieSyntaxError
+from .parser import parse_program
 
 
 class FmtError(Exception):
     pass
 
 
+_LINE_IN_PART = re.compile(r"(\('e', '(?:[^'\\]|\\.)*', (?:None|'[^']*')), \d+\)")
+
+
 def _tokens(src, file):
-    return [(t.kind, repr(t.val)) for t in Lexer(src, file).tokenize()]
+    """Token kinds and values; the line numbers inside string interpolations are not part of the comparison."""
+    return [(t.kind, _LINE_IN_PART.sub(r"\1)", repr(t.val)) if t.kind == "STR" else repr(t.val))
+            for t in Lexer(src, file).tokenize()]
 
 
-def _once(src, file):
+SPACED = {"==", "~=", "<=", ">=", "->", "|>", "|>>", "<$>", "<*>", "~>", "<~", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^="}
+ARITH = {"+", "-", "*", "/", "%"}
+KEYWORDS = {"return", "and", "or", "not", "in", "is", "if", "elif", "else", "when", "while", "for", "yield", "break",
+            "continue", "move", "ref", "using", "assert", "match", "do", "then", "where", "as", "lazy", "run"}
+DECL_WORDS = {"fn", "type", "impl", "interface", "enum", "test", "export", "internal", "pure", "parks", "prints", "impure",
+              "foreign", "fiber"}
+
+
+def _space_line(text, toks):
+    """One space around binary operators and after commas; none before a comma. Only whitespace changes."""
+    edits = {}
+
+    def gap_before(p):
+        j = p
+        while j > 0 and text[j - 1] == " ":
+            j -= 1
+        if j == 0 or (j > 0 and text[j - 1] == "\t") or (p < len(text) and text[p] == "\t"):
+            return None
+        return j, p
+
+    def gap_after(e):
+        k = e
+        while k < len(text) and text[k] == " ":
+            k += 1
+        if k >= len(text) or text[k] == "\t":
+            return None
+        return e, k
+
+    def want(g, s):
+        if g is not None and g[0] not in edits and text[g[0]:g[1]] != s:
+            edits[g[0]] = (g[1], s)
+    for i, t in enumerate(toks):
+        if t.kind != "OP":
+            continue
+        p = t.col - 1
+        e = p + len(t.val)
+        if text[p:e] != t.val:
+            return text                     # columns do not line up with the text; leave the line alone
+        v = t.val
+        if i > 0 and toks[i - 1].kind == "NAME" and toks[i - 1].val == "fn":
+            continue                        # fn +(other: Money) names an operator; leave it as written
+        if v == ",":
+            want(gap_before(p), "")
+            g = gap_after(e)
+            if g is not None:
+                want(g, "" if text[g[1]] in ")]}" else " ")
+        elif v in SPACED:
+            want(gap_before(p), " ")
+            want(gap_after(e), " ")
+        elif v in ARITH and 0 < i < len(toks) - 1:
+            pv = toks[i - 1]
+            value_end = (pv.kind in ("INT", "FLOAT", "DEC", "STR", "CHAR", "DUR", "BYTES", "BCHAR")
+                         or (pv.kind == "NAME" and pv.val not in KEYWORDS)
+                         or (pv.kind == "OP" and pv.val in (")", "]", "}")))
+            if value_end:
+                want(gap_before(p), " ")
+                want(gap_after(e), " ")
+    for s in sorted(edits, reverse=True):
+        e, r = edits[s]
+        text = text[:s] + r + text[e:]
+    return text
+
+
+def _once(src, file, spacing=True):
     src = src.replace("\r\n", "\n").replace("\r", "\n")
     lx = Lexer(src, file)
     lx.tokenize()
+    by_line = {}
+    for t in lx.raw:
+        if t.kind not in ("BOL", "NL", "SQL"):
+            by_line.setdefault(t.line, []).append(t)
     lines = src.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
@@ -37,6 +111,24 @@ def _once(src, file):
         while j < len(codes) and codes[j] < ln:
             j += 1
         nxt[ln] = codes[j] if j < len(codes) else None
+    # phase 1: the new indentation of every code line, following the lexer's indent stack
+    new_of, nm_before = {}, {}
+    nm = {0: 0}
+    d0 = 0
+    prev_new = 0
+    for ln in codes:
+        info = lx.info[ln]
+        lead = len(lines[ln - 1]) - len(lines[ln - 1].lstrip(" "))
+        nm_before[ln] = dict(nm)
+        if info["cont"]:
+            new = lead + d0
+        else:
+            ind = info["indent"]
+            new = nm[ind] if ind in nm else prev_new + 2
+            d0 = new - lead
+            nm = {o: (nm[o] if o in nm else new) for o in info["after"]}
+        new_of[ln] = new
+        prev_new = new
     out = []                      # (text, protected)
     stmt_delta = span_delta = 0
     for ln, text in enumerate(lines, 1):
@@ -55,11 +147,12 @@ def _once(src, file):
             out.append(("", False))
             continue
         info = lx.info.get(ln)
+        if info is not None and spacing and ln in by_line:
+            text = _space_line(text, by_line[ln])
+            body = text.lstrip(" ")
         if info is not None:
-            if info["cont"]:
-                new = lead + stmt_delta
-            else:
-                new = info["canon"]
+            new = new_of[ln]
+            if not info["cont"]:
                 stmt_delta = new - lead
             if new < 0:
                 raise FmtError(f"line {ln}: cannot move this text without changing it")
@@ -76,10 +169,10 @@ def _once(src, file):
                 stack, depth = ni["before"]
                 if depth > 0 or ni["cont"]:
                     new = lead + stmt_delta
-                elif lead in stack:
-                    new = 2 * stack.index(lead)
+                elif lead in nm_before[nx]:
+                    new = nm_before[nx][lead]
                 else:
-                    new = ni["canon"]
+                    new = new_of[nx]
             new = max(new, 0)
             span_delta = new - lead
             out.append((" " * new + body.rstrip(), False))
@@ -91,6 +184,7 @@ def _once(src, file):
             out.append((" " * new + body.rstrip(), False))
     # blank lines: none at the start or end, at most two before a top-level line, one before an indented one
     res = []
+    prot_idx = set()
     k = 0
     m = len(out)
     while k < m:
@@ -105,17 +199,41 @@ def _once(src, file):
                 res.extend([""] * min(e - k, limit))
             k = e
             continue
+        if prot:
+            prot_idx.add(len(res))
         res.append(text)
         k += 1
+    if spacing:
+        fin = []
+        for k, text in enumerate(res):
+            word = text.split(" ", 1)[0].split("(", 1)[0] if text else ""
+            if (word in DECL_WORDS and not text.startswith(" ") and fin and fin[-1] != ""
+                    and not fin[-1].lstrip().startswith(("//", "/*", "#")) and (fin[-1].startswith(" ") or text.endswith(":"))
+                    and k not in prot_idx):
+                fin.append("")
+            fin.append(text)
+        res = fin
     return "\n".join(res) + "\n" if res else ""
+
+
+def _ast(src, file):
+    try:
+        return repr(parse_program(src, file))
+    except Exception:
+        return None
 
 
 def format_source(src, file="<input>"):
     try:
+        use = True
         a = _once(src, file)
+        before = _ast(src, file)
+        if before is None or _ast(a, file) != before:
+            use = False                      # spacing is applied only when the program is shown to be unchanged
+            a = _once(src, file, spacing=False)
         if _tokens(a, file) != _tokens(src, file):
             raise FmtError("the formatted text does not lex to the same tokens")
-        if _once(a, file) != a:
+        if _once(a, file, spacing=use) != a:
             raise FmtError("formatting is not stable on this file")
     except MoxieSyntaxError as e:
         raise FmtError(str(e))
