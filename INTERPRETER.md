@@ -292,3 +292,13 @@ flag; `path_ok` resolves with `realpath` against the manifest directory, `connec
 (abort before the program runs). Static: `effects.Needs`, a subclass of `Effects` whose builtin table
 maps calls to permission kinds (`fs`, `net`, `stdin`, `env`, `ffi:LIB`); `Interp.static_check` turns
 a needed kind with no grant into an error. Tests: `tests/run_perms.py`.
+
+## Static pool tally
+
+`moxie/tally.py` (`moxie pools FILE`; `--pools run` also prints it and calls `compare`). `Tally` collects
+function definitions by name (like effects) and foreign functions that return a handle, and computes per
+function a `Count` of kind -> [creation sites reached, reasons]. Reasons are `loop` (inside `for`, `while`,
+comprehensions, daemons, lambdas), `recursion` (the function is in a call cycle) and `fiber` (reached through
+`run`). Without reasons the number is an exact upper bound; with them it is printed `N+`. Kinds match
+`moxie/pools.py`. Tests: `tests/run_tally.py`, which also runs the examples and requires that no exact count is
+below the observed use.

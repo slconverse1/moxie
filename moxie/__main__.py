@@ -8,6 +8,7 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
                                     restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
        moxie test FILE [name]       run the test blocks (the entry body does not run)
        moxie check FILE             parse and check without running
+       moxie pools FILE             the static pool tally: how many of each counted resource the program creates
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
                                     write foreign declarations from a C header
        moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
@@ -66,6 +67,25 @@ def main(argv=None):
         from .doc import doc_main
         return doc_main(argv[1:], lambda: make_interp(argv[1] if len(argv) > 1 else None, []),
                         sys.stdout, sys.stderr)
+    if cmd == "pools":
+        if len(argv) < 2:
+            sys.stderr.write(USAGE)
+            return 2
+        from .lexer import MoxieSyntaxError
+        try:
+            src = open(argv[1], encoding="utf-8").read()
+        except OSError as e:
+            sys.stderr.write(f"moxie: cannot read {argv[1]}: {e.strerror}\n")
+            return 2
+        I = make_interp(argv[1], [])
+        try:
+            prog = I.load_source(src, os.path.basename(argv[1]))
+        except MoxieSyntaxError as e:
+            sys.stderr.write(str(e) + "\n")
+            return 2
+        from .tally import static_tally, format_tally
+        sys.stdout.write(format_tally(static_tally(prog)))
+        return 0
     if cmd not in ("run", "test", "check"):
         cmd, argv = "run", ["run"] + argv
     if len(argv) < 2:
@@ -88,6 +108,12 @@ def main(argv=None):
         code = I.run_source(src, os.path.basename(path), check="--no-check" not in sys.argv)
         if want_pools:
             sys.stderr.write(I.pools.report())
+            if getattr(I, "main_prog", None) is not None:
+                from .tally import static_tally, format_tally, compare
+                cnt = static_tally(I.main_prog)
+                sys.stderr.write(format_tally(cnt))
+                for w in compare(cnt, I.pools):
+                    sys.stderr.write(w + "\n")
         return code
     if cmd == "test":
         I = make_interp(path, [], perms)
