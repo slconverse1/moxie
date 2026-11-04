@@ -1,8 +1,9 @@
 import json,sys,io,signal,traceback
 sys.setrecursionlimit(20000)
-import os
+import os, re, tempfile
 HERE=os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0,os.path.join(HERE,'..'))
+os.chdir(tempfile.mkdtemp())    # examples write files here
 from moxie.interp import Interp
 blocks=json.load(open(os.path.join(HERE,'guide_corpus.json')))
 _v1=json.load(open(os.path.join(HERE,'guide_corpus_v1.json')))
@@ -17,6 +18,8 @@ class TO(Exception): pass
 def h(*a): raise TO()
 signal.signal(signal.SIGALRM,h)
 SKIP={_remap(141),_remap(146)}   # manifest examples, not moxie code
+# examples that are not runnable moxie: manifests, shell commands, and C libraries we do not have
+SKIP|={j for j,b in enumerate(blocks) if b[1].lstrip().startswith(('[','$ ','lib =')) or re.search(r'foreign "(?!m"|c")',b[1])}
 def run(src,name):
     out=io.StringIO(); err=io.StringIO()
     I=Interp(out=out,err=err)

@@ -2000,6 +2000,186 @@ println("editor $editor")
 
 `args` is an array, so `args(0)` aborts when no argument was given; `get(args, 0)` returns a `Result`. `env("EDITOR")` returns a `Result` (MISSING when unset), and `.get_or("vi")` supplies a default. With no arguments and no `EDITOR`, the output is `no arguments` and `editor vi`. **Mistake:** `args(0)` without a check, and `set_env` (there is none).
 
+**20a. Standard input and output**
+
+`stdin`, `stdout`, and `stderr` are values the runtime owns. Any function can take one as a parameter, which is how output code gets tested:
+
+```
+fn greet(out: Io, name: String):
+  println(out, "hello, $name")
+greet(stdout, "mixer")
+greet(stderr, "mixer")
+```
+
+Output: `hello, mixer` on standard output, and the same line on standard error. `print` and `println` with no stream write to `stdout`, and `eprint` and `eprintln` write to `stderr`. Reading is `read_line()`, which returns a `Result` (the line without its newline), `read_all()`, and `stdin_lines()`, a stream of lines. They all `parks`: only the fiber that waits is held up. `with_stdin(text, f)` runs `f` with `text` as the input, so a test can feed a program:
+
+```
+fn ask(question: String) String:
+  print("$question ")
+  read_line().get_or("nobody")
+answer = with_stdin("Ada\n", fn(): ask("name?"))
+println("hi $answer")
+```
+
+Output: `name? hi Ada`. A stream of lines goes through the usual pipeline functions:
+
+```
+total = with_stdin("3\n4\n5\n", fn(): stdin_lines() |> map(fn(s): read[Int](s).get_or(0)) |> reduce(0, _1 + _2))
+println(total)
+```
+
+Output: `12`. End of input is not a crash. `read_line()` returns `Err` with the code `CLOSED`:
+
+```
+when with_stdin("", fn(): read_line()):
+  Ok(line) -> println("got $line")
+  Err(e) -> println("end of input: ${e.message}")
+```
+
+Output: `end of input: end of input`. Text is UTF-8, and input that is not gives `Err` with `BAD_ENCODING`. **Mistake:** `close(stdout)`, which aborts because closing it would silence every later `println`.
+
+**20b. Files and sockets**
+
+A file and a network connection are the same kind of value, an `Io`, so code that reads lines does not care which it was given. `open_file(path, mode)` takes `ReadOnly`, `Create`, `Append`, or `ReadWrite`; `read_file` and `write_file` do a whole small file in one call:
+
+```
+write_file("notes.txt", "one\ntwo\n")?
+f = open_file("notes.txt", Append)?
+println(f, "three")
+close(f)
+r = open_file("notes.txt", ReadOnly)?
+n = lines(r) |> map(len) |> reduce(0, _1 + _2)
+close(r)
+println("$n letters, ${len(read_file("notes.txt")?)} bytes")
+```
+
+Output: `11 letters, 14 bytes`. Paths use `/` on every system, and a write to a file is buffered until `flush` or `close`. An `Io` must be closed, like any resource, and the runtime closes one that is still open when the program ends. `Io` and `Listener` count in the pool tally like connections, and `moxie --pools run FILE` prints the most of each that were open at once. Failures are ordinary `Err` values with the reserved codes `NOT_FOUND`, `DENIED`, and `IO_ERROR`:
+
+```
+when read_file("missing.txt"):
+  Ok(t) -> println(t)
+  Err(e) -> println("code ${e.code}, not found: ${e.code == NOT_FOUND}")
+```
+
+Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` gives a `Listener` (port 0 picks a free one, and `port_of` says which), `accept` waits for a client, and `connect(host, port)` is the client side. A server and a client can run as two fibers of one program, because `accept` and `read_line` park only their own fiber:
+
+```
+fn server(tx: ChanW[Int]):
+  l = listen(0)?
+  write(tx, port_of(l))
+  c = accept(l)?
+  println(c, "hello from server")
+  close(c)
+  close(l)
+rx, tx = Chan[Int][1]()
+run server(tx)
+c = connect("127.0.0.1", read(rx)?)?
+println(read_line(c)?)
+close(c)
+```
+
+Output: `hello from server`. **Mistake:** writing to a file after `close`, which aborts, and forgetting that `connect` can fail: it returns a `Result`.
+
+**20c. Permissions**
+
+A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:
+
+```
+[permissions]
+fs.read = ["data/"]
+fs.write = ["out/"]
+net.connect = ["example.com:443"]
+stdin = true
+```
+
+or on the command line, which replaces the manifest:
+
+```
+$ moxie --allow-read=data --allow-write=out run report.mxi
+```
+
+With no `[permissions]` table and no flag a program is unrestricted, as a script is; any table or flag restricts it to what is granted, and `--deny-all` grants nothing. A call outside a grant returns `Err` with `DENIED` and a message that names the call and the permission: `read_file("other/b.txt")` under `--allow-read=data` is `Err(Error(code: 10, ...))`, and a path that climbs out with `..` is refused too. The compiler also follows the permissions through function calls, as it does effects. If `main` can reach `read_file` and nothing grants a file permission, `moxie check` and `moxie run` stop with a compile error such as `'read_file' needs fs.read or fs.write, which is not granted (Moxie.toml)`, before anything runs. It checks the kinds and the libraries, not the paths, which depend on values and are checked when the call is made. **Mistake:** granting `ffi` for convenience: a native library runs with all the rights of the process, so the permissions guard against mistakes in moxie code, not against hostile C.
+
+**20d. Calling C**
+
+A `foreign` block declares C functions by signature. Every function says what it does to the world (`pure`, `prints`, `parks`, or `impure`), because the compiler cannot look inside C, and after that it is called like any function:
+
+```
+foreign "m":
+  pure fn cos(x: Double) Double
+  pure fn pow(x: Double, y: Double) Double
+println(cos(0.0))
+println(pow(2.0, 10.0))
+```
+
+Output: `1.0`, then `1024.0`. A `ref` parameter is a C out-parameter: the value goes in, and the result is copied back when the call returns:
+
+```
+foreign "m":
+  pure fn frexp(x: Double, ref exp: Int32) Double
+e = 0i32
+m = frexp(8.0, ref e)
+println("$m $e")
+```
+
+Output: `0.5 4`. An `Array` of any number type is passed as a pointer. A parameter written `n: UInt = len(base)` is C's length, filled in by the call, and `size: UInt = size_of(base)` is the element size. A parameter of function type is a C callback for the length of the call, and `Ptr[T]` in the callback's type is a `const T *` that arrives as the value. That is enough to declare `qsort` and call it with a closure:
+
+```
+foreign "c":
+  impure fn qsort(ref base: Array[Int32], n: UInt = len(base), size: UInt = size_of(base), cmp: (Ptr[Int32], Ptr[Int32]) -> Int32)
+xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
+qsort(ref xs, fn(a, b): a - b)
+println(xs)
+```
+
+Output: `Array(1, 3, 5, 7, 9)`. Text crosses as a `CString`, made by `cstr(text)`. The usual habit is to keep the raw declaration to yourself and export a wrapper that speaks moxie:
+
+```
+foreign "c":
+  pure fn strlen(s: CString) UInt
+fn byte_length(text: String) UInt: strlen(cstr(text))
+println(byte_length("héllo"))
+```
+
+Output: `6`, because `é` is two bytes in UTF-8. A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too.
+
+```
+foreign "store":
+  handle Store closes store_close
+  impure fn store_open(path: CString) Result[Store, Error]
+  impure fn store_get(s: Store, key: CString) Int32
+  impure fn store_close(s: Store)
+s = store_open(cstr("data.db"))?
+println(store_get(s, cstr("answer")))
+store_close(move s)
+```
+
+A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL. Two more shapes cover the rest of the usual C habits. A callback that C **keeps** and calls later, perhaps from a thread of its own, cannot run moxie code on that thread, so it becomes a message: declare `cb: Events[Int32]` and pass the write end of a channel with `move`, and a fiber reads the events with `read`. If C needs an **answer** from the kept callback, declare `cb: Handler[(Int32) -> Int32]` and pass a function; when C calls from its own thread, the function runs in a fiber of its own (it may sleep or read), and the C thread waits for the result. A foreign function that waits for such a thread must be declared `parks`:
+
+```
+foreign "sensor":
+  impure fn on_reading(cb: Events[(Int32, Double)])
+  impure fn on_query(cb: Handler[(Int32) -> Int32])
+rx, tx = Chan[(Int32, Double)][16]()
+on_reading(move tx)
+on_query(fn(id): id * 2i32)
+for i in 1..=3:
+  println(read(rx)?)
+```
+
+`moxie bindgen` writes the declarations from a C header, so nobody types them by hand; `--wrap` also writes default wrappers (a `String` for each `CString`, a `Result` for the common `int` status with out-parameters), and `bindgen.toml` holds the corrections:
+
+```
+$ moxie bindgen sensor.h --package sensorx --lib sensor --wrap
+```
+
+```
+[functions.sensor_subscribe]
+keeps = ["cb"]
+```
+
+**Mistake:** a declaration that does not match the real C signature (an `Int32` where C takes a `Double`) is not detected, because the compiler cannot see C. Wrap every foreign call and test the wrapper. A package may contain `foreign` blocks only when its manifest has a `[native]` section.
+
 **Chapter 21: A DSL without macros**
 
 A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety:
