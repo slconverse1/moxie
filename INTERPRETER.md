@@ -616,3 +616,7 @@ Tests: `tests/run_concurrency.py`.
 ## Built-in packages: fp.state (moxie/std, moxie/stdpkg.py)
 
 Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so `fp.state` is `moxie/std/fp/state.mxi`). Each of the three package finders (`decls.load_package`, `effects.find_package`, `tally.find_package`) looks in the program's own directory first and then falls back to `stdpkg.find_std`, so a program's own `fp/state.mxi` wins. `stdpkg.GC_ONLY` lists the packages that only moxie/gc has; the loader aborts and the checker reports an error when one is imported without `--gc`. `fp.state` is the State monad from the gc Guide (24h) plus `get`, `put`, `modify`, `gets`, `eval`, `exec`, and `traverse`; `traverse` is a tail call because loops carry values forward and can't build a result by reassigning an outer name. Tests: `tests/run_fpstate.py`.
+
+## Running with no file named (__main__.default_entry)
+
+`moxie run`, `check`, and `test` with no file (or a first argument that is neither a `.mxi`/`.mx` name nor an existing file) use `entry` from `./Moxie.toml`, else `./main.mxi`, and the argument stays a program argument. Tests: `tests/run_entry.py`.

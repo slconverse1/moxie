@@ -2,7 +2,8 @@
 import os
 import sys
 
-USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
+USAGE = """usage: moxie [--gc] [--release] [--pools] run [FILE] [args...]   run a program (--gc: moxie/gc rules; --release: contracts off)
+                                    with no FILE: the entry in Moxie.toml, else main.mxi (check and test work the same way)
        moxie [--allow-read[=PATHS]] [--allow-write[=PATHS]] [--allow-connect[=HOST:PORT]] [--allow-listen[=PORTS]]
              [--allow-ffi[=LIBS]] [--allow-run[=PROGRAMS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
                                     restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
@@ -24,6 +25,26 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
 
 
 PLATFORM = [None]
+
+
+def default_entry():
+    """The file `moxie run` (or check, or test) uses when none is named: the `entry` of ./Moxie.toml, else ./main.mxi.
+    Returns (path, None), or (None, why) when there is none."""
+    toml = "Moxie.toml"
+    if os.path.isfile(toml):
+        import tomllib
+        try:
+            with open(toml, "rb") as f:
+                entry = tomllib.load(f).get("entry")
+        except (OSError, tomllib.TOMLDecodeError) as e:
+            return None, f"cannot read Moxie.toml: {e}"
+        if entry is not None:
+            if not isinstance(entry, str) or not os.path.isfile(entry):
+                return None, f"the entry file {entry!r} named in Moxie.toml does not exist"
+            return entry, None
+    if os.path.isfile("main.mxi"):
+        return "main.mxi", None
+    return None, "no file named, and this folder has no main.mxi (or a Moxie.toml with an entry)"
 
 
 def make_interp(path, args, perms=None, ceilings=None):
@@ -151,9 +172,15 @@ def main(argv=None):
         return 1 if t.problems else 0
     if cmd not in ("run", "test", "check"):
         cmd, argv = "run", ["run"] + argv
-    if len(argv) < 2:
-        sys.stderr.write(USAGE)
-        return 2
+    if len(argv) < 2 or not (argv[1].endswith((".mxi", ".mx")) or os.path.isfile(argv[1])):
+        entry, why = default_entry()
+        if entry is None:
+            if len(argv) < 2 and not why:
+                sys.stderr.write(USAGE)
+                return 2
+            sys.stderr.write(f"moxie: {why}\n")
+            return 2
+        argv.insert(1, entry)
     path = argv[1]
     try:
         src = open(path, encoding="utf-8").read()

@@ -128,6 +128,7 @@ How the heap behaves:
 
 **4. Packages, modules, imports, exports, linking**
 - **Packages.** A package is a directory of `.mxi` files ordered in `Moxie.toml` (`name`, `files`). The entry package's manifest also holds `entry`, `[fibers]` (`limit`, an optional default cap per fiber function; `stack`), `[memory]` (`heap`, `slice`) **[gc]**, and `[database]` (`schema`, `driver`; section 21). Sizes like `"64KiB"` are 1024-based and `"64KB"` is 1000-based. Files carry no `package` line, since the manifest names the package. A lockfile in the manifest pins every dependency by version and content hash.
+- **Running without a manifest.** A single file runs with no `Moxie.toml`: `moxie run FILE` gives it every permission and the default limits, and `import util` finds `util.mxi` beside it. With no file named, `moxie run` (and `check` and `test`) uses the manifest's `entry` in the current folder, else `main.mxi`; a first argument that is not a file name goes to the program. If neither exists, it says so.
 - **Importing.** An import compiles the package at the point where it is encountered, and cycles are an error.
   - `import db` makes the package's exports available as `db.query(...)`.
   - `import db as store` renames the package, so the exports are `store.query(...)`.

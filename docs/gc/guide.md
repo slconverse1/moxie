@@ -2138,7 +2138,7 @@ import util
 println(util.greeting)
 ```
 
-Output: `hello`. Everything is linked statically from source and unreachable code is pruned, a link report lists what each package contributed, and a lockfile records dependency hashes. **Mistake:** `util.retry_limit` from another package is an error, because it is `internal`.
+Output: `hello`. A single file needs no manifest at all, and in a folder with a `main.mxi` (or a `Moxie.toml` with an `entry`) you can run it with just `moxie run`. Everything is linked statically from source and unreachable code is pruned, a link report lists what each package contributed, and a lockfile records dependency hashes. **Mistake:** `util.retry_limit` from another package is an error, because it is `internal`.
 
 **Chapter 20: Arguments and environment**
 
