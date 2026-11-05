@@ -2015,7 +2015,47 @@ fn start_counter(tx: ChanW[Int], start: Int) Unit:
     _ = write(out, first + 1)
 ```
 
-Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5): ...`). There is no structured-concurrency block: to wait for fibers, read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), an inline fiber body that ends in a value other than `Unit`, `return` in a daemon cycle (before `daemon:` in the entry file it ends the program), and a literal in the short form (`run fn (5):` needs the full form, `run fn (5)(x):`).
+Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5): ...`). To wait for fibers, use a `scope:` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), an inline fiber body that ends in a value other than `Unit`, `return` in a daemon cycle (before `daemon:` in the entry file it ends the program), and a literal in the short form (`run fn (5):` needs the full form, `run fn (5)(x):`).
+
+**17a. Cancelling fibers, and waiting for them with `scope:`**
+
+A fiber that loops forever, such as a worker or a ticker, needs a way to be told to stop. Moxie gives you a `Cancel` token. You pass it to the fiber like any other argument, and the fiber looks at it when it is ready to: `is_cancelled(c)` says whether `cancel(c)` has been called, and `case cancelled(c) ->` is a `select` arm that fires once it has. Cancelling is a request, not a kill: nothing stops a fiber in the middle of a statement, and a fiber that never looks at the token runs on. A `Cancel` copies like an `Atom` handle, and cancelling twice is harmless.
+
+A `scope:` block waits for every fiber started inside it (and every fiber those start) before the block ends. `scope name:` also binds `name` to the block's own `Cancel`:
+
+```
+fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
+  while true:
+    select:
+      case cancelled(stop) ->
+        _ = write(out, "worker ${id} stopping")
+        return
+      case _ ->
+        sleep(10ms)
+rx, tx = Chan[String][4]()
+scope s:
+  _ = run worker(1, tx, s)
+  _ = run worker(2, tx, s)
+  sleep(50ms)
+  cancel(s)
+println("scope over")
+println(read(rx))
+println(read(rx))
+```
+
+Output: `scope over`, then `Ok("worker 1 stopping")` and `Ok("worker 2 stopping")`. Leaving the block early, with `?`, `return`, `break`, or `continue`, cancels its token first and then waits, so no fiber outlives the block:
+
+```
+fn parse(text: String) Result[Int, Error]:
+  if text == "": fail(7, "no input") else: Ok(1)
+fn job(out: ChanW[String]) Result[Int, Error]:
+  scope s:
+    _ = run worker(1, out, s)
+    n = parse("")?
+    Ok(n)
+```
+
+Here `job` returns the error only after the worker has seen the cancel and finished. Reaching the end of a `scope:` normally does not cancel anything, so call `cancel(s)` yourself when a fiber would otherwise run forever. A fiber parked in a plain `read` or `sleep` can't see the token, so for fibers that must stop promptly wait in a `select` with a `cancelled` arm, and use `after(d)` for a sleep that can be cut short. A `scope:` parks, so it can't be in a pure function, and an abort in any fiber still ends the whole program.
 
 **Chapter 18: Errors and `?`**
 

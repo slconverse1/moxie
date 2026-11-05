@@ -604,3 +604,11 @@ Either way the tree-walker stays as the reference, and every suite and example r
 ## File watching (moxie/watch.py)
 
 `watch(path)` makes a `Chan` of 16 (counted in the pool tally and given a fixed slot estimate in `layout.slot_bytes`), an `EventSink` like `signals` uses, and a daemon thread that sleeps 100 ms, scans, and posts `FileChange` tuples for each difference through `post_event`. The scan is `os.stat` for a file or `os.scandir` for a directory (non-recursive; a subdirectory's stamp is the constant `("dir",)` so only creation and deletion show). `sched.listeners` and `sig_listeners` are raised so an idle program waits in real time and sleepers keep time. When `chan.rcount` drops to 0 (the reader was closed) the thread posts `WATCH_STOP`, and `deliver_event` lowers both counts on the main thread, so a closed watcher no longer hides a real deadlock. A polling design was chosen over inotify, FSEvents, and ReadDirectoryChangesW to stay portable and dependency-free; a native backend could replace `_scan` and the thread without changing the language. `tests/run_watch.py` covers it.
+
+## Structured concurrency and cancellation (sched.py)
+
+`Cancel()` makes a `CancelV` (a flag and a `sel` list of fibers waiting in a select); `cancel(c)` sets the flag and calls `notify_sel(c)`. The `cancelled(c)` select arm is ready when the flag is set and registers the fiber in `c.sel` otherwise, exactly like `closed(ch)`.
+
+`scope:` / `scope NAME:` is the `ScopeE` node. Each `Fiber` has a `scope` slot. `Sched.spawn` gives a new fiber the spawning fiber's current scope and counts it in `scope.live`; `finish` and `abort` call `leave_scope`, which decrements the count and wakes the waiting owner at zero. Because children inherit the scope, grandchildren are counted too. `scope_op` swaps `f.scope` for a new `ScopeState` while the body runs and restores it in a `finally`. On a normal end it joins (parks with `("block",)` until `live == 0`). On `ReturnEx`, `BreakEx`, or `ContinueEx` (which is how `?` leaves a function) it sets the token, wakes selectors, joins, and re-raises. `Abort` and `ProgramExit` pass through untouched, so a fiber abort still ends the program. The scope's own token is not counted in the pools, since the block makes one per run; `Cancel()` is, and cannot be created in a loop.
+
+Tests: `tests/run_concurrency.py`.

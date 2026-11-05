@@ -76,11 +76,12 @@ def _defs():
         "Arm": "pats guard body",
         "SeqE": "arms",                # [(pred, stage)]
         "SelectE": "arms",             # [SelArm]
-        "SelArm": "kind bind expr body",   # kind: read closed default expr
+        "SelArm": "kind bind expr body",   # kind: read closed cancelled default expr
         "ForE": "pat iter body else_ label",
         "WhileE": "cond body else_ label",
         "ForAll": "binds body",          # binds: list of (name, type)
         "DaemonE": "body",
+        "ScopeE": "name body",         # scope NAME: ... (NAME is the scope's Cancel token, or None)
         "DoE": "body label",
         "DoRecv": "recv kind body",    # kind: do | update
         "UpdLine": "name expr nested",

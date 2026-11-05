@@ -11,7 +11,7 @@ SCALARS = {"Int": 8, "UInt": 8, "Int8": 1, "UInt8": 1, "Byte": 1, "Int16": 2, "U
 WORD = 8
 
 # What a pool slot holds apart from the values in it (to be tuned): the runtime's bookkeeping for one resource.
-SLOT = {"Atom": 16, "Chan": 64, "Timer": 32, "Future": 32, "Io file": 64, "Io socket": 64, "Listener": 32,
+SLOT = {"Atom": 16, "Cancel": 16, "Chan": 64, "Timer": 32, "Future": 32, "Io file": 64, "Io socket": 64, "Listener": 32,
         "Connection": 128}
 HANDLE = WORD            # a foreign handle is one word (Spec section 19)
 

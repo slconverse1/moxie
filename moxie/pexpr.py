@@ -608,6 +608,11 @@ class ExprParser(PBase):
             self.next()
             body = self.parse_block_or_inline()
             return DoE(body, None, line=line)
+        if v == "scope" and (self.at_op(":", 1) or (self.peek(1).kind == "NAME" and self.at_op(":", 2))):
+            self.next()
+            name = self.next().val if not self.at_op(":") else None
+            self.next()
+            return ScopeE(name, self.parse_block_or_inline(), line=line)
         if v == "select" and self.at_op(":", 1):
             return self.parse_select()
         if v == "daemon" and self.at_op(":", 1):
@@ -1055,6 +1060,12 @@ class ExprParser(PBase):
             if self.at_name("_") and self.at_op("->", 1):
                 self.next()
                 kind = "default"
+            elif self.at_name("cancelled") and self.at_op("(", 1):
+                self.next()
+                self.next()
+                ex = self.parse_expr()
+                self.expect_op(")")
+                kind = "cancelled"
             elif self.at_name("closed") and self.at_op("(", 1):
                 self.next()
                 self.next()

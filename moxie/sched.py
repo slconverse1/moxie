@@ -41,7 +41,7 @@ class EventSink:
 
 
 class Fiber:
-    __slots__ = ("gen", "id", "name", "state", "sendval", "done", "result", "error", "entry", "owned", "wake")
+    __slots__ = ("gen", "id", "name", "state", "sendval", "done", "result", "error", "entry", "owned", "wake", "scope")
 
     def __init__(self, gen, fid, name, entry=False):
         self.gen = gen
@@ -55,6 +55,29 @@ class Fiber:
         self.entry = entry
         self.owned = []
         self.wake = 0
+        self.scope = None
+
+
+class CancelV:
+    """A cancel token: a shared flag that fibers may check, or wait for in a select arm."""
+    tname_ = "Cancel"
+
+    def __init__(self):
+        self.flag = False
+        self.sel = []
+
+    def is_closed(self):
+        return self.flag
+
+
+class ScopeState:
+    """The fibers started inside a `scope:` block: counted until they end, so the block can wait for them."""
+
+    def __init__(self, parent, token):
+        self.parent = parent
+        self.token = token
+        self.live = 0
+        self.waiter = None
 
 
 class Chan:
@@ -369,6 +392,9 @@ class Scheduler:
     # -------------------------------------------------------------- spawn / wake
     def spawn(self, gen, name, entry=False):
         f = Fiber(gen, self.nextid, name, entry)
+        if self.cur is not None and self.cur.scope is not None:
+            f.scope = self.cur.scope
+            f.scope.live += 1
         self.nextid += 1
         self.fibers.append(f)
         self.ready.append(f)
@@ -524,16 +550,27 @@ class Scheduler:
         else:
             raise RuntimeError(f"unknown scheduler request {req}")
 
+    def leave_scope(self, f):
+        sc = f.scope
+        if sc is not None:
+            f.scope = None
+            sc.live -= 1
+            if sc.live == 0 and sc.waiter is not None:
+                w, sc.waiter = sc.waiter, None
+                self.wake(w, None)
+
     def finish(self, f, value):
         f.done = True
         f.result = value
         f.state = "done"
         self.drop_owned(f)
+        self.leave_scope(f)
 
     def abort(self, f, a):
         f.done = True
         f.state = "done"
         self.drop_owned(f)
+        self.leave_scope(f)
         msg = f"abort in fiber {f.name}"
         line = a.line or self.I.line
         diag = f"{msg} (line {line}): {a.msg}"
@@ -625,6 +662,9 @@ def select_op(I, n, env):
         elif arm.kind == "closed":
             ch = yield from I.ev(arm.expr, env)
             prepared.append(("closed", ch, arm))
+        elif arm.kind == "cancelled":
+            ch = yield from I.ev(arm.expr, env)
+            prepared.append(("cancelled", ch, arm))
         else:
             e = arm.expr
             if e.__class__ is Call and e.args:
@@ -644,18 +684,21 @@ def select_op(I, n, env):
             elif kind == "closed":
                 if ch.is_closed():
                     return (yield from _arm_body(I, arm, UNIT, env))
+            elif kind == "cancelled":
+                if ch.flag:
+                    return (yield from _arm_body(I, arm, UNIT, env))
             else:
                 default = arm
         if default is not None:
             return (yield from _arm_body(I, default, UNIT, env))
         f = S.cur
         for kind, ch, arm in prepared:
-            if kind in ("read", "closed"):
+            if kind in ("read", "closed", "cancelled"):
                 tgt = ch.chan if isinstance(ch, (ChanR,)) else ch
                 tgt.sel.append(f)
         yield ("block",)
         for kind, ch, arm in prepared:
-            if kind in ("read", "closed"):
+            if kind in ("read", "closed", "cancelled"):
                 tgt = ch.chan if isinstance(ch, (ChanR,)) else ch
                 while f in tgt.sel:
                     tgt.sel.remove(f)
@@ -673,3 +716,34 @@ def _arm_body(I, arm, v, env):
                 raise Abort("select pattern did not match")
             scope.vars.update(bb)
     return (yield from I.ev_body(arm.body, scope))
+
+
+def scope_op(I, n, env):
+    """`scope:` runs its body, then waits for every fiber started inside it.
+    Leaving early (return, break, continue, or `?`) cancels the scope's token first."""
+    S = I.sched
+    f = S.cur
+    token = CancelV()
+    sc = ScopeState(f.scope, token)
+    inner = Env(env)
+    if n.name:
+        inner.vars[n.name] = token
+    f.scope = sc
+    try:
+        try:
+            r = yield from I.ev_body(n.body, inner)
+        except (ReturnEx, BreakEx, ContinueEx):
+            token.flag = True
+            S.notify_sel(token)
+            yield from _join(S, f, sc)
+            raise
+        yield from _join(S, f, sc)
+        return r
+    finally:
+        f.scope = sc.parent
+
+
+def _join(S, f, sc):
+    while sc.live > 0:
+        sc.waiter = f
+        yield ("block",)

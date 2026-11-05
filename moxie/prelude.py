@@ -1982,6 +1982,26 @@ def b_atom(I, a, kw, ta):
     return S_.AtomV(v)
 
 
+@bi("Cancel")
+def b_cancel_new(I, a, kw, ta):
+    I.pools.acquire("Cancel")
+    return S_.CancelV()
+
+
+@bi("cancel")
+def b_cancel(I, a, kw, ta):
+    c = a[0]
+    if not c.flag:
+        c.flag = True
+        I.sched.notify_sel(c)
+    return UNIT
+
+
+@bi("is_cancelled")
+def b_is_cancelled(I, a, kw, ta):
+    return a[0].flag
+
+
 @bi("swap", "first", True)
 def b_swap(I, a, kw, ta):
     at, f = a[0], a[1]

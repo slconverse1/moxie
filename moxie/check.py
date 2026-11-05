@@ -11,7 +11,7 @@ RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Udp", "
 RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept", "connect_tls", "listen_tls", "bind_udp", "signals", "spawn", "raw_terminal", "watch", "connect_unix", "listen_unix"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
-               "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "ChanR", "ChanW",
+               "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "Cancel", "ChanR", "ChanW",
                "Locale", "Connection", "true", "false", "UserData", "Events", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener", "Ptr", "size_of", "Handler", "bin_build"}
 
 
@@ -960,6 +960,13 @@ class Checker:
 
     def e_DaemonE(self, n, sc):
         self.loop([n.body], sc)
+        return None, None
+
+    def e_ScopeE(self, n, sc):
+        inner = Sc(sc)
+        if n.name:
+            inner.vars[n.name] = Var(None, False, self.loop_depth)
+        self.ev(n.body, inner)
         return None, None
 
     def e_DoE(self, n, sc):

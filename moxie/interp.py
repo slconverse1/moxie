@@ -1132,6 +1132,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         elif c is PRest:
             out.add(p.name)
 
+    def ev_ScopeE(self, n, env):
+        from .sched import scope_op
+        return (yield from scope_op(self, n, env))
+
     def ev_SelectE(self, n, env):
         from .sched import select_op
         try:

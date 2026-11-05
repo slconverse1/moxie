@@ -355,6 +355,8 @@ class Effects:
             return
         if c is SqlE:
             acc.setdefault(PARKS, ("query", getattr(n, "line", 0), "query"))
+        if c is ScopeE:
+            acc.setdefault(PARKS, ("scope", getattr(n, "line", 0), "scope"))
         if c is SelectE:
             if not any(getattr(a, "kind", None) == "default" for a in n.arms or []):
                 acc.setdefault(PARKS, ("select", getattr(n, "line", 0), "select"))

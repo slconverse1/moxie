@@ -1310,7 +1310,7 @@ Here's what you don't need: no `async`/`await` keywords, no IO monad to thread t
 The fine print:
 - **Fiber slots are fixed up front.** Each fiber function has a limit on how many copies can be alive at once: `fiber[3] fn` declares its own, and an unannotated one takes the Manifest's default. That's why `run` returns a `Result` and can fail with `NO_SLOT`.
 - **Arguments are copied or moved.** Plain values, static strings, Atoms, channel ends, and non-capturing functions are fine. Capturing closures, `ref` arguments, Timers, and run-time strings aren't.
-- **There's no structured concurrency and no cancellation, for now.** Nothing stops a fiber from outliving the block that started it, and nothing can tell one to quit.
+- **Cancelling is a request.** A `Cancel` token is passed to the fiber, which ends itself when it sees the token in a `select` arm or a check. Nothing is killed mid-statement, and a fiber that never looks keeps running.
 - **Everything shares one thread.** A long computation in one fiber holds up the others until it parks.
 
 ## 20. The outside world
@@ -1405,7 +1405,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 - **Operators aren't values, and there are no operator sections.** Write a lambda or a placeholder call instead; it's clearer and needs no new rules.
 - **No mixing `_` and `_1` in one partial call.** The two numbering schemes together read like a puzzle.
 - **Unused imports and module-level rebinding are errors.** The link report stays honest, and a program's top-level names stay stable.
-- **No structured concurrency or cancellation, for now.** It's a big design, and we parked it rather than rush it.
+- **A fiber abort still ends the whole program.** `scope:` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
 - **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..=100]` values can leave the range, so you say when to narrow it again.
 - **Transactions don't nest.** It keeps the commit-or-roll-back rule simple to state.
 - **Delegates apply only to declared tuple fields.** The field's layout has to be known.
