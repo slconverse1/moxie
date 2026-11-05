@@ -12,7 +12,7 @@ import os
 # Platforms (Spec 19e): calls that can never work there, found at check time like a missing permission.
 PLATFORMS = {"browser": {"label": "the browser", "missing": ("platform:signals",)}}
 
-KINDS = ("fs.read", "fs.write", "net.connect", "net.listen", "ffi", "stdin", "env")
+KINDS = ("fs.read", "fs.write", "net.connect", "net.listen", "ffi", "process", "stdin", "env")
 
 
 class PermError(Exception):
@@ -57,7 +57,7 @@ class Perms:
         """`table` is the parsed [permissions] table."""
         pm = cls(True, base)
         pm.source = where
-        known = {"fs", "net", "ffi", "stdin", "env", "all", "packages"}
+        known = {"fs", "net", "ffi", "process", "stdin", "env", "all", "packages"}
         for k in table:
             if k not in known:
                 raise PermError(f"{where}: unknown permission '{k}' in [permissions] (known: {', '.join(sorted(known))})")
@@ -81,7 +81,7 @@ class Perms:
                     pm._grant_checked(f"{k}.{s}", pats, where)
             elif v is not False:
                 raise PermError(f"{where}: '{k}' must be true or a table with {' and '.join(subs)}")
-        for k in ("ffi",):
+        for k in ("ffi", "process"):
             if k in table:
                 pm._grant_checked(k, table[k], where)
         for k in ("stdin", "env"):
@@ -146,6 +146,11 @@ class Perms:
     def ffi_ok(self, lib):
         return (not self.restricted) or "*" in self.grants["ffi"] or str(lib) in self.grants["ffi"]
 
+    def process_ok(self, prog):
+        if not self.restricted or "*" in self.grants["process"]:
+            return True
+        return str(prog) in self.grants["process"] or os.path.basename(str(prog)) in self.grants["process"]
+
     def stdin_ok(self):
         return self._has("stdin")
 
@@ -164,7 +169,7 @@ class Perms:
 
 
 FLAG_KINDS = {"--allow-read": "fs.read", "--allow-write": "fs.write", "--allow-connect": "net.connect",
-              "--allow-listen": "net.listen", "--allow-ffi": "ffi", "--allow-stdin": "stdin", "--allow-env": "env"}
+              "--allow-listen": "net.listen", "--allow-ffi": "ffi", "--allow-run": "process", "--allow-stdin": "stdin", "--allow-env": "env"}
 
 
 def from_flags(flags, base):
@@ -252,6 +257,9 @@ class Combined:
 
     def ffi_ok(self, lib):
         return self._both(self.program.ffi_ok(lib), self.ceiling.ffi_ok(lib))
+
+    def process_ok(self, prog):
+        return self._both(self.program.process_ok(prog), self.ceiling.process_ok(prog))
 
     def stdin_ok(self):
         return self._both(self.program.stdin_ok(), self.ceiling.stdin_ok())

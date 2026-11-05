@@ -4,7 +4,7 @@ import sys
 
 USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run a program (--gc: moxie/gc rules; --release: contracts off)
        moxie [--allow-read[=PATHS]] [--allow-write[=PATHS]] [--allow-connect[=HOST:PORT]] [--allow-listen[=PORTS]]
-             [--allow-ffi[=LIBS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
+             [--allow-ffi[=LIBS]] [--allow-run[=PROGRAMS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
                                     restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
        moxie test [--seed N] [--cases N] FILE [name]
                                     run the test blocks (the entry body does not run); forall runs N cases (default 100)
@@ -88,7 +88,7 @@ def main(argv=None):
             header_flag = a[len("--header="):]
             continue
         if not seen_file and (a.split("=")[0] in ("--allow-read", "--allow-write", "--allow-connect", "--allow-listen",
-                                                  "--allow-ffi", "--allow-stdin", "--allow-env", "--allow-all", "--deny-all")):
+                                                  "--allow-ffi", "--allow-run", "--allow-stdin", "--allow-env", "--allow-all", "--deny-all")):
             pflags.append(a)
             continue
         if not seen_file and not a.startswith("-") and a not in ("run", "test", "check", "bindgen", "doc"):

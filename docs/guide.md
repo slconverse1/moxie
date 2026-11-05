@@ -2269,7 +2269,7 @@ close(sock)
 
 **20c. Permissions**
 
-A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:
+A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `process` (programs to run), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:
 
 ```
 [permissions]
@@ -2421,6 +2421,37 @@ select:
 A program that has called `signals` no longer stops on Ctrl-C by itself, so it must read the channel. `cwd()`, `home_dir()`, `temp_dir()`, `hostname()`, and `os_name()` describe where the program runs, `is_terminal(stdout)` and `terminal_size()` say whether a person is watching, `lookup_host(name)` resolves a name, and `make_temp_file(prefix)` makes a file in the temporary directory and returns its path. These calls count as **uses the system** for effects, so a `pure fn` can't call them. Section 19e of the Spec lists them. **Mistakes:** using `random` for a password or token (use `random_bytes`), reading `now()` twice to time something (use `monotonic`, which does not jump when the clock is set), and a program that calls `signals` and then never reads the channel.
 
 **In Try moxie.** The page on the site runs in a browser, so it has no network, no native libraries, no signals, and files that live in memory only. A program that reaches one is refused when it is checked, with a message such as `'signals' is not available in the browser`, and `moxie --platform=browser check FILE` shows the same answer on your own computer. The clock, random numbers, `exit`, temporary files, and `os_name()` (which says `"browser"` there) all work.
+
+**20f. Running other programs**
+
+`run_command` runs a program to the end and gives back what it printed. There is no shell, so you pass the program's name and its arguments as a list, and nothing in them is ever interpreted:
+
+```
+r = run_command("echo", List("hello", "world"))?
+println("exit ${r.code}: ${r.stdout.trim()}")
+```
+
+Output: `exit 0: hello world`. A program that runs and fails is still `Ok`, with the failure in `code`, so check it: `r.code ~= 0`. `Err` is for a program that could not run at all, such as one that isn't installed (`NOT_FOUND`). `stdin:` sends text to the program, `cwd:` picks its directory, `env:` replaces its environment, and `timeout:` kills it after a `Duration`:
+
+```
+r = run_command("sort", stdin: "pear\napple\n", timeout: 5s)?
+println(r.stdout)
+```
+
+For a program that talks over time, `spawn` starts it and gives you a `Child`. Its input and output are ordinary `Io` values, so the file and socket functions work on them. Close the input when you are done writing, then wait:
+
+```
+c = spawn("sort")?
+tx = child_stdin(c)
+println(tx, "pear")
+println(tx, "apple")
+close(tx)
+println(read_all(child_stdout(c))?)
+println(wait_child(c)?)
+close(c)
+```
+
+Waiting parks only your fiber, so others keep running. A program needs the `process` permission, written `process = ["git", "sort"]` in `Moxie.toml` or `--allow-run=git,sort` on the command line, and the child gets only the environment your program could see. **Mistakes:** building a command line as one string (there is no shell to split it, so pass a list), ignoring `r.code`, forgetting to close the input before reading a program that reads until end of file, and expecting Try moxie to run programs (it can't).
 
 **Chapter 21: A DSL without macros**
 

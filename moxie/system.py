@@ -222,3 +222,132 @@ def b_millis(I, a, kw, ta):
 @bi("seconds")
 def b_seconds(I, a, kw, ta):
     return _dur(a, "seconds") / 1e9
+
+
+# ---------------------------------------------------------------- other programs (Spec 19e)
+import subprocess
+
+
+class ChildV:
+    """A program started by `spawn`: a move-only resource. Closing it closes its pipes and ends the program."""
+    __slots__ = ("proc", "closed", "I", "ios")
+    tname_ = "Child"
+
+    def __init__(self, proc, I):
+        self.proc, self.closed, self.I, self.ios = proc, False, I, {}
+        I.__dict__.setdefault("live_children", []).append(self)
+
+    def drop(self, sched=None):
+        if self.closed:
+            return
+        self.closed = True
+        for io in self.ios.values():
+            io.drop()
+        try:
+            if self.proc.poll() is None:
+                self.proc.kill()
+            self.proc.wait(timeout=5)
+        except Exception:
+            pass
+
+
+def _prep(I, program, args, kw):
+    """(argv, env, cwd) or an Err: the permission checks and the environment the program gets."""
+    if not I.perms.process_ok(program):
+        return None, denied(program, "process")
+    cwd = kw.get("cwd")
+    if cwd is not None and not I.perms.path_ok("fs.read", cwd):
+        return None, denied(cwd, "fs.read")
+    e = kw.get("env")
+    env = dict(e.d) if e is not None else dict(I.prelude.vars["env"].d)
+    return ([str(program)] + [str(x) for x in args.items], env, cwd), None
+
+
+def _exit_code(rc):
+    return 128 - rc if rc < 0 else rc            # killed by signal N reads as 128 + N, as a shell shows it
+
+
+@bi("run_command", "first", True)
+def b_run_command(I, a, kw, ta):
+    args = a[1] if len(a) > 1 else ListV([])
+    spec, err = _prep(I, a[0], args, kw)
+    if err is not None:
+        return err
+    argv, env, cwd = spec
+    data = kw.get("stdin")
+    tmo = kw.get("timeout")
+
+    def work():
+        try:
+            if data is None:
+                return subprocess.run(argv, stdin=subprocess.DEVNULL, capture_output=True, env=env, cwd=cwd,
+                                      timeout=None if tmo is None else tmo.ns / 1e9)
+            return subprocess.run(argv, input=data.encode("utf-8"), capture_output=True, env=env, cwd=cwd,
+                                  timeout=None if tmo is None else tmo.ns / 1e9)
+        except subprocess.TimeoutExpired:
+            return "timeout"
+        except OSError as e:
+            return e
+    r = yield from S_.park_thread(I, work)
+    if r == "timeout":
+        return err_reserved("IO_ERROR", f"{a[0]}: timed out")
+    if isinstance(r, OSError):
+        return io_error(r, str(a[0]))
+    try:
+        out, errt = r.stdout.decode("utf-8"), r.stderr.decode("utf-8")
+    except UnicodeDecodeError:
+        return err_reserved("BAD_ENCODING", f"{a[0]}: output is not valid UTF-8")
+    return Ok(TupleV([_exit_code(r.returncode), out, errt], ["code", "stdout", "stderr"], "Output"))
+
+
+@bi("spawn")
+def b_spawn(I, a, kw, ta):
+    args = a[1] if len(a) > 1 else ListV([])
+    spec, err = _prep(I, a[0], args, kw)
+    if err is not None:
+        return err
+    argv, env, cwd = spec
+    try:
+        proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                env=env, cwd=cwd)
+    except OSError as e:
+        return io_error(e, str(a[0]))
+    return Ok(ChildV(proc, I))
+
+
+def _child(a, who):
+    c = a[0]
+    if not isinstance(c, ChildV) or c.closed:
+        raise Abort(f"{who} needs an open Child")
+    return c
+
+
+@bi("child_stdout")
+def b_child_stdout(I, a, kw, ta):
+    c = _child(a, "child_stdout")
+    if "out" not in c.ios:
+        c.ios["out"] = IoV(I, "socket", c.proc.stdout)
+    return c.ios["out"]
+
+
+@bi("child_stdin")
+def b_child_stdin(I, a, kw, ta):
+    c = _child(a, "child_stdin")
+    if "in" not in c.ios:
+        c.ios["in"] = IoV(I, "socket", c.proc.stdin)
+    return c.ios["in"]
+
+
+@bi("wait_child", "first", True)
+def b_wait_child(I, a, kw, ta):
+    c = _child(a, "wait_child")
+    r = yield from S_.park_thread(I, lambda: c.proc.wait())
+    return Ok(_exit_code(r))
+
+
+@bi("kill_child")
+def b_kill_child(I, a, kw, ta):
+    c = _child(a, "kill_child")
+    if c.proc.poll() is None:
+        c.proc.kill()
+    return UNIT

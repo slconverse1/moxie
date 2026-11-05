@@ -526,3 +526,16 @@ sets both for the page. `os_name` answers `browser` when `Interp.platform` is `b
 `sys.platform` is `emscripten`. The interpreter has not been run under real Pyodide in this
 environment (no network to fetch it): the worker's Python was run under CPython. Tests:
 `tests/run_platform.py`.
+
+## Running other programs (Spec 19e)
+
+`run_command` runs `subprocess.run` on a helper thread (`park_thread`), with `stdin=DEVNULL` unless
+`stdin:` is given, and the child's environment is the program's `env` snapshot unless `env:` is given
+(`_prep`). `spawn` makes a `ChildV` (move-only, in `Interp.live_children`, killed at exit by
+`run_source`) with stdin and stdout pipes and stderr merged into stdout; `child_stdin` and
+`child_stdout` return cached `IoV` objects of kind `socket` (so they count as `Io socket` in the pool
+tally and work with `read_line`, `lines`, `println`, and `close`). A negative return code is reported
+as `128 + signal`. The permission kind `process` (`Perms.process_ok`, matching the program as written
+or its base name; `--allow-run`; `process = [...]` in the manifest) is checked per call, and the
+static needs check follows `run_command` and `spawn` (`effects.NEEDS`). `Perms.browser()` grants no
+`process`. Tests: `tests/run_process.py`.

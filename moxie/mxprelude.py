@@ -20,6 +20,11 @@ tuple Packet:
   port: Int
   data: Array[Byte]
 
+tuple Output:
+  code: Int
+  stdout: String
+  stderr: String
+
 tuple NonEmpty[T]:
   head: T
   tail: List[T]
