@@ -2384,7 +2384,7 @@ keeps = ["cb"]
 
 **20e. The clock, random numbers, exit, and signals**
 
-Time is a `Duration`. `monotonic()` never goes back, so use it to measure; `now()` is the wall clock as a `Duration` since 1970. A duration converts out with `nanos`, `millis`, and `seconds`:
+Time is a `Duration`, written with a suffix: `ns`, `us`, `ms`, `s`, `m`, or `h`, as in `250ms` or `90m` (for a day write `24h`; `d` already marks a Decimal). A Duration is one count of nanoseconds, so `7s`, `5s + 2s`, and `7000ms` are equal, and they are the same key in a Dict. `monotonic()` never goes back, so use it to measure; `now()` is the wall clock as a `Duration` since 1970. A duration converts out with `nanos`, `millis`, and `seconds`:
 
 ```
 t0 = monotonic()
