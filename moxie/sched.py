@@ -281,7 +281,7 @@ class Scheduler:
         self.handlers = 0            # handler fibers running for a C thread that is waiting for the answer
         self.listeners = 0           # C-kept callbacks that may post events at any time
         self.sig_listeners = 0       # signals() channels: while any exist, sleeping waits in real time
-        self.extq = queue.Queue()
+        self.extq = queue.SimpleQueue()      # put is safe from a signal handler, which can run inside get
 
     def start_ext(self, f, fn):
         self.ext += 1

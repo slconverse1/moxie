@@ -70,6 +70,32 @@ os.unlink(f.name)
 out = out.decode()
 good = good and "got #interrupt" in out and "got #terminate" in out and p.returncode == 0
 print(("ok    " if good else "FAIL  ") + "signals arrive as keywords on a channel" + ("" if good else f"  {out!r} {err.decode()[:200]!r} rc={p.returncode}"))
+
+# a signal can arrive while the scheduler is inside the event queue's get; delivery must not deadlock on its lock
+STRESS = 'rx = signals()\nprintln("ready")\nwhile:\n  s = read(rx)?\n  if s == #terminate:\n    break\nprintln("done")\n'
+with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
+    f.write(STRESS)
+bad = 0
+for rnd in range(6):
+    p = subprocess.Popen([sys.executable, "-m", "moxie", "run", f.name], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p.stdout.readline()
+    for _ in range(300):
+        p.send_signal(signal.SIGINT)
+        time.sleep(0.0005)
+    time.sleep(0.2)
+    p.send_signal(signal.SIGTERM)
+    try:
+        out, err = p.communicate(timeout=10)
+        if b"done" not in out or p.returncode != 0:
+            bad += 1
+    except subprocess.TimeoutExpired:
+        p.kill()
+        p.communicate()
+        bad += 1
+os.unlink(f.name)
+print(("ok    " if bad == 0 else "FAIL  ") + "a burst of signals does not deadlock the scheduler" + ("" if bad == 0 else f"  ({bad} of 6 runs hung)"))
+if bad:
+    fails.append("signal burst")
 if not good:
     fails.append("signals")
 print(f"{len(fails)} failed")

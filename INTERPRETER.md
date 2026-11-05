@@ -570,3 +570,7 @@ browser has no host database, which is why the copy ships. Tests: `tests/run_dat
 ## Ownership checking (check.py)
 
 `Checker.find_consumers` computes, before the walk, `consumes[name]` = the positions of resource parameters a single-clause function keeps: its body has `close(p)`, `p.close()`, a foreign closer call on `p`, `Move(p)`, an argument written `move p`, `return p`, or `p` as its last expression. `check_hand_over` then rejects `f(c)` where `c` is a resource variable passed (by position or label) to such a parameter without `move`. `f(move c)` is an `Arg` with `mod == "move"`, not a `Move` node, and used to be ignored, so the name was never marked moved; `_move_name` (shared with `e_Move`) now marks it, which gives use-after-move and the move-in-a-loop error. Tuples that hold resources, methods, and multi-clause functions are not analyzed. `tests/run_moves.py` covers it.
+
+### The event queue is a SimpleQueue (2026-11-05)
+
+`Sched.extq` was a `queue.Queue`. A Python signal handler runs on the main thread between bytecodes, so it could fire while the scheduler was inside `extq.get()` holding the queue's (non-reentrant) mutex; the handler's `post_event` then called `put`, which waited for the same mutex, and the program hung forever. It showed up as the signals test failing about one run in six. `queue.SimpleQueue` is written for this case (its `put` is reentrant and takes no lock a `get` holds), so signals, foreign callbacks, and helper-thread results all use it. `tests/run_system.py` sends 300 signals in a burst to catch a return of the bug.
