@@ -2399,6 +2399,8 @@ select:
 
 A program that has called `signals` no longer stops on Ctrl-C by itself, so it must read the channel. `cwd()`, `home_dir()`, `temp_dir()`, `hostname()`, and `os_name()` describe where the program runs, `is_terminal(stdout)` and `terminal_size()` say whether a person is watching, `lookup_host(name)` resolves a name, and `make_temp_file(prefix)` makes a file in the temporary directory and returns its path. These calls count as **uses the system** for effects, so a `pure fn` can't call them. Section 19e of the Spec lists them. **Mistakes:** using `random` for a password or token (use `random_bytes`), reading `now()` twice to time something (use `monotonic`, which does not jump when the clock is set), and a program that calls `signals` and then never reads the channel.
 
+**In Try moxie.** The page on the site runs in a browser, so it has no network, no native libraries, no signals, and files that live in memory only. A program that reaches one is refused when it is checked, with a message such as `'signals' is not available in the browser`, and `moxie --platform=browser check FILE` shows the same answer on your own computer. The clock, random numbers, `exit`, temporary files, and `os_name()` (which says `"browser"` there) all work.
+
 **Chapter 21: A DSL without macros**
 
 A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety. **[gc]** A variadic parameter is a `List`, so `join` takes one:

@@ -127,6 +127,8 @@ def b_hostname(I, a, kw, ta):
 @bi("os_name")
 def b_os_name(I, a, kw, ta):
     p = sys.platform
+    if getattr(I, "platform", None) == "browser" or p == "emscripten":
+        return "browser"
     return "linux" if p.startswith("linux") else "macos" if p == "darwin" else "windows" if p == "win32" else p
 
 

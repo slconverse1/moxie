@@ -513,3 +513,16 @@ declaration that lists only `prints` or `parks` is told to declare `impure`. `lo
 `net.connect` for the host on any port, and `make_temp_file` and `make_temp_dir` need `fs.write` on
 `tempfile.gettempdir()`. `signals` counts as one `Chan` in the tally (`layout.slot_bytes`). Tests:
 `tests/run_system.py`.
+
+## Platforms (`--platform=browser`, Try moxie)
+
+`perms.PLATFORMS` names, per platform, a label and the `platform:` pseudo-kinds it lacks. `effects.NEEDS`
+maps `signals` to `platform:signals`, so the existing reachability walk (`permission_needs`) finds it,
+and `Interp.static_check` reports `'signals' is not available in the browser` when `Interp.platform`
+lacks it (`kind_unmet` ignores `platform:` kinds). `Perms.browser()` grants fs, stdin, and env but
+not net or ffi, with the source `the browser`, so the ordinary needs check refuses `connect`,
+`lookup_host`, `bind_udp`, and foreign blocks. `moxie --platform=NAME` sets both; `docs/try-worker.js`
+sets both for the page. `os_name` answers `browser` when `Interp.platform` is `browser` or
+`sys.platform` is `emscripten`. The interpreter has not been run under real Pyodide in this
+environment (no network to fetch it): the worker's Python was run under CPython. Tests:
+`tests/run_platform.py`.

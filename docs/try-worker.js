@@ -5,12 +5,15 @@ import io, sys
 sys.setrecursionlimit(2500)
 from moxie.interp import Interp
 from moxie.values import ArrayV, DictV, GC
+from moxie.perms import Perms
 
 def run_moxie(src, mode, gc=False):
     GC[0] = bool(gc)
     out, err = io.StringIO(), io.StringIO()
     try:
         I = Interp(out=out, err=err)
+        I.platform = "browser"          # no network or ffi, and calls the browser lacks are check-time errors
+        I.perms = Perms.browser()
         I.prelude.vars["args"] = ArrayV([])
         I.prelude.vars["env"] = DictV({}, 0)
         if mode == "test":

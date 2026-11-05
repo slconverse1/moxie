@@ -516,7 +516,7 @@ class Effects:
 
 
 # ---------------------------------------------------------------- permissions needed (Spec 19d)
-NEEDS = {"open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net", "bind_udp": "net", "send_to": "net", "connect_tls": "net", "listen_tls": "net",
+NEEDS = {"signals": "platform:signals", "open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net", "bind_udp": "net", "send_to": "net", "connect_tls": "net", "listen_tls": "net",
          "list_dir": "fs", "file_info": "fs", "path_exists": "fs", "make_dir": "fs", "remove_file": "fs",
          "remove_dir": "fs", "rename_path": "fs", "lookup_host": "net", "make_temp_file": "fs", "make_temp_dir": "fs", "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
 

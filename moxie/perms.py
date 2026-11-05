@@ -9,6 +9,9 @@ foreign library that is not granted stops the program before it runs.
 import fnmatch
 import os
 
+# Platforms (Spec 19e): calls that can never work there, found at check time like a missing permission.
+PLATFORMS = {"browser": {"label": "the browser", "missing": ("platform:signals",)}}
+
 KINDS = ("fs.read", "fs.write", "net.connect", "net.listen", "ffi", "stdin", "env")
 
 
@@ -31,6 +34,15 @@ class Perms:
     @classmethod
     def none(cls, base="."):
         return cls(True, base)
+
+    @classmethod
+    def browser(cls):
+        """What Try moxie grants: files (an in-memory file system), stdin text, and env, but no network and no ffi."""
+        pm = cls(True, ".")
+        pm.source = "the browser"
+        for k in ("fs.read", "fs.write", "stdin", "env"):
+            pm.grant(k)
+        return pm
 
     def grant(self, kind, pats=None):
         if kind not in self.grants:

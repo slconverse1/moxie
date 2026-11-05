@@ -17,8 +17,13 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run FILE [args...]     run 
                                     generate documentation from /// comments; checks examples
        moxie fmt [--check] [--stdout] FILE-or-DIR...
                                     rewrite files with canonical layout (2-space indentation, blank lines, no trailing spaces)
+       moxie --platform=browser check|run FILE
+                                    check or run as Try moxie would: no network or ffi, and calls the browser lacks (signals) are errors
        moxie -e 'code'              run a snippet
 """
+
+
+PLATFORM = [None]
 
 
 def make_interp(path, args, perms=None, ceilings=None):
@@ -26,7 +31,11 @@ def make_interp(path, args, perms=None, ceilings=None):
     from .values import ArrayV, DictV
     I = Interp(search_dir=os.path.dirname(os.path.abspath(path)) if path else ".")
     I.prelude.vars["args"] = ArrayV(list(args))
-    if perms is not None:
+    if PLATFORM[0] is not None:
+        from .perms import Perms
+        I.platform = PLATFORM[0]
+        I.perms = Perms.browser()
+    elif perms is not None:
         I.perms = perms
     if ceilings:
         I.pkg_ceilings = ceilings
@@ -59,6 +68,17 @@ def main(argv=None):
                 fa_seed = val
             else:
                 fa_cases = val
+    platform = None
+    for a in list(argv):
+        if a.startswith("--platform="):
+            platform = a.split("=", 1)[1]
+            argv.remove(a)
+    PLATFORM[0] = platform
+    if platform is not None:
+        from .perms import PLATFORMS
+        if platform not in PLATFORMS:
+            sys.stderr.write(f"moxie: unknown platform '{platform}' (known: {', '.join(sorted(PLATFORMS))})\n")
+            return 2
     want_pools = "--pools" in argv
     argv = [a for a in argv if a != "--pools"]
     # permission flags come before the file name; after it they belong to the program

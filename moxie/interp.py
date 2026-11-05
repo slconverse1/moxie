@@ -6,6 +6,7 @@ from .values import *   # noqa
 from .core import *   # noqa
 from .types_ import *   # noqa
 from .lexer import MoxieSyntaxError, tokenize
+from .perms import PLATFORMS
 from .calls import CallsMixin, LazyV, SLOT, USING, RecvCell, END
 from .decls import DeclsMixin
 from . import heap
@@ -234,6 +235,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             for line, msg in tally_problems(prog, self.search_dir):
                 diags.append(Diag(line, msg))
         pm = self._perms
+        plat = PLATFORMS.get(getattr(self, "platform", None))
+        if plat is not None:
+            from .effects import permission_needs
+            for kind, (line, name) in sorted(permission_needs(prog, self.search_dir).items(), key=lambda kv: kv[1][0]):
+                if kind in plat["missing"]:
+                    diags.append(Diag(line, f"'{name}' is not available in {plat['label']}"))
         if pm.restricted:
             for line, name, want in self.unmet_needs(pm, prog):
                 diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
@@ -290,6 +297,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     @staticmethod
     def kind_unmet(pm, kind):
         """The description of what `kind` needs if `pm` grants nothing that satisfies it, else None."""
+        if kind.startswith("platform:"):
+            return None                       # decided by the platform, not by a grant (static_check)
         if kind == "fs":
             ok, want = pm.allows_kind("fs.read") or pm.allows_kind("fs.write"), "fs.read or fs.write"
         elif kind == "net":
