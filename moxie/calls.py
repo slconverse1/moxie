@@ -465,7 +465,7 @@ class CallsMixin:
         if k is PkgV:
             v = obj.env.vars.get(name, MISSING)
             if v is MISSING:
-                raise Abort(f"package {obj.name} has no export '{name}'", line)
+                raise Abort(pkg_missing(obj, name), line)
             return v, None, False
         if k is TupleV and obj.names and name in obj.names:
             f = obj.vals[obj.names.index(name)]
@@ -583,7 +583,7 @@ class CallsMixin:
         if k is PkgV:
             v = obj.env.vars.get(name, MISSING)
             if v is MISSING:
-                raise Abort(f"package {obj.name} has no export '{name}'", line)
+                raise Abort(pkg_missing(obj, name), line)
             return v
         if k is RangeV:
             return {"start": obj.start, "limit": obj.limit, "step": obj.step}[name]
@@ -1083,3 +1083,9 @@ def _counted(I, r):
         r.vals[0].pools = I.pools
         I.pools.acquire("Connection")
     return r
+
+
+def pkg_missing(pkg, name):
+    if name in getattr(pkg, "internal", ()):
+        return f"'{name}' is internal to package {pkg.name} and cannot be used from outside it"
+    return f"package {pkg.name} has no export '{name}'"

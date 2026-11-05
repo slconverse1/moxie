@@ -120,12 +120,13 @@ def load_packages(prog, search_dir):
             key = ".".join(st.pkg)
             if key in out:
                 continue
-            path = find_package(search_dir, st.pkg)
-            if path is None:
-                continue
             try:
-                src = open(path, encoding="utf-8").read()
-                pp = parse_program(src, path)
+                from .packages import package_files, parse_package
+                found = package_files(search_dir, st.pkg)
+                if found is None:
+                    continue
+                src, pp = parse_package(found[0])
+                path = found[0][0]
             except Exception:
                 continue
             out[key] = (path, src, pp)
@@ -166,11 +167,13 @@ class Tally:
             key = ".".join(st.pkg)
             sub = self._shared.get(key)
             if sub is None:
-                path = find_package(self.search_dir, st.pkg)
-                if path is None:
-                    continue
                 try:
-                    pp = parse_program(open(path, encoding="utf-8").read(), path)
+                    from .packages import package_files, parse_package
+                    found = package_files(self.search_dir, st.pkg)
+                    if found is None:
+                        continue
+                    pp = parse_package(found[0])[1]
+                    path = found[0][0]
                 except Exception:
                     continue
                 sub = Tally.__new__(Tally)

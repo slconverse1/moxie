@@ -27,6 +27,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.pools = Pools()
         self._perms = Perms.open()
         self.pkg_ceilings = {}        # package name -> Perms (Spec 19d, per-package ceilings)
+        self.internals = {}           # id(module env) -> names declared `internal` (hidden from importers)
         self.mod_pkg = {}             # id(module env) -> package name
         self.pkg_native = {}          # package name -> (has a Moxie.toml, its [native] table or None)
         self.native_dirs = []         # [native] paths of the package whose foreign block is being loaded
@@ -262,12 +263,11 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 man = self.manifest or {}
                 has, nat, where = ("path" in man), man.get("native"), "the entry package"
             else:
-                path = self.find_package(key.split("."))
+                found = self.find_package(key.split("."))
                 has, nat = False, None
-                if path is not None and os.path.basename(path) == key.split(".")[-1] + ".mxi" \
-                        and path != os.path.join(self.search_dir or ".", *key.split(".")) + ".mxi":
+                if found is not None and found[1] is not None:
                     try:
-                        has, nat = package_native(os.path.dirname(path))
+                        has, nat = package_native(found[1])
                     except ManifestError as e:
                         diags.append(Diag(via, str(e)))
                 where = f"package '{key}'"
@@ -286,11 +286,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                     if k in seen:
                         continue
                     seen.add(k)
-                    path = self.find_package(st.pkg)
-                    if path is None:
+                    found = self.find_package(st.pkg)
+                    if found is None:
                         continue
                     try:
-                        pp = parse_program(open(path, encoding="utf-8").read(), path)
+                        from .packages import parse_package
+                        pp = parse_package(found[0])[1]
                     except (OSError, MoxieSyntaxError):
                         continue
                     queue.append((pp, via or st.line, k))
@@ -321,9 +322,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return out
 
     def find_package(self, parts):
-        base = self.search_dir or "."
-        cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
-        return next((p for p in cands if os.path.exists(p)), None)
+        """([files in compile order], folder or None), or None; see packages.py."""
+        from .packages import package_files, PackageError
+        try:
+            return package_files(self.search_dir, parts)
+        except PackageError:
+            return None
 
     def package_diags(self, prog, Diag):
         """Per-package ceilings (Spec 19d): everything a package's code can reach must fit its own table and the program's."""
@@ -339,11 +343,13 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 if key in seen:
                     continue
                 seen.add(key)
-                path = self.find_package(st.pkg)
-                if path is None:
+                found = self.find_package(st.pkg)
+                if found is None:
                     continue
                 try:
-                    pp = parse_program(open(path, encoding="utf-8").read(), path)
+                    from .packages import parse_package
+                    pp = parse_package(found[0])[1]
+                    path = found[0][0]
                 except (OSError, MoxieSyntaxError):
                     continue
                 queue.append((pp, via or st.line))

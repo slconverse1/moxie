@@ -138,14 +138,29 @@ def main(argv=None):
     if cmd == "bindgen":
         from .bindgen import main as bg_main
         return bg_main(argv[1:])
-    if cmd in ("doc", "pools"):
+    if cmd == "doc":
+        rest, named, k = argv[1:], False, 0
+        while k < len(rest):
+            if rest[k] in ("-o", "--format"):
+                k += 1
+            elif not rest[k].startswith("-"):
+                named = True
+            k += 1
+        if not named:                      # nothing named: the default entry; a name may be a file or a package
+            entry, why = default_entry()
+            if entry is None:
+                sys.stderr.write(f"moxie: {why}\n")
+                return 2
+            argv = argv + [entry]
+    if cmd == "pools":
         argv, why = with_default_entry(argv)
         if why:
             sys.stderr.write(f"moxie: {why}\n")
             return 2
     if cmd == "doc":
         from .doc import doc_main
-        return doc_main(argv[1:], lambda: make_interp(argv[1] if len(argv) > 1 else None, []),
+        first = next((a for a in argv[1:] if not a.startswith("-")), None)
+        return doc_main(argv[1:], lambda: make_interp(first, []),
                         sys.stdout, sys.stderr)
     if cmd == "fmt":
         from .fmt import fmt_main

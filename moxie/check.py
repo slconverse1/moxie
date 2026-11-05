@@ -1793,10 +1793,79 @@ class Checker:
         return None, None
 
 
+def package_visibility(search_dir, parts):
+    """({name: "export" | "internal" | "file"}) for a package's top-level declarations, or None when it can't be read."""
+    from .packages import package_files, parse_package
+    try:
+        found = package_files(search_dir, parts)
+        if found is None:
+            return None
+        prog = parse_package(found[0])[1]
+    except Exception:
+        return None
+    vis = {}
+    for st in prog.stmts:
+        c = st.__class__
+        if c is FnDecl or c is FnGroup:
+            flags = (st.flags if c is FnDecl else st.clauses[0].flags) or ()
+            v = "export" if "export" in flags else "internal" if "internal" in flags else "file"
+            vis[st.name] = v
+        elif c in (TupleDecl, EnumDecl, IfaceDecl, AliasDecl):
+            vis[st.name] = st.vis if st.vis in ("export", "internal") else "file"
+        elif c is Assign:
+            for t in st.targets if isinstance(st.targets, (list, tuple)) else [st.targets]:
+                if t.__class__ in (Name, PBind):
+                    vis[t.name] = st.vis if st.vis in ("export", "internal") else "file"
+    return vis
+
+
+def check_package_access(prog, search_dir):
+    """Using another package's `internal` or file-local name is a compile error (Spec section 4)."""
+    from .effects import _children
+    diags, pkgs = [], {}
+    for st in prog.stmts:
+        if st.__class__ is not ImportDecl:
+            continue
+        vis = package_visibility(search_dir, st.pkg)
+        if vis is None:
+            continue
+        key = ".".join(st.pkg)
+        if st.names:
+            for nm in st.names:
+                nm = nm if isinstance(nm, str) else getattr(nm, "name", None)
+                v = vis.get(nm)
+                if v in ("internal", "file"):
+                    diags.append(Diag(st.line, hidden_msg(key, nm, v)))
+        else:
+            pkgs[st.alias or st.pkg[-1]] = (key, vis)
+    if pkgs:
+        todo = [prog]
+        while todo:
+            n = todo.pop()
+            if n.__class__ is Field and n.obj.__class__ is Name and n.obj.name in pkgs:
+                key, vis = pkgs[n.obj.name]
+                v = vis.get(n.name)
+                if v in ("internal", "file"):
+                    diags.append(Diag(getattr(n, "line", 0) or getattr(n.obj, "line", 0), hidden_msg(key, n.name, v)))
+            todo.extend(_children(n))
+    return diags
+
+
+def hidden_msg(pkg, name, v):
+    if v == "internal":
+        return f"'{name}' is internal to package {pkg} and cannot be used from outside it"
+    return f"'{name}' in package {pkg} is not exported (add `export` to its declaration to use it from another package)"
+
+
+def check_package_access_diags(prog, search_dir):
+    return check_package_access(prog, search_dir) if search_dir is not None else []
+
+
 def check_program(prog, prelude_names, search_dir=None):
     ck = Checker(prelude_names)
     ck.search_dir = search_dir
     diags = ck.check(prog)
+    diags.extend(check_package_access_diags(prog, search_dir))
     from .effects import check_effects
     seen = {(d.line, d.msg) for d in diags}
     for line, msg in check_effects(prog, search_dir):

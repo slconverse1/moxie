@@ -13,8 +13,10 @@ PRELUDE_IFACES = {"Functor", "Applicative", "Monad", "Equatable", "Ordered", "Fi
 class DeclsMixin:
     # ------------------------------------------------------------ functions
     def note_export(self, env, name, vis):
-        if vis in ("export", "internal"):
+        if vis == "export":
             self.exports.setdefault(id(env.mod), set()).add(name)
+        elif vis == "internal":
+            self.internals.setdefault(id(env.mod), set()).add(name)
 
     def ev_FnDecl(self, n, env):
         if n.alias is not None:
@@ -372,26 +374,26 @@ class DeclsMixin:
         key = ".".join(parts)
         if key in self.packages:
             return self.packages[key]
-        base = self.search_dir or "."
-        cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
-        path = next((p for p in cands if os.path.exists(p)), None)
-        if path is None:
-            from .stdpkg import find_std
-            path = find_std(parts)
-            from .values import GC
-            from .stdpkg import gc_only, refusal
-            if gc_only(path, parts) and not GC[0]:
-                raise Abort(refusal(parts))
-        if path is None:
+        from .packages import package_files, PackageError
+        try:
+            found = package_files(self.search_dir, parts)
+        except PackageError as e:
+            raise Abort(str(e))
+        if found is None:
             raise Abort(f"cannot find package '{key}'")
-        src = open(path, encoding="utf-8").read()
-        prog = self.load_source(src, path)
+        paths, folder = found
+        from .stdpkg import gc_only, refusal
+        from .values import GC
+        if gc_only(paths[0], parts) and not GC[0]:
+            raise Abort(refusal(parts))
         menv = self.new_module_env()
         self.mod_pkg[id(menv)] = key
-        if path == cands[1]:                   # a package folder may carry its own Moxie.toml
+        if folder is not None:                 # a package folder may carry its own Moxie.toml
             from .manifest import package_native
-            self.pkg_native[key] = package_native(os.path.dirname(path))
-        self.run_sync(self.exec_stmts(prog.stmts, menv))
+            self.pkg_native[key] = package_native(folder)
+        for path in paths:                     # the files share the package's names, in the manifest's order
+            prog = self.load_source(open(path, encoding="utf-8").read(), path)
+            self.run_sync(self.exec_stmts(prog.stmts, menv))
         exp = self.exports.get(id(menv), set())
         pe = Env(None)
         pe.mod = pe
@@ -399,5 +401,6 @@ class DeclsMixin:
             if k in menv.vars:
                 pe.vars[k] = menv.vars[k]
         pkg = PkgV(key, pe)
+        pkg.internal = self.internals.get(id(menv), set())
         self.packages[key] = pkg
         return pkg

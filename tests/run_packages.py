@@ -1,0 +1,66 @@
+"""Packages of several files, `internal` hidden from importers, and moxie doc for a file, a package, and a program.
+Run: python3 tests/run_packages.py"""
+import os, subprocess, sys, tempfile
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+fails = []
+
+def sh(d, *args):
+    env = dict(os.environ, PYTHONPATH=ROOT)
+    r = subprocess.run([sys.executable, "-m", "moxie", *args], cwd=d, env=env, capture_output=True, timeout=90)
+    return r.returncode, r.stdout.decode() + r.stderr.decode()
+
+def chk(name, d, args, rc_want, *wants, absent=()):
+    rc, out = sh(d, *args)
+    ok = rc == rc_want and all(w in out for w in wants) and not any(a in out for a in absent)
+    print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}) {out[:400]!r}"))
+    if not ok: fails.append(name)
+
+def make(files):
+    d = tempfile.mkdtemp(prefix="mxpkg")
+    for path, text in files.items():
+        full = os.path.join(d, path)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        open(full, "w").write(text)
+    return d
+
+D = make({
+    "util.mxi": '//! Small helpers.\n\n/// The greeting.\nexport fn greeting() String:\n  "hello"\n\ninternal retry_limit = 3\n',
+    "shapes/Moxie.toml": 'name = "shapes"\nfiles = ["base.mxi", "area.mxi"]\n',
+    "shapes/base.mxi": '//! Shapes with areas.\ninternal pi_ish = 3\n\n/// A square.\nexport tuple Square:\n  side: Int\n',
+    "shapes/area.mxi": '/// Area of a square. See [`shapes.Square`].\n///\n/// > area(Square(side: 3))\n/// 9\nexport pure fn area(s: Square) Int:\n  s.side * s.side + pi_ish - 3\n',
+    "app.mxi": 'import shapes\nimport util\nprintln(shapes.area(shapes.Square(side: 4)))\nprintln(util.greeting())\n',
+    "bad.mxi": 'import util\nprintln(util.retry_limit)\n',
+    "bad2.mxi": 'import util (retry_limit)\nprintln(retry_limit)\n',
+    "main.mxi": 'println("main")\n',
+    "broken/Moxie.toml": 'files = ["one.mxi", "gone.mxi"]\n',
+    "broken/one.mxi": 'export fn f() Int:\n  1\n',
+    "usebroken.mxi": 'import broken\nprintln(broken.f())\n',
+    "local/local.mxi": 'export fn one() Int:\n  1\n',
+    "uselocal.mxi": 'import local\nprintln(local.one())\n',
+})
+
+chk("files of a package share names in manifest order", D, ["run", "app.mxi"], 0, "16\nhello")
+chk("a package folder with one file still loads", D, ["run", "uselocal.mxi"], 0, "1")
+chk("internal is hidden from importers at check time", D, ["check", "bad.mxi"], 1, "'retry_limit' is internal to package util")
+chk("and in a name list", D, ["check", "bad2.mxi"], 1, "is internal to package util")
+chk("and at run time", D, ["run", "bad.mxi", "--no-check"], 1, "is internal to package util")
+chk("a listed file that is missing is an error", D, ["run", "usebroken.mxi"], 1, "gone.mxi")
+
+chk("doc for one file", D, ["doc", "util.mxi"], 0, "greeting", "Small helpers")
+chk("doc for a package covers all its files", D, ["doc", "shapes"], 0, "Square", "area", "Shapes with areas")
+chk("doc for a package runs its examples across files", D, ["doc", "shapes", "--check"], 0, "1 examples ok, 0 failed, 0 broken links")
+chk("doc --all adds the imported packages", D, ["doc", "app.mxi", "--all"], 0, "shapes", "util", "greeting", "Square")
+chk("without --all only the file", D, ["doc", "app.mxi"], 0, absent=("greeting",))
+chk("doc of an unknown name", D, ["doc", "nothing"], 2, "cannot find a file or package named 'nothing'")
+chk("doc with no name uses main.mxi", D, ["doc"], 0, "main.mxi")
+out = os.path.join(D, "site")
+chk("doc --all -o writes an index and a page per package", D, ["doc", "app.mxi", "--all", "-o", out], 0, "wrote", "3 pages")
+ok = all(os.path.isfile(os.path.join(out, f)) for f in ("index.html", "shapes.html", "util.html", "app.mxi.html"))
+print(("ok    " if ok else "FAIL  ") + "the pages exist")
+if not ok: fails.append("the pages exist")
+chk("a broken qualified link is reported by --check", make({"p/Moxie.toml": 'files = ["a.mxi"]\n', "p/a.mxi": '/// See [`q.nothing`].\nexport fn f() Int:\n  1\n'}), ["doc", "p", "--check"], 1, "broken link")
+chk("--std adds the packages that ship with moxie", D, ["--gc", "doc", "app.mxi", "--all", "--std"], 0, "shapes")
+
+print()
+print("FAILURES: " + ", ".join(fails) if fails else "all package tests passed")
+sys.exit(1 if fails else 0)

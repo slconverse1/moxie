@@ -620,3 +620,9 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 ## Running with no file named (__main__.default_entry)
 
 `moxie run`, `check`, `test`, `pools`, and `doc` with no file (or a first argument that is neither a `.mxi`/`.mx` name nor an existing file) use `entry` from `./Moxie.toml`, else `./main.mxi`, and the argument stays a program argument. Tests: `tests/run_entry.py`.
+
+## Packages of several files, visibility, and moxie doc scopes (packages.py, doc.py)
+
+`packages.package_files(search_dir, parts)` is the one place that finds a package: `a/b.mxi`, then `a/b/Moxie.toml` with `files`, then `a/b/b.mxi`, then `moxie/std`. The loader runs a multi-file package's files in order in one module env, so `internal` names are shared between its files; the other consumers (effects, tally, the native-library check, the pool-header hash) join the files into one program with `packages.parse_package`. Importers only see `export` names (`internals` keeps the hidden ones for the error message), and `check.check_package_access` reports `pkg.name` and `import pkg (name)` of an internal or file-local name at check time.
+
+`moxie doc` builds `Unit`s: a file, one package (all its files), or with `--all` the target plus every imported package (`--std` keeps the built-in ones). One unit prints or writes `index.*`; several write an index plus a page per unit. Examples run against the unit's joined source (repeated `import` lines kept once). Tests: `tests/run_packages.py`.

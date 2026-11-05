@@ -107,11 +107,12 @@ class Effects:
             self.import_line.setdefault(key, st.line)
             sub = self._shared.get(key)
             if sub is None:
-                path = find_package(self.search_dir, st.pkg)
-                if path is None:
-                    continue
                 try:
-                    pp = parse_program(open(path, encoding="utf-8").read(), path)
+                    from .packages import package_files, parse_package
+                    found = package_files(self.search_dir, st.pkg)
+                    if found is None:
+                        continue
+                    pp = parse_package(found[0])[1]
                 except Exception:
                     continue
                 sub = type(self).__new__(type(self))

@@ -545,8 +545,9 @@ class TypeV:
 
 
 class PkgV:
-    __slots__ = ("name", "env")
+    __slots__ = ("name", "env", "internal")
 
-    def __init__(self, name, env):
+    def __init__(self, name, env, internal=()):
         self.name = name
         self.env = env
+        self.internal = internal
