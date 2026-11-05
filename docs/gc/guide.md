@@ -1962,7 +1962,7 @@ c = read(rx2).get_or(0)
 println("${a + b + c}")
 ```
 
-Output: `60`. The workers write 10, 20, and 30 in some order, and the three reads add up to 60 either way. **[gc]** `clone` may be used anywhere, loops included. An Atom can hold any value that isn't a resource, closures and other Atoms among them. **Mistakes:** `b = tx` for a channel end (write `b = move tx`).
+Output: `60`. The workers write 10, 20, and 30 in some order, and the three reads add up to 60 either way. **[gc]** `clone` may be used anywhere, loops included. An Atom can hold any value that isn't a resource, closures and other Atoms among them. A resource (a channel end, a file, a socket, a child program, a terminal) has one owner. Passing it to a function that only uses it lends it for the call, as in `println(f, "hi")` or `read_line(c)`. A function that closes it, moves it on, or returns it takes it over, and then the call says so with `move`: `finish(move c)`. The compiler works out which functions take over, so `finish(c)` is an error that tells you to write `finish(move c)`, and after the call `c` is gone: using it again is `use of moved value`. **Mistakes:** `b = tx` for a channel end (write `b = move tx`), and calling `finish(c)` for a function that closes its parameter.
 
 **Chapter 17: Fibers and daemon**
 

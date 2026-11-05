@@ -186,6 +186,7 @@ class Checker:
         self.fn_ret = None
         self.fn_tparams = ()
         self.impls = {}            # type name -> {interface names}
+        self.consumes = {}         # function name -> parameter positions it takes ownership of
         self.ifaces = set()
 
     # ------------------------------------------------------------ reporting
@@ -198,10 +199,81 @@ class Checker:
     def check(self, prog):
         for st in prog.stmts:
             self.collect(st)
+        self.find_consumers(prog)
         top = Sc()
         for st in prog.stmts:
             self.ev(st, top)
         return self.diags
+
+    # ------------------------------------------------------------ ownership
+    def find_consumers(self, prog):
+        """consumes[name] = {parameter positions} that a function takes ownership of: it closes the parameter,
+        moves it, or returns it.  A caller must hand such a resource over with `move`."""
+        from .effects import _children
+        self.consumes = {}
+        closers = set(self.handle_types.values())
+
+        def bare(e, p):
+            return e.__class__ is Name and e.name == p
+
+        def eats(n, p):
+            c = n.__class__
+            if c is Move and bare(n.e, p):
+                return True
+            if c is Return and n.e is not None and bare(n.e, p):
+                return True
+            if c is Call:
+                f = n.fn
+                first = n.args[0].expr if n.args and hasattr(n.args[0], "expr") else None
+                if f.__class__ is Name and (f.name == "close" or f.name in closers) and first is not None and bare(first, p):
+                    return True
+                if f.__class__ is Field and f.name == "close" and bare(f.obj, p):
+                    return True
+                for a in n.args:
+                    if getattr(a, "mod", None) == "move" and bare(a.expr, p):
+                        return True
+            return any(eats(ch, p) for ch in _children(n))
+
+        for name, clauses in self.fns.items():
+            if len(clauses) != 1:
+                continue
+            fd = clauses[0]
+            if fd.body is None or fd.alias is not None or id(fd) in self.foreign_ids:
+                continue
+            body = fd.body
+            tail = body.stmts[-1] if body.__class__ is Block and body.stmts else body
+            if tail.__class__ is ExprStmt:
+                tail = tail.e
+            idx = set()
+            for i, prm in enumerate(fd.params or []):
+                t = prm.type
+                if not prm.name or t.__class__ is not TName or not (t.path[-1] in RES_TYPES or t.path[-1] in self.handle_types):
+                    continue
+                if eats(body, prm.name) or bare(tail, prm.name):
+                    idx.add(i)
+            if idx:
+                self.consumes[name] = idx
+
+    def check_hand_over(self, n, sc, name, args):
+        """`f(c)` where f takes ownership of its resource parameter must be written `f(move c)`."""
+        idx = self.consumes.get(name)
+        if not idx:
+            return
+        fd = self.fns[name][0]
+        names = [p.name for p in fd.params or []]
+        for i, a in enumerate(args):
+            if getattr(a, "label", None):
+                pos = names.index(a.label) if a.label in names else None
+            else:
+                pos = i
+            if pos is None or pos not in idx or getattr(a, "mod", None) == "move":
+                continue
+            x = a.expr if hasattr(a, "expr") else None
+            if x.__class__ is Name:
+                v = sc.find(x.name)
+                if v is not None and v.resource:
+                    self.err(n.line, f"`{name}` takes ownership of `{x.name}` (it closes it, moves it, or returns it), so write `{name}(move {x.name})`; "
+                                     "after that call, `%s` is gone" % x.name)
 
     def collect(self, st):
         c = st.__class__
@@ -1133,9 +1205,14 @@ class Checker:
         indexing = fn.__class__ is not Name or sc.find(fn.name) is not None
         asc = Sc(sc, open_=True) if indexing else sc
         for a in args:
+            if hasattr(a, "expr") and getattr(a, "mod", None) == "move" and a.expr.__class__ is Name:
+                ats.append(self._move_name(a, a.expr, asc))         # `f(move c)` hands c over
+                continue
             ats.append(self.ev(a.expr, asc) if hasattr(a, "expr") else (None, None))
         if n.trailing is not None:
             self.ev(n.trailing, sc)
+        if fn.__class__ is Name and sc.find(fn.name) is None:
+            self.check_hand_over(n, sc, fn.name, args)
         if fn.__class__ is Name and fn.name in self.handle_types.values():
             for a in args:        # the function that closes a handle consumes it
                 x = a.expr if hasattr(a, "expr") else None
@@ -1577,7 +1654,19 @@ class Checker:
         return None, None
 
     def e_Arg(self, n, sc):
+        if n.mod == "move" and n.expr.__class__ is Name:       # `f(move c)` hands c over, as `move c` does
+            return self._move_name(n, n.expr, sc)
         return self.ev(n.expr, sc)
+
+    def _move_name(self, n, e, sc):
+        v = sc.find(e.name)
+        if v is not None:
+            self.ev(e, sc)
+            if v.depth < self.loop_depth and not self.exit_ctx:
+                self.err(getattr(n, "line", 0) or getattr(e, "line", 0), f"`{e.name}` is moved inside a loop; a resource may be moved only on an exiting path")
+            self.moved[v] = getattr(e, "line", 0)
+            return v.ty, None
+        return self.ev(e, sc)
 
     def e_TupleE(self, n, sc):
         for it in n.items or []:

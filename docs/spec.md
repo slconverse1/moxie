@@ -476,7 +476,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Atoms** hold one replaceable value. **Futures** are a write handle and a read handle that completes once.
 - **Select and timers** use `select:` with `case` arms and `Timer` values (section 17), not `when:`.
 - **`daemon:`** is the entry file's loop (section 18).
-- **Resources** (channel ends, write handles, connections) have one owner and move, never copy, unless explicitly cloned. Passing one to a function that doesn't keep it borrows it for the call.
+- **Resources** (channel ends, write handles, connections) have one owner and move, never copy, unless explicitly cloned. Passing one to a function that doesn't keep it borrows it for the call. A function **keeps** a resource parameter when its body closes it (`close(p)` or `p.close()`), moves it (`move p`, `f(move p)`), returns it (`return p` or `p` as the last expression), or calls a foreign closer on it; the compiler works this out from the body, and a caller must then write `f(move c)`, not `f(c)`, which is an error that names the function and the fix. A call written with `move` ends the caller's use of the name: any later use is `use of moved value`, and a move inside a loop is refused unless the path exits. A function that only looks at its resource parameter is borrowed with a plain `f(c)`.
 - **Structured concurrency** (a guarantee that no fiber outlives the block that started it) is **not built in**: an application joins by reading a result channel or futures, and a prelude helper may offer more later. Cancellation is not defined.
 
 **17. Atoms, futures, channels, timers**
