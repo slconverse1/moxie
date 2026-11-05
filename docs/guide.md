@@ -2483,6 +2483,30 @@ println(iso(later))
 
 Output: `2027-01-02T00:00:00`. All of these are pure except `to_local`, which depends on the computer it runs on. **Mistakes:** parsing a time with an offset such as `+02:00` with `parse_iso` (it refuses, since a `DateTime` has no zone), using `to_local` where a test needs the same answer everywhere, and adding a month by adding 30 days.
 
+**20h. Reading single keys**
+
+`read_line` waits for Enter. A menu, a game, or a pager wants each key as it is pressed, and for that you open the terminal in raw mode:
+
+```
+init:
+  t = raw_terminal()?
+  println("press keys; Escape quits")
+  while:
+    when read_key(t)?:
+      Typed(c) -> println("typed \$c")
+      Ctrl(c) -> println("ctrl-\$c")
+      Up -> println("up")
+      Down -> println("down")
+      Fn(n) -> println("F\$n")
+      Escape -> break
+      _ -> ()
+  close(t)
+```
+
+`raw_terminal()` gives you a `Terminal`. Nothing is echoed and there is no line editing, so the program decides what to show. `read_key(t)` waits for one key and returns a `Key`: `Typed(c)` for a character (accented letters too), `Ctrl(c)` for a Ctrl combination, `Alt(c)`, `Fn(n)`, and names such as `Enter`, `Backspace`, `Escape`, the arrows, `Home`, `End`, `PageUp`, and `PageDown`. Only your fiber waits, so others keep running. In raw mode Ctrl-C is just a key, `Ctrl("c")`, so a program must choose to quit on it. Call `close(t)` when you are done; the terminal is put back even when the program ends early or aborts, so a crash does not leave the mixer's shell without echo.
+
+`raw_terminal()` is `Err` with `MISSING` when input is not a terminal, as when the program runs with piped input, so check for that if it might. It needs `stdin`, and it is not available in Try moxie. **Mistakes:** assuming Ctrl-I, Ctrl-M, and Ctrl-H are separate from `Tab`, `Enter`, and `Backspace` (the terminal sends the same byte), and forgetting that nothing is echoed, so the program must print what the mixer typed.
+
 **Chapter 21: A DSL without macros**
 
 A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety:

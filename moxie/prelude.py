@@ -2462,3 +2462,4 @@ def b_sample(I, a, kw, ta):
         raise Abort(f"sample cannot generate {e}")
 
 from . import system  # noqa: E402,F401  (registers the system builtins)
+from . import terminal  # noqa: E402,F401  (raw terminal input)

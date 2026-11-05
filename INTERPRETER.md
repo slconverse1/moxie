@@ -554,3 +554,7 @@ and weekday names are English. `parse_iso` tries a list of patterns and refuses 
 `moxie/zoneinfo/` (copied from a system tz database; names are matched against a strict pattern, so
 a name cannot climb out of that folder), and otherwise the zone functions return `NOT_FOUND`. A
 browser has no host database, which is why the copy ships. Tests: `tests/run_datetime.py`.
+
+## Raw terminal input (moxie/terminal.py)
+
+`raw_terminal()` saves `termios.tcgetattr(0)` and clears ECHO, ICANON, ISIG, IEXTEN and the input translations (ICRNL, IXON, ISTRIP, INPCK, BRKINT) with VMIN 1; OPOST is left on so `\n` still returns the carriage. The `TermV` handle is added to `I.live_children`, so the same cleanup that kills spawned programs at exit also restores the terminal, including after an abort. `read_key` runs `_decode` on an OS helper thread (`park_thread`) reading bytes with `os.read(0, 1)`; `_decode(get, ready)` is pure over a byte source so the tests drive it directly. A lone ESC is told from a sequence by `select` with a 50 ms wait. The `Key` enum is declared in mxprelude.py; the builtin builds a case with `I.enum_instance`. `tests/run_terminal.py` runs programs under a pty and checks the restored `lflag`.

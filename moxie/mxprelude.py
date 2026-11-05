@@ -29,6 +29,27 @@ tuple DateTime:
   second: Int = 0
   nano: Int = 0
 
+enum Key:
+  Typed(c: Char)
+  Ctrl(c: Char)
+  Alt(c: Char)
+  Fn(n: Int)
+  Enter
+  Tab
+  Backspace
+  Delete
+  Escape
+  Up
+  Down
+  Left
+  Right
+  Home
+  End
+  PageUp
+  PageDown
+  Insert
+  Other
+
 tuple Output:
   code: Int
   stdout: String
