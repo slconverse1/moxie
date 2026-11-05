@@ -23,7 +23,7 @@ CASES = [
  ("receive can time out", 'a = bind_udp(0)?\nprintln(receive(a, timeout: 100ms))\n', [], 0, "timed out"),
  ("a fiber waiting in receive does not stop the others", ECHO, [], 0, "echo 4"),
  ("an oversized datagram is an Err", 'a = bind_udp(0)?\nbig = "0123456789"\n' + 'big = big + big\n' * 13 + 'println(send_to(a, "127.0.0.1", 9, big))\n', [], 0, "at most 65507"),
- ("a closed socket aborts", 'a = bind_udp(0)?\nclose(a)\nprintln(receive(a))\n', [], 1, "open Udp"),
+ ("using a closed socket is a compile error", 'a = bind_udp(0)?\nclose(a)\nprintln(receive(a))\n', [], 2, "use of moved value `a`"),
  ("the address in use is an Err", 'a = bind_udp(0)?\nprintln(is_err(bind_udp(port_of(a))))\n', [], 0, "true"),
  ("bind_udp is checked against net.listen", 'println(bind_udp(7))\n', ["--allow-listen=8000-8010"], 0, "code: 10"),
  ("send_to is checked against net.connect", 'a = bind_udp(0)?\nprintln(send_to(a, "127.0.0.1", 9, "x"))\n', ["--allow-listen", "--allow-connect=example.com:53"], 0, "code: 10"),

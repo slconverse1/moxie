@@ -97,7 +97,7 @@ check("raw_terminal needs stdin (static)", rc == 2 and "needs stdin" in out, (rc
 rc, out = plain('pure fn f() Int:\n  t = raw_terminal()\n  1\n', flags=["--allow-all"])
 check("pure code cannot open a terminal", rc != 0 and "uses the system" in out, (rc, out))
 rc, out, lf = run_pty('init:\n  t = raw_terminal()?\n  close(t)\n  println(read_key(t))\n')
-check("reading a closed Terminal aborts", rc != 0 and "needs an open Terminal" in out and (lf & ECHO) == ECHO, (rc, out))
+check("reading a closed Terminal is a compile error", rc != 0 and "use of moved value `t`" in out, (rc, out))
 
 import re
 _g = open(os.path.join(ROOT, "docs", "guide.md")).read()

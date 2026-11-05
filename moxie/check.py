@@ -187,6 +187,10 @@ class Checker:
         self.fn_tparams = ()
         self.impls = {}            # type name -> {interface names}
         self.consumes = {}         # function name -> parameter positions it takes ownership of
+        self.method_consumes = set()
+        self.methods = {}
+        self.res_tuples = set()
+        self.pending_gone = []
         self.ifaces = set()
 
     # ------------------------------------------------------------ reporting
@@ -206,66 +210,98 @@ class Checker:
         return self.diags
 
     # ------------------------------------------------------------ ownership
+    def is_res_type(self, t):
+        """A resource type: a built-in resource, a foreign handle, or a tuple that holds one."""
+        return t.__class__ is TName and bool(t.path) and (t.path[-1] in RES_TYPES or t.path[-1] in self.handle_types
+                                                          or t.path[-1] in self.res_tuples)
+
     def find_consumers(self, prog):
-        """consumes[name] = {parameter positions} that a function takes ownership of: it closes the parameter,
-        moves it, or returns it.  A caller must hand such a resource over with `move`."""
+        """consumes[name] = {parameter positions} that a function takes ownership of: its body closes the parameter
+        (or a field of it), moves it, or returns it.  A caller must hand such a resource over with `move`.
+        method_consumes holds (Type, name) for the methods that take over `self`.  A tuple with a resource field is a
+        resource too (res_tuples)."""
         from .effects import _children
-        self.consumes = {}
+        self.consumes, self.method_consumes, self.methods, self.res_tuples = {}, set(), {}, set()
+        changed = True
+        while changed:
+            changed = False
+            for tn, td in self.tuples.items():
+                if tn not in self.res_tuples and any(self.is_res_type(f.type) for f in td.fields or [] if f.type is not None):
+                    self.res_tuples.add(tn)
+                    changed = True
         closers = set(self.handle_types.values())
+
+        def root(e):
+            while e.__class__ is Field:
+                e = e.obj
+            return e.name if e.__class__ is Name else None
 
         def bare(e, p):
             return e.__class__ is Name and e.name == p
 
         def eats(n, p):
             c = n.__class__
-            if c is Move and bare(n.e, p):
+            if c is Move and root(n.e) == p:
                 return True
             if c is Return and n.e is not None and bare(n.e, p):
                 return True
             if c is Call:
                 f = n.fn
                 first = n.args[0].expr if n.args and hasattr(n.args[0], "expr") else None
-                if f.__class__ is Name and (f.name == "close" or f.name in closers) and first is not None and bare(first, p):
+                if f.__class__ is Name and (f.name == "close" or f.name in closers) and first is not None and root(first) == p:
                     return True
-                if f.__class__ is Field and f.name == "close" and bare(f.obj, p):
+                if f.__class__ is Field and f.name == "close" and root(f.obj) == p:
                     return True
                 for a in n.args:
-                    if getattr(a, "mod", None) == "move" and bare(a.expr, p):
+                    if getattr(a, "mod", None) == "move" and root(a.expr) == p:
                         return True
             return any(eats(ch, p) for ch in _children(n))
 
-        for name, clauses in self.fns.items():
-            if len(clauses) != 1:
-                continue
-            fd = clauses[0]
-            if fd.body is None or fd.alias is not None or id(fd) in self.foreign_ids:
-                continue
+        def keeps(fd, p):
             body = fd.body
             tail = body.stmts[-1] if body.__class__ is Block and body.stmts else body
             if tail.__class__ is ExprStmt:
                 tail = tail.e
-            idx = set()
-            for i, prm in enumerate(fd.params or []):
-                t = prm.type
-                if not prm.name or t.__class__ is not TName or not (t.path[-1] in RES_TYPES or t.path[-1] in self.handle_types):
+            return eats(body, p) or bare(tail, p)
+
+        for name, clauses in self.fns.items():
+            for fd in clauses:
+                if fd.body is None or fd.alias is not None or id(fd) in self.foreign_ids:
                     continue
-                if eats(body, prm.name) or bare(tail, prm.name):
-                    idx.add(i)
-            if idx:
-                self.consumes[name] = idx
+                for i, prm in enumerate(fd.params or []):
+                    if prm.name and self.is_res_type(prm.type) and keeps(fd, prm.name):
+                        self.consumes.setdefault(name, set()).add(i)
+        for st in prog.stmts:
+            if st.__class__ is ImplDecl and st.target.__class__ is TName and st.target.path:
+                tn = st.target.path[-1]
+                for m in st.members or []:
+                    if m.__class__ is not FnDecl or m.body is None:
+                        continue
+                    self.methods[(tn, m.name)] = m
+                    ps = m.params or []
+                    if ps and ps[0].name == "self" and ps[0].type is None and self.is_res_type(st.target) and keeps(m, "self"):
+                        self.method_consumes.add((tn, m.name))
+
+    def mark_gone(self, n, sc, x, what):
+        """The name `x` no longer owns its resource (it was closed or handed to a function that keeps it)."""
+        v = sc.find(x)
+        if v is None or not v.resource:
+            return
+        if v.depth < self.loop_depth and not self.exit_ctx:
+            self.err(n.line, f"`{x}` is {what} inside a loop, so the next time round it is already gone; "
+                             "do it after the loop, or leave the loop right after")
+        self.moved[v] = n.line
 
     def check_hand_over(self, n, sc, name, args):
         """`f(c)` where f takes ownership of its resource parameter must be written `f(move c)`."""
         idx = self.consumes.get(name)
         if not idx:
             return
-        fd = self.fns[name][0]
-        names = [p.name for p in fd.params or []]
+        clauses = self.fns.get(name) or []
         for i, a in enumerate(args):
+            pos = i
             if getattr(a, "label", None):
-                pos = names.index(a.label) if a.label in names else None
-            else:
-                pos = i
+                pos = next((k for k, pr in enumerate(clauses[0].params or []) if pr.name == a.label), None) if clauses else None
             if pos is None or pos not in idx or getattr(a, "mod", None) == "move":
                 continue
             x = a.expr if hasattr(a, "expr") else None
@@ -274,6 +310,31 @@ class Checker:
                 if v is not None and v.resource:
                     self.err(n.line, f"`{name}` takes ownership of `{x.name}` (it closes it, moves it, or returns it), so write `{name}(move {x.name})`; "
                                      "after that call, `%s` is gone" % x.name)
+
+    def check_receiver(self, n, sc, fn):
+        """`c.close()`, `c.f()` where f takes over its first parameter, and `j.m()` where m takes over `self`."""
+        if fn.obj.__class__ is not Name:
+            return
+        if self.receiver_gone(sc, fn):
+            self.pending_gone.append((n, sc, fn.obj.name, "closed or handed over"))
+
+    def receiver_gone(self, sc, fn):
+        """True when the call `x.m(...)` ends the use of `x`: it closes it, or m takes over its first parameter or `self`."""
+        x, m = fn.obj.name, fn.name
+        v = sc.find(x)
+        if v is None or not v.resource:
+            return False
+        ty = v.ty[1] if v.ty.__class__ is tuple and len(v.ty) == 2 and v.ty[0] == "named" else None
+        return m == "close" or (m in self.consumes and 0 in self.consumes[m]) or (ty is not None and (ty, m) in self.method_consumes)
+
+    def check_stored(self, n, sc, name, args):
+        """A resource put into a tuple must be moved in: `Conn(io: move f)`."""
+        for a in args:
+            x = a.expr if hasattr(a, "expr") else None
+            if x.__class__ is Name and getattr(a, "mod", None) != "move":
+                v = sc.find(x.name)
+                if v is not None and v.resource:
+                    self.err(n.line, f"`{x.name}` is a resource; write `move {x.name}` to put it in a `{name}`")
 
     def collect(self, st):
         c = st.__class__
@@ -701,14 +762,23 @@ class Checker:
         return None
 
     def is_resource_expr(self, e):
+        wrapped = False
         while e.__class__ in (Q, Move):
+            wrapped = wrapped or e.__class__ is Q
             e = e.e
         if e.__class__ is Call:
             f = e.fn
             if f.__class__ is GenApp:
                 f = f.base
-            if f.__class__ is Name and (f.name in RES_MAKERS or f.name in self.handle_makers):
+            if f.__class__ is Name and (f.name in RES_MAKERS or f.name in self.handle_makers or f.name in self.res_tuples):
                 return True
+            if f.__class__ is Name and f.name in self.fns and len(self.fns[f.name]) == 1:
+                r = self.fns[f.name][0].ret            # a function whose result is a resource
+                if self.is_res_type(r):
+                    return True
+                if (wrapped and r.__class__ is TName and r.path and r.path[-1] in ("Result", "Option")
+                        and r.groups and r.groups[0] and self.is_res_type(r.groups[0][0])):
+                    return True
             if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name == "Connection":
                 return True
         return False
@@ -829,8 +899,20 @@ class Checker:
         for st in stmts:
             e = st.e if st.__class__ is ExprStmt else st
             for node in self.iter_nodes(e):
+                name = None
                 if node.__class__ is Move and node.e.__class__ is Name:
-                    v = sc.find(node.e.name)
+                    name = node.e.name
+                elif node.__class__ is Arg and getattr(node, "mod", None) == "move" and node.expr.__class__ is Name:
+                    name = node.expr.name
+                elif node.__class__ is Call:
+                    f = node.fn
+                    first = node.args[0].expr if node.args and hasattr(node.args[0], "expr") else None
+                    if f.__class__ is Name and f.name == "close" and first.__class__ is Name:
+                        name = first.name
+                    elif f.__class__ is Field and f.obj.__class__ is Name and self.receiver_gone(sc, f):
+                        name = f.obj.name
+                if name is not None:
+                    v = sc.find(name)
                     if v is not None:
                         self.moved[v] = node.line
 
@@ -1190,7 +1272,15 @@ class Checker:
         elif shape[0] == "uncurried" and len(args) != shape[1] and not any(a.expr.__class__ is TupleE for a in args):
             self.err(n.line, f"`uncurry[{shape[1]}]` makes a function of {shape[1]} arguments, but this call gives {len(args)}")
 
-    def e_Call(self, n, sc, extra=0):
+    def e_Call(self, n, sc, *a, **k):
+        mark = len(self.pending_gone)
+        r = self._e_Call(n, sc, *a, **k)
+        for item in self.pending_gone[mark:]:
+            self.mark_gone(*item)          # the receiver is gone once the call has been checked
+        del self.pending_gone[mark:]
+        return r
+
+    def _e_Call(self, n, sc, extra=0):
         fn = n.fn
         args = n.args or []
         if fn.__class__ is Call or fn.__class__ is Name:
@@ -1213,6 +1303,12 @@ class Checker:
             self.ev(n.trailing, sc)
         if fn.__class__ is Name and sc.find(fn.name) is None:
             self.check_hand_over(n, sc, fn.name, args)
+            if fn.name in self.tuples:
+                self.check_stored(n, sc, fn.name, args)
+            if fn.name == "close" and args and args[0].__class__ is not None and hasattr(args[0], "expr") and args[0].expr.__class__ is Name:
+                self.mark_gone(n, sc, args[0].expr.name, "closed")
+        if fn.__class__ is Field:
+            self.check_receiver(n, sc, fn)
         if fn.__class__ is Name and fn.name in self.handle_types.values():
             for a in args:        # the function that closes a handle consumes it
                 x = a.expr if hasattr(a, "expr") else None
@@ -1412,7 +1508,7 @@ class Checker:
         for tp in n.tparams or []:
             inner.vars[tp.name] = Var(None, False, 0)
         for p in n.params or []:
-            res = p.type.__class__ is TName and (p.type.path[-1] in RES_TYPES or p.type.path[-1] in self.handle_types)
+            res = self.is_res_type(p.type)
             if p.name:
                 inner.vars[p.name] = Var(self.ty_of_type(p.type), res, 0)
             if p.pat is not None:
