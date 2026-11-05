@@ -1027,6 +1027,15 @@ class Checker:
     def e_RunE(self, n, sc):
         self.ev(n.target, sc)
         self.ev(n.limit, sc)
+        # a resource handed to `run f(x)` belongs to the new fiber, which closes it when it ends
+        names = []
+        t = n.target
+        if t.__class__ is Call:
+            names = [a.expr.name for a in (t.args or []) if getattr(a, "expr", None).__class__ is Name]
+        elif t.__class__ is Lambda:
+            names = [p.name for p in (t.params or [])]
+        for x in names:
+            self.mark_gone(n, sc, x, "handed to the new fiber")
         return None, None
 
     # ------------------------------------------------------------ when

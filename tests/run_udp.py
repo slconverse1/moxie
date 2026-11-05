@@ -10,8 +10,9 @@ ECHO = '''fn server(sock: Udp, done: ChanW[Int]) Unit:
 a = bind_udp(0)?
 c = bind_udp(0)?
 done_r, done_w = Chan[Int][1]()
+port = port_of(a)
 _ = run server(a, done_w)
-_ = send_to(c, "127.0.0.1", port_of(a), "ping")
+_ = send_to(c, "127.0.0.1", port, "ping")
 r = receive(c, timeout: 3s)?
 println("echo ${len(r.data)}")
 '''
@@ -58,7 +59,7 @@ TIMED = [
  ("a timeout and a sleeping ticker run side by side",
   'fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  r = receive(sock, timeout: 300ms)\n  _ = write(out, "receive: ${is_err(r)}")\n\n'
   'fn ticker(out: ChanW[String]) Unit:\n  sleep(100ms)\n  _ = write(out, "tick 1")\n  sleep(100ms)\n  _ = write(out, "tick 2")\n\n'
-  'a = bind_udp(0)?\nrx, tx = Chan[String][4]()\n_ = run waiter(a, tx)\n_ = run ticker(clone(tx))\n'
+  'a = bind_udp(0)?\nrx, tx = Chan[String][4]()\n_ = run ticker(clone(tx))\n_ = run waiter(a, tx)\n'
   'println(read(rx)?)\nprintln(read(rx)?)\nprintln(read(rx)?)\n',
   "tick 1\ntick 2\nreceive: true", 3.0),
  ("a sleeping sender wakes a waiting receive early",
