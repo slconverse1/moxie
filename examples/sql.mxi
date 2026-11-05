@@ -6,15 +6,16 @@ inline fn fetch_active_telemetry(conn: Connection, min_value: Double) Result[Str
     SELECT id, value FROM telemetry
     WHERE value >= $min_value AND active = true
     ORDER BY id
+fn move_funds(tx: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]:
+  debit = sql(tx):
+    UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
+  _ = debit?
+  credit = sql(tx):
+    UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
+  _ = credit?
+  Ok(())
 fn transfer(conn: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]:
-  transaction(conn)(tx):
-    debit = sql(tx):
-      UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
-    _ = debit?
-    credit = sql(tx):
-      UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
-    _ = credit?
-    Ok(())
+  transaction(conn, move_funds(_, from_id, to_id, amount))
 conn = Connection.memory()?
 _ = sql(conn):
   CREATE TABLE telemetry (id INTEGER, value REAL, active BOOLEAN)
