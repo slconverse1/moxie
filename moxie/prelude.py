@@ -329,7 +329,7 @@ def _mode_of(m):
     return m.case if isinstance(m, EnumV) else str(m)
 
 
-@bi("open_file")
+@bi("open_file", "first", True)
 def b_open_file(I, a, kw, ta):
     path, mode = a[0], _mode_of(a[1]) if len(a) > 1 else "ReadOnly"
     pm = {"ReadOnly": "rb", "Create": "wb", "Append": "ab", "ReadWrite": "r+b"}.get(mode)
@@ -339,6 +339,9 @@ def b_open_file(I, a, kw, ta):
     for k in need:
         if not I.perms.path_ok(k, path):
             return denied(path, k)
+    from .pipes import is_fifo, open_fifo
+    if is_fifo(path):
+        return (yield from open_fifo(I, path, mode))
     try:
         return Ok(IoV(I, "file", open(path, pm)))
     except OSError as e:
@@ -2463,3 +2466,4 @@ def b_sample(I, a, kw, ta):
 
 from . import system  # noqa: E402,F401  (registers the system builtins)
 from . import terminal  # noqa: E402,F401  (raw terminal input)
+from . import pipes  # noqa: E402,F401  (Unix sockets and pipes)

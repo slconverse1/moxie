@@ -2246,6 +2246,41 @@ close(sock)
 
 `receive` parks only its own fiber and returns a `Packet` (`host`, `port`, and `data`, an `Array[Byte]`). The `timeout:` argument turns a wait into an `Err` after that long, which is how a program notices a lost packet. `send_to` takes the bytes as an `Array[Byte]` or a `String` (sent as UTF-8), and a datagram holds at most 65507 bytes. `bind_udp` is checked against `net.listen` and `send_to` against `net.connect`. A `Udp` is a resource like an `Io`: close it, or the runtime closes it when the program ends. **Mistakes:** treating a datagram as a stream (one `receive` is one `send_to`, never half of one), waiting with no `timeout:` for a packet that may have been lost, sending more than one datagram can hold, and passing a `Udp` to `read_line`.
 
+**Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
+
+```
+fn serve(l: Listener) Unit:
+  c = accept(l)?
+  for line in lines(c):
+    println(c, "echo $line")
+  close(c)
+
+init:
+  path = temp_dir() + "/demo.sock"
+  l = listen_unix(path)?
+  _ = run serve(move l)
+  c = connect_unix(path)?
+  println(c, "hi")
+  println(read_line(c)?)
+  close(c)
+```
+
+Output: `echo hi`. `listen_unix` gives a `Listener` and `connect_unix` gives an `Io`, so `accept`, `lines`, `println`, and `close` work as they do on TCP. The socket file appears when you listen and goes away when the `Listener` is closed or the program ends; if a crash left one behind, `listen_unix` says `IO_ERROR` and `remove_file` clears it. Both calls need `fs.write` on the path.
+
+A **named pipe** is a file that two programs open to pass bytes. `make_fifo(path)` creates it, and `open_file` opens one end: `ReadOnly` to read, `Create` to write. Opening waits until the other program opens its end, and only your fiber waits.
+
+```
+// not run: needs another program
+make_fifo("jobs.pipe")?
+r = open_file("jobs.pipe", ReadOnly)?
+for line in lines(r):
+  println("job: $line")
+close(r)
+remove_file("jobs.pipe")?
+```
+
+A reader sees `CLOSED` when the writer closes its end, so the loop above ends by itself. A write waits when the pipe is full. Neither exists in the browser. Fibers inside one program should use channels, not pipes: a channel is typed, counted, and checked, and a pipe is for talking to another program. A fiber waiting on a socket or pipe does not stop the others, but a `sleep` in another fiber does not count down until the wait ends. **Mistakes:** opening a pipe for reading and writing at once (`ReadWrite` is refused), and forgetting that a reader waits for a writer to open its end.
+
 **20c. Permissions**
 
 A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `process` (programs to run), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:
@@ -2461,6 +2496,30 @@ println(iso(later))
 ```
 
 Output: `2027-01-02T00:00:00`. All of these are pure except `to_local`, which depends on the computer it runs on. **Mistakes:** parsing a time with an offset such as `+02:00` with `parse_iso` (it refuses, since a `DateTime` has no zone), using `to_local` where a test needs the same answer everywhere, and adding a month by adding 30 days.
+
+**20h. Reading single keys**
+
+`read_line` waits for Enter. A menu, a game, or a pager wants each key as it is pressed, and for that you open the terminal in raw mode:
+
+```
+init:
+  t = raw_terminal()?
+  println("press keys; Escape quits")
+  while:
+    when read_key(t)?:
+      Typed(c) -> println("typed \$c")
+      Ctrl(c) -> println("ctrl-\$c")
+      Up -> println("up")
+      Down -> println("down")
+      Fn(n) -> println("F\$n")
+      Escape -> break
+      _ -> ()
+  close(t)
+```
+
+`raw_terminal()` gives you a `Terminal`. Nothing is echoed and there is no line editing, so the program decides what to show. `read_key(t)` waits for one key and returns a `Key`: `Typed(c)` for a character (accented letters too), `Ctrl(c)` for a Ctrl combination, `Alt(c)`, `Fn(n)`, and names such as `Enter`, `Backspace`, `Escape`, the arrows, `Home`, `End`, `PageUp`, and `PageDown`. Only your fiber waits, so others keep running. In raw mode Ctrl-C is just a key, `Ctrl("c")`, so a program must choose to quit on it. Call `close(t)` when you are done; the terminal is put back even when the program ends early or aborts, so a crash does not leave the mixer's shell without echo.
+
+`raw_terminal()` is `Err` with `MISSING` when input is not a terminal, as when the program runs with piped input, so check for that if it might. It needs `stdin`, and it is not available in Try moxie. **Mistakes:** assuming Ctrl-I, Ctrl-M, and Ctrl-H are separate from `Tab`, `Enter`, and `Backspace` (the terminal sends the same byte), and forgetting that nothing is echoed, so the program must print what the mixer typed.
 
 **Chapter 21: A DSL without macros**
 
