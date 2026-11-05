@@ -685,7 +685,7 @@ Signatures only, grouped. Names with an asterisk are planned.
 
 **25. Still open**
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
-1. **Not designed:** secret types, dates and time, environment for launched processes, grapheme clusters, structured concurrency and cancellation, `fp.state`, and a dedicated child-collection mechanism for DSLs. Also parked after the 2026-11-02 survey of other languages: a REPL. Dropped after the survey: units of measure (`Int[m]`; a wrapper tuple with `impl Add` covers the common mistake) and active patterns (lowercase pattern names clash with bindings, and few languages have them).
+1. **Not designed:** secret types, grapheme clusters, structured concurrency and cancellation, `fp.state`, and a dedicated child-collection mechanism for DSLs. Also parked after the 2026-11-02 survey of other languages: a REPL. Dropped after the survey: units of measure (`Int[m]`; a wrapper tuple with `impl Add` covers the common mistake) and active patterns (lowercase pattern names clash with bindings, and few languages have them).
 2a. **Foreign functions (section 19a):** the names `CString` and `cstr`, and callbacks that take other pointers or must answer C from a foreign thread are open. The bindgen tool handles clean library headers and not the most tangled ones.
 2. **Tooling designs (section 22):** the doctest example syntax, and the Markdown subset and page layout for `moxie doc`, are sketches.
 3. **Contracts (section 9b):** nothing is open in the design. The compile error for a failing constant `requires` is built in the reference interpreter.
@@ -695,7 +695,7 @@ Everything else in this Spec is settled, including every call that earlier draft
 5. **Key size warning:** the threshold above which the compiler warns about a large Dict key (section 6) is not set.
 6. **Currying:** `curry` for any arity is settled. The checker's rules for `curry` and `uncurry[n]` are built as shape rules (parameter counts, the excluded parameter kinds, the number of arguments in each call of the result); full function types in the checker are not.
 7. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
-8. **Locale:** the details of the `Locale` tuple and the `n` format type (section 5) are a design, and dates wait for the date types.
+8. **Locale:** the details of the `Locale` tuple and the `n` format type (section 5) are a design. Dates are built (section 19e) with English names and the Gregorian calendar only, and a `Locale` would add the names and the order of the parts.
 9. **Pending:** the compiler. The Mixer's Guide and a reference interpreter exist, but the interpreter does not yet fully check generics, size parameters, memory spaces and pool sizing, the SQL schema, or package manifests.
 
 **Decisions recorded on 2026-11-01**
