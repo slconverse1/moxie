@@ -32,6 +32,8 @@ D = make({
     "bad.mxi": 'import util\nprintln(util.retry_limit)\n',
     "bad2.mxi": 'import util (retry_limit)\nprintln(retry_limit)\n',
     "main.mxi": 'println("main")\n',
+    "kinds.mxi": 'internal tuple Secret:\n  n: Int\ntuple Local:\n  n: Int\nexport tuple Pub:\n  n: Int\n',
+    "usetypes.mxi": 'import kinds\nfn f(s: kinds.Secret) Int:\n  s.n\nfn g(l: kinds.Local) Int:\n  l.n\nfn h(p: kinds.Pub) Int:\n  p.n\n',
     "broken/Moxie.toml": 'files = ["one.mxi", "gone.mxi"]\n',
     "broken/one.mxi": 'export fn f() Int:\n  1\n',
     "usebroken.mxi": 'import broken\nprintln(broken.f())\n',
@@ -46,7 +48,15 @@ chk("and in a name list", D, ["check", "bad2.mxi"], 1, "is internal to package u
 chk("and at run time", D, ["run", "bad.mxi", "--no-check"], 1, "is internal to package util")
 chk("a listed file that is missing is an error", D, ["run", "usebroken.mxi"], 1, "gone.mxi")
 
+chk("an internal type name is an error", D, ["check", "usetypes.mxi"], 1, "'Secret' is internal to package kinds")
+chk("a file-local type name is an error", D, ["check", "usetypes.mxi"], 1, "'Local' in package kinds is not exported")
+chk("an exported type name is fine", D, ["check", "usetypes.mxi"], 1, absent=("'Pub'",))
+
 chk("doc for one file", D, ["doc", "util.mxi"], 0, "greeting", "Small helpers")
+V = make({"v.mxi": '/// How long to wait.\n///\n/// > wait\n/// 5\nexport wait: Int = 5\n\ninternal knob = 1\n\nscratch = 2\n'})
+chk("doc lists an exported binding, with its examples", V, ["doc", "v.mxi", "--check"], 0, "1 examples ok, 0 failed")
+chk("the binding appears as a value", V, ["doc", "v.mxi"], 0, "value", "wait: Int = 5", absent=("scratch", "knob"))
+chk("--private adds internal bindings but not plain ones without a comment", V, ["doc", "v.mxi", "--private"], 0, "knob", absent=("scratch",))
 chk("doc for a package covers all its files", D, ["doc", "shapes"], 0, "Square", "area", "Shapes with areas")
 chk("doc for a package runs its examples across files", D, ["doc", "shapes", "--check"], 0, "1 examples ok, 0 failed, 0 broken links")
 chk("doc --all adds the imported packages", D, ["doc", "app.mxi", "--all"], 0, "shapes", "util", "greeting", "Square")

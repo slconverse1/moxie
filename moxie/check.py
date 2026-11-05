@@ -1839,15 +1839,21 @@ def check_package_access(prog, search_dir):
         else:
             pkgs[st.alias or st.pkg[-1]] = (key, vis)
     if pkgs:
-        todo = [prog]
+        todo = [(prog, 0)]
         while todo:
-            n = todo.pop()
+            n, line = todo.pop()
+            line = getattr(n, "line", None) or line
+            member = None
             if n.__class__ is Field and n.obj.__class__ is Name and n.obj.name in pkgs:
-                key, vis = pkgs[n.obj.name]
-                v = vis.get(n.name)
+                member = (n.obj.name, n.name)
+            elif n.__class__ is TName and len(n.path) >= 2 and n.path[0] in pkgs:
+                member = (n.path[0], n.path[1])
+            if member is not None:
+                key, vis = pkgs[member[0]]
+                v = vis.get(member[1])
                 if v in ("internal", "file"):
-                    diags.append(Diag(getattr(n, "line", 0) or getattr(n.obj, "line", 0), hidden_msg(key, n.name, v)))
-            todo.extend(_children(n))
+                    diags.append(Diag(line, hidden_msg(key, member[1], v)))
+            todo.extend((c, line) for c in _children(n))
     return diags
 
 

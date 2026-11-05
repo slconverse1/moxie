@@ -14,9 +14,9 @@ import re
 from .parser import parse_program
 
 CONTRACT = re.compile(r"^(\s*)(requires|ensures|invariant)\b\s*(.*)$")
-ITEM_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "AliasDecl", "ImplDecl")
+ITEM_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "AliasDecl", "ImplDecl", "Assign")
 KIND = {"FnDecl": "fn", "FnGroup": "fn", "TupleDecl": "tuple", "EnumDecl": "enum",
-        "IfaceDecl": "interface", "AliasDecl": "alias", "ImplDecl": "impl"}
+        "IfaceDecl": "interface", "AliasDecl": "alias", "ImplDecl": "impl", "Assign": "value"}
 
 
 class Item:
@@ -112,6 +112,14 @@ def collect(src):
             continue
         line = st.line
         name = getattr(st, "name", None)
+        if cn == "Assign":
+            # a top-level binding is documented when it is exported, internal, or has a doc comment
+            tg = st.targets if isinstance(st.targets, (list, tuple)) else [st.targets]
+            if len(tg) != 1 or tg[0].__class__.__name__ != "PBind":
+                continue
+            if st.vis not in ("export", "internal") and not doc_before(orig, line):
+                continue
+            name = tg[0].name
         if cn == "ImplDecl":
             name = f"impl {getattr(st, 'iface', '')} for {getattr(st, 'target', '')}"
             name = re.sub(r"\s+", " ", header_text(lines, line))
