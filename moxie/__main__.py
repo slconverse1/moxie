@@ -3,18 +3,18 @@ import os
 import sys
 
 USAGE = """usage: moxie [--gc] [--release] [--pools] run [FILE] [args...]   run a program (--gc: moxie/gc rules; --release: contracts off)
-                                    with no FILE: the entry in Moxie.toml, else main.mxi (check and test work the same way)
+                                    with no FILE: the entry in Moxie.toml, else main.mxi (check, test, pools, and doc work the same way)
        moxie [--allow-read[=PATHS]] [--allow-write[=PATHS]] [--allow-connect[=HOST:PORT]] [--allow-listen[=PORTS]]
              [--allow-ffi[=LIBS]] [--allow-run[=PROGRAMS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
                                     restrict what the program may touch (default: a [permissions] table in Moxie.toml, else everything)
        moxie test [--seed N] [--cases N] FILE [name]
                                     run the test blocks (the entry body does not run); forall runs N cases (default 100)
        moxie check FILE             parse and check without running
-       moxie pools FILE [--header OUT]  the static pool tally: how many of each counted resource the program creates
+       moxie pools [FILE] [--header OUT]  the static pool tally: how many of each counted resource the program creates
        moxie --header=FILE run FILE     start with a pool header: refuse a stale one, hold the program to its counts
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
                                     write foreign declarations from a C header
-       moxie doc FILE [-o DIR] [--format md|html] [--private] [--check]
+       moxie doc [FILE] [-o DIR] [--format md|html] [--private] [--check]
                                     generate documentation from /// comments; checks examples
        moxie fmt [--check] [--stdout] FILE-or-DIR...
                                     rewrite files with canonical layout (2-space indentation, blank lines, no trailing spaces)
@@ -45,6 +45,17 @@ def default_entry():
     if os.path.isfile("main.mxi"):
         return "main.mxi", None
     return None, "no file named, and this folder has no main.mxi (or a Moxie.toml with an entry)"
+
+
+def with_default_entry(argv):
+    """argv[0] is the command; insert the default entry file as argv[1] unless a file is named there.
+    Returns (argv, error message or None)."""
+    if len(argv) >= 2 and (argv[1].endswith((".mxi", ".mx")) or os.path.isfile(argv[1])):
+        return argv, None
+    entry, why = default_entry()
+    if entry is None:
+        return argv, why
+    return [argv[0], entry] + argv[1:], None
 
 
 def make_interp(path, args, perms=None, ceilings=None):
@@ -127,6 +138,11 @@ def main(argv=None):
     if cmd == "bindgen":
         from .bindgen import main as bg_main
         return bg_main(argv[1:])
+    if cmd in ("doc", "pools"):
+        argv, why = with_default_entry(argv)
+        if why:
+            sys.stderr.write(f"moxie: {why}\n")
+            return 2
     if cmd == "doc":
         from .doc import doc_main
         return doc_main(argv[1:], lambda: make_interp(argv[1] if len(argv) > 1 else None, []),

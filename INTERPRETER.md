@@ -619,4 +619,4 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 
 ## Running with no file named (__main__.default_entry)
 
-`moxie run`, `check`, and `test` with no file (or a first argument that is neither a `.mxi`/`.mx` name nor an existing file) use `entry` from `./Moxie.toml`, else `./main.mxi`, and the argument stays a program argument. Tests: `tests/run_entry.py`.
+`moxie run`, `check`, `test`, `pools`, and `doc` with no file (or a first argument that is neither a `.mxi`/`.mx` name nor an existing file) use `entry` from `./Moxie.toml`, else `./main.mxi`, and the argument stays a program argument. Tests: `tests/run_entry.py`.

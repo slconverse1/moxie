@@ -34,6 +34,9 @@ b = folder(Moxie_toml='name = "app"\nentry = "gone.mxi"\n', main__mxi='println("
 chk("an entry that does not exist is an error", b, ["run"], 2, "gone.mxi")
 nm = folder(Moxie_toml='name = "app"\n', main__mxi='println("main")\n')
 chk("a manifest with no entry falls back to main.mxi", nm, ["run"], 0, "main")
+chk("pools uses main.mxi", m, ["pools"], 0, "pool tally")
+chk("doc uses main.mxi", m, ["doc", "-o", os.path.join(m, "out")], 0, "wrote")
+chk("pools with nothing to find", empty, ["pools"], 2, "no main.mxi")
 chk("a bare file name still runs", m, ["main.mxi"], 0, "main")
 
 print()
