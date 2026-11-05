@@ -25,13 +25,20 @@ CASES = [
  ("gen_pick chooses from a list", 'tuple Day:\n  name: String\n\nimpl Generatable for Day:\n  static fn generate(g: Gen) Self: Day(gen_pick(g, List("Mon", "Tue")))\n\ntest "t":\n  forall d: Day:\n    assert(d.name == "Mon" or d.name == "Tue")\n', [], 0, "ok    t"),
  ("an invariant filters the built-in generator", 'tuple Person:\n  name: String\n  invariant len(name) > 0\n\ntest "t":\n  forall p: Person:\n    assert(len(p.name) > 0)\n', [], 0, "ok    t"),
  ("an impossible invariant is reported", 'tuple Never:\n  n: Int\n  invariant n ~= n\n\ntest "t":\n  forall x: Never:\n    assert(true)\n', [], 1, "write impl Generatable"),
+ ("signature: generate must be static", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  fn generate(g: Gen) Self: P(1)\n', [], 1, "must be `static`"),
+ ("signature: generate takes a Gen", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  static fn generate(g: Int) Self: P(1)\n', [], 1, "parameter of type Gen"),
+ ("signature: generate returns Self", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  static fn generate(g: Gen) Int: 1\n', [], 1, "must return Self"),
+ ("signature: generate is required", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  fn shrink() List[P]: List()\n', [], 1, "needs `static fn generate"),
+ ("signature: shrink returns List of Self", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  static fn generate(g: Gen) Self: P(1)\n  fn shrink() List[Int]: List()\n', [], 1, "must return List[Self]"),
+ ("signature: shrink takes nothing", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  static fn generate(g: Gen) Self: P(1)\n  fn shrink(k: Int) List[P]: List()\n', [], 1, "takes no parameters"),
+ ("signature: shrink may return List[Self]", 'tuple P:\n  n: Int\n\nimpl Generatable for P:\n  static fn generate(g: Gen) Self: P(1)\n  fn shrink() List[Self]: List()\n', [], 0, "ok"),
  ("a function type has no generator", 'test "t":\n  forall f: (Int) -> Int:\n    assert(true)\n', [], 1, "cannot generate"),
 ]
 fails = []
 for name, src, flags, rc_want, out_w in CASES:
     with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
         f.write(src)
-    cmd = "check" if "pure" in name or "belongs" in name else "test"
+    cmd = "check" if "pure" in name or "belongs" in name or name.startswith("signature:") else "test"
     r = subprocess.run([sys.executable, "-m", "moxie", cmd] + (flags if cmd == "test" else []) + [f.name], cwd=ROOT, capture_output=True, timeout=120)
     os.unlink(f.name)
     rc, o = r.returncode, r.stdout.decode() + r.stderr.decode()

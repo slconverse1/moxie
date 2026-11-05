@@ -1489,7 +1489,48 @@ class Checker:
         elif pats and all(q.__class__ in (PLit, PRange, PRel) for q in pats):
             self.err(line, f"`{n.name}` needs a final `_` clause")
 
+    def _tname(self, t):
+        return t.path[-1] if t.__class__ is TName and len(t.path) == 1 and not t.groups else None
+
+    def check_generatable(self, n):
+        """`impl Generatable for T` needs `static fn generate(g: Gen) Self`; `fn shrink() List[Self]` is optional."""
+        fns = {m.name: m for m in n.members or [] if m.__class__ is FnDecl}
+        line = n.line
+        def is_self(t):
+            if t.__class__ is not TName:
+                return False
+            if t.path == ["Self"] and not t.groups:
+                return True
+            return t.path == n.target.path and t.groups == n.target.groups
+        g = fns.get("generate")
+        if g is None:
+            self.err(line, "impl Generatable needs `static fn generate(g: Gen) Self`")
+        else:
+            if "static" not in (g.flags or ()):
+                self.err(g.line, "generate must be `static`: it makes a value, so there is no value to call it on")
+            ps = g.params or []
+            if len(ps) != 1 or self._tname(ps[0].type) != "Gen":
+                self.err(g.line, "generate takes one parameter of type Gen: `static fn generate(g: Gen) Self`")
+            if g.ret is None or not is_self(g.ret):
+                self.err(g.line, "generate must return Self (the type being generated)")
+        sh = fns.get("shrink")
+        if sh is not None:
+            if "static" in (sh.flags or ()):
+                self.err(sh.line, "shrink is a method on the value being shrunk, not `static`")
+            if sh.params:
+                self.err(sh.line, "shrink takes no parameters: `fn shrink() List[Self]`")
+            r = sh.ret
+            ok = (r.__class__ is TName and r.path == ["List"] and len(r.groups) == 1
+                  and len(r.groups[0]) == 1 and is_self(r.groups[0][0]))
+            if not ok:
+                self.err(sh.line, "shrink must return List[Self]: smaller values to try when a property fails")
+        for name in fns:
+            if name not in ("generate", "shrink"):
+                self.err(fns[name].line, f"Generatable has no method '{name}' (it has generate and shrink)")
+
     def e_ImplDecl(self, n, sc):
+        if n.iface is not None and n.iface.__class__ is TName and n.iface.path == ["Generatable"]:
+            self.check_generatable(n)
         for m in n.members or []:
             if n.iface is not None and m.__class__ is FnDecl and m.contracts:
                 self.err(m.line, f"an impl of an interface may not add contracts to '{m.name}'; "
