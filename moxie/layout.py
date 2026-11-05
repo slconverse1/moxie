@@ -90,6 +90,8 @@ def slot_bytes(kind, call, decls):
     if base is None:
         return None, f"no slot size for {kind}"
     groups = call.fn.groups if call.fn.__class__ is GenApp else []
+    if kind == "Chan" and call.fn.__class__ is Name and call.fn.name == "signals":
+        return base + 8 * 8, None       # eight keywords
     if kind == "Chan":
         if not groups or len(groups[0]) != 1:
             return None, "a Chan needs its element type, as in Chan[Int][4]()"

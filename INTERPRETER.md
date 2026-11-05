@@ -496,3 +496,20 @@ and takes precedence over the built-in generator for `T`, wherever `T` appears (
 (a `random.Random`, the size, and the nesting depth); `gen_int`, `gen_bool`, `gen_pick`, and
 `sample[T]` are builtins, and `sample` calls `forall.gen`. Nesting deeper than 24 raises `NoGen`.
 Tests: `tests/run_forall.py`.
+
+## The system (`moxie/system.py`, Spec 19e)
+
+Clock, random numbers, exit, signals, and facts about the host are builtins registered from
+`system.py` (imported at the end of `prelude.py`). The scheduler's clock is virtual (`sleep` jumps
+it forward), so `monotonic` is the real monotonic clock plus `sched.now`, and `now` is the real
+wall clock plus `sched.now`: a program that sleeps always sees the time pass. `exit` raises
+`ProgramExit`, which the scheduler already carries out of any fiber. `signals()` builds a `Chan(8)`
+and an `EventSink` like a C-kept `Events[T]` callback, and Python signal handlers (main thread only)
+call `post_event`; `Scheduler.sig_listeners` makes an idle loop wait in real time, with a timeout at
+the next sleeper or timer, instead of jumping virtual time, so a sleeping fiber and a signal can both
+be served (`run_main`, `next_due`). Effects: `effects.SYSTEM` ("uses the system") is a third inferred
+effect for the calls in `SYSTEM_CALLS`; `pure fn`, contracts, and `forall` bodies reject it, and a
+declaration that lists only `prints` or `parks` is told to declare `impure`. `lookup_host` needs
+`net.connect` for the host on any port, and `make_temp_file` and `make_temp_dir` need `fs.write` on
+`tempfile.gettempdir()`. `signals` counts as one `Chan` in the tally (`layout.slot_bytes`). Tests:
+`tests/run_system.py`.

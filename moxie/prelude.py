@@ -2460,3 +2460,5 @@ def b_sample(I, a, kw, ta):
         return (yield from F.gen(I, t, g.rng, g.size, g.depth))
     except F.NoGen as e:
         raise Abort(f"sample cannot generate {e}")
+
+from . import system  # noqa: E402,F401  (registers the system builtins)

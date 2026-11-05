@@ -2361,6 +2361,44 @@ keeps = ["cb"]
 
 **Mistake:** a declaration that does not match the real C signature (an `Int32` where C takes a `Double`) is not detected, because the compiler cannot see C. Wrap every foreign call and test the wrapper. A package may contain `foreign` blocks only when its manifest has a `[native]` section, which lists the libraries it may name and where to look for them: `[native]`, `libs = ["z"]`, `paths = ["native"]`. A missing section, or a library the section does not list, is a compile-time error that says what to add.
 
+**20e. The clock, random numbers, exit, and signals**
+
+Time is a `Duration`. `monotonic()` never goes back, so use it to measure; `now()` is the wall clock as a `Duration` since 1970. A duration converts out with `nanos`, `millis`, and `seconds`:
+
+```
+t0 = monotonic()
+sleep(50ms)
+elapsed = monotonic() - t0
+println("slept at least 50ms: ${elapsed.millis() >= 50}")
+println("it is after 2023: ${now().seconds() > 1.7e9}")
+```
+
+Output: `slept at least 50ms: true`, then `it is after 2023: true`. Random numbers come in two kinds. `random()` and `random_int(lo, hi)` are for games and sampling, and `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a reproducible source that the generator functions from property tests (`gen_int`, `gen_pick`, `sample[T]`) read:
+
+```
+g = seeded(7)
+h = seeded(7)
+println(gen_int(g, 1, 6) == gen_int(h, 1, 6))
+println(len(random_bytes(16)))
+```
+
+Output: `true`, then `16`. `exit(code)` ends the program with a code from 0 to 255, from any fiber, and `signals()` gives a channel of `#interrupt`, `#terminate`, and `#hangup` so a program can shut down cleanly when someone presses Ctrl-C:
+
+```
+fn work(done: ChanW[Int]) Unit:
+  sleep(1s)
+  write(done, 1)
+
+rx = signals()
+done_r, done_w = Chan[Int][1]()
+_ = run work(done_w)
+select:
+  case read(rx) -> exit(130)
+  case read(done_r) -> println("finished")
+```
+
+A program that has called `signals` no longer stops on Ctrl-C by itself, so it must read the channel. `cwd()`, `home_dir()`, `temp_dir()`, `hostname()`, and `os_name()` describe where the program runs, `is_terminal(stdout)` and `terminal_size()` say whether a person is watching, `lookup_host(name)` resolves a name, and `make_temp_file(prefix)` makes a file in the temporary directory and returns its path. These calls count as **uses the system** for effects, so a `pure fn` can't call them. Section 19e of the Spec lists them. **Mistakes:** using `random` for a password or token (use `random_bytes`), reading `now()` twice to time something (use `monotonic`, which does not jump when the clock is set), and a program that calls `signals` and then never reads the channel.
+
 **Chapter 21: A DSL without macros**
 
 A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety. **[gc]** A variadic parameter is a `List`, so `join` takes one:

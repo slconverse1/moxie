@@ -18,12 +18,16 @@ import os
 from .ast import *   # noqa
 
 PARKS, PRINTS = "parks", "prints"
+SYSTEM = "uses the system"     # the clock, random numbers, exit, signals, and facts about the host
+SYSTEM_CALLS = ("now", "monotonic", "random", "random_int", "random_bytes", "exit", "signals", "cwd", "home_dir",
+                "temp_dir", "hostname", "os_name", "is_terminal", "terminal_size")
 BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRINTS,
            "read": PARKS, "write": PARKS, "sleep": PARKS,
            "read_line": PARKS, "read_all": PARKS, "stdin_lines": PARKS,
            "lines": PARKS, "open_file": PARKS, "read_file": PARKS, "write_file": PARKS, "read_bytes": PARKS,
            "write_bytes": PARKS, "list_dir": PARKS, "file_info": PARKS, "path_exists": PARKS, "make_dir": PARKS,
-           "remove_file": PARKS, "remove_dir": PARKS, "rename_path": PARKS, "connect": PARKS, "listen": PARKS, "bind_udp": PARKS, "send_to": PARKS, "receive": PARKS, "connect_tls": PARKS, "listen_tls": PARKS, "accept": PARKS}
+           "remove_file": PARKS, "remove_dir": PARKS, "rename_path": PARKS, "connect": PARKS, "listen": PARKS, "bind_udp": PARKS, "send_to": PARKS, "receive": PARKS, "connect_tls": PARKS, "listen_tls": PARKS, "accept": PARKS,
+           "lookup_host": PARKS, "make_temp_file": PARKS, "make_temp_dir": PARKS, **{n: SYSTEM for n in SYSTEM_CALLS}}
 EXEMPT = {"dbg", "trace"}
 
 
@@ -484,6 +488,9 @@ class Effects:
                 for eff, (callee, ln, root) in acc.items():
                     if eff not in dec:
                         who = "pure " if not dec else ""
+                        if eff == SYSTEM and dec:
+                            self.diags.append((ln or d.line, f"fn '{d.name}' {eff} (calls '{root}'), so it must be declared impure"))
+                            continue
                         self.diags.append((ln or d.line, f"{who}fn '{d.name}' {eff} (calls '{root}'), but it is not declared {eff}"
                                            if dec else f"pure fn '{d.name}' {eff} (calls '{root}')"))
                 for eff in dec:
@@ -511,7 +518,7 @@ class Effects:
 # ---------------------------------------------------------------- permissions needed (Spec 19d)
 NEEDS = {"open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net", "bind_udp": "net", "send_to": "net", "connect_tls": "net", "listen_tls": "net",
          "list_dir": "fs", "file_info": "fs", "path_exists": "fs", "make_dir": "fs", "remove_file": "fs",
-         "remove_dir": "fs", "rename_path": "fs", "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
+         "remove_dir": "fs", "rename_path": "fs", "lookup_host": "net", "make_temp_file": "fs", "make_temp_dir": "fs", "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
 
 
 class Needs(Effects):

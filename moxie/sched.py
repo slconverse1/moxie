@@ -1,5 +1,6 @@
 """Cooperative scheduler, channels, timers, futures, atoms, select and run."""
 import heapq
+import time
 import queue
 import threading
 from collections import deque
@@ -279,6 +280,7 @@ class Scheduler:
         self.ext = 0                 # helper-thread calls in flight
         self.handlers = 0            # handler fibers running for a C thread that is waiting for the answer
         self.listeners = 0           # C-kept callbacks that may post events at any time
+        self.sig_listeners = 0       # signals() channels: while any exist, sleeping waits in real time
         self.extq = queue.Queue()
 
     def start_ext(self, f, fn):
@@ -330,12 +332,21 @@ class Scheduler:
         else:
             sink.dropped += 1            # a full channel drops the event; C cannot be made to wait
 
-    def drain_ext(self, block):
+    def next_due(self):
+        """The virtual time of the earliest sleeper or live timer, or None."""
+        while self.timers and (self.timers[0][3].gen != self.timers[0][2]):
+            heapq.heappop(self.timers)
+        c = [self.sleepers[0][0]] if self.sleepers else []
+        if self.timers:
+            c.append(self.timers[0][0])
+        return min(c) if c else None
+
+    def drain_ext(self, block, timeout=None):
         """Wake the fibers whose helper-thread calls have finished, and deliver C-kept callback events
         (waiting for the first if `block`)."""
         while self.ext or self.listeners:
             try:
-                f, r, e = self.extq.get(block=block)
+                f, r, e = self.extq.get(block=block, timeout=timeout if block else None)
             except queue.Empty:
                 return
             block = False
@@ -437,6 +448,15 @@ class Scheduler:
             if self.ext or self.listeners:
                 self.drain_ext(False)
             if not self.ready:
+                nxt = self.next_due() if (self.sig_listeners and not self.ext) else None
+                if nxt is not None:
+                    # a signal may arrive while a fiber sleeps: wait in real time, and let that time pass
+                    t0 = time.monotonic_ns()
+                    self.drain_ext(True, timeout=max(0, nxt - self.now) / 1e9)
+                    self.now += time.monotonic_ns() - t0
+                    if self.now >= nxt:
+                        self.advance()
+                    continue
                 if (self.ext or self.listeners) and not (self.handlers and self.sleepers):   # real time: wait for an OS helper thread before advancing virtual time
                     self.drain_ext(True)
                     continue
