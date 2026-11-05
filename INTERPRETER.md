@@ -523,8 +523,10 @@ lacks it (`kind_unmet` ignores `platform:` kinds). `Perms.browser()` grants fs, 
 not net or ffi, with the source `the browser`, so the ordinary needs check refuses `connect`,
 `lookup_host`, `bind_udp`, and foreign blocks. `moxie --platform=NAME` sets both; `docs/try-worker.js`
 sets both for the page. `os_name` answers `browser` when `Interp.platform` is `browser` or
-`sys.platform` is `emscripten`. The interpreter has not been run under real Pyodide in this
-environment (no network to fetch it): the worker's Python was run under CPython. Tests:
+`sys.platform` is `emscripten`. The page was checked under a real Pyodide 0.26.4 core in headless Chromium
+(`tests/try_page.js`, a manual script): the clock, random numbers, files, temp files, dates, tests,
+the gc box, the Stop button, and the check-time refusals all behave as described. Pyodide has no
+`os.get_terminal_size` (so `terminal_size` returns `Err`) and no host time zone database. Tests:
 `tests/run_platform.py`.
 
 ## Running other programs (Spec 19e)
@@ -548,6 +550,7 @@ and reads it as a `TupleV` named `DateTime`. Conversions use Python's `datetime`
 an ambiguous one takes the first, as `fold=0` does). `format_time` and `parse_time` are our own code
 for a fixed set of codes (`_format`, `_parse`), so the output does not depend on the C locale; month
 and weekday names are English. `parse_iso` tries a list of patterns and refuses an offset. Only
-`to_local` is in `effects.SYSTEM_CALLS`. Zone names need a time zone database on the host (the Python
-`zoneinfo` module reads the system's, or the `tzdata` package); where there is none the zone
-functions return `NOT_FOUND`. Not yet checked under Pyodide. Tests: `tests/run_datetime.py`.
+`to_local` is in `effects.SYSTEM_CALLS`. Zone names come from the host's database (Python's `zoneinfo`), then from the copy in
+`moxie/zoneinfo/` (copied from a system tz database; names are matched against a strict pattern, so
+a name cannot climb out of that folder), and otherwise the zone functions return `NOT_FOUND`. A
+browser has no host database, which is why the copy ships. Tests: `tests/run_datetime.py`.

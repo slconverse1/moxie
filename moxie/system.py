@@ -5,6 +5,7 @@ Everything here reaches outside the program, so the effects pass counts a call a
 change something sit behind a permission: `lookup_host` (net.connect) and `make_temp_file` and
 `make_temp_dir` (fs.write)."""
 import os
+import re as _re
 import random as _random
 import socket
 import sys
@@ -147,9 +148,10 @@ def b_is_terminal(I, a, kw, ta):
 
 @bi("terminal_size")
 def b_terminal_size(I, a, kw, ta):
-    for fd in (1, 2, 0):
+    size = getattr(os, "get_terminal_size", None)         # Pyodide has none
+    for fd in (1, 2, 0) if size else ():
         try:
-            sz = os.get_terminal_size(fd)
+            sz = size(fd)
             return Ok(TupleV([sz.columns, sz.lines], ["cols", "rows"]))
         except OSError:
             continue
@@ -355,7 +357,6 @@ def b_kill_child(I, a, kw, ta):
 
 # ---------------------------------------------------------------- dates and times (Spec 19e)
 import datetime as _dtm
-import re as _re
 
 _EPOCH = _dtm.datetime(1970, 1, 1, tzinfo=_dtm.timezone.utc)
 _DT_FIELDS = ["year", "month", "day", "hour", "minute", "second", "nano"]
@@ -382,12 +383,25 @@ def _from_ns(ns, tz, who):
         raise Abort(f"{who}: the time is outside the years 1 to 9999")
 
 
+_ZONE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "zoneinfo")
+
+
 def _zone(name):
+    """The zone called `name`: the host's time zone database first, then the copy that ships with moxie
+    (a browser or a Windows machine has none)."""
     import zoneinfo
     try:
         return zoneinfo.ZoneInfo(name), None
     except (zoneinfo.ZoneInfoNotFoundError, ValueError, OSError):
-        return None, err_reserved("NOT_FOUND", f"{name}: unknown time zone")
+        pass
+    if _re.fullmatch(r"[A-Za-z0-9_+\-]+(/[A-Za-z0-9_+\-]+)*", name):
+        path = os.path.join(_ZONE_DIR, *name.split("/"))
+        try:
+            with open(path, "rb") as f:
+                return zoneinfo.ZoneInfo.from_file(f, key=name), None
+        except (OSError, ValueError):
+            pass
+    return None, err_reserved("NOT_FOUND", f"{name}: unknown time zone")
 
 
 @bi("to_utc")

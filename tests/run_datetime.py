@@ -49,5 +49,15 @@ for name, src, rc_want, out_w in CASES:
     print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}) {o[:300]!r}"))
     if not ok:
         fails.append(name)
+# a host with no time zone database (a browser, Windows) uses the zones that ship with moxie
+code = ("import sys, zoneinfo; sys.path.insert(0, %r); zoneinfo.reset_tzpath(to=[]); "
+        "from moxie import system; z, e = system._zone('America/Los_Angeles'); "
+        "bad, e2 = system._zone('../etc/passwd'); nope, e3 = system._zone('Mars/Base'); "
+        "print(z is not None and e is None and bad is None and nope is None and e3 is not None)") % ROOT
+r = subprocess.run([sys.executable, "-c", code], capture_output=True)
+ok = r.stdout.decode().strip() == "True"
+print(("ok    " if ok else "FAIL  ") + "the bundled zones work without a host database" + ("" if ok else f"  {r.stdout!r} {r.stderr[:200]!r}"))
+if not ok:
+    fails.append("bundled zones")
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)
