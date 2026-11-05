@@ -16,6 +16,28 @@ In short, moxie is perfect for Top Gun FP programmers who feel the need for spee
 
 You're welcome!
 
+## Get it running
+
+You can try moxie three ways, from least to most effort. Remember that what you run is the reference interpreter, not a compiler, so nothing here produces a native program.
+
+1. **In your browser.** [Try moxie](try.html) runs a program on this site, with nothing to install. It's a sandbox: no network, no native libraries, and files that live only in the page.
+2. **Download the interpreter.** [moxie.zip](moxie.zip) is the whole interpreter, and it needs only Python 3.11 or later. Unzip it, save the lines below as `hello.mxi` next to the `moxie` folder, and run it from there:
+
+   ```
+   class_name = "Moxie 101"
+   println("Welcome to $class_name")
+   ```
+
+   ```
+   $ python3 -m moxie run hello.mxi
+   Welcome to Moxie 101
+   ```
+
+   `python3 -m moxie check hello.mxi` checks a program without running it, and `test` runs its `test` blocks.
+3. **Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
+
+The [Tutorial](tutorial.html) builds one program step by step and assumes you have it running.
+
 ## About us
 
 Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer lives on paper alone. It's a software project undertaken by me, Steve Converse, in collaboration with Google's generative AI and Anthropic's Claude, without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
