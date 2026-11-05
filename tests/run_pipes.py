@@ -106,6 +106,40 @@ init:
   r = open_file("@FIFO@", ReadOnly)?
   println(read_line(r)?)
 '''), 0, "other ran\nhi")
+WATCH = '''fn watchdog() Unit:
+  sleep(300ms)
+  println("timed out")
+  exit(3)
+
+init:
+  make_fifo("@FIFO@")?
+  p = spawn("sh", List("-c", "exec sleep 30 > @FIFO@"))?
+  _ = run watchdog()
+  r = open_file("@FIFO@", ReadOnly)?
+  println(read_line(r))
+'''
+chk("a timeout fires while another fiber waits on a pipe", run(WATCH), 3, "timed out", under=10)
+chk("sleeping fibers keep time while another waits on a child", run('''fn ticker() Unit:
+  for i in 1..=3:
+    sleep(50ms)
+    println("tick $i")
+
+init:
+  _ = run ticker()
+  p = spawn("sleep", List("0.5"))?
+  println(wait_child(p)?)
+  close(p)
+'''), 0, "tick 1\ntick 2\ntick 3\n0")
+chk("an accept with a timeout fiber", run('''fn watchdog() Unit:
+  sleep(300ms)
+  println("nobody came")
+  exit(4)
+
+init:
+  l = listen_unix("@SOCK@")?
+  _ = run watchdog()
+  println(accept(l))
+'''), 4, "nobody came", under=10)
 chk("the pool tally counts a Listener", run('init:\n  l = listen_unix("@SOCK@")?\n  close(l)\n', (), cmd="pools"), 0, "Listener")
 os.rmdir(D) if not os.listdir(D) else None
 print(f"{len(fails)} failed")

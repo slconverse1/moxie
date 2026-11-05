@@ -448,9 +448,10 @@ class Scheduler:
             if self.ext or self.listeners:
                 self.drain_ext(False)
             if not self.ready:
-                nxt = self.next_due() if (self.sig_listeners and not self.ext) else None
-                if nxt is not None:
-                    # a signal may arrive while a fiber sleeps: wait in real time, and let that time pass
+                nxt = self.next_due() if (self.sig_listeners or self.ext) else None
+                if nxt is not None and not (self.handlers and self.sleepers):
+                    # a signal may arrive, or an OS wait may finish, while a fiber sleeps: wait in real time up to the
+                    # next sleeper or timer, and let that time pass, so a timeout fires while another fiber waits
                     t0 = time.monotonic_ns()
                     self.drain_ext(True, timeout=max(0, nxt - self.now) / 1e9)
                     self.now += time.monotonic_ns() - t0

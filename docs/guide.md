@@ -2300,7 +2300,7 @@ close(r)
 remove_file("jobs.pipe")?
 ```
 
-A reader sees `CLOSED` when the writer closes its end, so the loop above ends by itself. A write waits when the pipe is full. Neither exists in the browser. Fibers inside one program should use channels, not pipes: a channel is typed, counted, and checked, and a pipe is for talking to another program. A fiber waiting on a socket or pipe does not stop the others, but a `sleep` in another fiber does not count down until the wait ends. **Mistakes:** opening a pipe for reading and writing at once (`ReadWrite` is refused), and forgetting that a reader waits for a writer to open its end.
+A reader sees `CLOSED` when the writer closes its end, so the loop above ends by itself. A write waits when the pipe is full. Neither exists in the browser. Fibers inside one program should use channels, not pipes: a channel is typed, counted, and checked, and a pipe is for talking to another program. A fiber waiting on a socket or pipe does not stop the others, and a `sleep` in another fiber keeps counting down, so a watchdog fiber that sleeps and then calls `exit` works while you wait. **Mistakes:** opening a pipe for reading and writing at once (`ReadWrite` is refused), and forgetting that a reader waits for a writer to open its end.
 
 **20c. Permissions**
 
