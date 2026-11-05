@@ -579,13 +579,27 @@ browser has no host database, which is why the copy ships. Tests: `tests/run_dat
 
 `res_tuples` is the closure of "a tuple with a resource field". `is_res_type` covers built-in resources, foreign handles, and those tuples; `is_resource_expr` also recognizes tuple constructors and user functions that return a resource (or a `Result`/`Option` of one under `?`). `find_consumers` now covers every clause of a function (the union of positions), a closed or moved field of the parameter (`close(p.io)`, `move p.f`), and methods: `method_consumes` holds `(Type, name)` for methods that keep `self`, found from `ImplDecl` members. `close(x)`, `x.close()`, and `x.f()` where `f` keeps its first parameter (or `x`'s static type has a method that keeps `self`) mark `x` moved after the call has been checked (`pending_gone`, applied by the `e_Call` wrapper, so the call's own receiver is not reported as a use after the move). `collect_moves`, which merges moves across branches, understands the same forms. `check_stored` requires `move` when a resource variable goes into a tuple constructor. The receiver's type comes from `Var.ty`, which the checker only knows for a few forms, so an untyped receiver is not analyzed (a missed error, never a false one).
 
-## Future backends (a plan, nothing built; agreed 2026-11-05)
+## Future backends (plans, nothing built; discussed 2026-11-05)
 
-The reference interpreter walks the tree (`ev` dispatches on node class; fibers are generators the scheduler resumes). Compiled backends, in the order decided:
+The reference interpreter walks the tree (`ev` dispatches on node class; fibers are generators the scheduler resumes). Two plans for compiled backends are on record. They are not exclusive, and no choice has been made.
+
+### Plan A: moxie/gc to Python, then moxie to WebAssembly (agreed first)
 
 1. **moxie/gc to Python.** Generate Python `ast` objects from the checked program and `compile()` them, rather than writing bytecode (bytecode changes between Python versions). Python is garbage collected, so this is a faithful gc backend; for the no-GC dialect it could only model the limits, so it should be labeled as the gc backend. Start with functions, `when`, loops, and tuples; compile any function that can park (the effect analysis already says which) into a generator and the rest into plain functions; then add the runtime checks the tree-walker does now (pool limits, closed-resource errors, bounded-integer overflow, abort messages with lines, contracts). Keep the tree-walker as the reference and run every suite and example through both, comparing output.
 2. **moxie (no GC) to WebAssembly.** The one-block layout the Spec describes (static region, module storage, resource pools, one stack block per possible fiber) maps onto linear memory. Open questions: fibers need their own stack switching or compilation to state machines, and files and sockets come through WASI.
-3. **Later, if wanted:** the JVM for moxie/gc (virtual threads suit fibers; no tail calls, so `tailrec` becomes a loop), and WebAssembly in place of Pyodide on the Try page.
+3. **Later, if wanted:** the JVM for moxie/gc (virtual threads suit fibers; no tail calls, so `tailrec` becomes a loop).
+
+### Plan B: WebAssembly for both dialects (raised later the same day)
+
+One backend for both dialects would run wherever WebAssembly runs (browsers, servers, embedded runtimes) and could replace Pyodide on the Try page. Points to settle:
+
+* **The "native code" promise.** WebAssembly is a portable binary format that a runtime turns into machine code, close to native speed but not literally "no bytecode". The site intros say moxie "compiles straight to machine code, so there's no bytecode standing between you and the hardware". That holds literally only with an ahead-of-time compiler (Wasmtime-style); otherwise the wording changes, for example to "compiles to WebAssembly, which runs at near-native speed". A wording decision for Steve when a backend exists.
+* **moxie (no GC)** is the clean fit: it lays out its own memory in one block.
+* **moxie/gc** needs a collector: use the host's WebAssembly garbage collection where available (reported as supported in the major browsers; verify before relying on it), or ship a collector inside linear memory, which works everywhere and costs more.
+* **Fibers** are the hard part for both: no coroutines in the core instruction set, so each fiber needs its own stack (stack switching, where hosts offer it) or compilation of parking functions to state machines.
+* **The Python step.** Under Plan B the Python backend is no longer a deliverable. It is an optional first spike for learning how to structure a compiler (one pass over the checked tree, effects deciding which functions become generators), and that structure carries over. It can also be skipped.
+
+Either way the tree-walker stays as the reference, and every suite and example runs through both for comparison.
 
 ## File watching (moxie/watch.py)
 
