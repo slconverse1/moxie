@@ -19,7 +19,7 @@ from .ast import *   # noqa
 
 PARKS, PRINTS = "parks", "prints"
 SYSTEM = "uses the system"     # the clock, random numbers, exit, signals, and facts about the host
-SYSTEM_CALLS = ("now", "monotonic", "random", "random_int", "random_bytes", "exit", "signals", "cwd", "home_dir",
+SYSTEM_CALLS = ("to_local", "now", "monotonic", "random", "random_int", "random_bytes", "exit", "signals", "cwd", "home_dir",
                 "temp_dir", "hostname", "os_name", "is_terminal", "terminal_size")
 BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRINTS,
            "read": PARKS, "write": PARKS, "sleep": PARKS,

@@ -539,3 +539,15 @@ as `128 + signal`. The permission kind `process` (`Perms.process_ok`, matching t
 or its base name; `--allow-run`; `process = [...]` in the manifest) is checked per call, and the
 static needs check follows `run_command` and `spawn` (`effects.NEEDS`). `Perms.browser()` grants no
 `process`. Tests: `tests/run_process.py`.
+
+## Dates and times (Spec 19e)
+
+`DateTime` is a prelude tuple in `mxprelude.py` (defaults for the time fields); `system.py` builds
+and reads it as a `TupleV` named `DateTime`. Conversions use Python's `datetime` and `zoneinfo`
+(`to_utc`, `to_local`, `to_zone`, `to_instant`; a nonexistent local time is reported by `_valid`,
+an ambiguous one takes the first, as `fold=0` does). `format_time` and `parse_time` are our own code
+for a fixed set of codes (`_format`, `_parse`), so the output does not depend on the C locale; month
+and weekday names are English. `parse_iso` tries a list of patterns and refuses an offset. Only
+`to_local` is in `effects.SYSTEM_CALLS`. Zone names need a time zone database on the host (the Python
+`zoneinfo` module reads the system's, or the `tzdata` package); where there is none the zone
+functions return `NOT_FOUND`. Not yet checked under Pyodide. Tests: `tests/run_datetime.py`.

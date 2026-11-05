@@ -351,3 +351,268 @@ def b_kill_child(I, a, kw, ta):
     if c.proc.poll() is None:
         c.proc.kill()
     return UNIT
+
+
+# ---------------------------------------------------------------- dates and times (Spec 19e)
+import datetime as _dtm
+import re as _re
+
+_EPOCH = _dtm.datetime(1970, 1, 1, tzinfo=_dtm.timezone.utc)
+_DT_FIELDS = ["year", "month", "day", "hour", "minute", "second", "nano"]
+_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+           "November", "December"]
+_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+
+
+def _civil(d, nano):
+    return TupleV([d.year, d.month, d.day, d.hour, d.minute, d.second, nano], list(_DT_FIELDS), "DateTime")
+
+
+def _instant_arg(x, who):
+    if not isinstance(x, Dur):
+        raise Abort(f"{who} needs a Duration since the Unix epoch, not {type_name(x)}")
+    return x.ns
+
+
+def _from_ns(ns, tz, who):
+    secs, nano = divmod(int(ns), 1_000_000_000)
+    try:
+        return _civil((_EPOCH + _dtm.timedelta(seconds=secs)).astimezone(tz), nano)
+    except (OverflowError, ValueError, OSError):
+        raise Abort(f"{who}: the time is outside the years 1 to 9999")
+
+
+def _zone(name):
+    import zoneinfo
+    try:
+        return zoneinfo.ZoneInfo(name), None
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError, OSError):
+        return None, err_reserved("NOT_FOUND", f"{name}: unknown time zone")
+
+
+@bi("to_utc")
+def b_to_utc(I, a, kw, ta):
+    return _from_ns(_instant_arg(a[0], "to_utc"), _dtm.timezone.utc, "to_utc")
+
+
+@bi("to_local")
+def b_to_local(I, a, kw, ta):
+    return _from_ns(_instant_arg(a[0], "to_local"), None, "to_local")
+
+
+@bi("to_zone")
+def b_to_zone(I, a, kw, ta):
+    ns = _instant_arg(a[0], "to_zone")
+    tz, err = _zone(a[1])
+    if err is not None:
+        return err
+    return Ok(_from_ns(ns, tz, "to_zone"))
+
+
+def _check_dt(v, who):
+    if not isinstance(v, TupleV) or v.tname != "DateTime":
+        raise Abort(f"{who} needs a DateTime, not {type_name(v)}")
+    return [int(x) for x in v.vals]
+
+
+def _valid(vals):
+    """The datetime for the fields, or a message saying what is wrong with them."""
+    y, mo, d, h, mi, s, ns = vals
+    if not 1 <= y <= 9999:
+        return None, f"the year {y} is outside 1 to 9999"
+    if not 1 <= mo <= 12:
+        return None, f"the month {mo} is outside 1 to 12"
+    try:
+        _dtm.date(y, mo, d)
+    except ValueError:
+        return None, f"{_MONTHS[mo - 1]} {y} has no day {d}"
+    if not 0 <= h <= 23 or not 0 <= mi <= 59 or not 0 <= s <= 59:
+        return None, f"the time {h}:{mi}:{s} is not a time of day"
+    if not 0 <= ns <= 999_999_999:
+        return None, f"the nanoseconds {ns} are outside 0 to 999999999"
+    return _dtm.datetime(y, mo, d, h, mi, s), None
+
+
+@bi("to_instant")
+def b_to_instant(I, a, kw, ta):
+    vals = _check_dt(a[0], "to_instant")
+    zone = a[1] if len(a) > 1 else "UTC"
+    base, why = _valid(vals)
+    if why:
+        return err_reserved("OUT_OF_RANGE", why)
+    tz, err = (_dtm.timezone.utc, None) if zone == "UTC" else _zone(zone)
+    if err is not None:
+        return err
+    secs = int((base.replace(tzinfo=tz) - _EPOCH).total_seconds())
+    return Ok(Dur(secs * 1_000_000_000 + vals[6]))
+
+
+def _need_valid(vals, who):
+    base, why = _valid(vals)
+    if why:
+        raise Abort(f"{who}: {why}")
+    return base
+
+
+def _format(vals, pat, who):
+    base = _need_valid(vals, who)
+    y, mo, d, h, mi, s, ns = vals
+    out, i = [], 0
+    while i < len(pat):
+        c = pat[i]
+        if c != "%":
+            out.append(c)
+            i += 1
+            continue
+        i += 1
+        if i >= len(pat):
+            raise Abort(f"{who}: the pattern ends with a lone %")
+        k = pat[i]
+        i += 1
+        wd = base.weekday()
+        out.append({
+            "Y": f"{y:04d}", "m": f"{mo:02d}", "d": f"{d:02d}", "H": f"{h:02d}", "M": f"{mi:02d}", "S": f"{s:02d}",
+            "f": f"{ns:09d}", "y": f"{y % 100:02d}", "e": f"{d:2d}", "j": f"{base.timetuple().tm_yday:03d}",
+            "a": _DAYS[wd][:3], "A": _DAYS[wd], "b": _MONTHS[mo - 1][:3], "B": _MONTHS[mo - 1],
+            "p": "AM" if h < 12 else "PM", "I": f"{(h % 12) or 12:02d}", "%": "%",
+        }.get(k) if k in "YmdHMSfyejaAbBpI%" else _bad_code(k, who))
+    return "".join(out)
+
+
+def _bad_code(k, who):
+    raise Abort(f"{who}: unknown pattern code %{k}")
+
+
+@bi("format_time")
+def b_format_time(I, a, kw, ta):
+    return _format(_check_dt(a[0], "format_time"), a[1], "format_time")
+
+
+@bi("iso")
+def b_iso(I, a, kw, ta):
+    vals = _check_dt(a[0], "iso")
+    text = _format(vals, "%Y-%m-%dT%H:%M:%S", "iso")
+    if vals[6]:
+        text += "." + f"{vals[6]:09d}".rstrip("0")
+    return text
+
+
+_PARSE = {"Y": r"(\d{4})", "m": r"(\d{1,2})", "d": r"(\d{1,2})", "H": r"(\d{1,2})", "M": r"(\d{1,2})",
+          "S": r"(\d{1,2})", "f": r"(\d{1,9})", "y": r"(\d{2})", "e": r"\s?(\d{1,2})", "j": r"(\d{1,3})",
+          "I": r"(\d{1,2})", "p": r"([AaPp][Mm])",
+          "a": r"(" + "|".join(d[:3] for d in _DAYS) + r")", "A": r"(" + "|".join(_DAYS) + r")",
+          "b": r"(" + "|".join(m[:3] for m in _MONTHS) + r")", "B": r"(" + "|".join(_MONTHS) + r")"}
+
+
+def _parse(text, pat, who):
+    rx, codes, i = [], [], 0
+    while i < len(pat):
+        c = pat[i]
+        if c != "%":
+            rx.append(_re.escape(c))
+            i += 1
+            continue
+        i += 1
+        if i >= len(pat):
+            raise Abort(f"{who}: the pattern ends with a lone %")
+        k = pat[i]
+        i += 1
+        if k == "%":
+            rx.append("%")
+        elif k in _PARSE:
+            rx.append(_PARSE[k])
+            codes.append(k)
+        else:
+            raise Abort(f"{who}: unknown pattern code %{k}")
+    m = _re.fullmatch("".join(rx), text, _re.I)
+    if m is None:
+        return err_reserved("MISSING", f"{who}: the text does not match {pat}")
+    y, mo, d, h, mi, s, ns, pm, yday = None, None, None, 0, 0, 0, 0, None, None
+    for k, g in zip(codes, m.groups()):
+        if k == "Y":
+            y = int(g)
+        elif k == "y":
+            y = 1900 + int(g) if int(g) >= 69 else 2000 + int(g)
+        elif k == "m":
+            mo = int(g)
+        elif k == "b":
+            mo = [x[:3].lower() for x in _MONTHS].index(g.lower()) + 1
+        elif k == "B":
+            mo = [x.lower() for x in _MONTHS].index(g.lower()) + 1
+        elif k in "de":
+            d = int(g)
+        elif k == "j":
+            yday = int(g)
+        elif k in "HI":
+            h = int(g)
+        elif k == "M":
+            mi = int(g)
+        elif k == "S":
+            s = int(g)
+        elif k == "f":
+            ns = int(g.ljust(9, "0"))
+        elif k == "p":
+            pm = g.lower() == "pm"
+    if pm is not None:
+        if not 1 <= h <= 12:
+            return err_reserved("OUT_OF_RANGE", f"{who}: the hour {h} is not 1 to 12")
+        h = (h % 12) + (12 if pm else 0)
+    if y is None:
+        return err_reserved("MISSING", f"{who}: the pattern has no year (%Y or %y)")
+    if yday is not None:
+        try:
+            dd = _dtm.date(y, 1, 1) + _dtm.timedelta(days=yday - 1)
+        except (ValueError, OverflowError):
+            return err_reserved("OUT_OF_RANGE", f"{who}: day {yday} of {y} does not exist")
+        if dd.year != y:
+            return err_reserved("OUT_OF_RANGE", f"{who}: day {yday} is not in {y}")
+        mo, d = dd.month, dd.day
+    mo = 1 if mo is None else mo
+    d = 1 if d is None else d
+    base, why = _valid([y, mo, d, h, mi, s, ns])
+    if why:
+        return err_reserved("OUT_OF_RANGE", f"{who}: {why}")
+    return Ok(_civil(base, ns))
+
+
+@bi("parse_time")
+def b_parse_time(I, a, kw, ta):
+    return _parse(a[0], a[1], "parse_time")
+
+
+@bi("parse_iso")
+def b_parse_iso(I, a, kw, ta):
+    text = a[0].strip()
+    if _re.search(r"[+-]\d\d(:?\d\d)?$", text) and "T" in text.upper() and not _re.fullmatch(r"\d{4}-\d\d-\d\d", text):
+        if _re.search(r"[T ]\d\d:\d\d(:\d\d(\.\d+)?)?[+-]\d\d(:?\d\d)?$", text, _re.I):
+            return err_reserved("MISSING", "parse_iso: an offset is not part of a DateTime; parse the local time and use to_instant with a zone")
+    if text[-1:] in "Zz" and len(text) > 10:
+        text = text[:-1]
+    for pat in ("%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S.%f",
+                "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            r = _parse(text, pat, "parse_iso")
+        except Abort:
+            continue
+        if r.case == "Ok" or r.vals[0].vals[0] != ERR_CODES["MISSING"]:
+            return r
+    return err_reserved("MISSING", f"parse_iso: {a[0]!r} is not an ISO 8601 date or time")
+
+
+@bi("weekday")
+def b_weekday(I, a, kw, ta):
+    return _need_valid(_check_dt(a[0], "weekday"), "weekday").isoweekday()
+
+
+@bi("day_of_year")
+def b_day_of_year(I, a, kw, ta):
+    return _need_valid(_check_dt(a[0], "day_of_year"), "day_of_year").timetuple().tm_yday
+
+
+@bi("days_in_month")
+def b_days_in_month(I, a, kw, ta):
+    y, m = int(a[0]), int(a[1])
+    if not 1 <= y <= 9999 or not 1 <= m <= 12:
+        raise Abort("days_in_month needs a year 1 to 9999 and a month 1 to 12")
+    import calendar
+    return calendar.monthrange(y, m)[1]

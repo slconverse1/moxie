@@ -20,6 +20,15 @@ tuple Packet:
   port: Int
   data: Array[Byte]
 
+tuple DateTime:
+  year: Int
+  month: Int
+  day: Int
+  hour: Int = 0
+  minute: Int = 0
+  second: Int = 0
+  nano: Int = 0
+
 tuple Output:
   code: Int
   stdout: String

@@ -2453,6 +2453,36 @@ close(c)
 
 Waiting parks only your fiber, so others keep running. A program needs the `process` permission, written `process = ["git", "sort"]` in `Moxie.toml` or `--allow-run=git,sort` on the command line, and the child gets only the environment your program could see. **Mistakes:** building a command line as one string (there is no shell to split it, so pass a list), ignoring `r.code`, forgetting to close the input before reading a program that reads until end of file, and expecting Try moxie to run programs (it can't).
 
+**20g. Dates and times**
+
+`now()` is a moment, a `Duration` since 1970. To show it to a person, turn it into a `DateTime`, a plain record of year, month, day, hour, minute, second, and nanosecond. `to_utc` gives UTC, `to_local` gives your computer's zone, and `to_zone` takes a zone name and returns a `Result`, since the name might not exist:
+
+```
+t = 1700000000s
+println(iso(to_utc(t)))
+la = to_zone(t, "America/Los_Angeles")?
+println(format_time(la, "%A, %B %e at %I:%M %p"))
+```
+
+Output: `2023-11-14T22:13:20`, then `Tuesday, November 14 at 02:13 PM`. Going back is `to_instant(dt, zone)`, which gives a `Result` because `DateTime(2026, 2, 30)` is not a day. A `DateTime` has no zone of its own, so pass the zone when you convert one to a moment. `parse_time` and `parse_iso` read text, and both return `Err` for text that does not fit or a date that does not exist:
+
+```
+d = parse_time("04/11/2026 16:55", "%d/%m/%Y %H:%M")?
+println(iso(d))
+println(weekday(d))
+println(parse_iso("2026-02-30"))
+```
+
+Output: `2026-11-04T16:55:00`, `3` (Wednesday; Monday is 1), then an `Err` that says February 2026 has no day 30. There is no date arithmetic on a `DateTime`. To add days, go through the moment, and remember that a day here is always 24 hours:
+
+```
+d = DateTime(2026, 12, 30)
+later = (to_instant(d)? + 3 * 24h).to_utc()
+println(iso(later))
+```
+
+Output: `2027-01-02T00:00:00`. All of these are pure except `to_local`, which depends on the computer it runs on. **Mistakes:** parsing a time with an offset such as `+02:00` with `parse_iso` (it refuses, since a `DateTime` has no zone), using `to_local` where a test needs the same answer everywhere, and adding a month by adding 30 days.
+
 **Chapter 21: A DSL without macros**
 
 A builder is a set of ordinary functions, and nesting is nested calls. Nominal tuples give type safety:
