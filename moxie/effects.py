@@ -59,7 +59,11 @@ class Summary:
 def find_package(search_dir, parts):
     base = search_dir or "."
     cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
-    return next((p for p in cands if os.path.exists(p)), None)
+    found = next((p for p in cands if os.path.exists(p)), None)
+    if found is None:
+        from .stdpkg import find_std
+        found = find_std(parts)
+    return found
 
 
 class Effects:

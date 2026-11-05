@@ -4,6 +4,7 @@ Reports, never guessing: mismatched types, undefined names, wrong argument count
 `ref` mismatches, non-exhaustive `when`, use-after-move, and bounded-integer misuse.
 Anything the checker cannot type is "unknown" and never produces an error.
 """
+import os
 from .ast import *   # noqa
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
@@ -194,6 +195,10 @@ class Checker:
         self.ifaces = set()
 
     # ------------------------------------------------------------ reporting
+    def has_local_pkg(self, parts):
+        base = getattr(self, "search_dir", None) or "."
+        return any(os.path.exists(p) for p in (os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")))
+
     def err(self, line, msg):
         if any(d.line == line and d.msg == msg for d in self.diags):
             return
@@ -388,6 +393,10 @@ class Checker:
                         self.impls.setdefault(tname, set()).add("Equatable")
         elif c is ImportDecl:
             self.globals.add(st.alias or st.pkg[-1])
+            from .stdpkg import find_std, gc_only, refusal
+            from .values import GC
+            if not GC[0] and gc_only(find_std(st.pkg), st.pkg) and not self.has_local_pkg(st.pkg):
+                self.err(st.line, refusal(st.pkg))
             for nm in st.names or []:
                 self.globals.add(nm)
         elif c is UsingDecl:
@@ -1785,7 +1794,9 @@ class Checker:
 
 
 def check_program(prog, prelude_names, search_dir=None):
-    diags = Checker(prelude_names).check(prog)
+    ck = Checker(prelude_names)
+    ck.search_dir = search_dir
+    diags = ck.check(prog)
     from .effects import check_effects
     seen = {(d.line, d.msg) for d in diags}
     for line, msg in check_effects(prog, search_dir):

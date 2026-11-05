@@ -376,6 +376,13 @@ class DeclsMixin:
         cands = [os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")]
         path = next((p for p in cands if os.path.exists(p)), None)
         if path is None:
+            from .stdpkg import find_std
+            path = find_std(parts)
+            from .values import GC
+            from .stdpkg import gc_only, refusal
+            if gc_only(path, parts) and not GC[0]:
+                raise Abort(refusal(parts))
+        if path is None:
             raise Abort(f"cannot find package '{key}'")
         src = open(path, encoding="utf-8").read()
         prog = self.load_source(src, path)

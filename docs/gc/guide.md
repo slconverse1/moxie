@@ -3049,7 +3049,17 @@ r = two.run(0)
 println("${r(0)(0)} ${r(0)(1)} ${r(1)}")
 ```
 
-Output: `1 2 2`. **[gc]** None of no-GC moxie's closure limits apply: a closure has one type per signature, branches may return different closures, loops and recursion over runtime-length data work, and a State value can go in a Dict, an Atom, or a channel. It is still a Guide example and not a library type, and `ref` threading remains the simpler way. A **Reader** is a `using` parameter, which the caller can override:
+Output: `1 2 2`. **[gc]** None of no-GC moxie's closure limits apply: a closure has one type per signature, branches may return different closures, loops and recursion over runtime-length data work, and a State value can go in a Dict, an Atom, or a channel. `ref` threading remains the simpler way, but if you want the monad ready-made, `import fp.state` gives you this `State` type with its `Monad` impl, plus `get()`, `put(s)`, `modify(f)`, `gets(f)`, `eval(m, s)` (the result), `exec(m, s)` (the final state), and `traverse(xs, f)` (runs `f` on each element in order, threading the state, and collects the results). The package is moxie/gc only, and no-GC moxie refuses the import:
+
+```
+import fp.state
+
+fn label(name: String) state.State[Int, String]:
+  state.modify((n: Int): n + 1).flat_map((u): state.gets((n: Int): "${name}${n}"))
+println(state.traverse(List("a", "b", "c"), label).run(0))
+```
+
+Output: `(List("a1", "b2", "c3"), 3)`. A **Reader** is a `using` parameter, which the caller can override:
 
 ```
 fn price(base: Int, using tax: Int) Int:
