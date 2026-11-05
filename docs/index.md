@@ -36,6 +36,8 @@ You can try moxie three ways, from least to most effort. Remember that what you 
    `python3 -m moxie check hello.mxi` checks a program without running it, and `test` runs its `test` blocks.
 3. **Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
 
+Everything above runs moxie, the no-GC dialect. To run [moxie/gc](gc/) instead, tick "moxie/gc rules" on the Try page, or add `--gc` on the command line: `python3 -m moxie --gc run hello.mxi`.
+
 The [Tutorial](tutorial.html) builds one program step by step and assumes you have it running.
 
 ## About us
@@ -1389,6 +1391,8 @@ These come with the territory, and we don't mind them.
 - **`any` values can't be compared,** because `Self` as a parameter can't be dispatched when the type is hidden.
 - **Fibers can't receive `ref` arguments.**
 - **Floats can't be Dict keys.**
+
+Many of these limits come from having no garbage collector: the fixed sizes, the closures that can't be stored, the streams that can't be returned, and the resources that can't be created in a loop. If they get in your way, try the second dialect, [moxie/gc](gc/). It keeps patterns, pipes, generics, interfaces, results, fibers, and channels exactly as they are, and it lifts the limits above that come from having no collector, in exchange for a collector with short pauses. Its page has a list of everything that changes.
 
 ## Constraints we chose
 
