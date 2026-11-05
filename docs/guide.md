@@ -2302,6 +2302,17 @@ remove_file("jobs.pipe")?
 
 A reader sees `CLOSED` when the writer closes its end, so the loop above ends by itself. A write waits when the pipe is full. Neither exists in the browser. Fibers inside one program should use channels, not pipes: a channel is typed, counted, and checked, and a pipe is for talking to another program. A fiber waiting on a socket or pipe does not stop the others, and a `sleep` in another fiber keeps counting down, so a watchdog fiber that sleeps and then calls `exit` works while you wait. **Mistakes:** opening a pipe for reading and writing at once (`ReadWrite` is refused), and forgetting that a reader waits for a writer to open its end.
 
+**Watching files.** To react when something on disk changes, such as a build that reruns on save, ask for a channel of changes:
+
+```
+// not run: waits for a change
+rx = watch("src")?
+for change in rx:
+  println("${change.kind} ${change.path}")
+```
+
+`watch` gives a channel of `FileChange` values. Each has a `path` and a `kind`, which is `#created`, `#modified`, or `#deleted`. A file reports changes to itself, and a directory reports changes to the files directly inside it (a subdirectory shows up when it is created or deleted, not when something inside it changes). The loop waits for the next change and only your fiber waits, so other fibers keep running, and a `sleep` in one of them keeps counting. `close(rx)` stops the watching. Moxie looks every tenth of a second, so a burst of changes arrives together, and a file written twice within that time may report once. If you read more slowly than changes arrive, some are dropped and a warning at exit says how many. It needs `fs.read` on the path, and it is not available in Try moxie. **Mistakes:** expecting a change inside a subdirectory to be reported, and expecting an event per write.
+
 **20c. Permissions**
 
 A program that was not given a permission cannot use it. The permissions are `fs.read` and `fs.write` (paths), `net.connect` (`host:port`), `net.listen` (ports), `ffi` (native libraries), `process` (programs to run), `stdin`, and `env`. Printing to `stdout` and `stderr` and reading `args` are always allowed. They are granted in the manifest:

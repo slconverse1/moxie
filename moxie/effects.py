@@ -20,7 +20,7 @@ from .ast import *   # noqa
 PARKS, PRINTS = "parks", "prints"
 SYSTEM = "uses the system"     # the clock, random numbers, exit, signals, and facts about the host
 SYSTEM_CALLS = ("to_local", "now", "monotonic", "random", "random_int", "random_bytes", "exit", "signals", "cwd", "home_dir",
-                "temp_dir", "hostname", "os_name", "is_terminal", "terminal_size", "raw_terminal")
+                "temp_dir", "hostname", "os_name", "is_terminal", "terminal_size", "raw_terminal", "watch")
 BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRINTS,
            "read": PARKS, "write": PARKS, "sleep": PARKS,
            "read_line": PARKS, "read_all": PARKS, "stdin_lines": PARKS,
@@ -518,7 +518,7 @@ class Effects:
 # ---------------------------------------------------------------- permissions needed (Spec 19d)
 NEEDS = {"signals": "platform:signals", "open_file": "fs", "read_file": "fs", "write_file": "fs", "connect": "net", "listen": "net", "bind_udp": "net", "send_to": "net", "connect_tls": "net", "listen_tls": "net",
          "list_dir": "fs", "file_info": "fs", "path_exists": "fs", "make_dir": "fs", "remove_file": "fs",
-         "remove_dir": "fs", "rename_path": "fs", "lookup_host": "net", "run_command": "process", "spawn": "process", "make_fifo": "fs", "listen_unix": "fs", "connect_unix": "fs", "raw_terminal": "stdin", "make_temp_file": "fs", "make_temp_dir": "fs", "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
+         "remove_dir": "fs", "rename_path": "fs", "lookup_host": "net", "run_command": "process", "spawn": "process", "watch": "fs", "make_fifo": "fs", "listen_unix": "fs", "connect_unix": "fs", "raw_terminal": "stdin", "make_temp_file": "fs", "make_temp_dir": "fs", "read_line": "stdin", "read_all": "stdin", "stdin_lines": "stdin"}
 
 
 class Needs(Effects):

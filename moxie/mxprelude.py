@@ -50,6 +50,10 @@ enum Key:
   Insert
   Other
 
+tuple FileChange:
+  path: String
+  kind: Keyword
+
 tuple Output:
   code: Int
   stdout: String

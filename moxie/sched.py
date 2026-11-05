@@ -29,6 +29,9 @@ def park_thread(I, fn):
     return r
 
 
+WATCH_STOP = object()      # posted by a file watcher that has ended
+
+
 class EventSink:
     """A channel write end that a C-kept callback posts to (Spec 19a, Events[T])."""
     __slots__ = ("w", "dropped", "name")
@@ -321,6 +324,10 @@ class Scheduler:
         self.spawn(runner(), "handler")
 
     def deliver_event(self, sink, v):
+        if v is WATCH_STOP:                # a watcher whose reader closed: stop waiting for its events
+            self.listeners -= 1
+            self.sig_listeners -= 1
+            return
         c = sink.w.chan
         if c.rcount <= 0:
             sink.dropped += 1

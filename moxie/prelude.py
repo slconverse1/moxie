@@ -2467,3 +2467,4 @@ def b_sample(I, a, kw, ta):
 from . import system  # noqa: E402,F401  (registers the system builtins)
 from . import terminal  # noqa: E402,F401  (raw terminal input)
 from . import pipes  # noqa: E402,F401  (Unix sockets and pipes)
+from . import watch  # noqa: E402,F401  (file watching)
