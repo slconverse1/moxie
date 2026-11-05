@@ -34,7 +34,7 @@ def chk(name, src, rc_want, *wants, absent=(), cmd="run"):
 
 chk("cancel wakes a worker waiting in select", WORKER + '''rx, tx = Chan[String][10]()
 scope s:
-  _ = run worker(1, tx, s)
+  _ = run worker(1, clone(tx), s)
   _ = run worker(2, tx, s)
   sleep(50ms)
   cancel(s)
@@ -97,7 +97,7 @@ chk("nested scopes wait for their own fibers", '''fn task(name: String, ms: Int,
 rx, tx = Chan[String][4]()
 scope:
   scope:
-    _ = run task("inner", 20, tx)
+    _ = run task("inner", 20, clone(tx))
   println("inner scope over")
   _ = run task("outer", 40, tx)
 println("outer scope over")

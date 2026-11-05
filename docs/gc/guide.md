@@ -2034,7 +2034,7 @@ fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
         sleep(10ms)
 rx, tx = Chan[String][4]()
 scope s:
-  _ = run worker(1, tx, s)
+  _ = run worker(1, clone(tx), s)
   _ = run worker(2, tx, s)
   sleep(50ms)
   cancel(s)

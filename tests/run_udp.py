@@ -51,5 +51,50 @@ o = (r.stdout + r.stderr).decode()
 good = "Io socket" in o
 print(("ok    " if good else "FAIL  ") + "the pool tally counts a Udp as an Io socket" + ("" if good else f"  -> {o!r}"))
 if not good: fails.append("pools")
+
+# receive with a timeout next to fibers that sleep (the sleepers must keep ticking while the OS call waits)
+import time
+TIMED = [
+ ("a timeout and a sleeping ticker run side by side",
+  'fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  r = receive(sock, timeout: 300ms)\n  _ = write(out, "receive: ${is_err(r)}")\n\n'
+  'fn ticker(out: ChanW[String]) Unit:\n  sleep(100ms)\n  _ = write(out, "tick 1")\n  sleep(100ms)\n  _ = write(out, "tick 2")\n\n'
+  'a = bind_udp(0)?\nrx, tx = Chan[String][4]()\n_ = run waiter(a, tx)\n_ = run ticker(clone(tx))\n'
+  'println(read(rx)?)\nprintln(read(rx)?)\nprintln(read(rx)?)\n',
+  "tick 1\ntick 2\nreceive: true", 3.0),
+ ("a sleeping sender wakes a waiting receive early",
+  'fn sender(sock: Udp, port: Int) Unit:\n  sleep(200ms)\n  _ = send_to(sock, "127.0.0.1", port, "late")\n\n'
+  'a = bind_udp(0)?\nb = bind_udp(0)?\n_ = run sender(b, port_of(a))\nr = receive(a, timeout: 20s)?\nprintln("got ${len(r.data)}")\n',
+  "got 4", 3.0),
+ ("several receives time out together, in about the time of one",
+  'fn waiter(sock: Udp, n: Int, out: ChanW[Int]) Unit:\n  _ = receive(sock, timeout: 400ms)\n  _ = write(out, n)\n\n'
+  'a = bind_udp(0)?\nb = bind_udp(0)?\nc = bind_udp(0)?\nrx, tx = Chan[Int][3]()\n'
+  '_ = run waiter(a, 1, clone(tx))\n_ = run waiter(b, 2, clone(tx))\n_ = run waiter(c, 3, tx)\n'
+  'x = read(rx)?\ny = read(rx)?\nz = read(rx)?\nprintln(x + y + z)\n',
+  "6", 1.6),
+ ("main sleeps longer than a receive timeout in another fiber",
+  'fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  _ = receive(sock, timeout: 100ms)\n  _ = write(out, "timed out first")\n\n'
+  'a = bind_udp(0)?\nrx, tx = Chan[String][1]()\n_ = run waiter(a, tx)\nsleep(500ms)\nprintln(read(rx)?)\n',
+  "timed out first", 3.0),
+ ("a receive with no timeout waits for a sleeping sender",
+  'fn sender(sock: Udp, port: Int) Unit:\n  sleep(150ms)\n  _ = send_to(sock, "127.0.0.1", port, "x")\n\n'
+  'a = bind_udp(0)?\nb = bind_udp(0)?\n_ = run sender(b, port_of(a))\nr = receive(a)?\nprintln(len(r.data))\n',
+  "1", 3.0),
+]
+for name, src, want, limit in TIMED:
+    with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
+        f.write(src)
+    t0 = time.time()
+    try:
+        r = subprocess.run([sys.executable, "-m", "moxie", "run", f.name], cwd=ROOT, capture_output=True, timeout=30)
+        o = (r.stdout + r.stderr).decode()
+        rc = r.returncode
+    except subprocess.TimeoutExpired:
+        o, rc = "TIMEOUT", -9
+    dt = time.time() - t0
+    os.unlink(f.name)
+    good = rc == 0 and want in o and dt < limit
+    print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} {dt:.1f}s out={o[:200]!r}"))
+    if not good: fails.append(name)
+
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)
