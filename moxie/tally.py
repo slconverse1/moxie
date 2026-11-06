@@ -256,6 +256,16 @@ class Tally:
             self._collect(ch, in_impl or c is ImplDecl)
 
     # ---------------------------------------------------------------- one function
+    def int_of(self, e):
+        """An integer literal, or a top-level name bound to one."""
+        if e.__class__ is IntLit:
+            return e.v
+        if e.__class__ is Name:
+            for st in self.prog.stmts:
+                if st.__class__ is Assign and st.targets.__class__ is PBind and st.targets.name == e.name and st.value.__class__ is IntLit:
+                    return st.value.v
+        return None
+
     def of_fn(self, name):
         if name in self.memo:
             return self.memo[name]
@@ -388,7 +398,7 @@ class Tally:
             if own is None and nm in LIB_FIBERS and nm not in self.defs and n.fn.__class__ is Name and self.start_sink is not None:
                 k = LIB_FIBERS[nm]
                 if k == "limit":
-                    k = next((a.expr.v for a in n.args if getattr(a, "label", None) == "limit" and a.expr.__class__ is IntLit), None)
+                    k = next((self.int_of(a.expr) for a in n.args if getattr(a, "label", None) == "limit"), None)
                 self.lib.lim[f"{nm}@{n.line}"] = k
                 self.start_sink.add((self.lib, f"{nm}@{n.line}"))
             if own is not None:

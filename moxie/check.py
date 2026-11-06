@@ -2200,7 +2200,7 @@ class Checker:
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
     RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal"}
-    OPTIONS = {"retry": {"when": None}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
+    OPTIONS = {"retry": {"when": None}, "par_map": {"limit": "Int"}, "par_traverse": {"limit": "Int"}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
                "run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
                "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
 
@@ -2209,6 +2209,15 @@ class Checker:
         label is one the function takes and its value fits.  Calls with any other labels are returned unchanged."""
         opts = self.OPTIONS.get(fn.name) if fn.__class__ is Name else None
         labeled = [a for a in args if getattr(a, "label", None)]
+        if fn.__class__ is Name and fn.name in ("par_map", "par_traverse") and not extra and sc.find(fn.name) is None \
+                and fn.name not in self.fns and fn.name not in self.tuples and all(hasattr(a, "expr") for a in args):
+            lim = next((a for a in labeled if a.label == "limit"), None)
+            v = self.const_int(lim.expr) if lim is not None else None
+            if v is None and lim is not None and lim.expr.__class__ is Name:
+                c = self.consts.get(lim.expr.name)
+                v = c if isinstance(c, int) and not isinstance(c, bool) else None
+            if lim is None or v is None or v < 1:
+                self.err(n.line, f"`{fn.name}` needs `limit:` with a constant number of 1 or more (the fibers are counted before the program runs)")
         if opts is None or not labeled or extra or sc.find(fn.name) is not None or fn.name in self.fns or fn.name in self.tuples \
                 or any(k[1] == fn.name for k in self.methods) or any(getattr(a, "mod", None) for a in args) \
                 or not all(hasattr(a, "expr") for a in args):

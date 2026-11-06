@@ -2432,6 +2432,24 @@ println(with_timeout(50ms, polite))
 
 Output: `Ok(42)`, `Ok(42)`, then `Err(Error(code: 12, message: "with_timeout: timed out"))`.
 
+**Doing the work in parallel.** `par_map(f, xs, limit: n)` calls `f` on every item, at most `n` at a time, each call in its own fiber, and gives the results as a `List` in the order of the input, however the calls finish. It pays off when `f` mostly waits (a network call, a file, a program) or when the work spreads across cores; for a quick calculation, plain `map` is faster, because starting a fiber costs more than the work. `limit:` is a number the compiler can see (a literal, or a top-level constant), the same rule as a channel's capacity, and for the same reason: the program's fibers are counted before it runs, and each `par_map` call adds `n` to the count that `moxie pools` shows. `par_traverse(f, xs, limit: n)` is `traverse` for the same job, for an `f` that gives a `Result`. When an item fails it stops starting new items, lets the running ones finish, and gives the `Err` of the earliest failing item, so the answer does not depend on timing: items start in input order, so every item before a failure has run. Both park, and the order of any output the calls print is up to the scheduler. The items and what `f` uses must be plain data: a resource is owned by one fiber.
+
+```
+fn slow_double(n: Int) Int:
+  sleep((6 - n) * 10ms)
+  n * 2
+fn check(n: Int) Result[Int, String]:
+  sleep((6 - n) * 10ms)
+  when n % 2 == 0:
+    true -> Err("even ${n}")
+    false -> Ok(n)
+println(List(1, 2, 3, 4, 5) |> par_map(slow_double, limit: 3))
+println(par_traverse(check, List(1, 3, 5), limit: 2))
+println(par_traverse(check, List(1, 2, 3, 4, 5), limit: 5))
+```
+
+Output: `List(2, 4, 6, 8, 10)`, `Ok(List(1, 3, 5))`, then `Err("even 2")`, though the later items finish first.
+
 **Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
 
 ```

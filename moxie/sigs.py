@@ -194,6 +194,8 @@ fn tap[T, U](x: T, f: (T) -> U) T: 0
 fn retry[T, E](n: Int, delay: Duration, f: () -> Result[T, E]) Result[T, E]: 0
 fn race[T](f: (Cancel) -> T, g: (Cancel) -> T) T: 0
 fn with_timeout[T](d: Duration, f: (Cancel) -> Result[T, Error]) Result[T, Error]: 0
+fn par_map[T, U](f: (T) -> U, xs: Seq[T]) List[U]: 0
+fn par_traverse[T, U, E](f: (T) -> Result[U, E], xs: Seq[T]) Result[List[U], E]: 0
 fn listen[E](port: Int) Result[Listener, E]: 0
 fn spawn[E](program: String) Result[Child, E]: 0
 fn spawn[E](program: String, args: List[String]) Result[Child, E]: 0

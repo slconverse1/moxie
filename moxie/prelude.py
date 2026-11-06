@@ -2482,6 +2482,66 @@ def b_with_timeout(I, a, kw, ta):
         me.scope = sc.parent
 
 
+def _par_run(I, f, items, limit, stop_on_err):
+    """Run f on every item, at most `limit` at once, each in its own fiber of an implicit scope; the results in input order.
+    With stop_on_err, an Err stops new items from starting (the running ones finish) and the Err of the earliest item wins."""
+    S, me = I.sched, I.sched.cur
+    n = min(limit, len(items))
+    results = [None] * len(items)
+    if n == 0:
+        return results
+    token = S_.CancelV()
+    sc = S_.ScopeState(me.scope, token)
+    nxt, stop = [0], [False]
+    _library_fibers_ok(I, n)
+
+    def worker():
+        while not stop[0] and nxt[0] < len(items):
+            i = nxt[0]
+            nxt[0] += 1
+            r = yield from I.apply(f, [items[i]])
+            results[i] = r
+            if stop_on_err and is_err(r):
+                stop[0] = True
+        return UNIT
+    me.scope = sc
+    try:
+        for _ in range(n):
+            S.spawn(worker(), "par_map")
+        yield from S_._join(S, me, sc)
+    finally:
+        me.scope = sc.parent
+    return results
+
+
+def _par_limit(kw, who):
+    lim = kw.get("limit")
+    if not isinstance(lim, int) or isinstance(lim, bool) or lim < 1:
+        raise Abort(f"{who} needs `limit:` with a number of 1 or more")
+    return lim
+
+
+@bi("par_map", "last", True)
+def b_par_map(I, a, kw, ta):
+    """par_map(f, xs, limit: n): f on every item, at most n at once; the results in input order, as a List."""
+    limit = _par_limit(kw, "par_map")
+    items = yield from drain(I, a[1])
+    return ListV((yield from _par_run(I, a[0], items, limit, False)))
+
+
+@bi("par_traverse", "last", True)
+def b_par_traverse(I, a, kw, ta):
+    """par_traverse(f, xs, limit: n): like traverse (f gives a Result), at most n at once; Ok of the values in input order, or the
+    Err of the earliest failing item (items start in order, so every item before a failure has run)."""
+    limit = _par_limit(kw, "par_traverse")
+    items = yield from drain(I, a[1])
+    results = yield from _par_run(I, a[0], items, limit, True)
+    for r in results:
+        if r is not None and is_err(r):
+            return r
+    return Ok(ListV([r.vals[0] for r in results]))
+
+
 @bi("zip_with", "last", True)
 def b_zip_with(I, a, kw, ta):
     f = a[0]
