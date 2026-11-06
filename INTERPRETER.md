@@ -646,3 +646,11 @@ A `Dict[K, V]` or `Set[T]` written in the program whose key type has a fixed `la
 ## The resource effect (effects.py)
 
 `RESOURCE` ("uses a resource") joins parks, prints, and system. `RESOURCE_CALLS` (Chan, Timer, after, Future, Cancel, Atom, clone, close, arm, arm_every, disarm, resolve, reject, cancel, swap, reset) and the `@` read (`Deref`) have it, and it travels through callees and parameters like the others. Like "uses the system" it has no keyword: a declared non-empty set needs `impure` to cover it, and an `impure` upper bound allows it. Tests: `tests/run_effects.py`.
+
+## Locale (moxie/locales.py, mxprelude.py, system.py)
+
+`locales.py` holds the data (separators, date order, names) for en_us, en_gb, de_de, fr_fr, es_es. The `tuple Locale` declaration with English defaults is generated from it (`tuple_source()`) and appended to the prelude source; `mxprelude.install` then builds `I.locales` (the `Locale.de_de` values). `calls.apply` records `I.call_env` before a builtin runs so `system._loc` can reach `find_locale` (the `using` in scope). `_format` and `_parse` take the locale's names; `%x` and `%X` expand to the locale's date and time patterns first. An explicit Locale third argument to `format_time`/`parse_time` wins.
+
+## Memoization (tests/run_memo.py)
+
+No prelude function: the Guide (chapter 14) shows the recipe, an `Atom` holding a `Dict` that a function consults before computing, and `run_memo.py` keeps it working.

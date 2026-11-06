@@ -37,18 +37,11 @@ def install_prelude(I):
     env.vars["MIN"] = INT_MIN
     env.vars["args"] = ArrayV([])
     env.vars["env"] = DictV({}, 0)
-    ml = TupleV([",", "."], ["group", "decimal"], "Locale")
-    env.vars["Locale"] = TypeV("Locale", None)
     env.vars["Connection"] = TypeV("Connection", None)
-    I.tuples["Locale"] = TypeInfo("Locale", [], [FieldDecl("group", TName(["String"], []), None, None), FieldDecl("decimal", TName(["String"], []), None, None)], [])
-    I.tuples["Locale"].env = env
-    I.locales = {"de_de": TupleV([".", ","], ["group", "decimal"], "Locale"),
-                 "en_us": TupleV([",", "."], ["group", "decimal"], "Locale"),
-                 "fr_fr": TupleV([" ", ","], ["group", "decimal"], "Locale")}
+    I.locales = {}          # filled by mxprelude.install, from locales.py
     I.exports = {}
     I._last_self = None
     I.depth = 0
-    I.locale_type = env.vars["Locale"]
     I.prelude.vars["Result"] = TypeV("Result", None)
     I.sched = S_.Scheduler(I)
 

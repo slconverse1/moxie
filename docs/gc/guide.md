@@ -291,6 +291,8 @@ println("${1234567.891:.2n}")
 
 Output: `1.234.567,89`. Without a `Locale` in scope, `n` is a compile error. `parse_number(text, locale)` reads numbers back and returns a `Result`.
 
+The same `Locale` names the days and months when you format a date: with the `de_de` above, `format_time(t, "%A, %d. %B %Y")` gives `Donnerstag, 05. November 2026`, and `%x` writes the date in the locale's order (`05.11.2026`). Pass a `Locale` as a third argument to override the one in scope, as in `format_time(t, "%x", Locale.fr_fr)`. `parse_time` reads the same names.
+
 **2c. Overflow, division, floats, and big numbers**
 
 Integer arithmetic aborts on overflow (a constant that overflows is a compile error), and division or modulo by zero aborts. The other behaviors are explicit:
@@ -1898,7 +1900,7 @@ Output: `7 21`. **Mistakes:** one stream feeding two terminals by accident, and 
 
 **Chapter 14: Caching is explicit**
 
-Nothing is memoized for you. A bottom-up `reduce` builds a result from the base case (a sketch):
+Nothing is memoized for you. The usual recipe is a bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
 
 ```
 fn fib(n: Int) Int:
@@ -1907,7 +1909,37 @@ fn fib(n: Int) Int:
 println("${fib(10)}")
 ```
 
-Output: `55`. For a recursion that must share work, thread a `Dict` through it as a `ref` parameter and wrap it in a plain `fib(n)` that starts it empty. For a table many fibers share, let one cache fiber (or an `Atom`) own it and answer over channels.
+Output: `55`. A grid of paths (move right or down, count the ways to the far corner) carries one row, and each new row is a `reduce` over the columns:
+
+```
+fn next_row(prev: List[Int]) List[Int]:
+  Range(1..len(prev), 1) |> reduce(List(prev(0)), (acc, j): acc + (prev(j) + acc(j - 1)))
+fn paths(rows: Int, cols: Int) Int:
+  first = List(1 for _ in 0..cols)
+  last = Range(1..rows, 1) |> reduce(first, (prev, _): next_row(prev))
+  last(cols - 1)
+println("${paths(3, 3)} ${paths(10, 10)}")
+```
+
+Output: `6 48620`. The same shape handles the longest common subsequence of two strings: carry the previous row of lengths, and build each new row from it and from the cell to its left:
+
+```
+fn step(prev: List[Int], acc: List[Int], ys: List[Char], x: Char, j: Int) Int:
+  if ys(j - 1) == x:
+    prev(j - 1) + 1
+  else:
+    max(prev(j), acc(j - 1))
+fn lcs_row(prev: List[Int], x: Char, ys: List[Char]) List[Int]:
+  Range(1..=len(ys), 1) |> reduce(List(0), (acc, j): acc + step(prev, acc, ys, x, j))
+fn lcs(a: String, b: String) Int:
+  xs = List(c for c in chars(a))
+  ys = List(c for c in chars(b))
+  last = xs |> to_stream() |> reduce(List(0 for _ in 0..=len(ys)), (prev, x): lcs_row(prev, x, ys))
+  last(len(ys))
+println("${lcs("ABCBDAB", "BDCABA")}")
+```
+
+Output: `4`. Memory is the size of what is carried, not of the whole table, and there is no cache to empty. Reach for the next recipe when the subproblems aren't visited in a fixed order. For a recursion that must share work, thread a `Dict` through it as a `ref` parameter and wrap it in a plain `fib(n)` that starts it empty. For a table many fibers share, let one cache fiber (or an `Atom`) own it and answer over channels.
 
 **Chapter 15: Recursive types**
 

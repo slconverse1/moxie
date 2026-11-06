@@ -468,8 +468,38 @@ def _need_valid(vals, who):
     return base
 
 
-def _format(vals, pat, who):
+def _loc(I, explicit=None):
+    """The locale in force for a date call: an explicit Locale argument, else the one `using` puts in scope, else English."""
+    from .values import TupleV
+    if isinstance(explicit, TupleV):
+        d = {n: x for n, x in zip(explicit.names, explicit.vals)}
+    else:
+        d = I.find_locale(getattr(I, "call_env", None)) if getattr(I, "call_env", None) is not None else None
+    if not d or "months" not in d:
+        return None
+    return {k: ([x for x in v.items] if hasattr(v, "items") and not isinstance(v, dict) else v) for k, v in d.items()}
+
+
+def _names(loc):
+    if loc is None:
+        return _DAYS, [d[:3] for d in _DAYS], _MONTHS, [m[:3] for m in _MONTHS], ["AM", "PM"], "mdy", "/", False
+    return (loc["days"], loc["short_days"], loc["months"], loc["short_months"], loc["am_pm"], loc["date_order"],
+            loc["date_sep"], loc["hour24"])
+
+
+def _x_pattern(loc, which):
+    days, sd, months, sm, ap, order, sep, h24 = _names(loc)
+    if which == "x":
+        parts = {"m": "%m", "d": "%d", "y": "%Y"}
+        return sep.join(parts[c] for c in order)
+    return "%H:%M:%S" if h24 else "%I:%M:%S %p"
+
+
+def _format(vals, pat, who, loc=None):
     base = _need_valid(vals, who)
+    days, sdays, months, smonths, ampm, *_ = _names(loc)
+    if "%x" in pat or "%X" in pat:
+        pat = pat.replace("%x", _x_pattern(loc, "x")).replace("%X", _x_pattern(loc, "X"))
     y, mo, d, h, mi, s, ns = vals
     out, i = [], 0
     while i < len(pat):
@@ -487,8 +517,8 @@ def _format(vals, pat, who):
         out.append({
             "Y": f"{y:04d}", "m": f"{mo:02d}", "d": f"{d:02d}", "H": f"{h:02d}", "M": f"{mi:02d}", "S": f"{s:02d}",
             "f": f"{ns:09d}", "y": f"{y % 100:02d}", "e": f"{d:2d}", "j": f"{base.timetuple().tm_yday:03d}",
-            "a": _DAYS[wd][:3], "A": _DAYS[wd], "b": _MONTHS[mo - 1][:3], "B": _MONTHS[mo - 1],
-            "p": "AM" if h < 12 else "PM", "I": f"{(h % 12) or 12:02d}", "%": "%",
+            "a": sdays[wd], "A": days[wd], "b": smonths[mo - 1], "B": months[mo - 1],
+            "p": ampm[0] if h < 12 else ampm[1], "I": f"{(h % 12) or 12:02d}", "%": "%",
         }.get(k) if k in "YmdHMSfyejaAbBpI%" else _bad_code(k, who))
     return "".join(out)
 
@@ -499,7 +529,7 @@ def _bad_code(k, who):
 
 @bi("format_time")
 def b_format_time(I, a, kw, ta):
-    return _format(_check_dt(a[0], "format_time"), a[1], "format_time")
+    return _format(_check_dt(a[0], "format_time"), a[1], "format_time", _loc(I, a[2] if len(a) > 2 else None))
 
 
 @bi("iso")
@@ -518,7 +548,14 @@ _PARSE = {"Y": r"(\d{4})", "m": r"(\d{1,2})", "d": r"(\d{1,2})", "H": r"(\d{1,2}
           "b": r"(" + "|".join(m[:3] for m in _MONTHS) + r")", "B": r"(" + "|".join(_MONTHS) + r")"}
 
 
-def _parse(text, pat, who):
+def _parse(text, pat, who, loc=None):
+    days, sdays, months, smonths, ampm, *_ = _names(loc)
+    if "%x" in pat or "%X" in pat:
+        pat = pat.replace("%x", _x_pattern(loc, "x")).replace("%X", _x_pattern(loc, "X"))
+    table = dict(_PARSE)
+    esc = lambda xs: "|".join(_re.escape(x) for x in xs)
+    table.update({"a": "(" + esc(sdays) + ")", "A": "(" + esc(days) + ")", "b": "(" + esc(smonths) + ")",
+                  "B": "(" + esc(months) + ")", "p": "(" + esc(ampm) + ")"})
     rx, codes, i = [], [], 0
     while i < len(pat):
         c = pat[i]
@@ -533,8 +570,8 @@ def _parse(text, pat, who):
         i += 1
         if k == "%":
             rx.append("%")
-        elif k in _PARSE:
-            rx.append(_PARSE[k])
+        elif k in table:
+            rx.append(table[k])
             codes.append(k)
         else:
             raise Abort(f"{who}: unknown pattern code %{k}")
@@ -550,9 +587,9 @@ def _parse(text, pat, who):
         elif k == "m":
             mo = int(g)
         elif k == "b":
-            mo = [x[:3].lower() for x in _MONTHS].index(g.lower()) + 1
+            mo = [x.lower() for x in smonths].index(g.lower()) + 1
         elif k == "B":
-            mo = [x.lower() for x in _MONTHS].index(g.lower()) + 1
+            mo = [x.lower() for x in months].index(g.lower()) + 1
         elif k in "de":
             d = int(g)
         elif k == "j":
@@ -566,7 +603,7 @@ def _parse(text, pat, who):
         elif k == "f":
             ns = int(g.ljust(9, "0"))
         elif k == "p":
-            pm = g.lower() == "pm"
+            pm = g.lower() == ampm[1].lower()
     if pm is not None:
         if not 1 <= h <= 12:
             return err_reserved("OUT_OF_RANGE", f"{who}: the hour {h} is not 1 to 12")
@@ -591,7 +628,7 @@ def _parse(text, pat, who):
 
 @bi("parse_time")
 def b_parse_time(I, a, kw, ta):
-    return _parse(a[0], a[1], "parse_time")
+    return _parse(a[0], a[1], "parse_time", _loc(I, a[2] if len(a) > 2 else None))
 
 
 @bi("parse_iso")

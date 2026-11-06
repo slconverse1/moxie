@@ -729,6 +729,7 @@ class CallsMixin:
         if k is Closure:
             return self.call_closure(f, pos, named, refspec, env, targs, line)
         if k is Builtin:
+            self.call_env = env
             return self.call_builtin(f, pos, named, targs, line)
         if k.__name__ == "ForeignFn":
             from .ffi import call_foreign

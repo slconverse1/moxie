@@ -78,6 +78,9 @@ impl NonEmpty[T]:
   fn max(self): self.tail |> to_stream() |> reduce(self.head, max)
 '''
 
+from .locales import tuple_source
+SRC = SRC + tuple_source()
+
 
 def install(I):
     from .parser import parse_program
@@ -86,3 +89,16 @@ def install(I):
     def setup():
         return (yield from I.exec_stmts(prog.stmts, I.prelude))
     I.sched.run_main(setup())
+    from . import locales
+    from .values import TupleV, ListV
+    I.locales = {}
+    for name in locales.VALUES:
+        d = locales.full(name)
+        I.locales[name] = TupleV([_val(d[k]) for k in locales.ORDER], list(locales.ORDER), "Locale")
+
+
+def _val(x):
+    from .values import ListV
+    if isinstance(x, list):
+        return ListV([_val(i) for i in x])
+    return x
