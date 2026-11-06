@@ -1170,7 +1170,7 @@ That works for `Maybe.Just(21)` and `Ok(21)` alike.
 
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
 - A State monad can be defined, and **[gc]** it has none of no-GC moxie's limits. `ref` threading is still the simple way to carry state.
-- Type constructors take at most one "hole" (`Result[_, E]`), so there is no generic `MonadTrans` class and there are no type-level lambdas (the transformers are the library `fp.trans`).
+- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. There is no type-level matching or recursion.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
 

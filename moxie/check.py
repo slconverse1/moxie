@@ -810,6 +810,8 @@ class Checker:
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
+        if n.ann is not None:
+            self.check_type_arity(n.ann, n.line)
         if n.ann is not None and n.op == "=":
             self.compat(ann, t, c, n.line)
             if ann is not None and ann.__class__ is tuple and ann[0] == "bounded" and n.value.__class__ is IntLit:
@@ -1504,6 +1506,20 @@ class Checker:
         if c is TStatic:
             self.check_type_arity(t.inner, line, depth + 1)
             return
+        if c is TLambda:
+            names = [p.name for p in t.params]
+            if len(set(names)) != len(names):
+                self.err(line, "a type lambda names the same parameter twice")
+            self.check_type_arity(t.body, line, depth + 1)
+            return
+        if c is TApp:
+            from .typelam import reduce_app, TypeLambdaError
+            self.check_type_arity(t.fn, line, depth + 1)
+            try:
+                reduce_app(t)
+            except TypeLambdaError as e:
+                self.err(line, str(e))
+            return
         if c is not TName:
             if c is TTuple:
                 for _, ft in t.items:
@@ -1513,6 +1529,12 @@ class Checker:
             for x in g if isinstance(g, list) else [g]:
                 self.check_type_arity(x, line, depth + 1)
         if len(t.path) != 1 or len(t.groups or []) != 1 or not t.groups[0]:
+            return
+        al = self.aliases.get(t.path[0])
+        if al is not None and al.kind == "alias" and getattr(al, "tparams", None) and not any(tp.holes for tp in al.tparams):
+            want, got = len(al.tparams), len(t.groups[0])
+            if want != got:
+                self.err(line, f"`{t.path[0]}` takes {want} type argument{'s' if want != 1 else ''}, but {got} given")
             return
         d = self.tuples.get(t.path[0]) or self.enums.get(t.path[0])
         if d is None or not getattr(d, "tparams", None) or any(tp.holes for tp in d.tparams):
@@ -1868,6 +1890,7 @@ class Checker:
         return None, None
 
     def e_AliasDecl(self, n, sc):
+        self.check_type_arity(n.type, n.line)
         return None, None
 
     def e_TestDecl(self, n, sc):
@@ -1880,7 +1903,39 @@ class Checker:
 
     def e_GenApp(self, n, sc):
         self.ev(n.base, sc)
+        if n.base.__class__ is Name and n.groups and n.groups[0]:
+            fds = self.fns.get(n.base.name)
+            if fds and len(fds) == 1 and fds[0].tparams:
+                self.check_ctor_targs(fds[0], n.groups[0], n.line)
+            for g in n.groups:
+                for x in g:
+                    self.check_type_arity(x, n.line)
         return None, None
+
+    def ctor_arity(self, t):
+        """How many type arguments the constructor `t` takes, or None when the checker cannot tell."""
+        c = t.__class__
+        if c is TLambda:
+            return len(t.params)
+        if c is TName and len(t.path) == 1:
+            n = t.path[0]
+            if not t.groups:
+                d = self.aliases.get(n) if n in self.aliases and self.aliases[n].kind == "alias" else self.tuples.get(n) or self.enums.get(n)
+                if d is not None and getattr(d, "tparams", None):
+                    return len(d.tparams)
+                return None
+            if len(t.groups) == 1 and any(x.__class__ is THole for x in t.groups[0]):
+                return sum(1 for x in t.groups[0] if x.__class__ is THole)
+        return None
+
+    def check_ctor_targs(self, fd, targs, line):
+        """A type lambda, alias, or constructor given for a constructor parameter `F[_]` takes as many arguments as the parameter has holes."""
+        for tp, ta in zip(fd.tparams or [], targs):
+            if not tp.holes:
+                continue
+            have = self.ctor_arity(ta)
+            if have is not None and have != tp.holes:
+                self.err(line, f"`{tp.name}` of `{fd.name}` is a constructor of {tp.holes} type argument{'s' if tp.holes != 1 else ''}, but this one takes {have}")
 
     def e_Arg(self, n, sc):
         if n.mod == "move" and n.expr.__class__ is Name:       # `f(move c)` hands c over, as `move c` does

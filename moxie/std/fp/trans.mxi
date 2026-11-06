@@ -399,3 +399,38 @@ export fn fold_free_t[F[_]: Functor, M[_]: Monad, A, B](m: FreeT[F, M, A], on_do
     FtDone(a) -> on_done(a)
     FtMore(fa) -> step(fa.map((n): fold_free_t(n, on_done, step)))
   m.run.flat_map(next)
+
+// ---------------------------------------------------------------- MonadTrans
+
+/// A transformer `T`: a constructor that takes a monad and gives a monad, with `lift` to bring an inner action in.
+/// `T[_[_], _]` is a constructor of constructors, written as a type lambda: `[M[_], A] -> StateT[M, Int, A]`.
+export interface MonadTrans[T[_[_], _]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) T[M, A]
+
+impl[S] MonadTrans[[M[_], A] -> StateT[M, S, A]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) StateT[M, S, A]:
+    lift_state_t(m)
+
+impl[R] MonadTrans[[M[_], A] -> ReaderT[M, R, A]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) ReaderT[M, R, A]:
+    lift_reader_t(m)
+
+impl[W] MonadTrans[[M[_], A] -> WriterT[M, W, A]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) WriterT[M, W, A]:
+    lift_writer_t(m)
+
+impl[E] MonadTrans[[M[_], A] -> ExceptT[M, E, A]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) ExceptT[M, E, A]:
+    lift_except_t(m)
+
+impl[R] MonadTrans[[M[_], A] -> ContT[M, R, A]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) ContT[M, R, A]:
+    lift_cont_t(m)
+
+impl[F[_]: Functor] MonadTrans[[M[_], A] -> FreeT[F, M, A]]:
+  static fn lift[M[_]: Monad, A](m: M[A]) FreeT[F, M, A]:
+    lift_free_t(m)
+
+/// Lift an action of `M` through the transformer `T`: `lift[[M[_], A] -> StateT[M, Int, A], _, _](Ok(1))`.
+export fn lift[T[_[_], _]: MonadTrans, M[_]: Monad, A](m: M[A]) T[M, A]:
+  T.lift(m)

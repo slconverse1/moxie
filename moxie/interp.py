@@ -43,6 +43,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.aliases = {}
         self.impls = {}        # type name -> {method -> [Closure]}
         self.statics = {}      # type name -> {name -> [Closure]}
+        self.alias_tps = {}    # generic alias name -> its TParam list
         self.froms = {}        # error type -> [(source type name, Closure)]
         self.cases = {}        # bare case name -> [EnumType]
         self.packages = {}

@@ -1319,6 +1319,20 @@ println("${lift2(add, none, Maybe.Just(3))}")
 
 Output: `Maybe.Just(5) Maybe.Nothing`. Return-type polymorphism needs an explicit type, so write `F.pure(x)` or `Maybe.pure(x)`; a bare `pure(x)` is not dispatched from context.
 
+**Type lambdas.** A hole fixes only the first argument of a type, so `Result[_, String]` cannot say "a `Result` whose error comes first". A **type lambda** can: `[A] -> Result[String, A]` is a function from a type to a type, written with the brackets, the arrow, and the result. Hand one to a constructor parameter and it becomes the constructor it names:
+
+```
+fn one[M[_]: Monad]() M[Int]:
+  M.pure(1)
+type alias Fail[A] = Result[A, String]
+println("${one[[A] -> Result[A, String]]()} ${one[Fail]()}")
+x: ([A] -> Result[A, String])[Int] = Ok(3)
+println(x)
+```
+
+Output: `Ok(1) Ok(1)`, then `Ok(3)`. A generic alias such as `Fail` is a type lambda with a name. The lambda is replaced by its body when it is used, so nothing about it exists at run time, and it never loops, because a lambda cannot refer to itself. **Mistakes:** giving a two-parameter lambda where `F[_]` wants one (the compiler reports the arity), and applying a lambda to the wrong number of types.
+
+
 **4. Conditional instances**
 
 An `impl` may put a bound on its own type parameters:
@@ -1394,7 +1408,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 - Superclasses are embedded interfaces; constraints are bounds like `[T: Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
-- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and a generic `MonadTrans` class (the transformers themselves are the `fp.trans` library).
+- Default method bodies and associated types exist. Missing from the language: functional dependencies and type families.
 
 **Mistakes:** an `impl` of someone else's interface for someone else's type, calling `empty()` with no type to say which one, combining two `any Monoid` values (`Self` in a parameter), comparing `any` values with `==`, and a bound written twice on one parameter (embed the interfaces instead).
 
@@ -3206,6 +3220,24 @@ println("${go(2)} ${go(9)}")
 
 Output: `200 -1`. `fold_free_t(program, on_done, step)` is `fold_free` with `on_done` and `step` returning actions of `M`, so an interpreter can fail or log as it goes. A value that you build yourself with a bare constructor inside a lambda (`ContT(run: ...)`, `FreeT(run: ...)`) does not know its stack's types; build through `M.pure`, `M.wrap`, the class members, and the `lift_` functions, or inside a function that names the return type, and the stack works out its own inner monad.
 
+A type lambda or a generic alias also names a whole transformer stack, so a program can be run on it with one word, and a lambda over a constructor, `[M[_], A] -> StateT[M, Int, A]`, is the `T` of the `MonadTrans` class (`T[_[_], _]`), whose `lift` brings an action of the inner monad up through any transformer:
+
+```
+import fp.trans
+
+type alias App[A] = trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, A]
+
+fn tick[M[_]: Monad + MonadState[Int] + MonadError[String]](limit: Int) M[Int]:
+  M.get().flat_map((n): if n >= limit: M.throw_error("too big") else: M.put(n + 1)).flat_map((u): M.get())
+fn go(s: Int) Result[(Int, Int), String]:
+  trans.run_identity(trans.run_except_t(trans.run_state_t(tick[App](5), s)))
+println("${go(1)} ${go(9)}")
+up = trans.lift[[M[_], A] -> trans.StateT[M, Int, A], _, _](Ok(1))
+println(trans.run_state_t(up, 7))
+```
+
+Output: `Ok((2, 2)) Err("too big")`, then `Ok((1, 7))`. Every transformer in `fp.trans` is a `MonadTrans`, and `lift[T, _, _](m)` lifts through any of them (the `_`s are inferred from `m`).
+
 **24i. Lazy and infinite sequences**
 
 Streams are recipes, so an infinite source costs nothing until a terminal runs it:
@@ -3237,7 +3269,7 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 
 **24k. What moxie leaves out, on purpose**
 
-- **A generic `MonadTrans` class (a constructor over constructors) and type-level lambdas** beyond a single hole (`Result[_, E]`). Monad transformers themselves are a library, `fp.trans`.
+- **Type-level matching and recursion.** A type lambda only substitutes; it cannot look inside a type or call itself. The transformers are a library, `fp.trans`.
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
 - **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.
 - **Checked monad laws.** The interfaces are conventions, as in Haskell.

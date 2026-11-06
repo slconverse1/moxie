@@ -1152,7 +1152,7 @@ That works for `Maybe.Just(21)` and `Ok(21)` alike.
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
 - A capturing closure can't live in a Dict, a tuple field, or a channel, because with no heap, its size must be known. Plain functions can be stored, and closures can be passed and returned.
 - A State monad can be defined, but only as a local value, with no loops or recursion over runtime-length data. `ref` threading is the recommended way to carry state.
-- Type constructors take at most one "hole" (`Result[_, E]`), so there are no monad transformers and no type-level lambdas.
+- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. There is no type-level matching or recursion.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
 

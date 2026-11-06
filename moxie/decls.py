@@ -260,6 +260,7 @@ class DeclsMixin:
     def ev_AliasDecl(self, n, env):
         kind = n.kind
         self.aliases[n.name] = (kind, n.type, [t.name for t in (n.tparams or [])])
+        self.alias_tps[n.name] = list(n.tparams or [])
         if kind == "opaque":
             inner = n.type
 
@@ -279,6 +280,9 @@ class DeclsMixin:
         ifn = n.iface
         if ifn is None and isinstance(target, TName) and (target.path[-1] in self.ifaces or target.path[-1] in PRELUDE_IFACES) and target.groups and target.groups[0]:
             n = ImplDecl(target, target.groups[0][0], n.tparams, n.members, n.bodyless, line=n.line)
+            target = n.target
+        if target.__class__ is TLambda:       # impl[S] MonadTrans[[M[_], A] -> StateT[M, S, A]]: an impl for the lambda's head type
+            n = ImplDecl(n.iface, target.body, n.tparams, n.members, n.bodyless, line=n.line)
             target = n.target
         tname = self.rtype_name(target)
         if tname is None:

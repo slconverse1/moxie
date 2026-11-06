@@ -209,6 +209,9 @@ class CallsMixin:
 
     # ------------------------------------------------------------ call evaluation
     def ev_GenApp(self, n, env):
+        b = n.base
+        if b.__class__ is Name and self.alias_tps.get(b.name) and env.lookup(b.name) is MISSING:
+            return self.targ_value(TName([b.name], n.groups, line=n.line), env)      # `CounterT[Result[_, E], Int]` as a type value
         base = yield from self.ev(n.base, env)
         return GenV(base, n.groups)
 
@@ -877,6 +880,8 @@ class CallsMixin:
             if targs:
                 names = [t.name for t in node.tparams]
                 for nm, ta in zip(names, targs[0]):
+                    if ta.__class__ is THole and nm in tp:
+                        continue                  # `_` leaves a parameter to inference
                     tp[nm] = self.targ_value(ta, c.env)
             for k2, v2 in tp.items():
                 env.vars[k2] = v2
@@ -967,20 +972,67 @@ class CallsMixin:
             return {t.name for t in node.tparams}
         return None
 
+    def close_type(self, t, env, bound=()):
+        """`t` with each type parameter that `env` already binds to a type value replaced by that value, so a lambda keeps what it closed over."""
+        c = t.__class__
+        if c is TName:
+            if len(t.path) == 1 and t.path[0] not in bound and env is not None:
+                v = env.lookup(t.path[0])
+                if v.__class__ is TypeV and not t.groups:
+                    return v
+            if t.groups:
+                return TName(t.path, [[self.close_type(x, env, bound) for x in g] for g in t.groups], line=t.line)
+            return t
+        if c is TLambda:
+            return TLambda(t.params, self.close_type(t.body, env, tuple(bound) + tuple(p.name for p in t.params)), line=t.line)
+        if c is TApp:
+            return TApp(self.close_type(t.fn, env, bound), [[self.close_type(x, env, bound) for x in g] for g in t.groups], line=t.line)
+        if c is TTuple:
+            return TTuple([(lab, self.close_type(x, env, bound)) for lab, x in t.items], line=t.line)
+        if c is TFn:
+            return TFn([(lab, self.close_type(x, env, bound)) for lab, x in t.params], self.close_type(t.ret, env, bound), t.recv, line=t.line)
+        return t
+
     def targ_value(self, ta, env):
         if ta.__class__ is TypeV:
             return ta
+        if ta.__class__ in (TLambda, TApp):
+            from .typelam import as_ctor, reduce_app, TypeLambdaError
+            try:
+                lam = reduce_app(ta) if ta.__class__ is TApp else ta
+                ctor = as_ctor(self.close_type(lam, env)) if lam.__class__ is TLambda else lam
+            except TypeLambdaError as e:
+                raise Abort(str(e), getattr(ta, "line", 0))
+            return self.targ_value(ctor, env)
         if isinstance(ta, TName):
             if len(ta.path) == 1 and not ta.groups:
                 v = env.lookup(ta.path[0]) if env is not None else MISSING
                 if v.__class__ is TypeV:              # a type parameter already bound to a type value
                     return v
+                al = self.aliases.get(ta.path[0])
+                tps = self.alias_tps.get(ta.path[0])
+                if al is not None and tps and al[0] == "alias":     # a generic alias is a type lambda with a name
+                    from .typelam import alias_lambda
+                    return self.targ_value(alias_lambda(tps, al[1], ta.line), env)
+            if len(ta.path) == 1 and ta.groups and len(ta.groups) == 1 and self.alias_tps.get(ta.path[0]) \
+                    and self.aliases[ta.path[0]][0] == "alias":     # `Fail[_]` or `Fail[Int]`: the alias applied
+                from .typelam import alias_lambda, apply_ctor, TypeLambdaError
+                try:
+                    r = apply_ctor(alias_lambda(self.alias_tps[ta.path[0]], self.aliases[ta.path[0]][1], ta.line), list(ta.groups[0]))
+                except TypeLambdaError as e:
+                    raise Abort(str(e), ta.line)
+                return self.targ_value(r, env)
             if len(ta.path) == 1 and ta.path[0] in self.tuples:
-                return TypeV(ta.path[0], self.tuples[ta.path[0]], ta.groups)
-            return TypeV(ta.path[-1], self.type_info_for(ta.path[-1]), ta.groups)
+                return TypeV(ta.path[0], self.tuples[ta.path[0]], self.close_groups(ta.groups, env))
+            return TypeV(ta.path[-1], self.type_info_for(ta.path[-1]), self.close_groups(ta.groups, env))
         if isinstance(ta, TExpr):
             return self.run_sync(self.ev(ta.expr, env))
         return TypeV("?", None)
+
+    def close_groups(self, groups, env):
+        if not groups:
+            return groups
+        return [[self.close_type(x, env) if x.__class__ is not TExpr else x for x in g] for g in groups]
 
     def find_using(self, cenv, env, p):
         e = env

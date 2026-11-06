@@ -144,6 +144,8 @@ def _defs():
         "TUnion": "members",
         "TAny": "iface",
         "TStatic": "inner",
+        "TLambda": "params body",        # [A, M[_]] -> T: a type-level function (params are TParam)
+        "TApp": "fn groups",             # ([A] -> T)[Int]: a lambda applied where it is written
         "THole": "",
         "TUnit": "",
         "TExpr": "expr",

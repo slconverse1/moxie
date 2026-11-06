@@ -1308,6 +1308,20 @@ println("${lift2(add, none, Maybe.Just(3))}")
 
 Output: `Maybe.Just(5) Maybe.Nothing`. Return-type polymorphism needs an explicit type, so write `F.pure(x)` or `Maybe.pure(x)`; a bare `pure(x)` is not dispatched from context.
 
+**Type lambdas.** A hole fixes only the first argument of a type, so `Result[_, String]` cannot say "a `Result` whose error comes first". A **type lambda** can: `[A] -> Result[String, A]` is a function from a type to a type, written with the brackets, the arrow, and the result. Hand one to a constructor parameter and it becomes the constructor it names:
+
+```
+fn one[M[_]: Monad]() M[Int]:
+  M.pure(1)
+type alias Fail[A] = Result[A, String]
+println("${one[[A] -> Result[A, String]]()} ${one[Fail]()}")
+x: ([A] -> Result[A, String])[Int] = Ok(3)
+println(x)
+```
+
+Output: `Ok(1) Ok(1)`, then `Ok(3)`. A generic alias such as `Fail` is a type lambda with a name. The lambda is replaced by its body when it is used, so nothing about it exists at run time, and it never loops, because a lambda cannot refer to itself. **Mistakes:** giving a two-parameter lambda where `F[_]` wants one (the compiler reports the arity), and applying a lambda to the wrong number of types.
+
+
 **4. Conditional instances**
 
 An `impl` may put a bound on its own type parameters:
@@ -1383,7 +1397,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 - Superclasses are embedded interfaces; constraints are bounds like `[T: Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
-- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and monad transformers.
+- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and monad transformers (in no-GC moxie; moxie/gc has them as the library `fp.trans`).
 
 **Mistakes:** an `impl` of someone else's interface for someone else's type, calling `empty()` with no type to say which one, combining two `any Monoid` values (`Self` in a parameter), comparing `any` values with `==`, and a bound written twice on one parameter (embed the interfaces instead).
 
@@ -3164,7 +3178,7 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 
 **24k. What moxie leaves out, on purpose**
 
-- **Monad transformers, constructors of constructors, and type-level lambdas** beyond a single hole (`Result[_, E]`).
+- **Type-level matching and recursion.** A type lambda only substitutes; it cannot look inside a type or call itself.
 - **Stored capturing closures.** A capturing closure can't live in a concrete tuple field, Dict, or channel, so a State value is a transient local, and plain functions are what you store.
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
 - **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.

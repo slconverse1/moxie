@@ -119,6 +119,11 @@ class PBase:
     def parse_type_prim(self):
         t = self.peek()
         line = t.line
+        if t.kind == "OP" and t.val == "[":
+            # a type lambda:  [A] -> Result[String, A]   or   [M[_], A] -> StateT[M, Int, A]
+            params = self.parse_tparams_v2()
+            self.expect_op("->")
+            return TLambda(params, self.parse_type_fn(), line=line)
         if t.kind == "OP" and t.val == "(":
             self.next()
             items = []
@@ -133,6 +138,11 @@ class PBase:
                 if not self.eat_op(","):
                     break
             self.expect_op(")")
+            if len(items) == 1 and items[0][0] is None and items[0][1].__class__ is TLambda and self.at_op("[") and not self.peek().sp:
+                groups = []
+                while self.at_op("[") and not self.peek().sp:
+                    groups.append(self.parse_targ_group())
+                return TApp(items[0][1], groups, line=line)
             return TTuple(items, line=line)
         if t.kind == "OP" and t.val == "...":
             self.err("unexpected '...' in a type")
@@ -239,6 +249,17 @@ class PBase:
         self.expect_op("]")
         return out
 
+    def parse_hole_kind(self):
+        """One entry of a constructor parameter's kind: `_`, or `_[_, ...]` for a parameter that is itself a constructor."""
+        self.expect_name("_")
+        if self.at_op("[") and not self.peek().sp:
+            self.next()
+            while True:
+                self.parse_hole_kind()
+                if not self.eat_op(","):
+                    break
+            self.expect_op("]")
+
     def parse_tparams_v2(self):
         """Proper parser for type parameter lists."""
         self.expect_op("[")
@@ -249,7 +270,7 @@ class PBase:
             if self.at_op("[") and not self.peek().sp:
                 self.next()
                 while True:
-                    self.expect_name("_")
+                    self.parse_hole_kind()
                     holes += 1
                     if not self.eat_op(","):
                         break
