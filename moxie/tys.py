@@ -59,6 +59,8 @@ def show(t):
     if tag == "sz":
         return f"{show(t[2])} {t[1]} {show(t[3])}"
     if tag == "tapp":
+        if t[1].startswith("@"):                           # an associated type: C.Item
+            return f"{show(t[2][0])}.{t[1][1:]}"
         return f"{t[1]}[{', '.join(show(a) for a in t[2])}]"
     if tag in ("param", "rigid", "pvar"):
         return t[1]

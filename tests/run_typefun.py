@@ -66,6 +66,15 @@ BAD += [
 GOOD += [
  ("X: Iface picks the arm", NAMED + 'a: Label[Dog] = "x"\nb: Label[Bool] = 3\nprintln(a)\n', "x"),
 ]
+CONT = 'interface Container:\n  type Item\n  fn first() Item\ntuple Names:\n  xs: List[String]\nimpl Container for Names:\n  type Item = String\n  fn first() String: xs(0)\nfn head[C: Container](c: C) C.Item:\n  c.first()\n'
+BAD += [
+ ("a concrete associated type", CONT + 'b: Names.Item = 3\n', "expected `String`, found `Int`"),
+ ("an associated type from a call", CONT + 'a: Int = head(Names(xs: List("a")))\n', "expected `Int`, found `String`"),
+ ("an associated type in a generic body", CONT + 'fn bad[C: Container](c: C) C.Item:\n  "s"\n', "expected `C.Item`, found `String`"),
+]
+GOOD += [
+ ("an associated type from a call is right", CONT + 'a: String = head(Names(xs: List("a")))\nprintln(a)\n', "a"),
+]
 fails = []
 
 

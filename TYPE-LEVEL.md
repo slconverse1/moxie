@@ -106,3 +106,6 @@ Tuple types keep field names; `(K: T, ...Rest)` looks a field up by name, a bare
 
 ## Compile-time evaluation (done, scalar results)
 User pure functions run at compile time in sizes, type-level numbers and top-level bindings; aborts and fuel are compile errors. Open: calls on type variables inside guards.
+
+## Associated types (done in the checker)
+`Names.Item` and `C.Item` resolve through the impl. Moxie has no per-value type members, so two values of one type always share an `Item`; a value-path form `c.Item` would be sugar for `C.Item` and was not added.

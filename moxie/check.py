@@ -228,6 +228,7 @@ class Checker:
         self.tf_steps = 0
         self.tf_depth = 0
         self.in_tfun = False
+        self.assoc = {}                  # (type name, member) -> the written type of an associated type
         self.consts = {}                 # top-level constant bindings the compiler could evaluate
         self.tf_fuel = TF_FUEL
         self.tf_big = False
@@ -456,6 +457,9 @@ class Checker:
             iname, tname = _tn(st.iface), _tn(st.target)
             if iname == "Hashable":
                 self.err(st.line, "`Hashable` can only be derived: write `deriving eq, hash` in the header of `%s`" % tname)
+            for m in st.members or []:
+                if m.__class__ is AliasDecl and tname:
+                    self.assoc[(tname, m.name)] = m.type          # `type Item = String` in an impl
             if iname and tname:
                 self.impls.setdefault(tname, set()).add(iname)
             elif tname:
@@ -531,6 +535,8 @@ class Checker:
                 return self.ty_of_type(reduce_app(t), depth + 1, keep, top)
             except TypeLambdaError:
                 return None
+        if c is TName and len(t.path) == 2 and not t.groups:
+            return self.assoc_type(t.path[0], t.path[1], keep)
         if c is not TName or len(t.path) != 1:
             return None
         n = t.path[0]
@@ -573,6 +579,26 @@ class Checker:
         if n in self.enums and not self.enums[n].tparams:
             return ("named", n)
         return None
+
+    def assoc_type(self, base, member, keep):
+        """`Names.Item` (a concrete type) is what its impl says; `C.Item` for a parameter stays symbolic until C is known."""
+        if keep and base in keep:
+            return ("tapp", "@" + member, (("param", base),))
+        if base in self.fn_tparams:
+            return ("tapp", "@" + member, (("rigid", base),))
+        if base in self.pv:
+            return ("tapp", "@" + member, (("pvar", base),))
+        return self.assoc_of(base, member)
+
+    def assoc_of(self, name, member):
+        ast = self.assoc.get((name, member))
+        if ast is None:
+            return None
+        saved, self.fn_tparams = self.fn_tparams, ()
+        try:
+            return self.ty_of_type(ast, 1, None, False)
+        finally:
+            self.fn_tparams = saved
 
     def tuple_label(self, lab, keep):
         """A field name in a tuple type.  Inside a type function's arms a name that is a parameter of the function or a variable of
@@ -674,6 +700,14 @@ class Checker:
         """Apply the type function `name` to `args`: the first arm whose pattern matches gives the result.  When the argument is not
         known well enough to choose an arm the application stays symbolic (a type parameter) or unknown (None).  Each reduction costs
         one unit of fuel; a use that spends `tf_fuel` units is an error, so a type function that never ends cannot hang the checker."""
+        if name.startswith("@"):
+            base = args[0]
+            if base is None:
+                return None
+            if tys._stuck(base) or any("pvar" in str(a) for a in args):
+                return ("tapp", name, args)
+            key = base if isinstance(base, str) else base[1] if base[0] in ("named", "app") else None
+            return self.assoc_of(key, name[1:]) if key is not None else None
         if name not in self.aliases or self.aliases[name].type.__class__ is not TMatch:
             return None
         if any("pvar" in str(a) for a in args):
