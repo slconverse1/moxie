@@ -1947,7 +1947,7 @@ b = swap(hits, add(_, 5))
 println("$a $b ${@hits}")
 ```
 
-Output: `1 6 6`. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `run` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `run worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. The channel closes for readers when the last write handle is dropped:
+Output: `1 6 6`. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `run` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `run worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If `run` returns NO_SLOT, no fiber starts, and the resources you passed are released for you. The channel closes for readers when the last write handle is dropped:
 
 ```
 fiber fn worker(id: Int, out: ChanW[Int]) Unit:
