@@ -114,3 +114,5 @@ User pure functions run at compile time in sizes, type-level numbers and top-lev
 `a.Item` ties a member type to one `any` value. No new syntax: a lowercase path in a type is a value path. Open: `any` locals, dependent function types.
 
 `any` locals are tracked too (a fresh hidden type per annotated binding; `y = a` shares a's).
+
+Done: guards that call pure functions on type variables (`M if big(M)`), the no-arm error names the whole application, and a constant that is always an `Err` is a warning.

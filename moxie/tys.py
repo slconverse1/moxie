@@ -16,6 +16,9 @@ A type is `None` (not known: matches anything), a scalar name (`"Int"`, `"Float"
     ("rigid", name)            a type parameter of the function being checked: only itself fits it
     ("lit", n)                 a number as a type (`0`, `1 + Length[Rest]`), for type functions
     ("slit", s)                a string as a type (`"id" -> Int` in a type function)
+    ("cfn", name, args)        a call of a pure function of the program on type-level numbers or strings, run by the compiler once the
+                               arguments are known: `big(N)` in a guard (symbolic until then)
+    ("bool", b)                the result of such a call that is true or false
     ("sz", op, l, r)           arithmetic on type-level numbers (symbolic until both sides are numbers)
     ("pvar", name)             a pattern variable of a type function (`X` in `Array[X][N] -> X`)
     ("tapp", name, args)       a type function applied to arguments that do not yet decide it (symbolic; reduces once they do)
@@ -59,6 +62,10 @@ def show(t):
         return '"' + t[1] + '"'
     if tag == "sz":
         return f"{show(t[2])} {t[1]} {show(t[3])}"
+    if tag == "cfn":
+        return f"{t[1]}({', '.join(show(a) for a in t[2])})"
+    if tag == "bool":
+        return "true" if t[1] else "false"
     if tag == "hid":                                       # the member type of one `any` value: a.Item
         return f"{t[1].split('@')[0]}.{t[2]}"
     if tag == "tapp":
@@ -150,6 +157,13 @@ def subst(t, binds):
     if tag in ("param", "pvar"):
         v = binds.get(t[1], t) if _PARTIAL[0] else binds.get(t[1])
         return ("lit", v) if v.__class__ is int and not isinstance(v, bool) else v
+    if tag == "cfn":
+        args = tuple(subst(a, binds) for a in t[2])
+        if any(a is None for a in args):
+            return None
+        if all(a.__class__ is tuple and a[0] in ("lit", "slit") for a in args):
+            return CALLER(t[1], tuple(a[1] for a in args)) if CALLER is not None else None
+        return ("cfn", t[1], args)
     if tag == "sz":
         a, b = subst(t[2], binds), subst(t[3], binds)
         if a.__class__ is tuple and b.__class__ is tuple and a[0] == "lit" and b[0] == "lit":
@@ -224,6 +238,7 @@ def subst_partial(t, binds):
 
 
 IMPLEMENTS = None        # set by the checker: (type, interface name) -> True / False / None
+CALLER = None            # set by the checker: (function name, argument values) -> ("lit", n) / ("slit", s) / ("bool", b), or None
 UNFOLD = None           # set by the checker: a declared tuple type -> the same as a labeled ("tup", ...), or None
 REDUCER = None          # set by the checker: (name, args) -> the reduced type, or a symbolic ("tapp", name, args)
 
@@ -382,7 +397,7 @@ def _stuck(a):
     """"unk" when a type is not known, "sym" when it is a parameter or an unreduced function (it will be known later), else None."""
     if a is None:
         return "unk"
-    if a.__class__ is tuple and a[0] in ("rigid", "param", "tapp", "appv", "ctor", "sz"):
+    if a.__class__ is tuple and a[0] in ("rigid", "param", "tapp", "appv", "ctor", "sz", "cfn"):
         return "sym"
     return None
 

@@ -253,6 +253,7 @@ class Checker:
     def check(self, prog):
         tys.REDUCER = self.reduce_tapp
         tys.UNFOLD = self.unfold
+        tys.CALLER = self.type_call
         tys.IMPLEMENTS = self.implements
         for st in prog.stmts:
             self.collect(st)
@@ -266,6 +267,9 @@ class Checker:
             for line, msg in CT[0].errors:
                 if (line, msg) not in seen:
                     self.diags.append(Diag(line, msg))
+            for line, msg in CT[0].warnings:
+                if (line, msg) not in seen:
+                    self.diags.append(Diag(line, msg, "warning"))
         return self.diags
 
     def fold_binding(self, st):
@@ -814,10 +818,25 @@ class Checker:
                     return None
                 if r == "sym":
                     return ("tapp", name, args)
-            self.err(self.cur_line, f"no arm of `{name}` matches `{tys.show(sc)}`")
+            first = self.tf_trail[0] if self.tf_trail else (name, args)
+            top = f"{first[0]}[{', '.join(tys.show(a) for a in first[1])}]"
+            here = f"{name}[{', '.join(tys.show(a) for a in args)}]"
+            self.err(self.cur_line, f"no arm of `{name}` matches `{tys.show(sc)}`" + (f" (while working out `{top}`)" if top != here else ""))
             return None
         finally:
             self.tf_depth -= 1
+
+    def type_call(self, name, vals):
+        """A pure function of the program run on type-level numbers or strings (a guard such as `big(N)`)."""
+        if CT[0] is None:
+            return None
+        r = CT[0].call(name, list(vals), self.cur_line)
+        if not r:
+            return None
+        v = r[0]
+        if isinstance(v, bool):
+            return ("bool", v)
+        return ("lit", v) if isinstance(v, int) else ("slit", v) if isinstance(v, str) else None
 
     def eval_guard(self, e, env, pv, keep):
         """The guard of an arm (`if N > 3`) under the arm's bindings: True, False, or "sym"/"unk" when a type it needs is not known yet."""
@@ -833,6 +852,11 @@ class Checker:
                 if r in (a, b):
                     return r
             return c is AndE
+        if c is Call:
+            t = self.guard_value(e, env, pv, keep)
+            if t.__class__ is tuple and t[0] == "bool":
+                return t[1]
+            return tys._stuck(t) or "unk"
         if c is Unary and e.op == "not":
             a = self.eval_guard(e.e, env, pv, keep)
             return (not a) if a in (True, False) else a
@@ -971,10 +995,13 @@ class Checker:
         if c is StrLit and all(isinstance(p, str) for p in e.parts or []):
             return ("slit", "".join(e.parts or []))
         if c is Call:
-            v = const_eval(e, self.consts)
-            if isinstance(v, bool) or v is NOCONST:
+            if e.fn.__class__ is not Name or CT[0] is None or not CT[0].can_call(e.fn.name) \
+                    or any(a.expr is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
                 return None
-            return ("lit", v) if isinstance(v, int) else ("slit", v) if isinstance(v, str) else None
+            args = tuple(self.type_num(a.expr, depth, keep) for a in e.args or [])
+            if any(a is None for a in args):
+                return None
+            return tys.subst_partial(("cfn", e.fn.name, args), {})
         if c is Name:
             return self.ty_of_type(TName([e.name], [], line=0), depth + 1, keep, False)
         if c is GenApp and e.base.__class__ is Name:

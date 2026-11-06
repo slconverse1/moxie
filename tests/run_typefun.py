@@ -93,6 +93,16 @@ BAD += [
 GOOD += [
  ("an any local agrees with itself and its alias", ANY + MK + 'fn f(a: any Container) Unit:\n  x: any Container = make()\n  x.put(x.first())\n  y = a\n  y.put(a.first())\nprintln("ok")\n', "ok"),
 ]
+BIG = 'fn big(n: Int) Bool:\n  n > 3\ntype alias Pad2[N] = when N:\n  M if big(M) -> Array[Int][M]\n  M -> Array[Int][3]\n'
+BAD += [
+ ("a guard that calls a function: true", BIG + 'a: Pad2[5] = Array(1, 2)\n', "expected `Array[Int][5]`, found `Array[Int][2]`"),
+ ("a guard that calls a function: false", BIG + 'b: Pad2[2] = Array(1, 2)\n', "expected `Array[Int][3]`, found `Array[Int][2]`"),
+ ("the first use is named when no arm matches", GET + USER + 'z = get(User(id: 1, name: "a", zip: 3), "nope")\n', "(while working out `Get[User, \"nope\"]`)"),
+ ("a constant that is always an Err is warned about", 'fn port(n: Int) Result[Int, String]:\n  if n > 65535: fail(1, "too big") else: Ok(n)\np = port(99999)\nprintln(p)\n', "always gives `Err("),
+]
+GOOD += [
+ ("a guard that calls a function picks the arm", BIG + 'a: Pad2[5] = Array(1, 2, 3, 4, 5)\nb: Pad2[2] = Array(1, 2, 3)\nprintln(a(4))\n', "5"),
+]
 fails = []
 
 

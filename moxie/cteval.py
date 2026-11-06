@@ -21,6 +21,7 @@ class CtEval:
         self.pure = set()
         self.cache = {}
         self.errors = []               # (line, message)
+        self.warnings = []             # a call that always gives an Err
         self.left = 0
 
     def setup(self):
@@ -107,6 +108,14 @@ class CtEval:
             if msg:
                 msg = msg.split(":", 1)[1].strip() if ":" in msg else msg
                 self.errors.append((line, f"evaluating `{name}({', '.join(map(_show, args))})` at compile time aborts: {msg}"))
+            return None
+        if v.__class__.__name__ == "EnumV" and v.case == "Err":
+            from .core import show as show_value
+            try:
+                shown = show_value(v, I)
+            except Exception:
+                shown = "Err(...)"
+            self.warnings.append((line, f"`{name}({', '.join(map(_show, args))})` always gives `{shown}`: the compiler worked it out with constant arguments"))
             return None
         if isinstance(v, (int, float, bool, str)):
             self.cache[key] = (v,)
