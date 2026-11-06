@@ -93,19 +93,19 @@ Assume this code lives in its own file. Notice the two-space moxie indentation. 
 Moxie's elegance rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
 
 - **Go:** interfaces, goroutines, channels, and `select`, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
-- **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and (designed, not yet built) doctests, examples in doc comments that run as tests.
+- **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), Domain-Specific Languages, and labeled `break` and `continue`.
 - **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
-- **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts (all designed, not yet built).
+- **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** lock-free state through Atoms and `swap`, and `cond`.
-- **Haskell:** multi-clause function definitions, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, guards on function clauses, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and (designed, not yet built) QuickCheck-style property tests.
+- **Haskell:** multi-clause function definitions, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, guards on function clauses, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
 - **Swift:** keypaths that act as lenses.
 - **Elixir:** the pin (`^`) operator for pattern matching.
-- **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds (designed, not yet built).
+- **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 
 By synthesizing these features, and untold others, into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
 
@@ -1152,7 +1152,7 @@ That works for `Maybe.Just(21)` and `Ok(21)` alike.
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
 - A capturing closure can't live in a Dict, a tuple field, or a channel, because with no heap, its size must be known. Plain functions can be stored, and closures can be passed and returned.
 - A State monad can be defined, but only as a local value, with no loops or recursion over runtime-length data. `ref` threading is the recommended way to carry state.
-- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. There is no type-level matching or recursion.
+- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. Matching on types and recursion at the type level are covered in superpower 21.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
 
