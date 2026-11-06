@@ -201,6 +201,7 @@ class Checker:
         self.exit_ctx = False
         self.fn_ret = None
         self.fn_tparams = ()
+        self.lam_expect = None
         self.tp_vars = {}          # Var of a parameter typed exactly `T` -> its TParam, inside a generic function
         self.impls = {}            # type name -> {interface names}
         self.consumes = {}         # function name -> parameter positions it takes ownership of
@@ -458,15 +459,24 @@ class Checker:
         if c is TStatic:
             return self.ty_of_type(t.inner, depth + 1, keep, top)
         if c is TFn:
-            ps = tuple(self.ty_of_type(p, depth + 1, keep, False) for p in (t.params or []))
+            ps = tuple(self.ty_of_type(p[1] if isinstance(p, tuple) else p, depth + 1, keep, False) for p in (t.params or []))
             return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
         if c is TTuple:
             return ("tup", tuple(self.ty_of_type(ft, depth + 1, keep, False) for _, ft in t.items))
+        if c is TApp:
+            from .typelam import reduce_app, TypeLambdaError
+            try:
+                return self.ty_of_type(reduce_app(t), depth + 1, keep, top)
+            except TypeLambdaError:
+                return None
         if c is not TName or len(t.path) != 1:
             return None
         n = t.path[0]
-        if keep and n in keep and not t.groups:
-            return ("param", n)
+        if keep and n in keep:
+            if not t.groups:
+                return ("param", n)
+            g0 = t.groups[0] if isinstance(t.groups[0], list) else [t.groups[0]]
+            return ("appv", n, tuple(self.ty_of_type(x, depth + 1, keep, False) for x in g0))
         if n in self.fn_tparams:
             return None if top else (None if t.groups else ("param", n))
         app = self.app_type(t, n, depth, keep)
@@ -765,9 +775,14 @@ class Checker:
 
     def e_Lambda(self, n, sc):
         inner = Sc(sc, open_=not n.params)
-        for p in n.params or []:
+        expect, self.lam_expect = self.lam_expect, None
+        eps = expect[1] if expect and len(expect[1]) == len(n.params or []) else ()
+        ptypes = []
+        for i, p in enumerate(n.params or []):
+            pty = self.ty_of_type(p.type) if p.type is not None else (self.base_free(eps[i]) if eps else None)
+            ptypes.append(pty)
             if p.name:
-                inner.vars[p.name] = Var(self.ty_of_type(p.type), False, self.loop_depth)
+                inner.vars[p.name] = Var(pty, False, self.loop_depth)
             if p.pat is not None:
                 self.bind_pat(p.pat, inner)
         for nm in n.locals or []:
@@ -775,9 +790,21 @@ class Checker:
         saved = (self.fn_ret, self.loop_depth, self.exit_ctx)
         self.fn_ret = None
         self.exit_ctx = False
-        self.ev(n.body, inner)
+        body = n.body
+        if body.__class__ is Block and len(body.stmts or []) == 1 and body.stmts[0].__class__ is ExprStmt:
+            body = body.stmts[0].e
+        elif body.__class__ is ExprStmt:
+            body = body.e
+        bt = self.ev(body, inner)[0]
         self.fn_ret, self.loop_depth, self.exit_ctx = saved
-        return None, None
+        if body.__class__ is Block or n.partial or n.fiber:
+            bt = None                     # a longer block's value is not worked out here
+        return ("fn", tuple(ptypes), self.base(bt)), None
+
+    @staticmethod
+    def base_free(t):
+        """An expected parameter type, or None when it still holds a type parameter that nothing has fixed."""
+        return None if t is None or tys.params_in(t) else t
 
     def e_PH(self, n, sc):
         return None, None
@@ -1403,13 +1430,26 @@ class Checker:
         ats = []
         indexing = fn.__class__ is not Name or sc.find(fn.name) is not None
         asc = Sc(sc, open_=True) if indexing else sc
-        for a in args:
+        plan = self.arg_plan(fn, args, sc, extra)       # (parameter types, type parameters) when the callee's signature is known
+        binds = {}
+        for i, a in enumerate(args):
             if hasattr(a, "expr") and getattr(a, "mod", None) == "move" and a.expr.__class__ is Name:
                 ats.append(self._move_name(a, a.expr, asc))         # `f(move c)` hands c over
                 continue
-            ats.append(self.ev(a.expr, asc) if hasattr(a, "expr") else (None, None))
+            pt = plan[0][i] if plan and i < len(plan[0]) else None
+            if pt is not None and hasattr(a, "expr") and a.expr.__class__ is Lambda:
+                self.lam_expect = tys.subst(pt, binds) if pt[0] == "fn" else None
+            r = self.ev(a.expr, asc) if hasattr(a, "expr") else (None, None)
+            self.lam_expect = None
+            ats.append(r)
+            if pt is not None and r[0] is not None:
+                tys.unify(pt, self.base(r[0]), binds)           # what this argument tells the later ones (a lambda's parameters)
         if n.trailing is not None:
+            if plan and n.trailing.__class__ is Lambda and len(args) < len(plan[0]) and plan[0][len(args)] is not None \
+                    and plan[0][len(args)][0] == "fn":
+                self.lam_expect = tys.subst(plan[0][len(args)], binds)
             self.ev(n.trailing, sc)
+            self.lam_expect = None
         if fn.__class__ is Name and sc.find(fn.name) is None:
             self.check_hand_over(n, sc, fn.name, args)
             if fn.name in self.tuples:
@@ -1453,6 +1493,21 @@ class Checker:
         if name == "Array":
             return ("app", name, (el,), len(ats))
         return ("app", name, (el,))
+
+    def arg_plan(self, fn, args, sc, extra):
+        """The parameter types of a call to one known declared function, as (types, type-parameter names), or None."""
+        if extra or fn.__class__ is not Name or sc.find(fn.name) is not None:
+            return None
+        fds = self.fns.get(fn.name)
+        if not fds or len(fds) != 1:
+            return None
+        fd = fds[0]
+        if fd.alias is not None or id(fd) in self.foreign_ids or any(p.variadic or p.mod for p in fd.params or []):
+            return None
+        if any(getattr(a, "label", None) or getattr(a, "mod", None) for a in args):
+            return None
+        keep = {tp.name for tp in fd.tparams or []}
+        return [self.ty_of_type(p.type, 0, keep) for p in fd.params or []], keep
 
     def call_known(self, n, name, args, ats, extra):
         if name in ("Ok", "Err") and not extra and len(args) == 1 and name not in self.fns and name not in self.tuples \
@@ -1691,8 +1746,8 @@ class Checker:
         if ret is None:
             return None
         if ret.__class__ is tuple and ret[0] == "param":
-            return binds.get(ret[1]) if binds.get(ret[1]) not in ("Int", "Float", "Decimal") else None
-        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup"):
+            return binds.get(ret[1])
+        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup", "appv"):
             return tys.subst(ret, binds)
         return ret if not tys.params_in(ret) else None
 

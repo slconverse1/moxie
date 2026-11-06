@@ -10,6 +10,8 @@ A type is `None` (not known: matches anything), a scalar name (`"Int"`, `"Float"
     ("fn", params, ret)        a function type
     ("tup", items)             a tuple of types
     ("param", name)            a type parameter of the function being checked
+    ("appv", name, args)       a type parameter applied to arguments: `F[A]` where `F[_]` is a constructor parameter
+    ("ctor", head, fixed)      what such a parameter is bound to: `head` with `fixed` as its leading arguments (`Result[String, _]`)
 
 Nothing here reports errors: the checker asks `compatible` and `unify` and words the message itself.  Unknown (`None`) and
 parameters are wildcards in `compatible`, so a type the checker cannot work out never produces a false error.
@@ -39,11 +41,15 @@ def show(t):
         return "(" + ", ".join(show(i) for i in t[1]) + ")"
     if tag == "param":
         return t[1]
+    if tag == "appv":
+        return f"{t[1]}[{', '.join(show(a) for a in t[2])}]"
+    if tag == "ctor":
+        return f"{t[1]}[{', '.join([show(a) for a in t[2]] + ['_'])}]"
     return "?"
 
 
 def is_wild(t):
-    return t is None or (t.__class__ is tuple and t[0] == "param")
+    return t is None or (t.__class__ is tuple and t[0] in ("param", "appv", "ctor"))
 
 
 def compatible(exp, act):
@@ -64,7 +70,9 @@ def compatible(exp, act):
             return False
         return exp[1] == act[1] and len(exp[2]) == len(act[2]) and all(compatible(x, y) for x, y in zip(exp[2], act[2]))
     if et == "fn" and at == "fn":
-        return True          # arities differ legitimately (callbacks, tuple unpacking); function types are not compared yet
+        if len(exp[1]) != len(act[1]):
+            return True      # arities differ legitimately (callbacks, tuple unpacking)
+        return all(compatible(x, y) for x, y in zip(exp[1], act[1])) and compatible(exp[2], act[2])
     if et == "tup" and at == "tup":
         return len(exp[1]) == len(act[1]) and all(compatible(x, y) for x, y in zip(exp[1], act[1]))
     return False
@@ -77,6 +85,12 @@ def subst(t, binds):
     tag = t[0]
     if tag == "param":
         return binds.get(t[1])
+    if tag == "appv":
+        c = binds.get(t[1])
+        args = tuple(subst(a, binds) for a in t[2])
+        if c.__class__ is tuple and c[0] == "ctor":
+            return ("app", c[1], tuple(c[2]) + args)
+        return None
     if tag == "app":
         return ("app", t[1], tuple(subst(a, binds) for a in t[2])) + t[3:]
     if tag == "fn":
@@ -91,6 +105,10 @@ def params_in(t, out=None):
     if t.__class__ is tuple:
         if t[0] == "param":
             out.add(t[1])
+        elif t[0] == "appv":
+            out.add(t[1])
+            for a in t[2]:
+                params_in(a, out)
         elif t[0] == "app":
             for a in t[2]:
                 params_in(a, out)
@@ -111,7 +129,8 @@ def join(a, b):
     if b is None or a == b:
         return a
     if isinstance(a, str) and isinstance(b, str) and a in NUMERIC and b in NUMERIC:
-        return a                                   # 1 and 2.5 for one T: the first fixes it, and the numbers convert
+        rank = {"Int": 0, "Float": 1, "Decimal": 2}
+        return a if rank[a] >= rank[b] else b      # 1 and 2.5 for one T: the wider number
     ab = ("Int" if a.__class__ is tuple and a[0] == "bounded" else a)
     bb = ("Int" if b.__class__ is tuple and b[0] == "bounded" else b)
     if ab == bb and not (ab.__class__ is tuple and ab[0] in ("app", "fn", "tup", "param")):
@@ -143,6 +162,25 @@ def unify(pat, act, binds):
         binds[pat[1]] = j
         return None
     if pat.__class__ is not tuple or act.__class__ is not tuple:
+        return None
+    if pat[0] == "appv":
+        n = len(pat[2])
+        if act[0] == "app" and len(act[2]) >= n:
+            keep = len(act[2]) - n
+            c = ("ctor", act[1], tuple(act[2][:keep]))
+            cur = binds.get(pat[1])
+            if cur is not None and cur != c:
+                return (cur, c)
+            binds[pat[1]] = c
+            for x, y in zip(pat[2], act[2][keep:]):
+                r = unify(x, y, binds)
+                if r:
+                    return r
+        elif act[0] == "appv" and act[1] == pat[1] and len(act[2]) == n:
+            for x, y in zip(pat[2], act[2]):
+                r = unify(x, y, binds)
+                if r:
+                    return r
         return None
     if pat[0] == act[0] == "app" and pat[1] == act[1] and len(pat[2]) == len(act[2]):
         for x, y in zip(pat[2], act[2]):
