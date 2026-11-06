@@ -212,6 +212,8 @@ class Checker:
         self.res_tuples = set()
         self.pending_gone = []
         self.ifaces = set()
+        self.iface_decls = {}
+        self.tp_decl = {}
 
     # ------------------------------------------------------------ reporting
     def has_local_pkg(self, parts):
@@ -402,6 +404,7 @@ class Checker:
         elif c is IfaceDecl:
             self.globals.add(st.name)
             self.ifaces.add(st.name)
+            self.iface_decls[st.name] = st
         elif c is ImplDecl:
             iname, tname = _tn(st.iface), _tn(st.target)
             if iname == "Hashable":
@@ -760,8 +763,49 @@ class Checker:
     def e_Ref(self, n, sc):
         return self.ev(n.e, sc)
 
+    def iface_members(self, name, seen=None):
+        """The member names an interface of this program provides, with those of the interfaces it embeds; None when that can't be told
+        (a built-in interface such as `Numeric`, or one from another package)."""
+        seen = set() if seen is None else seen
+        d = self.iface_decls.get(name)
+        if d is None:
+            return None
+        if name in seen:
+            return set()
+        seen.add(name)
+        out = {m.name for m in d.members or [] if getattr(m, "name", None)}
+        for e in d.embeds or []:
+            sub = self.iface_members(_tn(e), seen)
+            if sub is None:
+                return None
+            out |= sub
+        return out
+
+    def check_tparam_member(self, n, t):
+        """`x.m` where x has the type parameter `T`: m must come from T's bounds, or be a function that takes x (`x.m()` is `m(x)`)."""
+        tp = self.tp_decl.get(t[1])
+        if tp is None or tp.where or n.name in self.fns or n.name in self.prelude or n.name in self.globals \
+                or n.name in self.consumes or n.name in self.load_sigs():
+            return
+        names = [_tn(b) for b in tp.bounds or []]
+        allowed = set()
+        for b in names:
+            m = self.iface_members(b)
+            if m is None:
+                return
+            allowed |= m
+        if n.name in allowed:
+            return
+        if not names:
+            self.err(n.line, f"`{t[1]}` has no bound, so `{n.name}` is not available on it: add a bound that provides `{n.name}`")
+        else:
+            self.err(n.line, f"`{n.name}` is not provided by the bound{'s' if len(names) > 1 else ''} of `{t[1]}` ({', '.join(names)})")
+
     def e_Field(self, n, sc):
         t = self.t(n.obj, sc)
+        if t.__class__ is tuple and t[0] == "rigid":
+            self.check_tparam_member(n, t)
+            return None, None
         if t.__class__ is tuple and t[0] == "named" and t[1] in self.tuples:
             for f in self.tuples[t[1]].fields or []:
                 if f.name == n.name:
@@ -1559,6 +1603,22 @@ class Checker:
         pos = sigs[0][3]
         return [sg for sg in sigs if len(sg[1]) == len(args) + extra], pos
 
+    def has_unsettled(self, t):
+        """True when a type holds an unknown part or a type parameter, so a failed match proves nothing."""
+        if t is None:
+            return True
+        if t.__class__ is not tuple:
+            return False
+        if t[0] in ("param", "rigid", "appv", "ctor", "named"):
+            return True
+        if t[0] == "app":
+            return any(self.has_unsettled(a) for a in t[2])
+        if t[0] == "fn":
+            return any(self.has_unsettled(a) for a in t[1]) or self.has_unsettled(t[2])
+        if t[0] == "tup":
+            return any(self.has_unsettled(a) for a in t[1])
+        return False
+
     def sig_fit(self, sg, full, strict=False):
         """The type-parameter bindings if the argument types `full` (None for unknown) fit the signature `sg`, else None."""
         binds = {}
@@ -1608,6 +1668,12 @@ class Checker:
         cands = self.sig_pick(over, full(None))
         if len(cands) > 1 and all(not tys.params_in(sg[2]) for sg in cands) and len({sg[2] for sg in cands}) == 1:
             return ats, cands[0][2]               # every overload that fits gives the same type (`contains` is a Bool)
+        if not cands and over:
+            ft = full(None)
+            if all(t is not None and not self.has_unsettled(t) for t in ft):
+                self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take ({', '.join(tshow(t) for t in ft)}); it takes "
+                         + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]))
+            return ats, None
         if len(cands) != 1:
             return ats, None
         sg = cands[0]
@@ -1995,6 +2061,7 @@ class Checker:
         inner = Sc(sc)
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
         self.tp_vars = {}
+        saved_decl, self.tp_decl = self.tp_decl, {t.name: t for t in (n.tparams or [])}
         self.fn_tparams = tuple(t.name for t in (n.tparams or []))
         self.loop_depth, self.exit_ctx, self.moved = 0, False, {}
         for tp in n.tparams or []:
@@ -2034,6 +2101,7 @@ class Checker:
             if "tailrec" in (n.flags or ()):
                 self.check_tailrec(n)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
+        self.tp_decl = saved_decl
         return None, None
 
     def check_tailrec(self, n):

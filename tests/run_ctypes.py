@@ -31,6 +31,11 @@ BAD = [
  ("an Int returned as T", 'fn bad[T](x: T) T:\n  1\n', "expected `T`, found `Int`"),
  ("a List[T] returned as List[Int]", 'fn bad[T](xs: List[T]) List[Int]:\n  xs\n', "expected `List[Int]`, found `List[T]`"),
  ("one parameter returned as another", 'fn bad[T, U](x: T, y: U) T:\n  y\n', "expected `T`, found `U`"),
+ ("a method the bound does not give", 'interface Speaker:\n  fn speak() String\ninterface Loud:\n  Speaker,\n  fn shout() String\nfn bad[T: Speaker](x: T) String:\n  x.shout()\n', "`shout` is not provided by the bound of `T` (Speaker)"),
+ ("a field of a plain T", 'fn bad[T](x: T) String:\n  x.name\n', "`T` has no bound, so `name` is not available on it"),
+ ("a predicate that does not return Bool", 'xs = List(1, 2)\nn = xs |> filter((x): x + 1) |> count()\n', "`filter` can't take ((Int) -> Int, List[Int])"),
+ ("a String where take wants an Int", 'xs = List(1, 2)\nb = take("a", xs)\n', "`take` can't take (String, List[Int])"),
+ ("upper of an Int", 'e = upper(3)\n', "`upper` can't take (Int)"),
  ("a literal returned as the wrong type", 'fn g() Int: "s"\n', "expected `Int`, found `String`"),
 ]
 GOOD = [
@@ -44,6 +49,8 @@ GOOD = [
  ("a user type with its own map is left alone", BOX + 'fn map[A, B](f: (A) -> B, b: Box[A]) Box[B]:\n  Box(v: f(b.v))\nz: Box[Int] = map((x): x + 1, Box(v: 1))\nprintln(z.v)\n', "2"),
  ("T passed on, returned, and stored", 'fn id[T](x: T) T:\n  x\nfn one[T](x: T) List[T]:\n  List(id(x))\nfn keep[T](xs: List[T]) List[T]:\n  xs\nprintln(len(keep(one(3))))\n', "1"),
  ("a bounded T used with its operators", 'fn dbl[T: Numeric](x: T) T:\n  x + x\nprintln(dbl(2))\n', "4"),
+ ("a method the bound gives, through an embedded interface", 'interface Speaker:\n  fn speak() String\ninterface Loud:\n  Speaker,\n  fn shout() String\nfn ok[T: Loud](x: T) String:\n  x.speak()\nprintln("ok")\n', "ok"),
+ ("a function called as a method on a T", 'fn same[T](x: T) Int:\n  x.len()\nprintln("ok")\n', "ok"),
  ("sizes agree", 'x: Array[Int][2] = Array(1, 2)\nprintln(x(1))\n', "2"),
  ("a generic function with a wrapper", BOX + 'fn wrap[T](x: T) Box[T]:\n  Box(v: x)\nz: Box[String] = wrap("s")\nprintln(z.v)\n', "s"),
  ("first of a list", 'fn first[T](xs: List[T]) T: xs(0)\ny: String = first(List("a", "b"))\nprintln(y)\n', "a"),
