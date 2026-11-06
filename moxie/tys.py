@@ -182,7 +182,7 @@ def unify(pat, act, binds):
                 if r:
                     return r
         return None
-    if pat[0] == act[0] == "app" and pat[1] == act[1] and len(pat[2]) == len(act[2]):
+    if pat[0] == act[0] == "app" and (pat[1] == act[1] or (pat[1] == "Seq" and act[1] in SEQ_HEADS)) and len(pat[2]) == len(act[2]):
         for x, y in zip(pat[2], act[2]):
             r = unify(x, y, binds)
             if r:
@@ -199,3 +199,40 @@ def unify(pat, act, binds):
             if r:
                 return r
     return None
+
+
+SEQ_HEADS = {"List", "Array", "Set", "Ring", "Stream"}
+
+
+def match(pat, act, binds):
+    """Strict version of `unify` for choosing an overload: False when `act` cannot be what `pat` describes.  Unknown matches.
+    `Seq[T]` in a pattern is any source of T."""
+    if pat is None or act is None:
+        return True
+    pt = pat[0] if pat.__class__ is tuple else None
+    at = act[0] if act.__class__ is tuple else None
+    if pt == "param":
+        if at == "param":
+            return True
+        j = join(binds.get(pat[1]), act)
+        if j == "conflict":
+            return False
+        binds[pat[1]] = j
+        return True
+    if at in ("param", "appv", "ctor") or pt in ("appv", "ctor"):
+        return True
+    if pt == "app":
+        if at != "app":
+            return False
+        if pat[1] == "Seq":
+            return act[1] in SEQ_HEADS and len(act[2]) == 1 and match(pat[2][0], act[2][0], binds)
+        return pat[1] == act[1] and len(pat[2]) == len(act[2]) and all(match(x, y, binds) for x, y in zip(pat[2], act[2]))
+    if pt == "fn":
+        if at != "fn":
+            return False
+        if len(pat[1]) != len(act[1]):
+            return False
+        return all(match(x, y, binds) for x, y in zip(pat[1], act[1])) and match(pat[2], act[2], binds)
+    if pt == "tup":
+        return at == "tup" and len(pat[1]) == len(act[1]) and all(match(x, y, binds) for x, y in zip(pat[1], act[1]))
+    return compatible(pat, act)

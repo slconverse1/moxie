@@ -202,6 +202,8 @@ class Checker:
         self.fn_ret = None
         self.fn_tparams = ()
         self.lam_expect = None
+        self.pipe_ty = None
+        self.sigs = None
         self.tp_vars = {}          # Var of a parameter typed exactly `T` -> its TParam, inside a generic function
         self.impls = {}            # type name -> {interface names}
         self.consumes = {}         # function name -> parameter positions it takes ownership of
@@ -446,7 +448,7 @@ class Checker:
             return a + b if e.op == "+" else a - b if e.op == "-" else a * b
         return None
 
-    BUILTIN_GENERICS = {"List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1}
+    BUILTIN_GENERICS = {"Seq": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1}
 
     def ty_of_type(self, t, depth=0, keep=None, top=True):
         """The checker's type for a written type.  `keep` names type parameters to return as ("param", n) (a callee's own);
@@ -1432,7 +1434,25 @@ class Checker:
         asc = Sc(sc, open_=True) if indexing else sc
         plan = self.arg_plan(fn, args, sc, extra)       # (parameter types, type parameters) when the callee's signature is known
         binds = {}
-        for i, a in enumerate(args):
+        sigres = None
+        ufcs = False
+        if fn.__class__ is Field and n.trailing is None and not extra and fn.name in self.load_sigs() \
+                and not any(getattr(a, "label", None) for a in args):
+            rt = self.ev(fn.obj, sc)[0]                 # `xs.map(f)` is `xs |> map(f)`; the receiver is evaluated here, once
+            ufcs = True
+            if rt is not None:
+                self.pipe_ty = rt
+                extra = 1
+            else:
+                ufcs = "skip"
+        ov = self.sig_overloads(fn, args, sc, extra, ufcs=ufcs is True) if n.trailing is None and plan is None and ufcs != "skip" else None
+        if ov is not None and ov[0] and all(hasattr(a, "expr") for a in args):
+            ats, sigres = self.sig_args(n, ov[0], ov[1], args, asc, sc, extra)
+            args_iter = ()
+        else:
+            self.pipe_ty = None
+            args_iter = enumerate(args)
+        for i, a in args_iter:
             if hasattr(a, "expr") and getattr(a, "mod", None) == "move" and a.expr.__class__ is Name:
                 ats.append(self._move_name(a, a.expr, asc))         # `f(move c)` hands c over
                 continue
@@ -1471,10 +1491,14 @@ class Checker:
                 if fn.name not in self.globals and fn.name not in self.prelude and not sc.open:
                     self.err(n.line, f"undefined function `{fn.name}`")
                     return None, None
+                if sigres is not None:
+                    return sigres, None
                 return self.call_known(n, fn.name, args, ats, extra)
             elif v in self.moved:
                 self.err(n.line, f"use of moved value `{fn.name}`")
             return None, None
+        if fn.__class__ is Field and ufcs:
+            return sigres, None                         # the receiver was evaluated above
         self.ev(fn, sc)
         return None, None
 
@@ -1493,6 +1517,88 @@ class Checker:
         if name == "Array":
             return ("app", name, (el,), len(ats))
         return ("app", name, (el,))
+
+    def load_sigs(self):
+        """name -> [(type-parameter names, parameter types, result type)] from sigs.SRC, read once for all checkers."""
+        if Checker._sigs is None:
+            from .parser import parse_program
+            from . import sigs as S
+            from .prelude import REG
+            tmp, out = Checker(()), {}
+            for st in parse_program(S.SRC, "<sigs>").stmts:
+                for fd in (st.clauses if st.__class__ is FnGroup else [st]):
+                    keep = {tp.name for tp in fd.tparams or []}
+                    out.setdefault(fd.name, []).append(
+                        (keep, [tmp.ty_of_type(p.type, 0, keep) for p in fd.params], tmp.ty_of_type(fd.ret, 0, keep),
+                         REG[fd.name][1] if fd.name in REG else "first"))
+            Checker._sigs = out
+        return Checker._sigs
+
+    _sigs = None
+
+    def sig_overloads(self, fn, args, sc, extra, ufcs=False):
+        """The prelude signatures for a call of a builtin by its plain name (or as a method of a receiver of known type), or None."""
+        if not ufcs and (fn.__class__ is not Name or sc.find(fn.name) is not None):
+            return None
+        if extra > 1:
+            return None
+        name = fn.name
+        if name in self.fns or name in self.tuples or name in self.aliases or name in self.cases \
+                or any(k[1] == name for k in self.methods) or extra_bad(args):
+            return None
+        sigs = self.load_sigs().get(name)
+        if sigs is None:
+            return None
+        pos = sigs[0][3]
+        return [sg for sg in sigs if len(sg[1]) == len(args) + extra], pos
+
+    def sig_fit(self, sg, full):
+        """The type-parameter bindings if the argument types `full` (None for unknown) fit the signature `sg`, else None."""
+        binds = {}
+        for pt, t in zip(sg[1], full):
+            if not tys.match(pt, self.base(t) if t is not None else None, binds):
+                return None
+        return binds
+
+    def sig_args(self, n, over, pos, args, asc, sc, extra):
+        """Evaluate the arguments of a call of an overloaded builtin: the ones that are not lambdas first, so the lambdas
+        can be given parameter types; returns the types in argument order and the call's result type (or None)."""
+        piped, self.pipe_ty = self.pipe_ty, None
+        ats = [None] * len(args)
+        for i, a in enumerate(args):
+            if a.expr.__class__ is not Lambda:
+                ats[i] = self.ev(a.expr, asc) if getattr(a, "mod", None) != "move" or a.expr.__class__ is not Name \
+                    else self._move_name(a, a.expr, asc)
+
+        def full(lams):
+            ts = [(r[0] if r else None) for r in ats]
+            if extra:
+                ts = ts + [piped] if pos == "last" else [piped] + ts
+            return ts
+        cands = [sg for sg in over if self.sig_fit(sg, full(None)) is not None]
+        lam_at = [i for i, a in enumerate(args) if a.expr.__class__ is Lambda]
+        for i in lam_at:
+            expect = None
+            if len(cands) == 1:
+                sg = cands[0]
+                slot = i + (1 if extra and pos == "first" else 0)
+                pt = sg[1][slot]
+                if pt is not None and pt[0] == "fn":
+                    binds = self.sig_fit(sg, full(None)) or {}
+                    expect = tys.subst(pt, binds)
+            self.lam_expect = expect
+            ats[i] = self.ev(args[i].expr, asc)
+            self.lam_expect = None
+        cands = [sg for sg in over if self.sig_fit(sg, full(None)) is not None]
+        if len(cands) != 1:
+            return ats, None
+        sg = cands[0]
+        binds = {}
+        for pt, t in zip(sg[1], full(None)):
+            if t is not None:
+                tys.unify(pt, self.base(t), binds)
+        ret = tys.subst(sg[2], binds)
+        return ats, ret
 
     def arg_plan(self, fn, args, sc, extra):
         """The parameter types of a call to one known declared function, as (types, type-parameter names), or None."""
@@ -1855,10 +1961,13 @@ class Checker:
         return self.ty_of_type(fd.ret)
 
     def e_Pipe(self, n, sc):
-        self.ev(n.l, sc)
+        lt = self.ev(n.l, sc)[0]
         st = n.stage
         if st.__class__ is Call:
-            return self.e_Call(st, sc, extra=1)
+            self.pipe_ty = lt
+            r = self.e_Call(st, sc, extra=1)
+            self.pipe_ty = None
+            return r
         self.ev(st, sc)
         return None, None
 

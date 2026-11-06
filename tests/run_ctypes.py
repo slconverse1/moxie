@@ -21,6 +21,12 @@ BAD = [
  ("a type lambda applied in a type", 'fn f() ([A] -> Result[A, String])[Int]:\n  Ok("x")\n', "expected `Result[Int, String]`"),
  ("len gives an Int", 'n: String = len(Array(1, 2))\n', "expected `String`, found `Int`"),
  ("a predicate gives a Bool", 'b: Int = starts_with("a", "b")\n', "expected `Int`, found `Bool`"),
+ ("map then collect keeps the element type", 'xs = List(1, 2, 3)\na: List[String] = xs |> map((x): x + 1) |> collect()\n', "expected `List[String]`, found `List[Int]`"),
+ ("map with the function first", 'xs = List(1, 2, 3)\nb: Int = map((x): x + 1, xs)\n', "expected `Int`, found `Stream[Int]`"),
+ ("a method call is a pipe", 'xs = List(1, 2, 3)\na: List[String] = xs.map((x): x + 1).collect()\n', "expected `List[String]`, found `List[Int]`"),
+ ("a lambda parameter takes the element type", 'xs = List(1, 2, 3)\nn: Int = xs |> map((x): x + "a") |> count()\n', "cannot apply `+` to `Int` and `String`"),
+ ("upper of a String is a String", 'h: Int = upper("a")\n', "expected `Int`, found `String`"),
+ ("map over a Result", 'r: Result[Int, String] = Ok(1)\nn: Int = map((x): x + 1, r)\n', "expected `Int`, found `Result[Int, String]`"),
  ("a literal returned as the wrong type", 'fn g() Int: "s"\n', "expected `Int`, found `String`"),
 ]
 GOOD = [
@@ -29,6 +35,9 @@ GOOD = [
  ("lambda inference accepts a good program", 'fn app2[T, U](x: T, f: (T) -> U) U: f(x)\nc: Int = app2(3, (n): n + 1)\nprintln(c)\n', "4"),
  ("a constructor parameter in a good call", BOX + 'fn lift[F[_], A](x: F[A]) F[A]: x\nb: Box[String] = lift(Box(v: "s"))\nprintln(b.v)\n', "s"),
  ("a user's own len is not the builtin", 'fn len(x: String) String: x\ns: String = len("ab")\nprintln(s)\n', "ab"),
+ ("a pipeline checks and runs", 'xs = List(1, 2, 3)\nys: List[Int] = xs |> map((x): x * 2) |> collect()\nprintln(ys |> sum())\n', "12"),
+ ("upper of a Char is a Char", 'c: Char = upper(\'a\')\nprintln(c)\n', "A"),
+ ("a user type with its own map is left alone", BOX + 'fn map[A, B](f: (A) -> B, b: Box[A]) Box[B]:\n  Box(v: f(b.v))\nz: Box[Int] = map((x): x + 1, Box(v: 1))\nprintln(z.v)\n', "2"),
  ("sizes agree", 'x: Array[Int][2] = Array(1, 2)\nprintln(x(1))\n', "2"),
  ("a generic function with a wrapper", BOX + 'fn wrap[T](x: T) Box[T]:\n  Box(v: x)\nz: Box[String] = wrap("s")\nprintln(z.v)\n', "s"),
  ("first of a list", 'fn first[T](xs: List[T]) T: xs(0)\ny: String = first(List("a", "b"))\nprintln(y)\n', "a"),

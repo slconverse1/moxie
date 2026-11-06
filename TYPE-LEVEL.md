@@ -89,3 +89,5 @@ Nothing in the current libraries needs it. `fp.trans` works with lambdas and cla
 The checker now has a real type representation for applications, sizes, tuples, and parameters (`moxie/tys.py`), which fixes the three known false negatives. Still open from the plan: unifying function types and inferring lambda arguments, signatures for the prelude builtins (they are unknown today), checking a generic body per instantiation, and anything at the type level that matches or recurses.
 
 Step 2 (2026-11-05): calls infer. Unification with constructor parameters (`F[A]`), lambda parameters typed from the callee's signature, and a lambda's result fixing a type parameter are in, all in a single pass. Not yet: signatures for the prelude builtins, generic bodies checked per instantiation, and lambdas whose body is more than one expression.
+
+Overloads (2026-11-05): prelude signatures with overloads are in (`moxie/sigs.py`); a call is typed when exactly one overload fits. Remaining builtins are still unknown.
