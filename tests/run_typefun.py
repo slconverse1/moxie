@@ -29,6 +29,23 @@ GOOD = [
  ("size arithmetic", SHRINK + 'c: Shrink[Array[Int][3]] = Array(1, 2)\nprintln(c(1))\n', "2"),
  ("an arm that shrinks gets no warning", LENGTH + 'println("ok")\n', "ok"),
 ]
+PAD = 'type alias Pad[N] = when N:\n  M if M > 3 -> Array[Int][M]\n  M if M <= 3 -> Array[Int][3]\n'
+COL = 'type alias Col[K] = when K:\n  "id" -> Int\n  "name" -> String\n'
+SAME = 'type alias Same[A, B] = when A:\n  X if X == B -> Bool\n  X -> Unit\n'
+BAD += [
+ ("a guard picks the arm: big", PAD + 'c: Pad[5] = Array(1, 2)\n', "expected `Array[Int][5]`, found `Array[Int][2]`"),
+ ("a guard picks the arm: small", PAD + 'c: Pad[2] = Array(1, 2)\n', "expected `Array[Int][3]`, found `Array[Int][2]`"),
+ ("a string as a type", COL + 'd: Col["id"] = "x"\n', "expected `Int`, found `String`"),
+ ("no string arm", COL + 'f: Col["zip"] = 1\n', "no arm of `Col` matches `\"zip\"`"),
+ ("== in a guard compares types", SAME + 'g: Same[Int, String] = true\n', "expected `Unit`, found `Bool`"),
+ ("a guard that is not a comparison", 'type alias T[N] = when N:\n  M if M -> Int\n  M -> Unit\nx: T[1] = 1\n', "a guard in a type function compares"),
+]
+GOOD += [
+ ("guards: the large arm", PAD + 'a: Pad[5] = Array(1, 2, 3, 4, 5)\nprintln(a(4))\n', "5"),
+ ("guards: the small arm", PAD + 'b: Pad[2] = Array(1, 2, 3)\nprintln(b(2))\n', "3"),
+ ("a string arm", COL + 'e: Col["name"] = "x"\nprintln(e)\n', "x"),
+ ("== in a guard: equal types", SAME + 'g: Same[Int, Int] = true\nprintln(g)\n', "true"),
+]
 fails = []
 
 
@@ -52,5 +69,25 @@ for name, src, want in GOOD:
     print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}) {o[:400]!r}"))
     if not ok:
         fails.append(name)
+# the reduction limit comes from [program] type_fuel in Moxie.toml
+import shutil
+d = tempfile.mkdtemp()
+open(os.path.join(d, "main.mxi"), "w").write(LENGTH + 'a: Array[Int][Length[(Int, Int, Int, Int, Int, Int)]] = Array(1, 2, 3, 4, 5, 6)\nprintln("ok")\n')
+for fuel, want in ((None, True), (4, False), (50, True)):
+    open(os.path.join(d, "Moxie.toml"), "w").write("[program]\n" + (f"type_fuel = {fuel}\n" if fuel else ""))
+    r = subprocess.run([sys.executable, "-m", "moxie", "check", os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=60)
+    o = r.stdout.decode() + r.stderr.decode()
+    ok = (r.returncode == 0) if want else ("did not finish in 4 reductions" in o)
+    print(("ok    " if ok else "FAIL  ") + f"type_fuel = {fuel}" + ("" if ok else f"  {o[:300]!r}"))
+    if not ok:
+        fails.append(f"fuel {fuel}")
+open(os.path.join(d, "Moxie.toml"), "w").write("[program]\ntype_fuel = 0\n")
+r = subprocess.run([sys.executable, "-m", "moxie", "check", os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=60)
+o = r.stdout.decode() + r.stderr.decode()
+ok = r.returncode != 0 and "type_fuel must be a whole number" in o
+print(("ok    " if ok else "FAIL  ") + "type_fuel must be 1 or more" + ("" if ok else f"  {o[:300]!r}"))
+if not ok:
+    fails.append("fuel 0")
+shutil.rmtree(d, ignore_errors=True)
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)

@@ -544,11 +544,11 @@ class Checker:
             keep = set(params)
             scrut = self.ty_of_type(a.type.scrut, 0, keep, False)
             arms = []
-            for pat, res in a.type.arms:
+            for pat, res, guard in a.type.arms:
                 self.pv = frozenset(self.pattern_vars(pat, keep))
                 p = self.ty_of_type(pat, 0, keep, False)
                 r = self.ty_of_type(res, 0, keep, False)
-                arms.append((p, r))
+                arms.append((p, r, (guard, self.pv, keep) if guard is not None else None))
             self.tfuns[name] = tf = (params, scrut, arms)
         finally:
             self.pv, self.fn_tparams = saved_pv, saved_tp
@@ -619,9 +619,17 @@ class Checker:
                 return None
             binds0 = dict(zip(params, args))
             sc = tys.subst(scrut, binds0)
-            for pat, res in arms:
+            for pat, res, guard in arms:
                 pb = {}
                 r = tys.tmatch(tys.subst_partial(pat, binds0), sc, pb)
+                if r == "yes" and guard is not None:
+                    g = self.eval_guard(guard[0], {**binds0, **pb}, guard[1], guard[2])
+                    if g is False:
+                        continue
+                    if g == "sym":
+                        return ("tapp", name, args)
+                    if g == "unk":
+                        return None
                 if r == "yes":
                     return tys.subst(res, {**binds0, **pb})
                 if r == "unk":
@@ -633,6 +641,47 @@ class Checker:
         finally:
             self.tf_depth -= 1
 
+    def eval_guard(self, e, env, pv, keep):
+        """The guard of an arm (`if N > 3`) under the arm's bindings: True, False, or "sym"/"unk" when a type it needs is not known yet."""
+        c = e.__class__
+        if c is AndE or c is OrE:
+            a = self.eval_guard(e.l, env, pv, keep)
+            if (c is AndE and a is False) or (c is OrE and a is True):
+                return a
+            b = self.eval_guard(e.r, env, pv, keep)
+            if (c is AndE and b is False) or (c is OrE and b is True):
+                return b
+            for r in ("unk", "sym"):
+                if r in (a, b):
+                    return r
+            return c is AndE
+        if c is Unary and e.op == "not":
+            a = self.eval_guard(e.e, env, pv, keep)
+            return (not a) if a in (True, False) else a
+        if c is Binary and e.op in ("==", "~=", "<", ">", "<=", ">="):
+            a, b = self.guard_value(e.l, env, pv, keep), self.guard_value(e.r, env, pv, keep)
+            if a is None or b is None:
+                return "unk"
+            sa, sb = tys._stuck(a), tys._stuck(b)
+            if sa or sb:
+                return "unk" if "unk" in (sa, sb) else "sym"
+            if e.op in ("==", "~="):
+                return (a == b) == (e.op == "==")
+            if a.__class__ is tuple and b.__class__ is tuple and a[0] == b[0] == "lit":
+                x, y = a[1], b[1]
+                return {"<": x < y, ">": x > y, "<=": x <= y, ">=": x >= y}[e.op]
+            return "unk"
+        self.err(self.cur_line, "a guard in a type function compares numbers or types with == ~= < > <= >=, and joins them with and, or, not")
+        return "unk"
+
+    def guard_value(self, e, env, pv, keep):
+        saved, self.pv = self.pv, pv
+        try:
+            t = self.type_num(e, 0, keep)
+        finally:
+            self.pv = saved
+        return tys.subst(t, env) if t is not None else None
+
     def check_tfun_decl(self, n):
         """A type function is built when it is declared (so its arms are read once); one that calls itself on a type that is not a piece
         of what it matched gets a warning, since only the fuel limit would stop it."""
@@ -640,7 +689,7 @@ class Checker:
             return
         self.tfun(n.name)
         params, scrut, arms = self.tfuns[n.name]
-        for pat, res in arms:
+        for pat, res, _g in arms:
             inside = set()
             self.collect_pvars(pat, inside, top=True)
             for call in self.self_calls(res, n.name):
@@ -741,6 +790,8 @@ class Checker:
         c = e.__class__
         if c is IntLit:
             return ("lit", e.v)
+        if c is StrLit and all(isinstance(p, str) for p in e.parts or []):
+            return ("slit", "".join(e.parts or []))
         if c is Name:
             return self.ty_of_type(TName([e.name], [], line=0), depth + 1, keep, False)
         if c is GenApp and e.base.__class__ is Name:
@@ -749,6 +800,8 @@ class Checker:
             a, b = self.type_num(e.l, depth, keep), self.type_num(e.r, depth, keep)
             if a is None or b is None:
                 return None
+            if a[0] == "slit" and b[0] == "slit" and e.op == "+":
+                return ("slit", a[1] + b[1])
             if a[0] == "lit" and b[0] == "lit":
                 return ("lit", a[1] + b[1] if e.op == "+" else a[1] - b[1] if e.op == "-" else a[1] * b[1])
             return ("sz", e.op, a, b)
@@ -2745,8 +2798,10 @@ def check_key_sizes(prog, threshold):
     return diags
 
 
-def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT):
+def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None):
     ck = Checker(prelude_names)
+    if type_fuel:
+        ck.tf_fuel = type_fuel
     ck.search_dir = search_dir
     diags = ck.check(prog)
     diags.extend(check_package_access_diags(prog, search_dir))

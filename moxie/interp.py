@@ -234,8 +234,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         from .check import check_program, Diag
         from .manifest import parse_size
         kw = (getattr(self, "manifest", None) or {}).get("program", {}).get("key_warning")
+        tf = (getattr(self, "manifest", None) or {}).get("program", {}).get("type_fuel")
         diags = check_program(prog, set(self.prelude.vars), self.search_dir,
-                              parse_size(kw) if kw is not None else 64)
+                              parse_size(kw) if kw is not None else 64, type_fuel=tf)
         from .values import GC
         if not GC[0]:
             from .tally import tally_problems

@@ -3,7 +3,7 @@ import os
 
 FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
-PROGRAM_KEYS = {"memory", "key_warning"}
+PROGRAM_KEYS = {"memory", "key_warning", "type_fuel"}
 NATIVE_KEYS = {"libs", "paths"}
 MEMORY_KEYS = {"heap", "slice"}
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "KIB": 1024, "MIB": 1024 ** 2, "GIB": 1024 ** 3}
@@ -63,6 +63,10 @@ def load(path):
     for table, key in (("fibers", "memory"), ("fibers", "strings"), ("fibers", "temps"), ("fibers", "stack"), ("program", "memory"), ("program", "key_warning"), ("memory", "heap")):
         if key in out[table] and parse_size(out[table][key]) is None:
             raise ManifestError(f"{m}: [{table}] {key} must be a size such as \"64KiB\" (1024-based) or \"64KB\" (1000-based)")
+    if "type_fuel" in out["program"]:
+        tf = out["program"]["type_fuel"]
+        if not isinstance(tf, int) or isinstance(tf, bool) or tf < 1:
+            raise ManifestError(f"{m}: [program] type_fuel must be a whole number of reductions, 1 or more (the default is 64)")
     if "slice" in out["memory"]:
         sl = out["memory"]["slice"]
         mt = __import__("re").fullmatch(r"\s*(\d+)\s*(ns|us|ms|s)?\s*", sl) if isinstance(sl, str) else None

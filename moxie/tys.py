@@ -12,6 +12,7 @@ A type is `None` (not known: matches anything), a scalar name (`"Int"`, `"Float"
     ("param", name)            a type parameter of a function being called (bound by unification at the call)
     ("rigid", name)            a type parameter of the function being checked: only itself fits it
     ("lit", n)                 a number as a type (`0`, `1 + Length[Rest]`), for type functions
+    ("slit", s)                a string as a type (`"id" -> Int` in a type function)
     ("sz", op, l, r)           arithmetic on type-level numbers (symbolic until both sides are numbers)
     ("pvar", name)             a pattern variable of a type function (`X` in `Array[X][N] -> X`)
     ("tapp", name, args)       a type function applied to arguments that do not yet decide it (symbolic; reduces once they do)
@@ -50,6 +51,8 @@ def show(t):
         return "..." + show(t[1])
     if tag == "lit":
         return str(t[1])
+    if tag == "slit":
+        return '"' + t[1] + '"'
     if tag == "sz":
         return f"{show(t[2])} {t[1]} {show(t[3])}"
     if tag == "tapp":
@@ -104,6 +107,10 @@ def compatible(exp, act):
         return exp in NUMERIC and act in NUMERIC
     et = exp[0] if exp.__class__ is tuple else None
     at = act[0] if act.__class__ is tuple else None
+    if (et == "lit" and act == "Int") or (act.__class__ is tuple and at == "lit" and exp == "Int"):
+        return True
+    if (et == "slit" and act == "String") or (at == "slit" and exp == "String"):
+        return True
     if et == "bounded":
         return act == "Int" or at == "bounded"
     if at == "bounded":
@@ -135,6 +142,8 @@ def subst(t, binds):
         a, b = subst(t[2], binds), subst(t[3], binds)
         if a.__class__ is tuple and b.__class__ is tuple and a[0] == "lit" and b[0] == "lit":
             return ("lit", {"+": a[1] + b[1], "-": a[1] - b[1], "*": a[1] * b[1]}[t[1]])
+        if a.__class__ is tuple and b.__class__ is tuple and a[0] == "slit" and b[0] == "slit" and t[1] == "+":
+            return ("slit", a[1] + b[1])
         if a is None or b is None:
             return None
         return ("sz", t[1], a, b)

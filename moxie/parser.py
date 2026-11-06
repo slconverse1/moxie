@@ -321,10 +321,20 @@ class Parser(ExprParser):
             if self.peek().kind == "INT":                # a number is a type too: `() -> 0`
                 tk = self.next()
                 pat = TExpr(IntLit(tk.val, tk.extra, line=tk.line), line=tk.line)
+            elif self.peek().kind == "STR":              # and so is a string: `"id" -> Int`
+                e = self.parse_atom()
+                pat = TExpr(e, line=e.line)
             else:
                 pat = self.parse_type_prim()             # no `->` inside: a function type here is written in parentheses
+            guard = None
+            if self.at_name("if"):
+                self.next()
+                save = self.no_trailing
+                self.no_trailing = True
+                guard = self.parse_expr()
+                self.no_trailing = save
             self.expect_op("->")
-            arms.append((pat, self.parse_arm_result()))
+            arms.append((pat, self.parse_arm_result(), guard))
             self.end_line()
         self.expect_dedent()
         return TMatch(scrut, arms, line=line)
