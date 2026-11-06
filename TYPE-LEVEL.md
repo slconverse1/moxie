@@ -100,3 +100,6 @@ Decided with the designer: moxie should be first class for type-level programmin
 
 ## Labels and singleton inference (done)
 Tuple types keep field names; `(K: T, ...Rest)` looks a field up by name, a bare label variable binds the name as a string type; declared tuples unfold to their fields; literal arguments to a parameter used inside a type function keep their own type. `get(user, "name")` is `String`.
+
+## Interface patterns (done)
+`X: Iface` in a type-function arm matches a type that implements the interface. `given`/`summon` were not added: `interface`+`impl`+`deriving` already cover instance lookup.

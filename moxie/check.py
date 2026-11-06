@@ -238,6 +238,7 @@ class Checker:
     def check(self, prog):
         tys.REDUCER = self.reduce_tapp
         tys.UNFOLD = self.unfold
+        tys.IMPLEMENTS = self.implements
         for st in prog.stmts:
             self.collect(st)
         self.find_consumers(prog)
@@ -476,6 +477,8 @@ class Checker:
             return self.ty_of_type(t.inner, depth + 1, keep, top)
         if c is TExpr:
             return self.type_num(t.expr, depth, keep)
+        if c is TBound:
+            return ("bound", ("pvar", t.name), t.iface)
         if c is TFn:
             ps = tuple(self.ty_of_type(p[1] if isinstance(p, tuple) else p, depth + 1, keep, False) for p in (t.params or []))
             return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
@@ -603,6 +606,9 @@ class Checker:
                 for g in x.groups or []:
                     for y in g if isinstance(g, list) else [g]:
                         walk(y)
+            elif c is TBound:
+                if x.name not in params and x.name not in out:
+                    out.append(x.name)
             elif c is TTuple:
                 for lab, y in x.items:
                     if lab and lab not in ("...", "_") and lab not in params and lab not in out:

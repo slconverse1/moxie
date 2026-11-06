@@ -324,6 +324,10 @@ class Parser(ExprParser):
             elif self.peek().kind == "STR":              # and so is a string: `"id" -> Int`
                 e = self.parse_atom()
                 pat = TExpr(e, line=e.line)
+            elif self.peek().kind == "NAME" and self.peek(1).kind == "OP" and self.peek(1).val == ":" and self.peek(2).kind == "NAME":
+                tk = self.next()                         # `X: Show`, written like a bound `[T: Show]`
+                self.next()
+                pat = TBound(tk.val, self.next().val, line=tk.line)
             else:
                 pat = self.parse_type_prim()             # no `->` inside: a function type here is written in parentheses
             guard = None

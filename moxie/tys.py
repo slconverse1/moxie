@@ -218,6 +218,7 @@ def subst_partial(t, binds):
         _PARTIAL[0] = False
 
 
+IMPLEMENTS = None        # set by the checker: (type, interface name) -> True / False / None
 UNFOLD = None           # set by the checker: a declared tuple type -> the same as a labeled ("tup", ...), or None
 REDUCER = None          # set by the checker: (name, args) -> the reduced type, or a symbolic ("tapp", name, args)
 
@@ -400,6 +401,14 @@ def tmatch(pat, act, binds):
     if act.__class__ is tuple and act[0] == "tup" and not act[1]:
         act = "Unit"
     pt = pat[0] if pat.__class__ is tuple else None
+    if pt == "bound":                                   # X: Iface  matches any type that implements Iface
+        st = _stuck(act)
+        if st:
+            return st
+        ok = IMPLEMENTS(act, pat[2]) if IMPLEMENTS is not None else None
+        if ok is None:
+            return "unk"
+        return tmatch(pat[1], act, binds) if ok else "no"
     if pt == "pvar":
         if pat[1] in binds:
             cur = binds[pat[1]]

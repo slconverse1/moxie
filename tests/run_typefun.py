@@ -58,6 +58,14 @@ BAD += [
 GOOD += [
  ("get finds a field by name", GET + USER + 'fn look(u: User) Unit:\n  y: String = get(u, "name")\n  z: Int = get(u, "zip")\n  println(y)\nprintln("ok")\n', "ok"),
 ]
+NAMED = 'interface Named:\n  fn name() String\ntuple Dog:\n  n: String\nimpl Named for Dog:\n  fn name() String: n\ntype alias Label[T] = when T:\n  X: Named -> String\n  _ -> Int\n'
+BAD += [
+ ("X: Iface matches an implementer", NAMED + 'c: Label[Dog] = 3\n', "expected `String`, found `Int`"),
+ ("X: Iface skips a non-implementer", NAMED + 'd: Label[Bool] = "s"\n', "expected `Int`, found `String`"),
+]
+GOOD += [
+ ("X: Iface picks the arm", NAMED + 'a: Label[Dog] = "x"\nb: Label[Bool] = 3\nprintln(a)\n', "x"),
+]
 fails = []
 
 
