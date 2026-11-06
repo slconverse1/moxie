@@ -23,6 +23,7 @@ BAD = [
  ("par_map takes a function", 'x = par_map(5, List(1), limit: 2)\n', "`par_map` can't take"),
 ]
 POOLS = [("par_map counts its limit as fibers", SLOW + 'r = par_map(slow_double, List(1, 2), limit: 3)\nprintln(r)\n', ["par_map@", "(limit 3)", "largest possible fiber count: 4"])]
+POOLS.append(("limit from constants and arithmetic is counted", 'base = 2\nlanes = base * 2 + 1\nfn dbl(n: Int) Int:\n  n * 2\nprintln(par_map(dbl, List(1, 2, 3), limit: lanes))\nprintln(par_map(dbl, List(1, 2, 3), limit: 2 + 2))\n', ["(limit 5)", "(limit 4)", "largest possible fiber count: 10"]))
 fails = []
 
 

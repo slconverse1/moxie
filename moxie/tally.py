@@ -256,14 +256,25 @@ class Tally:
             self._collect(ch, in_impl or c is ImplDecl)
 
     # ---------------------------------------------------------------- one function
-    def int_of(self, e):
-        """An integer literal, or a top-level name bound to one."""
-        if e.__class__ is IntLit:
+    def int_of(self, e, depth=0):
+        """An integer literal, a top-level name bound to a constant, or + - * of those (what the checker accepts for `limit:`)."""
+        if depth > 8:
+            return None
+        c = e.__class__
+        if c is IntLit:
             return e.v
-        if e.__class__ is Name:
+        if c is Unary and e.op == "-":
+            v = self.int_of(e.e, depth + 1)
+            return None if v is None else -v
+        if c is Binary and e.op in ("+", "-", "*"):
+            a, b = self.int_of(e.l, depth + 1), self.int_of(e.r, depth + 1)
+            if a is None or b is None:
+                return None
+            return a + b if e.op == "+" else a - b if e.op == "-" else a * b
+        if c is Name:
             for st in self.prog.stmts:
-                if st.__class__ is Assign and st.targets.__class__ is PBind and st.targets.name == e.name and st.value.__class__ is IntLit:
-                    return st.value.v
+                if st.__class__ is Assign and st.targets.__class__ is PBind and st.targets.name == e.name:
+                    return self.int_of(st.value, depth + 1)
         return None
 
     def of_fn(self, name):

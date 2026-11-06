@@ -25,6 +25,9 @@ CASES = [
  ("retry repeats a timeout", 'n = Atom[Int](0)\nfn slow() Result[Int, Error]:\n  _ = swap(n, _ + 1)\n  Err(Error(TIMED_OUT, "slow"))\n_ = retry(3, 1ms, slow)\nprintln(@n)\n', "3"),
 ]
 BAD = [
+ ("retry takes a Duration", 'r = retry(2, 5, fn (): Ok(1))\n', "`retry` can't take (Int, Int"),
+ ("with_timeout takes a Duration", 'r = with_timeout("x", fn (c): Ok(1))\n', "`with_timeout` can't take (String"),
+ ("sleep takes a Duration", 'sleep(3)\n', "`sleep` can't take (Int)"),
  ("race needs two functions", 'x = race(1, 2)\n', "`race` can't take"),
  ("accept has no such option", 'l = listen(0)?\nc = accept(l, nope: 1)\n', "`accept` has no option `nope`"),
 ]

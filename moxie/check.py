@@ -588,7 +588,7 @@ class Checker:
             return "Float"
         if n in ("String", "Bool", "Char", "Unit", "Decimal"):
             return n
-        if n in ("Io", "Listener", "Udp", "Child", "Terminal") and not t.groups and n not in self.tuples \
+        if n in self.RES_NAMED and not t.groups and n not in self.tuples \
                 and n not in self.enums and n not in self.aliases:
             return ("named", n)
         if n == "Secret" and n not in self.tuples and n not in self.enums and n not in self.aliases:
@@ -1185,6 +1185,9 @@ class Checker:
     # literals
     def e_IntLit(self, n, sc):
         return ("Float", None) if n.suffix == "f" else ("Int", n.v)
+
+    def e_DurLit(self, n, sc):
+        return ("named", "Duration") if "Duration" not in self.tuples and "Duration" not in self.aliases else None, None
 
     def e_FloatLit(self, n, sc):
         return "Float", None
@@ -2199,7 +2202,7 @@ class Checker:
     _sigs = {}                      # by dialect: GC[0] False (moxie) or True (moxie/gc)
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
-    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal"}
+    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal", "Duration"}        # built-in types that are exactly themselves
     OPTIONS = {"retry": {"when": None}, "par_map": {"limit": "Int"}, "par_traverse": {"limit": "Int"}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
                "run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
                "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
@@ -2322,7 +2325,9 @@ class Checker:
             if getattr(n.fn, "name", None) == "len" and any(t is not None and (t[0] == "tup" or t[0] == "named" and t[1] in self.tuples)
                                                            for t in ft if t.__class__ is tuple):
                 return ats, "Int"                 # `len` of a tuple counts its fields
-            if all(t is not None and not self.has_unsettled(t) for t in ft):
+            if all(t is not None and not self.has_unsettled(t) for t in ft) or (len(over) == 1 and any(
+                    t is not None and not self.has_unsettled(t) and pt is not None and t[0] != "fn" and (pt.__class__ is not tuple or pt[0] != "fn")
+                    and not tys.match(pt, self.base(t), {}) for pt, t in zip(over[0][1], ft))):
                 self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take ({', '.join(tshow(t) for t in ft)}); it takes "
                          + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]))
             return ats, None
