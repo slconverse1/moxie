@@ -255,6 +255,7 @@ class Checker:
         tys.UNFOLD = self.unfold
         tys.CALLER = self.type_call
         tys.IMPLEMENTS = self.implements
+        self.collect_prelude_types()
         for st in prog.stmts:
             self.collect(st)
         self.find_consumers(prog)
@@ -271,6 +272,20 @@ class Checker:
                 if (line, msg) not in seen:
                     self.diags.append(Diag(line, msg, "warning"))
         return self.diags
+
+    _prelude_types = {}              # by dialect: the tuples and enums the prelude declares in moxie (Output, Key, FileInfo, ...)
+
+    def collect_prelude_types(self):
+        """Make the prelude's own tuple and enum types known (a program's declaration of the same name replaces it), so
+        `run_command(...)?.stdout` is a String.  Only the types: their case names stay out of the program's name space."""
+        from .values import GC
+        if GC[0] not in Checker._prelude_types:
+            from .parser import parse_program
+            from . import mxprelude as M
+            prog = parse_program(M.SRC + (M.GC_SRC if GC[0] else ""), "<prelude>")
+            Checker._prelude_types[GC[0]] = [st for st in prog.stmts if st.__class__ in (TupleDecl, EnumDecl)]
+        for st in Checker._prelude_types[GC[0]]:
+            (self.tuples if st.__class__ is TupleDecl else self.enums)[st.name] = st
 
     def fold_binding(self, st):
         """`N = fib(10)`: a top-level binding whose value the compiler can work out is a constant (a size may use it, and a call that
@@ -2155,6 +2170,7 @@ class Checker:
             from . import sigs as S
             from .prelude import REG
             tmp, out = Checker(()), {}
+            tmp.collect_prelude_types()
             for st in parse_program(S.SRC + (S.SRC_GC if GC[0] else S.SRC_MOXIE), "<sigs>").stmts:
                 for fd in (st.clauses if st.__class__ is FnGroup else [st]):
                     keep = {tp.name for tp in fd.tparams or []}

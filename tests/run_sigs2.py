@@ -14,6 +14,7 @@ BAD = [
  ("connect takes a port number", 'c = connect("localhost", "80")\n', "`connect` can't take (String, String)"),
  ("read_key takes a Terminal", 'k = read_key(5)\n', "`read_key` can't take (Int)"),
  ("run_command has no such option", 'r = run_command("echo", bogus: 1)\n', "`run_command` has no option `bogus`"),
+ ("run_command gives Output fields", 'o = run_command("echo", List("hi"))?\nn: Int = o.stdout\n', "expected `Int`, found `String`"),
  ("run_command option type", 'r = run_command("echo", cwd: 5)\n', "option `cwd` of `run_command` expects `String`, found `Int`"),
 ]
 GOOD = [
