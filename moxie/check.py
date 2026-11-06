@@ -188,6 +188,7 @@ class Checker:
         self.exit_ctx = False
         self.fn_ret = None
         self.fn_tparams = ()
+        self.tp_vars = {}          # Var of a parameter typed exactly `T` -> its TParam, inside a generic function
         self.impls = {}            # type name -> {interface names}
         self.consumes = {}         # function name -> parameter positions it takes ownership of
         self.method_consumes = set()
@@ -332,7 +333,13 @@ class Checker:
         if v is None or not v.resource:
             return False
         ty = v.ty[1] if v.ty.__class__ is tuple and len(v.ty) == 2 and v.ty[0] == "named" else None
-        return m == "close" or (m in self.consumes and 0 in self.consumes[m]) or (ty is not None and (ty, m) in self.method_consumes)
+        if m == "close" or (m in self.consumes and 0 in self.consumes[m]):
+            return True
+        if ty is not None:
+            return (ty, m) in self.method_consumes
+        # the receiver's type is not known: it is handed over when every type that has a method `m` hands over `self`
+        owners = [k for k in self.methods if k[1] == m]
+        return bool(owners) and all(k in self.method_consumes for k in owners)
 
     def check_stored(self, n, sc, name, args):
         """A resource put into a tuple must be moved in: `Conn(io: move f)`."""
@@ -635,6 +642,7 @@ class Checker:
         rt, rc = self.ev(n.r, sc)
         a, b = self.base(lt), self.base(rt)
         op = n.op
+        self.check_op_bound(n, sc)
         if op in ("==", "!=", "<", ">", "<=", ">="):
             if a == ("secret",) or b == ("secret",):
                 self.err(n.line, "a Secret can't be compared with " + op + "; use secret_eq(a, b), or compare what reveal gives")
@@ -1374,6 +1382,7 @@ class Checker:
             if fd.tparams or fd.alias is not None:
                 if fd.tparams:
                     self.check_bounds(fd, n, args, ats)
+                    return self.generic_call(fd, n, args, ats, extra), None
                 return None, None
             r = self.check_call(fd, n, args, ats, extra)
             if fd.contracts and not extra and n.trailing is None:
@@ -1452,6 +1461,90 @@ class Checker:
                     if self.implements(t, iface) is False:
                         tyname = t if isinstance(t, str) else t[1]
                         self.err(n.line, f"`{tyname}` doesn't implement `{iface}`, which `{fd.name}` requires of `{tp.name}`")
+
+    # ------------------------------------------------------------ generics (Spec section 8: bounds)
+    def bare_tparam(self, fd, t):
+        """The TParam of `fd` that the type `t` names on its own (`T`, no arguments), else None."""
+        if t.__class__ is TName and len(t.path) == 1 and not t.groups:
+            for tp in fd.tparams or []:
+                if tp.name == t.path[0]:
+                    return tp
+        return None
+
+    OP_NEEDS = {"==": ({"Equatable", "Hashable"}, "Equatable"), "!=": ({"Equatable", "Hashable"}, "Equatable"),
+                "<": ({"Ordered"}, "Ordered"), ">": ({"Ordered"}, "Ordered"), "<=": ({"Ordered"}, "Ordered"),
+                ">=": ({"Ordered"}, "Ordered"), "+": ({"Addable", "Numeric"}, "Addable"),
+                "-": ({"Numeric"}, "Numeric"), "*": ({"Numeric"}, "Numeric"), "/": ({"Numeric"}, "Numeric"),
+                "%": ({"Numeric"}, "Numeric")}
+
+    def check_op_bound(self, n, sc):
+        """`a < b` on values of an unbounded (or wrongly bounded) type parameter is an error: the body may use only what the bound provides."""
+        need = self.OP_NEEDS.get(n.op)
+        if need is None or not self.tp_vars:
+            return
+        for side in (n.l, n.r):
+            if side.__class__ is not Name:
+                continue
+            v = sc.find(side.name)
+            tp = self.tp_vars.get(v) if v is not None else None
+            if tp is None or tp.where:
+                continue
+            names = [_tn(b) for b in tp.bounds or []]
+            if any(b not in VALUE_IFACES for b in names):
+                continue          # a user interface may embed what is needed; the checker cannot tell
+            if not set(names) & need[0]:
+                self.err(n.line, f"`{n.op}` on a `{tp.name}` needs a `{need[1]}` bound: write `{tp.name}: {need[1]}`")
+                return
+
+    def check_type_arity(self, t, line, depth=0):
+        """A declared generic type is written with as many type arguments as it has parameters: `Pair[Int]` for a two-parameter `Pair` is an error."""
+        if t is None or depth > 8:
+            return
+        c = t.__class__
+        if c is TStatic:
+            self.check_type_arity(t.inner, line, depth + 1)
+            return
+        if c is not TName:
+            if c is TTuple:
+                for _, ft in t.items:
+                    self.check_type_arity(ft, line, depth + 1)
+            return
+        for g in t.groups or []:
+            for x in g if isinstance(g, list) else [g]:
+                self.check_type_arity(x, line, depth + 1)
+        if len(t.path) != 1 or len(t.groups or []) != 1 or not t.groups[0]:
+            return
+        d = self.tuples.get(t.path[0]) or self.enums.get(t.path[0])
+        if d is None or not getattr(d, "tparams", None) or any(tp.holes for tp in d.tparams):
+            return
+        want, got = len(d.tparams), len(t.groups[0])
+        if want != got:
+            self.err(line, f"`{t.path[0]}` takes {want} type argument{'s' if want != 1 else ''}, but {got} given")
+
+    def generic_call(self, fd, n, args, ats, extra):
+        """The result type of a call to a generic function when it follows from the arguments: every argument for the same `T` has one type."""
+        if extra or any(getattr(a, "label", None) or getattr(a, "mod", None) for a in args):
+            return None
+        bound = {}
+        params = list(fd.params or [])
+        for p, a, (t, _c) in zip(params, args, ats):
+            tp = self.bare_tparam(fd, p.type)
+            if tp is None or t is None or t == ("secret",) and False:
+                continue
+            t = self.base(t)
+            if t.__class__ is tuple and t[0] != "named":
+                continue
+            if tp.name in bound:
+                u = bound[tp.name]
+                if u != t and not ({u, t} <= {"Int", "Float", "Decimal"}):
+                    self.err(n.line, f"`{fd.name}` needs one type for `{tp.name}`, but it is given `{tshow(u)}` and `{tshow(t)}`")
+                    return None
+            else:
+                bound[tp.name] = t
+        r = self.bare_tparam(fd, fd.ret)
+        if r is not None and r.name in bound and not (bound[r.name] in ("Int", "Float", "Decimal")):
+            return bound[r.name]
+        return None
 
     def check_tuple_args(self, td, args, ats, line):
         fields = {f.name: f for f in td.fields or []}
@@ -1536,7 +1629,8 @@ class Checker:
     def e_FnDecl(self, n, sc):
         later, self._later = self._later, False         # a later clause of a function takes the first clause's return type
         inner = Sc(sc)
-        saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved)
+        saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
+        self.tp_vars = {}
         self.fn_tparams = tuple(t.name for t in (n.tparams or []))
         self.loop_depth, self.exit_ctx, self.moved = 0, False, {}
         for tp in n.tparams or []:
@@ -1545,12 +1639,17 @@ class Checker:
             res = self.is_res_type(p.type)
             if p.name:
                 inner.vars[p.name] = Var(self.ty_of_type(p.type), res, 0)
+                tp = self.bare_tparam(n, p.type)
+                if tp is not None:
+                    self.tp_vars[inner.vars[p.name]] = tp
             if p.pat is not None:
                 self.bind_pat(p.pat, inner)
             self.ev(p.default, inner)
+            self.check_type_arity(p.type, n.line)
         for nm in n.locals or []:
             inner.vars[nm] = Var(None, False, 0)
         self.fn_ret = self.ty_of_type(n.ret) if n.ret is not None else None
+        self.check_type_arity(n.ret, n.line)
         if n.ret is None and not later and n.body is not None and n.alias is None and id(n) not in self.foreign_ids:
             self.err(n.line, f"function '{n.name}' has no return type: write it after the parameters, and write Unit if it returns nothing")
         if not later and n.body is not None and n.alias is None and id(n) not in self.foreign_ids:
@@ -1566,7 +1665,7 @@ class Checker:
             self.check_tail(n.body, inner)
             if "tailrec" in (n.flags or ()):
                 self.check_tailrec(n)
-        self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved = saved
+        self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
         return None, None
 
     def check_tailrec(self, n):

@@ -207,9 +207,46 @@ def run_doctests(src, items, make_interp):
 
 # ---------------------------------------------------------------- rendering
 
+# What a [`name`] link can point at while a page is being written: set by link_context for one page at a time.
+_CTX = {"local": set(), "qualified": {}, "fmt": "html", "kinds": {}}
+
+
+def link_context(local, qualified, fmt, kinds=None):
+    """local: names on this page; qualified: {"pkg.Name": ("pkg", "Name")} for the other pages of the same run."""
+    _CTX.update(local=set(local), qualified=dict(qualified), fmt=fmt, kinds=dict(kinds or {}))
+
+
+def _md_anchor(kind, name):
+    return re.sub(r"[^a-z0-9_ -]", "", f"{kind} {name}".lower()).replace(" ", "-")
+
+
+def _href(target):
+    """The link for [`target`], or None when it points at nothing known."""
+    if target in _CTX["local"]:
+        return "#" + (_md_anchor(_CTX["kinds"].get(target, "fn"), target) if _CTX["fmt"] == "md" else target)
+    q = _CTX["qualified"].get(target)
+    if q is not None:
+        unit, name = q
+        if not unit:                      # one page: the link stays on it
+            return "#" + (_md_anchor(_CTX["kinds"].get(target, "fn"), name) if _CTX["fmt"] == "md" else name)
+        if _CTX["fmt"] == "md":
+            return f"{unit}.md#" + _md_anchor(_CTX["kinds"].get(target, "fn"), name)
+        return f"{unit}.html#{name}"
+    return None
+
+
 def _inline(s):
     s = html.escape(s)
-    return re.sub(r"`([^`]+)`", r"<code>\1</code>", s)
+
+    def link(m):
+        h = _href(html.unescape(m.group(1)))
+        return f'<a href="{html.escape(h)}"><code>{m.group(1)}</code></a>' if h else f"<code>{m.group(1)}</code>"
+    s = re.sub(r"\[`([^`]+)`\]", link, s)
+    return re.sub(r"(?<![>\"])`([^`]+)`", r"<code>\1</code>", s)
+
+
+def _md_links(line):
+    return re.sub(r"\[`([^`]+)`\](?!\()", lambda m: f"[`{m.group(1)}`]({_href(m.group(1))})" if _href(m.group(1)) else m.group(0), line)
 
 
 def effect_label(it):
@@ -334,10 +371,10 @@ def render_md(title, module_doc, items, results):
         res.setdefault(id(it), []).append((e, x, ok, msg))
     o = [f"# {title}", ""]
     if module_doc:
-        o += module_doc + [""]
+        o += [_md_links(l) for l in module_doc] + [""]
     for it in items:
         o += [f"### {it.kind} `{it.name}`", "", "```", it.header, "```", ""]
-        t = doc_text_lines(it)
+        t = [_md_links(l) for l in doc_text_lines(it)]
         if any(l.strip() for l in t):
             o += t + [""]
         if it.body:
@@ -530,6 +567,8 @@ def doc_main(argv, make_interp, out, err):
         for it, e, x, ok, msg in bad:
             err.write(f"{where}: example failed in {it.name}: > {e}  (expected {x!r}) {msg}\n")
         title = u.name if len(built) > 1 or len(u.files) > 1 else os.path.basename(where)
+        link_context([it.name for it in shown], {q: (q.split(".", 1)[0] if len(built) > 1 else "", q.split(".", 1)[1]) for q in qualified}, fmt,
+                     {**{it.name: it.kind for it in shown}, **{f"{v.name}.{it.name}": it.kind for v, _m, sh, _r in built for it in sh}})
         pages.append((u, render(title, module_doc, shown, results)))
         counts.append((u, len(shown)))
         total_bad += len(bad)

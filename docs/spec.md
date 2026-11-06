@@ -295,7 +295,7 @@ How S-space and T-space behave:
 **9a. Generics**
 - **What a generic is.** A generic declaration takes parameters in square brackets, which the compiler fills in at each use. Functions, `impl` blocks, declared tuples, enums, aliases, unions, and interfaces can all be generic.
 - **Two kinds of parameter.** A **type parameter** (`T`, `A`, `S`) stands for a type. A **size parameter** (`N`, `R`, `C`) stands for a number that sizes a collection, recognized by appearing in a size position such as `Array[T][N]`. Generic parameters exist only at compile time.
-- **Bounds.** A type parameter may be bounded by an interface: `[T, S: Speaker[T]]`. A type satisfies a bound only through a visible `impl` (section 12). The body may use only what the bound provides, plus what every type allows: binding, passing, returning, and storing the value. A parameter with no bound is plain data. `==` and `<` on a `T` need `Equatable` and `Ordered` bounds. A bound is checked when the function is defined, so a call fails with "`Dog` doesn't implement `Speaker[Int]`" at the call site. A parameter may have several bounds joined with `+`: `[T: Equatable + Show]`. A combined requirement can also be named by an interface that embeds others (section 12).
+- **Bounds.** A type parameter may be bounded by an interface: `[T, S: Speaker[T]]`. A type satisfies a bound only through a visible `impl` (section 12). The body may use only what the bound provides, plus what every type allows: binding, passing, returning, and storing the value. A parameter with no bound is plain data. `==` and `<` on a `T` need `Equatable` and `Ordered` bounds, and `+` and `-` need `Addable` and `Numeric`; the compiler reports a missing bound where the operator is used ("`<` on a `T` needs a `Ordered` bound"). Every argument for the same `T` has one type, so `pick(1, "x")` is an error and the result of `first("a", "b")` is a `String`. A generic type is written with as many type arguments as it has parameters (`Pair[Int]` for a two-parameter `Pair` is an error). A bound is checked when the function is defined, so a call fails with "`Dog` doesn't implement `Speaker[Int]`" at the call site. A parameter may have several bounds joined with `+`: `[T: Equatable + Show]`. A combined requirement can also be named by an interface that embeds others (section 12).
 - **Size constraints**. A `where` clause inside the brackets constrains size parameters: `fn first_of[T, N where N > 0](a: Array[T][N]) T:`. The condition uses comparisons, `+ - * /`, `and`, `or`, and `not`, over size parameters and constants, and is checked at each instantiation (a compile error at the call, such as "`first_of` requires `N > 0`, but `N` is 0 here"). It is part of the signature in the package summary. A subtraction in a result size (`Array[T][N - 1]`) is allowed only when a constraint proves it can't go negative.
 - **Inference.** The compiler works out the parameters from the arguments of each call, in the order written. A literal given to a function parameter takes its types from what is already fixed.
 - **Explicit parameters.** When nothing in the arguments fixes a parameter, write it: `read[Point](text)`, `cast[Int8](x)`, `Atom[Int](0)`, `Pair[Int, Int](1, 2)`. Write all of the parameters, using `_` for any that should be inferred: `read[_, Int](text)`.
@@ -695,13 +695,13 @@ Everything else in this Spec is settled, including every call that earlier draft
 2. **Tooling designs (section 22):** the doctest example syntax, and the Markdown subset and page layout for `moxie doc`, are sketches.
 3. **Contracts (section 9b):** nothing is open in the design. The compile error for a failing constant `requires` is built in the reference interpreter.
 3a. **Binary patterns (section 8)** are built in the reference interpreter: matching, building bytes from fields, and the length-coverage check.
-3b. **Effect inference (section 14):** settled, apart from the "resource" effect, which the checker does not track yet.
-4. **Memoization by a bottom-up reduce** (section 14) is a sketch.
-5. **Key size warning:** the threshold above which the compiler warns about a large Dict key (section 6) is not set.
+3b. **Effect inference (section 14):** settled. The "resource" effect is tracked by the checker (creating, closing, arming, and handing over channels, timers, futures, cancel tokens, and atoms).
+4. **Memoization** (section 14) is a recipe in the Guide (an `Atom` holding a `Dict`), tested in the reference interpreter; there is no prelude function for it.
+5. **Key size warning:** settled at 64 bytes, adjustable with `key_warning` under `[program]` in `Moxie.toml` (section 6).
 6. **Currying:** `curry` for any arity is settled. The checker's rules for `curry` and `uncurry[n]` are built as shape rules (parameter counts, the excluded parameter kinds, the number of arguments in each call of the result); full function types in the checker are not.
 7. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
 8. **Locale:** settled (section 5 and 19e). Translation, plural rules, collation, and calendars other than the Gregorian remain out of scope.
-9. **Pending:** the compiler. The Mixer's Guide and a reference interpreter exist, but the interpreter does not yet fully check generics, size parameters, memory spaces and pool sizing, the SQL schema, or package manifests.
+9. **Pending:** the compiler. The Mixer's Guide and a reference interpreter exist, but the interpreter checks generics only in part (bounds at calls and on operators, one type per parameter, type-argument counts; not bounds on method calls, nested generic signatures, or higher-kinded parameters), size parameters, memory spaces and pool sizing, the SQL schema, or package manifests.
 
 **Decisions recorded on 2026-11-01**
 - String slices count bytes, and a cut inside a multi-byte character aborts.
@@ -770,3 +770,13 @@ Everything else in this Spec is settled, including every call that earlier draft
 - Effect inference follows a call-site rule for function parameters (section 14).
 - `trace(msg)` is added: a debug message to the error stream, exempt from effects and removed in release builds.
 - A function may declare its effects (`pure`, `prints`, `parks`, `impure`); a declaration must agree with the inferred effects both ways, and on a bodyless interface member or forward declaration it is an upper bound for the impls (section 14).
+
+**Decisions recorded on 2026-11-05**
+- `Secret[T]` wraps a value so that showing or printing it gives `Secret(***)`; `secret`, `reveal`, and `secret_eq` are the way in and out, and comparing with `==` is an error.
+- `graphemes(s)` streams the user-perceived characters of a string, and `grapheme_count(s)` counts them; `len` still counts bytes.
+- A Dict key larger than 64 bytes draws a warning; `key_warning` under `[program]` in `Moxie.toml` changes the limit.
+- Memoization is a documented recipe, not a prelude function.
+- `Locale` carries separators, date order, 24-hour choice, and day and month names; `format_time` and `parse_time` read the one in scope or one passed as a third argument; `%x` and `%X` write the locale's date and time.
+- The checker covers generics in part: operator bounds in the body, one type per parameter in a call, and type-argument counts.
+- `run` moves its resource arguments; a second fiber needs `clone`.
+- `moxie doc` turns `[`name`]` into a link to the item, within a page and across the pages of one run.

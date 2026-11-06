@@ -11,5 +11,5 @@ All items below are resolved in the Spec and Guide (decisions by Steve, 2026-10-
 
 Remaining interpreter limits (not language changes)
 * sqlite has no boolean type, so BOOLEAN columns come back as `Int`; NULL becomes `()`.
-* Static checks are conservative: generics and unions are unchecked; implicit Int to Double for non-literals is not flagged.
+* Static checks are conservative: generics are checked only in part (see the Spec) and unions are unchecked; implicit Int to Double for non-literals is not flagged.
 * Fragments not run as programs: Guide #103, #132 (deliberate error), #144 (needs a database), #140 (two files).

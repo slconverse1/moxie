@@ -31,6 +31,8 @@ D = make({
     "app.mxi": 'import shapes\nimport util\nprintln(shapes.area(shapes.Square(side: 4)))\nprintln(util.greeting())\n',
     "bad.mxi": 'import util\nprintln(util.retry_limit)\n',
     "bad2.mxi": 'import util (retry_limit)\nprintln(retry_limit)\n',
+    "alias.mxi": 'import util as u\nprintln(u.retry_limit)\n',
+    "rebound.mxi": 'import util\nx = util\nprintln(x.retry_limit)\n',
     "main.mxi": 'println("main")\n',
     "kinds.mxi": 'internal tuple Secret:\n  n: Int\ntuple Local:\n  n: Int\nexport tuple Pub:\n  n: Int\n',
     "usetypes.mxi": 'import kinds\nfn f(s: kinds.Secret) Int:\n  s.n\nfn g(l: kinds.Local) Int:\n  l.n\nfn h(p: kinds.Pub) Int:\n  p.n\n',
@@ -45,6 +47,8 @@ chk("files of a package share names in manifest order", D, ["run", "app.mxi"], 0
 chk("a package folder with one file still loads", D, ["run", "uselocal.mxi"], 0, "1")
 chk("internal is hidden from importers at check time", D, ["check", "bad.mxi"], 1, "'retry_limit' is internal to package util")
 chk("and in a name list", D, ["check", "bad2.mxi"], 1, "is internal to package util")
+chk("through an alias", D, ["check", "alias.mxi"], 1, "'retry_limit' is internal to package util")
+chk("a rebound package is caught at run time", D, ["run", "rebound.mxi"], 1, "is internal to package util")
 chk("and at run time", D, ["run", "bad.mxi", "--no-check"], 1, "is internal to package util")
 chk("a listed file that is missing is an error", D, ["run", "usebroken.mxi"], 1, "gone.mxi")
 
@@ -57,6 +61,16 @@ V = make({"v.mxi": '/// How long to wait.\n///\n/// > wait\n/// 5\nexport wait: 
 chk("doc lists an exported binding, with its examples", V, ["doc", "v.mxi", "--check"], 0, "1 examples ok, 0 failed")
 chk("the binding appears as a value", V, ["doc", "v.mxi"], 0, "value", "wait: Int = 5", absent=("scratch", "knob"))
 chk("--private adds internal bindings but not plain ones without a comment", V, ["doc", "v.mxi", "--private"], 0, "knob", absent=("scratch",))
+chk("doc links a [`name`] to its item (html)", D, ["doc", "shapes", "-o", "out_html"], 0, "wrote")
+rc, out = sh(D, "doc", "shapes", "--format", "md", "-o", "out_md")
+page = open(os.path.join(D, "out_md", "index.md")).read()
+ok = "[`shapes.Square`](#tuple-square)" in page
+print(("ok    " if ok else "FAIL  ") + "doc links a qualified name in Markdown" + ("" if ok else f"  {page[:300]!r}"))
+if not ok: fails.append("md links")
+page = open(os.path.join(D, "out_html", "index.html")).read()
+ok = '<a href="#Square"><code>shapes.Square</code></a>' in page
+print(("ok    " if ok else "FAIL  ") + "doc links a qualified name in HTML" + ("" if ok else f"  {page[-300:]!r}"))
+if not ok: fails.append("html links")
 chk("doc for a package covers all its files", D, ["doc", "shapes"], 0, "Square", "area", "Shapes with areas")
 chk("doc for a package runs its examples across files", D, ["doc", "shapes", "--check"], 0, "1 examples ok, 0 failed, 0 broken links")
 chk("doc --all adds the imported packages", D, ["doc", "app.mxi", "--all"], 0, "shapes", "util", "greeting", "Square")

@@ -654,3 +654,7 @@ A `Dict[K, V]` or `Set[T]` written in the program whose key type has a fixed `la
 ## Memoization (tests/run_memo.py)
 
 No prelude function: the Guide (chapter 14) shows the recipe, an `Atom` holding a `Dict` that a function consults before computing, and `run_memo.py` keeps it working.
+
+## Generics in the checker (check.py: check_op_bound, generic_call, check_type_arity)
+
+Inside a generic function, a parameter typed exactly `T` is recorded in `tp_vars`; an operator on it needs a matching prelude bound (`OP_NEEDS`), unless the parameter has a `where` clause or a user interface bound (which may embed what is needed). A call binds each `T` from the arguments whose parameter is exactly `T`: two different types are an error (Int, Float, and Decimal may mix), and a result typed `T` takes the bound type when it is not numeric. `check_type_arity` compares the number of type arguments with the parameters of a declared tuple or enum (types with holes are skipped). Not yet covered: bounds on method calls, nested signatures such as `List[T]`, higher-kinded parameters.
