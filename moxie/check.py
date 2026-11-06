@@ -6,6 +6,7 @@ Anything the checker cannot type is "unknown" and never produces an error.
 """
 import os
 from .ast import *   # noqa
+from . import tys
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
 RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Udp", "Child", "Terminal"}
@@ -153,6 +154,10 @@ class Sc:
 
 
 def tshow(t):
+    return tys.show(t)
+
+
+def _old_tshow(t):
     if t is None:
         return "?"
     if isinstance(t, str):
@@ -166,6 +171,14 @@ def tshow(t):
     if t[0] == "secret":
         return "Secret"
     return "?"
+
+
+def extra_bad(args):
+    return any(getattr(a, "label", None) or getattr(a, "mod", None) for a in args)
+
+
+def subst_t(t, binds):
+    return tys.subst(t, binds)
 
 
 def fields_of(n):
@@ -432,19 +445,33 @@ class Checker:
             return a + b if e.op == "+" else a - b if e.op == "-" else a * b
         return None
 
-    def ty_of_type(self, t, depth=0):
+    BUILTIN_GENERICS = {"List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1}
+
+    def ty_of_type(self, t, depth=0, keep=None, top=True):
+        """The checker's type for a written type.  `keep` names type parameters to return as ("param", n) (a callee's own);
+        the enclosing function's parameters show only inside an application, so a bare `T` stays unknown."""
         if t is None or depth > 8:
             return None
         c = t.__class__
         if c is TUnit:
             return "Unit"
         if c is TStatic:
-            return self.ty_of_type(t.inner, depth + 1)
+            return self.ty_of_type(t.inner, depth + 1, keep, top)
+        if c is TFn:
+            ps = tuple(self.ty_of_type(p, depth + 1, keep, False) for p in (t.params or []))
+            return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
+        if c is TTuple:
+            return ("tup", tuple(self.ty_of_type(ft, depth + 1, keep, False) for _, ft in t.items))
         if c is not TName or len(t.path) != 1:
             return None
         n = t.path[0]
+        if keep and n in keep and not t.groups:
+            return ("param", n)
         if n in self.fn_tparams:
-            return None
+            return None if top else (None if t.groups else ("param", n))
+        app = self.app_type(t, n, depth, keep)
+        if app is not None:
+            return app
         if n in INTS:
             g = t.groups
             if g and g[0] and n != "BigInt":
@@ -473,6 +500,36 @@ class Checker:
             return ("named", n)
         return None
 
+    def app_type(self, t, n, depth, keep):
+        """("app", head, args) for `Box[Int]`, `List[T]`, a generic alias, or None when `t` is not an application the checker models."""
+        g = t.groups or []
+        if not g or not g[0]:
+            return None
+        first = g[0] if isinstance(g[0], list) else [g[0]]
+        if n in self.aliases and getattr(self.aliases[n], "tparams", None):
+            a = self.aliases[n]
+            if a.kind != "alias" or any(tp.holes for tp in a.tparams) or len(a.tparams) != len(first):
+                return None
+            binds = {tp.name: self.ty_of_type(x, depth + 1, keep, False) for tp, x in zip(a.tparams, first)}
+            body = self.ty_of_type(a.type, depth + 1, {tp.name for tp in a.tparams}, False)
+            return subst_t(body, binds)
+        d = self.tuples.get(n) or self.enums.get(n)
+        if d is not None:
+            if not getattr(d, "tparams", None) or any(tp.holes for tp in d.tparams) or len(d.tparams) != len(first):
+                return None
+        elif n in self.BUILTIN_GENERICS and n not in self.aliases:
+            if self.BUILTIN_GENERICS[n] != len(first):
+                return None
+        else:
+            return None
+        args = tuple(self.ty_of_type(x, depth + 1, keep, False) for x in first)
+        if n == "Array" and len(g) > 1 and g[1]:
+            x = g[1][0] if isinstance(g[1], list) else g[1]
+            k = self.const_int(x.expr) if x.__class__ is TExpr else None
+            if k is not None:
+                return ("app", n, args, k)
+        return ("app", n, args)
+
     def compat(self, exp, act, const, line, what="value"):
         """Report a mismatch between an expected and an actual type."""
         if exp is None or act is None or exp == act:
@@ -495,6 +552,9 @@ class Checker:
             return
         if exp.__class__ is tuple and act.__class__ is tuple and exp[0] == "coll" and act[0] == "coll":
             return
+        if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param"):
+            if tys.compatible(exp, act):
+                return
         self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`")
 
     # ------------------------------------------------------------ patterns
@@ -694,6 +754,13 @@ class Checker:
             for f in self.tuples[t[1]].fields or []:
                 if f.name == n.name:
                     return self.ty_of_type(f.type), None
+        if t.__class__ is tuple and t[0] == "app" and t[1] in self.tuples:
+            td = self.tuples[t[1]]
+            if len(td.tparams or []) == len(t[2]):
+                for f in td.fields or []:
+                    if f.name == n.name:
+                        ft = self.ty_of_type(f.type, 0, {tp.name for tp in td.tparams})
+                        return tys.subst(ft, {tp.name: a for tp, a in zip(td.tparams, t[2])}), None
         return None, None
 
     def e_Lambda(self, n, sc):
@@ -1371,13 +1438,38 @@ class Checker:
         self.ev(fn, sc)
         return None, None
 
+    def collection_ctor(self, name, args, ats):
+        """`List(1, 2)` is `List[Int]`: the elements share one type; an unknown element leaves it unknown."""
+        if extra_bad(args):
+            return None
+        el = None
+        for (t, _c) in ats:
+            t = self.base(t)
+            if t is None:
+                return ("app", name, (None,))
+            el = tys.join(el, t)
+            if el == "conflict":
+                return ("app", name, (None,))
+        if name == "Array":
+            return ("app", name, (el,), len(ats))
+        return ("app", name, (el,))
+
     def call_known(self, n, name, args, ats, extra):
+        if name in ("Ok", "Err") and not extra and len(args) == 1 and name not in self.fns and name not in self.tuples \
+                and name not in self.cases and not extra_bad(args):
+            t = self.base(ats[0][0])
+            return ("app", "Result", (t, None) if name == "Ok" else (None, t)), None
+        if name in ("List", "Array", "Set") and not extra and name not in self.fns and name not in self.tuples \
+                and name not in self.aliases and args and n.trailing is None:
+            return self.collection_ctor(name, args, ats), None
         if name == "secret" and name not in self.fns:
             return ("secret",), None
         if name in self.tuples:
             td = self.tuples[name]
             if not td.tparams:
                 self.check_tuple_args(td, args, ats, n.line)
+            elif not any(tp.holes for tp in td.tparams):
+                return self.generic_tuple(td, n, args, ats), None
             return ("named", name), None
         if name in self.fns and len(self.fns[name]) == 1:
             fd = self.fns[name][0]
@@ -1566,7 +1658,65 @@ class Checker:
         r = self.bare_tparam(fd, fd.ret)
         if r is not None and r.name in bound and not (bound[r.name] in ("Int", "Float", "Decimal")):
             return bound[r.name]
-        return None
+        return self.structured_call(fd, n, args, ats)
+
+    def structured_call(self, fd, n, args, ats):
+        """Unify parameter types that mention a type parameter inside an application (`List[T]`, `Box[T]`, `(T) -> U`) with the
+        arguments; report a clash, and give the return type with the parameters filled in."""
+        keep = {tp.name for tp in fd.tparams or []}
+        params = list(fd.params or [])
+        if len(args) > len(params) or any(p.variadic for p in params):
+            return None
+        binds = {}
+        for p, a, (t, _c) in zip(params, args, ats):
+            pt = self.ty_of_type(p.type, 0, keep)
+            if pt.__class__ is not tuple or t is None:
+                continue
+            if pt[0] == "param":
+                bt = self.base(t)
+                if bt.__class__ is not tuple or bt[0] in ("app", "fn", "tup"):
+                    j = tys.join(binds.get(pt[1]), bt)
+                    if j != "conflict":
+                        binds[pt[1]] = j
+                continue
+            clash = tys.unify(pt, self.base(t), binds)
+            if clash:
+                self.err(n.line, f"`{fd.name}` needs one type for its type parameters, but `{p.name}` gets `{tshow(t)}` where `{tshow(clash[0])}` was fixed by another argument"
+                         if clash[0] is not None else f"mismatched types in call to `{fd.name}`")
+                return None
+            if not tys.compatible(tys.subst(pt, binds), t) and not (tys.params_in(pt) - set(binds)):
+                self.err(n.line, f"mismatched types: expected `{tshow(tys.subst(pt, binds))}`, found `{tshow(t)}`")
+                return None
+        ret = self.ty_of_type(fd.ret, 0, keep) if fd.ret is not None else None
+        if ret is None:
+            return None
+        if ret.__class__ is tuple and ret[0] == "param":
+            return binds.get(ret[1]) if binds.get(ret[1]) not in ("Int", "Float", "Decimal") else None
+        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup"):
+            return tys.subst(ret, binds)
+        return ret if not tys.params_in(ret) else None
+
+    def generic_tuple(self, td, n, args, ats):
+        """`Box(v: 1)`: unify the field types with the arguments, giving `Box[Int]`; a field that clashes is an error."""
+        keep = {tp.name for tp in td.tparams}
+        fields = list(td.fields or [])
+        binds, i = {}, 0
+        for a, (t, c) in zip(args, ats):
+            if getattr(a, "mod", None) == "spread":
+                return None
+            if a.label is not None:
+                f = next((f for f in fields if f.name == a.label), None)
+            else:
+                f = fields[i] if i < len(fields) else None
+                i += 1
+            if f is None:
+                continue
+            ft = self.ty_of_type(f.type, 0, keep)
+            clash = tys.unify(ft, self.base(t), binds)
+            if clash:
+                self.err(n.line, f"mismatched types in `{td.name}(...)`: field `{f.name}` expects `{tshow(clash[0])}`, found `{tshow(clash[1])}`")
+                return None
+        return ("app", td.name, tuple(binds.get(tp.name) for tp in td.tparams))
 
     def check_tuple_args(self, td, args, ats, line):
         fields = {f.name: f for f in td.fields or []}
@@ -1660,7 +1810,11 @@ class Checker:
         for p in n.params or []:
             res = self.is_res_type(p.type)
             if p.name:
-                inner.vars[p.name] = Var(self.ty_of_type(p.type), res, 0)
+                pty = self.ty_of_type(p.type)
+                if p.variadic:
+                    from .values import GC
+                    pty = ("app", "List" if GC[0] else "Array", (pty,))       # inside the body, `...T` is an Array of T (a List in moxie/gc)
+                inner.vars[p.name] = Var(pty, res, 0)
                 tp = self.bare_tparam(n, p.type)
                 if tp is not None:
                     self.tp_vars[inner.vars[p.name]] = tp
@@ -1748,6 +1902,8 @@ class Checker:
 
     def tails(self, e):
         c = e.__class__
+        if c is ExprStmt:
+            return self.tails(e.e)
         if c is Block:
             s = e.stmts or []
             if s and s[-1].__class__ is ExprStmt:
@@ -1758,13 +1914,23 @@ class Checker:
             for _, b in e.branches:
                 out += self.tails(b)
             return out + self.tails(e.else_)
-        if c in (IntLit, FloatLit, StrLit, BoolLit, CharLit):
+        if c in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e):
             return [e]
         return []
 
+    def simple_tail(self, e):
+        """A name, or a call whose arguments are literals and names: checked again for the function's result type without side effects."""
+        if e.__class__ is Name:
+            return True
+        if e.__class__ is not Call or e.fn.__class__ is not Name or e.trailing is not None:
+            return False
+        return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
+                   (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
+                   for a in e.args or [])
+
     def quiet(self, e, sc):
         n = len(self.diags)
-        r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) else (None, None)
+        r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e) else (None, None)
         del self.diags[n:]
         return r
 

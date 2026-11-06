@@ -83,3 +83,7 @@ Nothing in the current libraries needs it. `fp.trans` works with lambdas and cla
 - Is "types are substitution only" a property worth keeping as a headline, like "no subtyping"?
 - If match types are added, should size arithmetic (`N - 1`) fold into them or stay a separate sublanguage?
 - Should tuple joining stay forbidden even with match types, so variadic generics remain out?
+
+## Status (2026-11-05): step 1 done
+
+The checker now has a real type representation for applications, sizes, tuples, and parameters (`moxie/tys.py`), which fixes the three known false negatives. Still open from the plan: unifying function types and inferring lambda arguments, signatures for the prelude builtins (they are unknown today), checking a generic body per instantiation, and anything at the type level that matches or recurses.
