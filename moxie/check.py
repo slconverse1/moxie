@@ -2140,21 +2140,22 @@ class Checker:
 
     def load_sigs(self):
         """name -> [(type-parameter names, parameter types, result type)] from sigs.SRC, read once for all checkers."""
-        if Checker._sigs is None:
+        from .values import GC
+        if Checker._sigs.get(GC[0]) is None:
             from .parser import parse_program
             from . import sigs as S
             from .prelude import REG
             tmp, out = Checker(()), {}
-            for st in parse_program(S.SRC, "<sigs>").stmts:
+            for st in parse_program(S.SRC + (S.SRC_GC if GC[0] else S.SRC_MOXIE), "<sigs>").stmts:
                 for fd in (st.clauses if st.__class__ is FnGroup else [st]):
                     keep = {tp.name for tp in fd.tparams or []}
                     out.setdefault(fd.name, []).append(
                         (keep, [tmp.ty_of_type(p.type, 0, keep) for p in fd.params], tmp.ty_of_type(fd.ret, 0, keep),
                          REG[fd.name][1] if fd.name in REG else "first"))
-            Checker._sigs = out
-        return Checker._sigs
+            Checker._sigs[GC[0]] = out
+        return Checker._sigs[GC[0]]
 
-    _sigs = None
+    _sigs = {}                      # by dialect: GC[0] False (moxie) or True (moxie/gc)
 
     def sig_overloads(self, fn, args, sc, extra, ufcs=False):
         """The prelude signatures for a call of a builtin by its plain name (or as a method of a receiver of known type), or None."""
