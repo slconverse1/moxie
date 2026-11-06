@@ -1,0 +1,31 @@
+//! Reader: a computation that reads a shared environment `R`.
+
+/// A computation that, given an environment `R`, produces an `A`.
+export tuple Reader[R, A]:
+  run: (R) -> A
+
+impl[R] Monad[Reader[R, _]]:
+  fn map[A, B](self: Reader[R, A], f: (A) -> B) Reader[R, B]:
+    Reader(run: (r): f(self.run(r)))
+  static fn pure[A](a: A) Reader[R, A]:
+    Reader(run: (r): a)
+  fn ap[A, B](self: Reader[R, (A) -> B], x: Reader[R, A]) Reader[R, B]:
+    self.flat_map((g): x.map(g))
+  fn flat_map[A, B](self: Reader[R, A], f: (A) -> Reader[R, B]) Reader[R, B]:
+    Reader(run: (r): f(self.run(r)).run(r))
+
+/// The environment itself.
+export fn ask[R]() Reader[R, R]:
+  Reader(run: (r: R): r)
+
+/// A function of the environment.
+export fn asks[R, A](f: (R) -> A) Reader[R, A]:
+  Reader(run: (r: R): f(r))
+
+/// Run `m` with the environment changed by `f`.
+export fn local[R, A](f: (R) -> R, m: Reader[R, A]) Reader[R, A]:
+  Reader(run: (r: R): m.run(f(r)))
+
+/// Run a Reader in an environment.
+export fn run_reader[R, A](m: Reader[R, A], r: R) A:
+  m.run(r)

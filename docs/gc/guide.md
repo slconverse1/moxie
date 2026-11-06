@@ -1394,7 +1394,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 - Superclasses are embedded interfaces; constraints are bounds like `[T: Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
-- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and monad transformers.
+- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and a generic `MonadTrans` class (the transformers themselves are the `fp.trans` library).
 
 **Mistakes:** an `impl` of someone else's interface for someone else's type, calling `empty()` with no type to say which one, combining two `any Monoid` values (`Self` in a parameter), comparing `any` values with `==`, and a bound written twice on one parameter (embed the interfaces instead).
 
@@ -3119,6 +3119,79 @@ println("${price(100, using)} ${price(100, 5)}")
 
 Output: `120 105`. A **Writer** is a function that returns the value together with the log, `(Int, List[String])`, and the caller combines the logs with `+`.
 
+**More monads: List, Reader, Writer, Cont, and Free** **[gc]**
+
+`List[_]` is a monad, so `flat_map` returns a list, `List.pure(x)` is `List(x)`, and a `for:` block over lists gives the pairs in order:
+
+```
+r = for:
+  a in List(1, 2)
+  b in List(10, 20)
+  yield a + b
+println(r)
+```
+
+Output: `List(11, 21, 12, 22)`. Four packages ship with moxie/gc, each one `import` away (they need closures with one type per signature, so no-GC moxie does not have them). `fp.reader` is a **Reader** monad, `fp.writer` is a **Writer** whose log is a `List`, `fp.cont` is a **continuation** monad with `call_cc`, and `fp.free` is the **free monad** over any functor:
+
+```
+import fp.reader
+import fp.writer
+import fp.cont
+
+greet = reader.asks((n: String): "hi ${n}").flat_map((g): reader.asks((n: String): "${g}!"))
+println(reader.run_reader(greet, "bo"))
+log = writer.tell("start").flat_map((u): writer.tell("end")).map((u): 7)
+println(writer.run_writer(log))
+safe_div = (a: Int, b: Int): cont.call_cc((leave): if b == 0: leave(-1) else: cont.Cont.pure(a / b))
+println("${cont.eval_cont(safe_div(10, 2))} ${cont.eval_cont(safe_div(1, 0))}")
+```
+
+Output: `hi bo!`, then `(7, List("start", "end"))`, then `5 -1`. `call_cc` hands its function an escape: calling `leave` abandons the rest of that function and continues from where `call_cc` was. A free monad turns a program into data that you interpret later, as many ways as you like. You write the functor for your instruction set and `fp.free` does the rest:
+
+```
+import fp.free
+
+enum Cmd[Next]:
+  Say(String, Next)
+  Ask((String) -> Next)
+
+impl Functor[Cmd]:
+  fn map[A, B](self: Cmd[A], f: (A) -> B) Cmd[B]:
+    when self:
+      Say(s, n) -> Say(s, f(n))
+      Ask(k) -> Ask((x): f(k(x)))
+
+say = (s: String): free.lift_f(Say(s, ()))
+ask = free.lift_f(Ask((x): x))
+prog = say("name?").flat_map((u): ask.flat_map((n): say("hello ${n}")))
+step = (c: Cmd[List[String]]): when c:
+  Say(s, rest) -> List(s) + rest
+  Ask(k) -> k("sam")
+println(free.fold_free(prog, (u): List(), step))
+```
+
+Output: `List("name?", "hello sam")`. `fold_free(program, on_done, step)` calls `on_done` with the final value and `step` once per instruction, after the instruction's continuation has been interpreted; a second `step` that counts instructions runs the same `prog` unchanged.
+
+**Transformers and the mtl classes** **[gc]**
+
+A **transformer** adds one capability to any monad underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs instead of which stack provides it: `MonadState[S]` (`get`, `put`, `modify`, `gets`), `MonadReader[R]` (`ask`, `asks`, `local`), `MonadWriter[W]` (`tell`), and `MonadError[E]` (`throw_error`, `catch_error`). You write the program once, with the class members called on `M`, and pick the stack where you call it:
+
+```
+import fp.trans
+
+fn tick[M[_]: Monad + MonadState[Int] + MonadError[String]](limit: Int) M[Int]:
+  M.get().flat_map((n): if n >= limit: M.throw_error("too big") else: M.put(n + 1)).flat_map((u): M.get())
+
+fn state_then_error(s: Int) Result[(Int, Int), String]:
+  trans.run_identity(trans.run_except_t(trans.run_state_t(tick[trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, _]](5), s)))
+fn error_then_state(s: Int) (Result[Int, String], Int):
+  trans.run_identity(trans.run_state_t(trans.run_except_t(tick[trans.ExceptT[trans.StateT[trans.Identity, Int, _], String, _]](5)), s))
+println("${state_then_error(1)} ${state_then_error(9)}")
+println("${error_then_state(1)} ${error_then_state(9)}")
+```
+
+Output: `Ok((2, 2)) Err("too big")`, then `(Ok(2), 2) (Err("too big"), 9)`. The same `tick` runs on both stacks, and the stack order decides what a failure costs: with `StateT` over `ExceptT` an error throws the state away, and with `ExceptT` over `StateT` the state survives it. Return-type polymorphism needs the type written out, so the stack goes in `[...]` at the call and `M.` does the rest inside. A class member reaches through every layer above the one that provides it (`M.get()` works on a `ReaderT` over a `StateT`), and each transformer has a `lift_state_t`, `lift_reader_t`, `lift_writer_t`, or `lift_except_t` that runs an action of the inner monad. A stack of `Result` or `List` at the bottom works too, so `StateT[List[_], Int, _]` explores every branch. There is no generic `lift` class: that would be a class over a constructor of constructors, which moxie leaves out, so each transformer has its own `lift_` function.
+
 **24i. Lazy and infinite sequences**
 
 Streams are recipes, so an infinite source costs nothing until a terminal runs it:
@@ -3150,7 +3223,7 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 
 **24k. What moxie leaves out, on purpose**
 
-- **Monad transformers, constructors of constructors, and type-level lambdas** beyond a single hole (`Result[_, E]`).
+- **A generic `MonadTrans` class (a constructor over constructors) and type-level lambdas** beyond a single hole (`Result[_, E]`). Monad transformers themselves are a library, `fp.trans`.
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
 - **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.
 - **Checked monad laws.** The interfaces are conventions, as in Haskell.

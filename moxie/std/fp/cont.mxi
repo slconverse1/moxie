@@ -1,0 +1,27 @@
+//! Cont: continuation-passing computations, with `call_cc` for early exit.
+
+/// A computation that hands its result to a continuation and returns whatever the continuation returns.
+export tuple Cont[R, A]:
+  run: ((A) -> R) -> R
+
+impl[R] Monad[Cont[R, _]]:
+  fn map[A, B](self: Cont[R, A], f: (A) -> B) Cont[R, B]:
+    Cont(run: (k): self.run((a): k(f(a))))
+  static fn pure[A](a: A) Cont[R, A]:
+    Cont(run: (k): k(a))
+  fn ap[A, B](self: Cont[R, (A) -> B], x: Cont[R, A]) Cont[R, B]:
+    self.flat_map((g): x.map(g))
+  fn flat_map[A, B](self: Cont[R, A], f: (A) -> Cont[R, B]) Cont[R, B]:
+    Cont(run: (k): self.run((a): f(a).run(k)))
+
+/// Call `f` with the current continuation as an escape function: calling it abandons the rest of `f`.
+export fn call_cc[R, A, B](f: ((A) -> Cont[R, B]) -> Cont[R, A]) Cont[R, A]:
+  Cont(run: (k): f((a): Cont(run: (ignored): k(a))).run(k))
+
+/// Run with a final continuation.
+export fn run_cont[R, A](m: Cont[R, A], k: (A) -> R) R:
+  m.run(k)
+
+/// Run with the identity continuation.
+export fn eval_cont[A](m: Cont[A, A]) A:
+  m.run((a): a)

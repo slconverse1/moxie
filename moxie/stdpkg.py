@@ -5,7 +5,7 @@
 import os
 
 STD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "std")
-GC_ONLY = {"fp.state"}
+GC_ONLY = {"fp.state", "fp.reader", "fp.writer", "fp.cont", "fp.free", "fp.trans"}
 
 
 def find_std(parts):

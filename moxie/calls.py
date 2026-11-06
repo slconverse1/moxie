@@ -460,6 +460,9 @@ class CallsMixin:
     def field_callee(self, obj, name, env, line):
         """Resolve obj.name used as a callee. Returns (callee, selfv, has_self)."""
         k = obj.__class__
+        if k is GenV and obj.base.__class__ is TypeV:
+            obj = TypeV(obj.base.name, obj.base.info, obj.targs)      # `StateT[Maybe, Int, _].pure`: the arguments ride along
+            k = TypeV
         if k is TypeV:
             return self.type_member(obj, name, line), None, False
         if k is PkgV:
@@ -510,10 +513,10 @@ class CallsMixin:
                 return Builtin(lambda I, a, kw, ta: self._enum_from_index(et, a[0]), "from_index")
         d = self.statics.get(t.name)
         if d is not None and name in d:
-            return d[name][0]
+            return self.bind_impl_targs(d[name][0], t)
         d = self.impls.get(t.name)
         if d is not None and name in d:
-            return d[name][0]
+            return self.bind_impl_targs(d[name][0], t)
         if t.name == "Connection" and name in ("open", "memory"):
             from .sqlrt import open_connection
             if name == "memory":
@@ -542,6 +545,42 @@ class CallsMixin:
         if name == "read" and (t.name in NUM_TYPE_NAMES or t.name in ("String", "Bool", "Char")):
             return Builtin(lambda I, a, kw, ta: _read_scalar(t.name, a[0]), "read")
         raise Abort(f"{t.name} has no member '{name}'", line)
+
+    def bind_impl_targs(self, c, t):
+        """`StateT[Result[_, E], Int, _].pure(x)`: the type arguments of the type value name the impl's own type parameters
+        (`impl[M[_], S] Monad[StateT[M, S, _]]`), so a static member can call `M.pure` or `M.get()`."""
+        impl = getattr(c, "impl", None)
+        if impl is None or not t.args or not impl.tparams or c.__class__ is not Closure:
+            return c
+        target = impl.target
+        if not (isinstance(target, TName) and target.groups and t.args and t.args[0]):
+            return c
+        names = {tp.name for tp in impl.tparams}
+        binds = {}
+        for slot, arg in zip(target.groups[0], t.args[0]):
+            if isinstance(slot, TName) and len(slot.path) == 1 and slot.path[0] in names and not (isinstance(arg, TName) and arg.path[-1] == "_"):
+                binds[slot.path[0]] = self.targ_value(arg, c.env)
+        if not binds:
+            return c
+        import copy
+        nc = copy.copy(c)
+        e = Env(c.env)
+        e.vars.update(binds)
+        nc.env = e
+        return nc
+
+    def bind_receiver_targs(self, c, recvenv, recv):
+        """A method of a generic tuple whose value remembers its type arguments: bind the impl's type parameters from them."""
+        impl = getattr(c, "impl", None)
+        if impl is None or not impl.tparams:
+            return
+        target = impl.target
+        if not (isinstance(target, TName) and target.groups):
+            return
+        names = {tp.name for tp in impl.tparams}
+        for slot, v in zip(target.groups[0], recv.targs):
+            if v is not None and isinstance(slot, TName) and len(slot.path) == 1 and slot.path[0] in names:
+                recvenv.vars[slot.path[0]] = v
 
     def _enum_value_of(self, et, s):
         if s in et.cases and not et.cases[s].fields or (s in et.cases and et.header):
@@ -578,6 +617,9 @@ class CallsMixin:
             if isinstance(name, int):
                 return obj.vals[name]
             raise Abort(f"{obj.et.name}.{obj.case} has no field '{name}'", line)
+        if k is GenV and obj.base.__class__ is TypeV:
+            obj = TypeV(obj.base.name, obj.base.info, obj.targs)
+            k = TypeV
         if k is TypeV:
             return self.type_member(obj, name, line)
         if k is PkgV:
@@ -801,6 +843,8 @@ class CallsMixin:
             recvenv = Env(base)
             recvenv.recv = RecvCell(c.bound, "ref_self" in (node.flags or ()) if isinstance(node, FnDecl) else False)
             recvenv.vars["Self"] = self.type_value(type_name(c.bound))
+            if c.bound.__class__ is TupleV and c.bound.targs is not None:
+                self.bind_receiver_targs(c, recvenv, c.bound)
             base = recvenv
             if params and params[0].name == "self" and not isinstance(node, Lambda):
                 pos = [c.bound] + pos
@@ -813,6 +857,9 @@ class CallsMixin:
             recvenv.vars["self"] = rv
             base = recvenv
         env = Env(base)
+        if pos and params and params[0].name == "self" and c.impl is not None and pos[0].__class__ is TupleV \
+                and pos[0].targs is not None and c.bound is None:
+            self.bind_receiver_targs(c, env, pos[0])
         env.func = FnCtx(getattr(node, "name", "<lambda>"), getattr(node, "ret", None), c)
         # implicit tuple unpack
         nreal = len([p for p in params if p.mod != "using" and not p.variadic])
@@ -921,9 +968,15 @@ class CallsMixin:
         return None
 
     def targ_value(self, ta, env):
+        if ta.__class__ is TypeV:
+            return ta
         if isinstance(ta, TName):
+            if len(ta.path) == 1 and not ta.groups:
+                v = env.lookup(ta.path[0]) if env is not None else MISSING
+                if v.__class__ is TypeV:              # a type parameter already bound to a type value
+                    return v
             if len(ta.path) == 1 and ta.path[0] in self.tuples:
-                return TypeV(ta.path[0], self.tuples[ta.path[0]])
+                return TypeV(ta.path[0], self.tuples[ta.path[0]], ta.groups)
             return TypeV(ta.path[-1], self.type_info_for(ta.path[-1]), ta.groups)
         if isinstance(ta, TExpr):
             return self.run_sync(self.ev(ta.expr, env))

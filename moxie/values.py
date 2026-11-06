@@ -245,12 +245,13 @@ def fmt_dec(d):
 
 # ---------------------------------------------------------------- composite values
 class TupleV:
-    __slots__ = ("tname", "vals", "names")
+    __slots__ = ("tname", "vals", "names", "targs")
 
     def __init__(self, vals, names=None, tname=None):
         self.vals = vals
         self.names = names
         self.tname = tname
+        self.targs = None       # type arguments known when the value was built (a generic tuple built under a type hint)
 
     def get(self, key):
         if isinstance(key, int):

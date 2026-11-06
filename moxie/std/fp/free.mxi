@@ -1,0 +1,32 @@
+//! Free: the free monad over a functor `F`, for describing a program as data and running it later.
+
+/// Either a finished value or one step of `F` that holds the rest.
+export enum Free[F[_], A]:
+  Pure(A)
+  Suspend(F[Free[F, A]])
+
+impl[F[_]: Functor] Monad[Free[F, _]]:
+  fn map[A, B](self: Free[F, A], f: (A) -> B) Free[F, B]:
+    self.flat_map((a): Pure(f(a)))
+  static fn pure[A](a: A) Free[F, A]:
+    Pure(a)
+  fn ap[A, B](self: Free[F, (A) -> B], x: Free[F, A]) Free[F, B]:
+    self.flat_map((g): x.map(g))
+  fn flat_map[A, B](self: Free[F, A], f: (A) -> Free[F, B]) Free[F, B]:
+    when self:
+      Pure(a) -> f(a)
+      Suspend(fa) -> Suspend(fa.map((m): m.flat_map(f)))
+
+/// A finished program.
+export fn done[F[_]: Functor, A](a: A) Free[F, A]:
+  Pure(a)
+
+/// One instruction of `F` as a program that returns its result.
+export fn lift_f[F[_]: Functor, A](fa: F[A]) Free[F, A]:
+  Suspend(fa.map((a): Pure(a)))
+
+/// Interpret a program: `on_done` handles the final value and `step` handles one instruction whose rest has already been interpreted.
+export fn fold_free[F[_]: Functor, A, B](m: Free[F, A], on_done: (A) -> B, step: (F[B]) -> B) B:
+  when m:
+    Pure(a) -> on_done(a)
+    Suspend(fa) -> step(fa.map((next): fold_free(next, on_done, step)))

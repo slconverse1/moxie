@@ -96,7 +96,25 @@ class DeclsMixin:
             raise Abort(f"cannot construct {t.name}", line)
         if isinstance(info, EnumInfo):
             raise Abort(f"{t.name} is an enum; use one of its cases", line)
+        if hint is not None and info.tparams and hint.__class__ is TName and hint.groups and hint.groups[0] \
+                and hint.path[-1] == t.name:
+            return self._construct_hinted(info, pos, named, spreads, env, line, hint)
         return self.construct_tuple(info, pos, named, spreads, line)
+
+    def _construct_hinted(self, info, pos, named, spreads, env, line, hint):
+        """A generic tuple built where the expected type is written out (`StateT[M, S, B]`, `M` known here) remembers
+        those type arguments, so its methods can use the impl's own type parameters (`M.pure`)."""
+        tv = yield from self.construct_tuple(info, pos, named, spreads, line)
+        if tv.__class__ is TupleV:
+            args = []
+            for a in hint.groups[0]:
+                v = None
+                if a.__class__ is TName and not (len(a.path) == 1 and a.path[0] == "_"):
+                    v = self.targ_value(a, env)
+                args.append(v)
+            if any(v is not None for v in args):
+                tv.targs = args
+        return tv
 
     def construct_tuple(self, info, pos, named, spreads, line):
         fields = info.fields

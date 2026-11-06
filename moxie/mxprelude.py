@@ -82,9 +82,23 @@ from .locales import tuple_source
 SRC = SRC + tuple_source()
 
 
+GC_SRC = '''
+impl Monad[List[_]]:
+  fn map[A, B](self: List[A], f: (A) -> B) List[B]:
+    self.reduce(List(), (acc, a): acc + List(f(a)))
+  static fn pure[A](a: A) List[A]:
+    List(a)
+  fn ap[A, B](self: List[(A) -> B], x: List[A]) List[B]:
+    self.flat_map((g): x.map(g))
+  fn flat_map[A, B](self: List[A], f: (A) -> List[B]) List[B]:
+    self.reduce(List(), (acc, a): acc + f(a))
+'''
+
+
 def install(I):
     from .parser import parse_program
-    prog = parse_program(SRC, "<prelude>")
+    from .values import GC
+    prog = parse_program(SRC + (GC_SRC if GC[0] else ""), "<prelude>")
 
     def setup():
         return (yield from I.exec_stmts(prog.stmts, I.prelude))

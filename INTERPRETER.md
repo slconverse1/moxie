@@ -658,3 +658,13 @@ No prelude function: the Guide (chapter 14) shows the recipe, an `Atom` holding 
 ## Generics in the checker (check.py: check_op_bound, generic_call, check_type_arity)
 
 Inside a generic function, a parameter typed exactly `T` is recorded in `tp_vars`; an operator on it needs a matching prelude bound (`OP_NEEDS`), unless the parameter has a `where` clause or a user interface bound (which may embed what is needed). A call binds each `T` from the arguments whose parameter is exactly `T`: two different types are an error (Int, Float, and Decimal may mix), and a result typed `T` takes the bound type when it is not numeric. `check_type_arity` compares the number of type arguments with the parameters of a declared tuple or enum (types with holes are skipped). Not yet covered: bounds on method calls, nested signatures such as `List[T]`, higher-kinded parameters.
+
+## List monad, monad packages, and type arguments at run time (mxprelude.GC_SRC, std/fp/*.mxi, calls.py)
+
+`mxprelude.GC_SRC` adds `impl Monad[List[_]]` when running moxie/gc, so list methods and `for:` give lists (an impl method wins over the stream stage of the same name). `fp.reader`, `fp.writer`, `fp.cont`, `fp.free`, and `fp.trans` are written in moxie under `moxie/std/fp/` and are gc-only (`stdpkg.GC_ONLY`).
+
+Transformers need the inner monad's `pure`, which the interpreter cannot guess from a value, so type arguments travel at run time:
+- A type value keeps its arguments (`TypeV.args`, from `targ_value`; a bound type parameter such as `M` is looked up in the environment).
+- A static member called on a type value, `StateT[Result[_, E], Int, _].pure(x)` or `M.get()` with `M` bound to that type, binds the impl's own type parameters from those arguments (`calls.bind_impl_targs`).
+- A generic tuple built where the expected type is written out (a function's return type, `StateT[M, S, B]`) remembers its arguments in `TupleV.targs` (`decls._construct_hinted`); a method called on such a value binds the impl's type parameters from them (`calls.bind_receiver_targs`, run from `try_bind`), and `types_.value_targs` hands them on when a type parameter is inferred from a value.
+A value built where nothing names the type (a bare `StateT(run: ...)` in a lambda) carries no arguments; the library's own constructors always do, so users who build stacks through `M.pure`, `M.get()` and the `lift_` functions never meet the gap.

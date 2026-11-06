@@ -418,7 +418,7 @@ class TypesMixin:
                 tp = names[n]
                 if n not in out:
                     if tp.holes:
-                        out[n] = TypeV(type_name(v), self.type_info_for(type_name(v)))
+                        out[n] = TypeV(type_name(v), self.type_info_for(type_name(v)), self.value_targs(v))
                     else:
                         out[n] = TypeV(type_name(v), self.type_info_for(type_name(v)))
                 return
@@ -444,6 +444,12 @@ class TypesMixin:
         elif c is TTuple and isinstance(v, TupleV):
             for (_, ft), x in zip(t.items, v.vals):
                 self.match_tparam(ft, x, names, out)
+
+    def value_targs(self, v):
+        """The type arguments a generic tuple value remembers, as the groups of a type value (a hole where unknown)."""
+        if v.__class__ is TupleV and v.targs is not None:
+            return [[x if x is not None else TName(["_"], []) for x in v.targs]]
+        return None
 
     def type_info_for(self, name):
         if name in self.tuples:
