@@ -93,7 +93,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Go:** interfaces, goroutines, channels, and `select`, and (in moxie/gc) the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and (designed, not yet built) doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks, Domain-Specific Languages, and labeled `break` and `continue`.
-- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, and `tailrec`, which makes a recursive call that isn't a tail call an error.
+- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts (all designed, not yet built).
 - **Clojure:** lock-free state through Atoms and `swap`, `cond`, and (in moxie/gc) persistent collections that share structure. **[gc]**
@@ -1382,7 +1382,59 @@ println(xs)
 
 The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees, so the convention is a small moxie wrapper around each call. The Guide's sections 20a to 20d go through all of it.
 
-## 21. FCFX
+## 21. Type-level programming
+
+Most languages let you write functions on values. Moxie also lets you write functions on *types*, and run them while the compiler checks your program. A type alias whose body is a `when` is a function that takes a type apart and builds another, with an arm for each shape:
+
+```
+type alias Elem[T] = when T:
+  List[X] -> X
+  Array[X][N] -> X
+
+type alias Concat[A, B] = when A:
+  () -> B
+  (H, ...T) -> (H, ...Concat[T, B])
+
+type alias Length[T] = when T:
+  () -> 0
+  (H, ...Rest) -> 1 + Length[Rest]
+
+tuple User:
+  id: Int
+  name: String
+
+type alias Get[R, K] = when R:
+  (K: T, ...Rest) -> T
+  (_: _, ...Rest) -> Get[Rest, K]
+
+fn big(n: Int) Bool:
+  n > 3
+
+type alias Pad[N] = when N:
+  M if big(M) -> Array[Int][M]
+  M -> Array[Int][3]
+
+first: Elem[List[String]] = "ada"
+row: Concat[(Int, String), (Bool,)] = (1, "a", true)
+sized: Array[Int][Length[(Int, String)]] = Array(1, 2)
+name: Get[User, "name"] = "Ada"
+grid: Pad[5] = Array(1, 2, 3, 4, 5)
+println("${first} ${row} ${sized} ${name} ${grid}")
+```
+
+Output: `ada (1, "a", true) Array(1, 2) Ada Array(1, 2, 3, 4, 5)`. Change any of those annotations to the wrong type and the compiler stops at that line. What you get:
+
+- **Matching on types.** The first arm that matches wins. A bare name in a pattern, like `X` or `N`, is a variable the match fills in; `_` matches anything, and `X: Show` matches any type that implements `Show` (or `X: Show + Eq`, both).
+- **Recursion, with no restriction on it.** `Concat` joins two tuple types and `Length` counts the items of one, because an alias may call itself. Since a loop that never ends would hang the compiler, each use has a budget of reductions (`type_fuel` in `Moxie.toml`, 64 by default), and an alias that calls itself on something that doesn't get smaller gets a warning.
+- **Tuples taken apart.** `(H, ...T)` splits a tuple type into its first item and the rest, the type-level twin of `(first, ...rest)`, and a result can splice one back in.
+- **Numbers and strings are types.** `0`, `1 + Length[Rest]`, `Array[X][N - 1]`, and `"name"` all work where a type goes. That is how a size can be computed and how `Get[User, "name"]` finds a field by its name: field names stay in tuple types, and `(K: T, ...Rest)` looks one up.
+- **Guards, and your own functions at compile time.** An arm may carry `if`, and the guard can call any pure function you wrote (`big(M)`), even one from an imported package. The same goes for a size or a constant: `Array[Int][fib(10)]` is worked out by the compiler, in a sandbox with no permissions and a step limit, and a call that aborts there is a compile error.
+- **Types that belong to a value.** An `any Container` hides its type, so each one has an `Item` of its own: `to.put(from.first())` is an error when `to` and `from` are different values, even if both hold the same kind of container. `a.Item` names it, with no new syntax.
+- **No cost, and no run-time rule.** Type functions exist only while the compiler checks; they leave nothing in the program, like every other type.
+
+Scala does much of this with implicits and inline code, and C++ with templates. In moxie it is the same `when` you use on values, one pass, with the same error messages as the rest of the checker.
+
+## 22. FCFX
 
 This is the one the whole language is built around.
 
