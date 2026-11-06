@@ -1368,6 +1368,53 @@ def b_put(I, a, kw, ta):
     raise Abort("put on " + type_name(c))
 
 
+def _need_pair(a, cls, who):
+    if not isinstance(a[0], cls) or not isinstance(a[1], cls):
+        raise Abort(f"{who} needs two {cls.kind}s")
+
+
+@bi("union")
+def b_union(I, a, kw, ta):
+    """union(a, b): the elements of both sets.  In moxie the result has a's capacity and an overflow is Err(NO_SLOT)."""
+    _need_pair(a, SetV, "union")
+    d = dict(a[0].items)
+    d.update(a[1].items)
+    if GC[0]:
+        return SetV(d)
+    if len(d) > a[0].cap:
+        return err_reserved("NO_SLOT", "Set is full")
+    return Ok(SetV(d, a[0].cap))
+
+
+@bi("merge", "first")
+def b_merge(I, a, kw, ta):
+    """merge(a, b): the entries of both dicts, b's value for a key in both.  Capacity as for union."""
+    _need_pair(a, DictV, "merge")
+    d = dict(a[0].d)
+    d.update(a[1].d)
+    if GC[0]:
+        return DictV(d)
+    if len(d) > a[0].cap:
+        return err_reserved("NO_SLOT", "Dict is full")
+    return Ok(DictV(d, a[0].cap))
+
+
+@bi("merge_with", "last", True)
+def b_merge_with(I, a, kw, ta):
+    """merge_with(f, a, b): like merge, but a key in both gets f(a's value, b's value)."""
+    f = a[0]
+    pair = [a[1], a[2]]
+    _need_pair(pair, DictV, "merge_with")
+    d = dict(pair[0].d)
+    for k, v in pair[1].d.items():
+        d[k] = (yield from I.apply(f, [d[k], v])) if k in d else v
+    if GC[0]:
+        return DictV(d)
+    if len(d) > pair[0].cap:
+        return err_reserved("NO_SLOT", "Dict is full")
+    return Ok(DictV(d, pair[0].cap))
+
+
 @bi("copy")
 def b_copy(I, a, kw, ta):
     if GC[0]:

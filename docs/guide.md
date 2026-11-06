@@ -579,6 +579,20 @@ when cells((0, 0)):
 
 Output: `start 2`. Values can be any storable type, including plain functions (chapter 7). **Mistakes:** matching only `Ok`, a Float key, and adding a third key to a full `Dict` (it aborts; `put` returns NO_SLOT instead).
 
+**Combining collections.** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Each keeps `a`'s capacity, so each returns a `Result`: `Err` with `NO_SLOT` when the combined collection does not fit, as `put` does. Unlike `combine` on a `String` or a `List`, these are not `Semigroup` instances, because a collection that can run out of room has no total, associative `combine`; fold several with `reduce` and `?`.
+
+```
+a: Set[Int][8] = Set(1, 2)
+b: Set[Int][8] = Set(2, 3)
+println(union(a, b))
+d: Dict[String, Int][4] = Dict("a": 1, "b": 2)
+e: Dict[String, Int][4] = Dict("b": 9, "c": 3)
+println(merge(d, e))
+println(merge_with((x, y): x + y, d, e))
+```
+
+Output: `Ok(Set(1, 2, 3))`, `Ok(Dict("a": 1, "b": 9, "c": 3))`, then `Ok(Dict("a": 1, "b": 11, "c": 3))`. A set literal's capacity is its length, so `union(Set(1, 2), Set(2, 3))` is `Err` unless one operand is declared with room, as above.
+
 **5e. MultiArrays and their slices**
 
 ```
@@ -3316,7 +3330,7 @@ println(fold_map(fn (n): Stats(count: 1, total: n), List(4, 6, 8)))
 println(fold_all[Stats](List()))
 ```
 
-Output: `abc`, `List(1, 2, 3)`, `Sum(value: 6)`, `List(1, 2, 3)`, `Min(value: 2)`, `Stats(count: 3, total: 18)`, then `Stats(count: 0, total: 0)`. An empty input gives `empty()`, so name the type when nothing else says which one (`fold_all[Stats](List())`). `Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there is no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
+Output: `abc`, `List(1, 2, 3)`, `Sum(value: 6)`, `List(1, 2, 3)`, `Min(value: 2)`, `Stats(count: 3, total: 18)`, then `Stats(count: 0, total: 0)`. An empty input gives `empty()`, so name the type when nothing else says which one (`fold_all[Stats](List())`). `Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; use `union`, `merge`, and `merge_with` (chapter 6), or write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there is no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
 
 **Chapter 25: Moxie for imperative programmers**
 

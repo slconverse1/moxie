@@ -214,12 +214,18 @@ fn run_command[E](program: String, args: List[String]) Result[Output, E]: 0
 
 # The two dialects differ here: in moxie a full collection refuses (`put` gives a Result), in moxie/gc `put` gives the collection.
 SRC_MOXIE = '''
+fn union[T, E](a: Set[T], b: Set[T]) Result[Set[T], E]: 0
+fn merge[K, V, E](a: Dict[K, V], b: Dict[K, V]) Result[Dict[K, V], E]: 0
+fn merge_with[K, V, E](f: (V, V) -> V, a: Dict[K, V], b: Dict[K, V]) Result[Dict[K, V], E]: 0
 fn put[K, V, E](d: Dict[K, V], k: K, v: V) Result[Dict[K, V], E]: 0
 fn put[T, E](xs: List[T], x: T) Result[List[T], E]: 0
 fn put[T, E](s: Set[T], x: T) Result[Set[T], E]: 0
 '''
 
 SRC_GC = '''
+fn union[T](a: Set[T], b: Set[T]) Set[T]: 0
+fn merge[K, V](a: Dict[K, V], b: Dict[K, V]) Dict[K, V]: 0
+fn merge_with[K, V](f: (V, V) -> V, a: Dict[K, V], b: Dict[K, V]) Dict[K, V]: 0
 fn put[K, V](d: Dict[K, V], k: K, v: V) Dict[K, V]: 0
 fn put[T](xs: List[T], x: T) List[T]: 0
 fn put[T](s: Set[T], x: T) Set[T]: 0

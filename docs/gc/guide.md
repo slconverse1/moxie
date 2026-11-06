@@ -579,6 +579,20 @@ when cells((0, 0)):
 
 Output: `start 2`. Values can be any storable type, including functions and closures **[gc]** (chapter 7). `put(d, k, v)` is the function form of `d(k) = v` and returns the updated Dict **[gc]**; it can't fail for lack of room. **Mistakes:** matching only `Ok`, and a Float key.
 
+**Combining collections.** **[gc]** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Nothing can be full, so each returns the plain collection, as `put` does, and a program meant to run in both dialects handles the `Result` that no-GC moxie returns.
+
+```
+a: Set[Int][8] = Set(1, 2)
+b: Set[Int][8] = Set(2, 3)
+println(union(a, b))
+d: Dict[String, Int][4] = Dict("a": 1, "b": 2)
+e: Dict[String, Int][4] = Dict("b": 9, "c": 3)
+println(merge(d, e))
+println(merge_with((x, y): x + y, d, e))
+```
+
+Output: `Set(1, 2, 3)`, `Dict("a": 1, "b": 9, "c": 3)`, then `Dict("a": 1, "b": 11, "c": 3)`.
+
 **5e. MultiArrays and their slices**
 
 ```
@@ -3406,7 +3420,7 @@ println(fold_map(fn (n): Stats(count: 1, total: n), List(4, 6, 8)))
 println(fold_all[Stats](List()))
 ```
 
-Output: `abc`, `List(1, 2, 3)`, `Sum(value: 6)`, `List(1, 2, 3)`, `Min(value: 2)`, `Stats(count: 3, total: 18)`, then `Stats(count: 0, total: 0)`. An empty input gives `empty()`, so name the type when nothing else says which one (`fold_all[Stats](List())`). `Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there is no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
+Output: `abc`, `List(1, 2, 3)`, `Sum(value: 6)`, `List(1, 2, 3)`, `Min(value: 2)`, `Stats(count: 3, total: 18)`, then `Stats(count: 0, total: 0)`. An empty input gives `empty()`, so name the type when nothing else says which one (`fold_all[Stats](List())`). `Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; use `union`, `merge`, and `merge_with` (chapter 6), or write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there is no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
 
 **Chapter 25: Moxie for imperative programmers**
 
