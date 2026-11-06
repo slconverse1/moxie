@@ -204,7 +204,7 @@ def unify(pat, act, binds):
 SEQ_HEADS = {"List", "Array", "Set", "Ring", "Stream"}
 
 
-def match(pat, act, binds):
+def match(pat, act, binds, strict=False):
     """Strict version of `unify` for choosing an overload: False when `act` cannot be what `pat` describes.  Unknown matches.
     `Seq[T]` in a pattern is any source of T."""
     if pat is None or act is None:
@@ -225,14 +225,18 @@ def match(pat, act, binds):
         if at != "app":
             return False
         if pat[1] == "Seq":
-            return act[1] in SEQ_HEADS and len(act[2]) == 1 and match(pat[2][0], act[2][0], binds)
-        return pat[1] == act[1] and len(pat[2]) == len(act[2]) and all(match(x, y, binds) for x, y in zip(pat[2], act[2]))
+            return act[1] in SEQ_HEADS and len(act[2]) == 1 and match(pat[2][0], act[2][0], binds, strict)
+        return pat[1] == act[1] and len(pat[2]) == len(act[2]) and all(match(x, y, binds, strict) for x, y in zip(pat[2], act[2]))
     if pt == "fn":
         if at != "fn":
             return False
         if len(pat[1]) != len(act[1]):
             return False
-        return all(match(x, y, binds) for x, y in zip(pat[1], act[1])) and match(pat[2], act[2], binds)
+        return all(match(x, y, binds, strict) for x, y in zip(pat[1], act[1])) and match(pat[2], act[2], binds, strict)
     if pt == "tup":
-        return at == "tup" and len(pat[1]) == len(act[1]) and all(match(x, y, binds) for x, y in zip(pat[1], act[1]))
+        return at == "tup" and len(pat[1]) == len(act[1]) and all(match(x, y, binds, strict) for x, y in zip(pat[1], act[1]))
+    if strict and isinstance(pat, str) and isinstance(act, str):
+        return pat == act
+    if strict and isinstance(pat, str) and at == "bounded":
+        return pat == "Int"
     return compatible(pat, act)

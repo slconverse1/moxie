@@ -35,4 +35,107 @@ fn lower(s: String) String: 0
 fn lower(c: Char) Char: 0
 fn abs(n: Int) Int: 0
 fn abs(x: Double) Double: 0
+fn min[T](a: T, b: T) T: 0
+fn max[T](a: T, b: T) T: 0
+fn clamp[T](x: T, lo: T, hi: T) T: 0
+fn pow(a: Int, b: Int) Int: 0
+fn pow(a: Double, b: Double) Double: 0
+fn floor(x: Double) Int: 0
+fn ceil(x: Double) Int: 0
+fn round(x: Double) Int: 0
+fn finite[E](x: Double) Result[Double, E]: 0
+fn checked_add[T, E](a: T, b: T) Result[T, E]: 0
+fn checked_sub[T, E](a: T, b: T) Result[T, E]: 0
+fn checked_mul[T, E](a: T, b: T) Result[T, E]: 0
+fn checked_div[T, E](a: T, b: T) Result[T, E]: 0
+fn wrapping_add[T](a: T, b: T) T: 0
+fn wrapping_sub[T](a: T, b: T) T: 0
+fn wrapping_mul[T](a: T, b: T) T: 0
+fn saturating_add[T](a: T, b: T) T: 0
+fn saturating_sub[T](a: T, b: T) T: 0
+fn saturating_mul[T](a: T, b: T) T: 0
+fn parse_number[N, E](s: String) Result[N, E]: 0
+fn chars(s: String) Stream[Char]: 0
+fn graphemes(s: String) Stream[String]: 0
+fn pad_left(s: String, n: Int) String: 0
+fn pad_left(s: String, n: Int, c: String) String: 0
+fn pad_left(s: String, n: Int, c: Char) String: 0
+fn pad_right(s: String, n: Int) String: 0
+fn pad_right(s: String, n: Int, c: String) String: 0
+fn pad_right(s: String, n: Int, c: Char) String: 0
+fn split(s: String, sep: String) List[String]: 0
+fn join[T](xs: Seq[T], sep: String) String: 0
+fn join[T](xs: Seq[T]) String: 0
+fn replace_text(s: String, from: String, to: String) String: 0
+fn repeat[T](x: T) Stream[T]: 0
+fn keys[K, V](d: Dict[K, V]) Stream[K]: 0
+fn values[K, V](d: Dict[K, V]) Stream[V]: 0
+fn items[K, V](d: Dict[K, V]) Stream[(K, V)]: 0
+fn get[K, V, E](d: Dict[K, V], k: K) Result[V, E]: 0
+fn get[T, E](xs: List[T], i: Int) Result[T, E]: 0
+fn get[T, E](xs: Array[T], i: Int) Result[T, E]: 0
+fn get_or[T, E](r: Result[T, E], d: T) T: 0
+fn get_or[K, V](d: Dict[K, V], k: K, d2: V) V: 0
+fn get_or[T](xs: List[T], i: Int, d: T) T: 0
+fn distinct[T](xs: Seq[T]) Stream[T]: 0
+fn flatten[T](xs: Seq[Seq[T]]) Stream[T]: 0
+fn cycle[T](xs: Seq[T]) Stream[T]: 0
+fn intersperse[T](sep: T, xs: Seq[T]) Stream[T]: 0
+fn zip_with[A, B, C](f: (A, B) -> C, xs: Seq[A], ys: Seq[B]) Stream[C]: 0
+fn identity[T](x: T) T: 0
+fn min_by[T, K, E](f: (T) -> K, xs: Seq[T]) Result[T, E]: 0
+fn max_by[T, K, E](f: (T) -> K, xs: Seq[T]) Result[T, E]: 0
+fn span[T](f: (T) -> Bool, xs: Seq[T]) (List[T], List[T]): 0
+fn split_at[T](n: Int, xs: Seq[T]) (List[T], List[T]): 0
+fn chunks[T](n: Int, xs: Seq[T]) Stream[List[T]]: 0
+fn windows[T](n: Int, xs: Seq[T]) Stream[Array[T]]: 0
+fn group_by[T, K](f: (T) -> K, xs: Seq[T]) Dict[K, List[T]]: 0
+fn reduce_right[T, A](init: A, f: (T, A) -> A, xs: Seq[T]) A: 0
+fn scan[T, A](init: A, f: (A, T) -> A, xs: Seq[T]) Stream[A]: 0
+fn take_last[T](n: Int, xs: Seq[T]) Stream[T]: 0
+fn to_stream[T](xs: Seq[T]) Stream[T]: 0
+fn swap[T](a: Atom[T], f: (T) -> T) T: 0
+fn reset[T](a: Atom[T], v: T) T: 0
+fn map_err[T, E, F](r: Result[T, E], f: (E) -> F) Result[T, F]: 0
+fn map_ok[T, U, E](r: Result[T, E], f: (T) -> U) Result[U, E]: 0
+fn or_else[T, E, F](r: Result[T, E], f: (E) -> Result[T, F]) Result[T, F]: 0
+fn unwrap[T, E](r: Result[T, E]) T: 0
+fn ensure[E](ok: Bool, e: E) Result[Unit, E]: 0
+fn path_ext(p: String) String: 0
+fn path_name(p: String) String: 0
+fn path_parent(p: String) String: 0
+fn path_stem(p: String) String: 0
+fn read_file[E](p: String) Result[String, E]: 0
+fn write_file[E](p: String, s: String) Result[Unit, E]: 0
+fn make_dir[E](p: String) Result[Unit, E]: 0
+fn remove_file[E](p: String) Result[Unit, E]: 0
+fn random_int(lo: Int, hi: Int) Int: 0
+fn days_in_month(y: Int, m: Int) Int: 0
+fn assert(ok: Bool) Unit: 0
+fn assert_eq[T](a: T, b: T) Unit: 0
+fn println() Unit: 0
+fn println[T](x: T) Unit: 0
+fn print[T](x: T) Unit: 0
+fn eprintln() Unit: 0
+fn eprintln[T](x: T) Unit: 0
+fn eprint[T](x: T) Unit: 0
+fn dbg[T](x: T) T: 0
+fn trace[T](x: T) Unit: 0
+fn random() Double: 0
+fn random_bytes(n: Int) Array[Byte]: 0
+fn sleep(d: Duration) Unit: 0
+fn millis(d: Duration) Int: 0
+fn nanos(d: Duration) Int: 0
+fn seconds(d: Duration) Double: 0
+fn weekday(t: DateTime) Int: 0
+fn day_of_year(t: DateTime) Int: 0
+fn iso(t: DateTime) String: 0
+fn format_time(t: DateTime, fmt: String) String: 0
+fn format_time(t: DateTime, fmt: String, loc: Locale) String: 0
+fn iterate[T](seed: T, f: (T) -> T) Stream[T]: 0
+fn contains(s: String, t: String) Bool: 0
+fn contains[T](xs: Seq[T], x: T) Bool: 0
+fn contains[K, V](d: Dict[K, V], k: K) Bool: 0
+fn secret_eq[T](a: T, b: T) Bool: 0
+fn close[T](x: T) Unit: 0
 '''

@@ -1499,6 +1499,13 @@ class Checker:
             return None, None
         if fn.__class__ is Field and ufcs:
             return sigres, None                         # the receiver was evaluated above
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Atom" and len(args) == 1 and n.trailing is None \
+                and "Atom" not in self.fns and "Atom" not in self.tuples and "Atom" not in self.aliases \
+                and len(fn.groups or []) == 1 and len(fn.groups[0]) == 1 and not extra_bad(args):
+            self.ev(fn, sc)                             # `Atom[Int](0)` is an Atom[Int], and 0 must be an Int
+            el = self.ty_of_type(fn.groups[0][0], 0, None, False)
+            self.compat(el, ats[0][0], ats[0][1], n.line)
+            return ("app", "Atom", (el,)), None
         self.ev(fn, sc)
         return None, None
 
@@ -1552,13 +1559,22 @@ class Checker:
         pos = sigs[0][3]
         return [sg for sg in sigs if len(sg[1]) == len(args) + extra], pos
 
-    def sig_fit(self, sg, full):
+    def sig_fit(self, sg, full, strict=False):
         """The type-parameter bindings if the argument types `full` (None for unknown) fit the signature `sg`, else None."""
         binds = {}
         for pt, t in zip(sg[1], full):
-            if not tys.match(pt, self.base(t) if t is not None else None, binds):
+            if not tys.match(pt, self.base(t) if t is not None else None, binds, strict):
                 return None
         return binds
+
+    def sig_pick(self, over, full):
+        """The one overload that fits; when several fit by number conversion, the one that fits exactly (`abs(3)` is the Int one)."""
+        cands = [sg for sg in over if self.sig_fit(sg, full) is not None]
+        if len(cands) > 1 and all(t is not None for t in full):
+            exact = [sg for sg in cands if self.sig_fit(sg, full, True) is not None]
+            if len(exact) == 1:
+                return exact
+        return cands
 
     def sig_args(self, n, over, pos, args, asc, sc, extra):
         """Evaluate the arguments of a call of an overloaded builtin: the ones that are not lambdas first, so the lambdas
@@ -1575,7 +1591,7 @@ class Checker:
             if extra:
                 ts = ts + [piped] if pos == "last" else [piped] + ts
             return ts
-        cands = [sg for sg in over if self.sig_fit(sg, full(None)) is not None]
+        cands = self.sig_pick(over, full(None))
         lam_at = [i for i, a in enumerate(args) if a.expr.__class__ is Lambda]
         for i in lam_at:
             expect = None
@@ -1589,7 +1605,9 @@ class Checker:
             self.lam_expect = expect
             ats[i] = self.ev(args[i].expr, asc)
             self.lam_expect = None
-        cands = [sg for sg in over if self.sig_fit(sg, full(None)) is not None]
+        cands = self.sig_pick(over, full(None))
+        if len(cands) > 1 and all(not tys.params_in(sg[2]) for sg in cands) and len({sg[2] for sg in cands}) == 1:
+            return ats, cands[0][2]               # every overload that fits gives the same type (`contains` is a Bool)
         if len(cands) != 1:
             return ats, None
         sg = cands[0]
