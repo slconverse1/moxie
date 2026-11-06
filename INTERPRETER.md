@@ -630,3 +630,11 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 ### `run` moves its resource arguments (check.py e_RunE)
 
 `run f(x)` and the short form `run fn (x): ...` mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `run` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
+
+## Grapheme clusters (moxie/graphemes.py)
+
+`graphemes(s)` and `grapheme_count(s)` apply the UAX #29 extended-cluster rules (CR LF, Hangul jamo, Extend/ZWJ/SpacingMark, emoji ZWJ sequences, regional-indicator pairs) to properties taken from `unicodedata`. Extended_Pictographic is approximated by the emoji blocks, and the Unicode 15.1 Indic conjunct rule is not applied (so "स्ते" is two clusters). Tests: `tests/run_graphemes.py`.
+
+## Secret[T] (moxie/secret.py)
+
+`SecretV` holds the value; `__str__` and `__repr__` give `Secret(***)`, so show, interpolation, print, and dbg are all redacted, and `__eq__`, ordering, and `__hash__` abort. `secret_eq` uses `hmac.compare_digest` on the UTF-8 bytes. The checker knows the type `("secret",)`: `secret(x)` and `Secret[T]` produce it, comparing one is a compile error, and passing a `String` where a `Secret` is expected (or the reverse) is a type mismatch. `layout` gives a `Secret[T]` the size of `T`. Tests: `tests/run_secret.py`.

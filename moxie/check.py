@@ -12,7 +12,7 @@ RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Udp", "
 RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept", "connect_tls", "listen_tls", "bind_udp", "signals", "spawn", "raw_terminal", "watch", "connect_unix", "listen_unix"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
-               "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "Cancel", "ChanR", "ChanW",
+               "Char", "Unit", "Decimal", "Keyword", "Duration", "Error", "Atom", "Cancel", "Secret", "ChanR", "ChanW",
                "Locale", "Connection", "true", "false", "UserData", "Events", "stdin", "stdout", "stderr", "ReadOnly", "Create", "Append", "ReadWrite", "FileMode", "Io", "Listener", "Ptr", "size_of", "Handler", "bin_build"}
 
 
@@ -163,6 +163,8 @@ def tshow(t):
         return f"Int[{t[1]}..={t[2]}]"
     if t[0] == "coll":
         return f"{t[1]}[{tshow(t[2])}]"
+    if t[0] == "secret":
+        return "Secret"
     return "?"
 
 
@@ -449,6 +451,8 @@ class Checker:
             return "Float"
         if n in ("String", "Bool", "Char", "Unit", "Decimal"):
             return n
+        if n == "Secret" and n not in self.tuples and n not in self.enums and n not in self.aliases:
+            return ("secret",)
         if n in self.aliases:
             a = self.aliases[n]
             if a.kind == "alias" and not a.tparams:
@@ -632,6 +636,9 @@ class Checker:
         a, b = self.base(lt), self.base(rt)
         op = n.op
         if op in ("==", "!=", "<", ">", "<=", ">="):
+            if a == ("secret",) or b == ("secret",):
+                self.err(n.line, "a Secret can't be compared with " + op + "; use secret_eq(a, b), or compare what reveal gives")
+                return "Bool", None
             if a in self.SCAL and b in self.SCAL and a != b and {a, b} - {"Int", "Float", "Decimal"}:
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`")
             return "Bool", None
@@ -1355,6 +1362,8 @@ class Checker:
         return None, None
 
     def call_known(self, n, name, args, ats, extra):
+        if name == "secret" and name not in self.fns:
+            return ("secret",), None
         if name in self.tuples:
             td = self.tuples[name]
             if not td.tparams:

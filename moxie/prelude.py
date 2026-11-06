@@ -682,6 +682,18 @@ def b_chars(I, a, kw, ta):
     return StreamV(lambda s=a[0]: ListIter([Char(c) for c in s]))
 
 
+@bi("graphemes")
+def b_graphemes(I, a, kw, ta):
+    from .graphemes import split
+    return StreamV(lambda s=a[0]: ListIter(split(s)))
+
+
+@bi("grapheme_count")
+def b_grapheme_count(I, a, kw, ta):
+    from .graphemes import split
+    return len(split(a[0]))
+
+
 @bi("pad_left")
 def b_pad_left(I, a, kw, ta):
     return pad_text(a[0], a[1], a[2] if len(a) > 2 else " ", ">")
@@ -2488,3 +2500,4 @@ from . import system  # noqa: E402,F401  (registers the system builtins)
 from . import terminal  # noqa: E402,F401  (raw terminal input)
 from . import pipes  # noqa: E402,F401  (Unix sockets and pipes)
 from . import watch  # noqa: E402,F401  (file watching)
+from . import secret  # noqa: E402,F401  (Secret[T])

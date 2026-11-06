@@ -639,7 +639,16 @@ t = "naïve"
 println("${len(t)} ${char_count(t)} ${t |> chars() |> count()}")
 ```
 
-Output: `6 5 5`. A `Char` is a Unicode scalar, not a grapheme cluster. **Mistakes:** slicing a view and returning it, using byte offsets as character positions, and iterating a float range.
+Output: `6 5 5`. A `Char` is a Unicode scalar, not a grapheme cluster, and what a person sees as one character can be several scalars. `graphemes` yields one `String` per visible character and `grapheme_count` counts them:
+
+```
+s = "e\u{301}\u{1F1FA}\u{1F1F8}a"
+println("${char_count(s)} ${grapheme_count(s)}")
+for g in graphemes(s):
+  println(len(g))
+```
+
+Output: `5 3`, then `3`, `8`, `1`. The accent is a second scalar, the flag is two, and each group is one cluster. **Mistakes:** slicing a view and returning it, using byte offsets as character positions, and iterating a float range.
 
 **Chapter 6: Functions**
 
@@ -2489,7 +2498,15 @@ println(gen_int(g, 1, 6) == gen_int(h, 1, 6))
 println(len(random_bytes(16)))
 ```
 
-Output: `true`, then `16`. `exit(code)` ends the program with a code from 0 to 255, from any fiber, and `signals()` gives a channel of `#interrupt`, `#terminate`, and `#hangup` so a program can shut down cleanly when someone presses Ctrl-C:
+Output: `true`, then `16`. A password or token should be wrapped in a `Secret`, so that it can't reach a log by accident:
+
+```
+token = secret(env("API_TOKEN").get_or("none"))
+println("using ${token}")
+println(secret_eq(token, secret("none")))
+```
+
+Output: `using Secret(***)`, then `true` when the variable is unset. Printing, interpolating, and `show` all give `Secret(***)`. `reveal(token)` is the one way to the real value, so each place it is used shows in the source, and `==` on secrets is an error: compare with `secret_eq`, which takes the same time however many characters match. A `Secret[String]` is not a `String`, so a function that takes one can't be handed plain text by mistake. `exit(code)` ends the program with a code from 0 to 255, from any fiber, and `signals()` gives a channel of `#interrupt`, `#terminate`, and `#hangup` so a program can shut down cleanly when someone presses Ctrl-C:
 
 ```
 fn work(done: ChanW[Int]) Unit:

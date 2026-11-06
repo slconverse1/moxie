@@ -40,6 +40,8 @@ def layout(t, decls, depth=0):
     if name in SCALARS and not g:
         s = SCALARS[name]
         return s, max(s, 1)
+    if name == "Secret" and len(g) == 1 and len(g[0]) == 1 and "Secret" not in decls:
+        return layout(g[0][0], decls, depth + 1)      # a Secret is its value with a different name
     if name == "String" and len(g) == 1 and len(g[0]) == 1 and _const(g[0][0]) is not None:
         return WORD + _const(g[0][0]), WORD
     if name in ("Array", "List") and len(g) == 2 and len(g[0]) == 1 and len(g[1]) == 1 and _const(g[1][0]) is not None:
