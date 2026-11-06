@@ -187,6 +187,11 @@ fn frequencies[T](xs: Seq[T]) Dict[T, Int]: 0
 fn count_by[T, K](f: (T) -> K, xs: Seq[T]) Dict[K, Int]: 0
 fn transpose[T](rows: Seq[Seq[T]]) List[List[T]]: 0
 fn partition_results[T, E](rs: Seq[Result[T, E]]) (List[T], List[E]): 0
+fn map_all[A, B, R, E](f: (A, B) -> R, a: Result[A, E], b: Result[B, E]) Result[R, List[E]]: 0
+fn map_all[A, B, C, R, E](f: (A, B, C) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E]) Result[R, List[E]]: 0
+fn map_all[A, B, C, D, R, E](f: (A, B, C, D) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E], d: Result[D, E]) Result[R, List[E]]: 0
+fn map_all[A, B, C, D, E, R, E](f: (A, B, C, D, E) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E], d: Result[D, E], e: Result[E, E]) Result[R, List[E]]: 0
+fn map_all[A, B, C, D, E, F, R, E](f: (A, B, C, D, E, F) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E], d: Result[D, E], e: Result[E, E], f: Result[F, E]) Result[R, List[E]]: 0
 fn collect_errors[T, E](rs: Seq[Result[T, E]]) Result[List[T], List[E]]: 0
 fn validate[T, U, E](f: (T) -> Result[U, E], xs: Seq[T]) Result[List[U], List[E]]: 0
 fn recover[T, E](r: Result[T, E], f: (E) -> T) Result[T, E]: 0

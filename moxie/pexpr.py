@@ -580,6 +580,8 @@ class ExprParser(PBase):
                 self.next()
                 nm = self.expect_ident("a variable name after '$'")
                 return Dollar(Name(nm.val, line=line), line=line)
+            if v == "\\":
+                self.err("`\\` discards a value, so it can only start a statement")
             if v == "{":
                 self.err("'{' does not start an expression in moxie")
             self.err(f"unexpected {self.describe(t)}")

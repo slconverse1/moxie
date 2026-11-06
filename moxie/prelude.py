@@ -2407,6 +2407,16 @@ def b_validate(I, a, kw, ta):
     return _gather(out)
 
 
+@bi("map_all", "first", True)
+def b_map_all(I, a, kw, ta):
+    """map_all(f, r1, ..., rN): f(values) when every ri is Ok, else Err of every error, in argument order."""
+    rs = a[1:]
+    errs = [r.vals[0] for r in rs if is_err(r)]
+    if errs:
+        return Err(ListV(errs))
+    return Ok((yield from I.apply(a[0], [r.vals[0] for r in rs])))
+
+
 @bi("recover", "first", True)
 def b_recover(I, a, kw, ta):
     r = a[0]

@@ -192,12 +192,12 @@ The compiler builds one specialized copy of `best` for each type it's used with,
 
 ```moxie
 fiber fn grader(s: Student, out: ChanW[Int]) Unit:
-  _ = write(out, s.score)
+  \write(out, s.score)
 
 rx, tx = Chan[Int][3]()
-_ = run grader(ada, clone(tx))
-_ = run grader(bob, clone(tx))
-_ = run grader(Student(name: "Cy", score: 71), move tx)
+\run grader(ada, clone(tx))
+\run grader(bob, clone(tx))
+\run grader(Student(name: "Cy", score: 71), move tx)
 points = read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)
 println("points $points")
 ```
@@ -220,7 +220,7 @@ points 249
 
 A **fiber** is a lightweight task. `run grader(...)` starts one, and the three fibers here each send a student's score down a **channel**. `Chan[Int][3]()` makes the channel (an `Int` per message, room for three waiting) and gives back its two ends: `rx` to read from and `tx` to write to. The main fiber reads three times, and `read` waits until a message is there.
 
-A channel end belongs to one fiber at a time. `clone(tx)` makes another handle to the same channel for the first two graders, and `move tx` hands the last one over. (`_ =` acknowledges the `Result` that `run` returns. **[gc]** Fibers are created on demand, so `run` fails only when you have capped a fiber function with `fiber[n]` and all its slots are in use.) There are no locks here, and none are needed: only one fiber runs at any moment, and values never change.
+A channel end belongs to one fiber at a time. `clone(tx)` makes another handle to the same channel for the first two graders, and `move tx` hands the last one over. (`\` acknowledges the `Result` that `run` returns. **[gc]** Fibers are created on demand, so `run` fails only when you have capped a fiber function with `fiber[n]` and all its slots are in use.) There are no locks here, and none are needed: only one fiber runs at any moment, and values never change.
 
 ## Step 8. Keeping memory in check **[gc]**
 
@@ -229,7 +229,7 @@ The collector frees whatever your program no longer holds, but it can't free wha
 ```moxie
 history = Atom[Ring[String]](Ring[String](3))
 fn record(note: String) Unit:
-  _ = swap(history, _ + note)
+  \swap(history, _ + note)
 record("Ada 95")
 record("Bob 88")
 record("Cy 71")

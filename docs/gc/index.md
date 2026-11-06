@@ -1201,24 +1201,24 @@ A fiber is started for the entry file and with `run`. Here's a complete run rout
 
 ```
 fiber fn greeter(tx: ChanW[String]) Unit:
-  _ = write(tx, "hello from a fiber")
+  \write(tx, "hello from a fiber")
 
 rx, tx = Chan[String][1]()
-_ = run greeter(tx)
+\run greeter(tx)
 println(read(rx).get_or("nobody home"))
 ```
 
-Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element type, then room for one waiting value) and returns the channel's read and write ends as its result. `run greeter(tx)` starts the fiber and moves the write end to it, and the `_ =` acknowledges the `Result` that `run` returns. Meanwhile, `read(rx)` parks the main fiber until the greeter has written.
+Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element type, then room for one waiting value) and returns the channel's read and write ends as its result. `run greeter(tx)` starts the fiber and moves the write end to it, and the `\` acknowledges the `Result` that `run` returns. Meanwhile, `read(rx)` parks the main fiber until the greeter has written.
 
 **Who runs when.** Starting a fiber doesn't pause the one that started it. The starter keeps going until it parks, and only then does another fiber get a turn:
 
 ```
 fiber fn worker(tx: ChanW[String]) Unit:
   println("worker: started")
-  _ = write(tx, "worker: done")
+  \write(tx, "worker: done")
 
 rx, tx = Chan[String][1]()
-_ = run worker(tx)
+\run worker(tx)
 println("runner: still going after run")
 println("runner: about to read (parks)")
 println(read(rx).get_or("nobody home"))
@@ -1255,8 +1255,8 @@ fn show(label: String, f: FutureR[Int]) Unit:
 
 r1, w1 = Future[Int]()
 r2, w2 = Future[Int]()
-_ = run compute(w1)
-_ = run fail(w2)
+\run compute(w1)
+\run fail(w2)
 show("compute", r1)
 sleep(50ms)
 show("compute", r1)
@@ -1304,12 +1304,12 @@ In moxie, you write `run` and that's it. Here are three fibers computing squares
 
 ```
 fiber fn square(n: Int, out: ChanW[Int]) Unit:
-  _ = write(out, n * n)
+  \write(out, n * n)
 
 rx, tx = Chan[Int][3]()
-_ = run square(2, clone(tx))
-_ = run square(3, clone(tx))
-_ = run square(4, move tx)
+\run square(2, clone(tx))
+\run square(3, clone(tx))
+\run square(4, move tx)
 total = read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)
 println("$total")
 ```
@@ -1322,11 +1322,11 @@ A short fiber can also be written inline, right where you start it. The full for
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
 // short form: parameter tx gets the variable tx
-_ = run fn (tx):
-  _ = write(tx, "short form")
+\run fn (tx):
+  \write(tx, "short form")
 // full form: arguments, then parameters
-_ = run fn ("long form", tx2)(msg, out):
-  _ = write(out, msg)
+\run fn ("long form", tx2)(msg, out):
+  \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
 ```
@@ -1388,7 +1388,7 @@ A channel end, a timer, a future, a file, a socket, a child process, a terminal,
 
 ```
 fn put_one(out: ChanW[Int]) Unit:
-  _ = write(out, 1)
+  \write(out, 1)
 
 fn finish(out: ChanW[Int]) Unit:
   close(out)
@@ -1419,11 +1419,11 @@ A move is fine on a path that leaves the loop (a `break`, a `return`, a `?`). Th
 
 ```
 fiber[3] fn worker(out: ChanW[Int], n: Int) Unit:
-  _ = write(out, n)
+  \write(out, n)
 
 rx, tx = Chan[Int][4]()
 for i in 1..=3:
-  _ = run worker(clone(tx), i)
+  \run worker(clone(tx), i)
 close(tx)
 println("${read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)}")
 ```

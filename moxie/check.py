@@ -2111,6 +2111,11 @@ class Checker:
         if fn.__class__ is Field:
             self.callee_fields.add(id(fn))
         args = n.args or []
+        if fn.__class__ is Name and fn.name == "Err" and len(args) == 1 and hasattr(args[0], "expr") \
+                and args[0].expr.__class__ is Call and args[0].expr.fn.__class__ is Name and args[0].expr.fn.name == "fail" \
+                and all(x not in self.fns and x not in self.tuples and sc.find(x) is None for x in ("Err", "fail")):
+            self.err(n.line, "`Err(fail(...))` wraps an `Err` in an `Err`: `fail(...)` already returns the whole `Err`, so write `fail(code, msg)` alone (or `Err(Error(code, msg))`)")
+        args = n.args or []
         if fn.__class__ is Call or fn.__class__ is Name:
             if fn.__class__ is Call:
                 self.check_curried_application(n, sc)
@@ -2268,6 +2273,12 @@ class Checker:
                 v = c if isinstance(c, int) and not isinstance(c, bool) else None
             if lim is None or v is None or v < 1:
                 self.err(n.line, f"`{fn.name}` needs `limit:` with a constant number of 1 or more (the fibers are counted before the program runs)")
+        if fn.__class__ is Name and fn.name == "map_all" and not extra and sc.find(fn.name) is None \
+                and fn.name not in self.fns and fn.name not in self.tuples and args and all(hasattr(a, "expr") for a in args) \
+                and args[0].expr.__class__ is Lambda:
+            want, have = len(args) - 1, len(args[0].expr.params or [])
+            if want >= 2 and have != want:
+                self.err(n.line, f"`map_all` combines {want} results, so its function takes {want} parameters, but this one takes {have}")
         if opts is None or not labeled or extra or sc.find(fn.name) is not None or fn.name in self.fns or fn.name in self.tuples \
                 or any(k[1] == fn.name for k in self.methods) or any(getattr(a, "mod", None) for a in args) \
                 or not all(hasattr(a, "expr") for a in args):

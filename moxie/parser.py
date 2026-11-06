@@ -43,6 +43,12 @@ class Parser(ExprParser):
     def parse_stmt_core(self, allow_decl):
         t = self.peek()
         line = t.line
+        if t.kind == "OP" and t.val == "\\":
+            self.next()
+            if self._ends_stmt(self.peek()):
+                self.err("`\\` must be followed by the expression whose value it discards")
+            value = self.parse_expr()
+            return self.trail_if(Assign(PWild(line=line), value, None, "=", None, line=line))
         if t.kind == "NAME":
             v = t.val
             if v in MODS or v in DECL_START:

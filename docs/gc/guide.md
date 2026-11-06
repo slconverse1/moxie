@@ -1238,7 +1238,7 @@ tuple SmtpMailer:
   outbox: ChanW[Int]
 impl Mailer for SmtpMailer:
   fn (ref Self) notify(user_id: Int, amount: Int) Unit:
-    _ = write(outbox, user_id)
+    \write(outbox, user_id)
 fn charge[M: Mailer](ref mailer: M, user_id: Int, amount: Int) Int:
   fee = amount / 100
   ref mailer.notify(user_id, amount - fee)
@@ -1489,7 +1489,7 @@ fn (ref Self) set_value(new_value: Int) Result[Unit, Error]:
     Ok(())
 ```
 
-Handle `g.level = -20` with a `when`, or discard it with `_ =`. **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
+Handle `g.level = -20` with a `when`, or discard it with `\`. **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
 **Chapter 10: Operators, `|>>`, Results**
 
@@ -2025,9 +2025,9 @@ Output: `3`. A bare `Tree` inside its own definition means the same arguments, a
 
 ```
 counter = Atom[Int](0)
-_ = swap(counter, _ + 1)
+\swap(counter, _ + 1)
 rx, tx = Chan[String][1]()
-_ = write(tx, "hello")
+\write(tx, "hello")
 when read(rx):
   Ok(msg) -> println("$msg ${@counter}")
   Err(e) -> println("closed")
@@ -2041,6 +2041,8 @@ when @r:
 
 Output: `hello 1`, then `answer 42`. The future's two ends have the types `FutureR[Int]` (the read end, `r`) and `FutureW[Int]` (the write end, `w`), just as a channel's ends are `ChanR` and `ChanW`. In `Chan[String][1]`, the first brackets are the element type and the second is the capacity (how many values can wait). **[gc]** The capacity may be any `Int` expression, and `Chan[String][#unbounded]()` never makes a writer wait, at the price of unbounded growth. `swap` applies a function that must not park to the old value, stores the result, and returns the new value. Extra arguments go in with a placeholder call (using `add` from chapter 6):
 
+**Discarding a result.** `\swap(counter, _ + 1)` and `\write(tx, "hello")` start with `\`, which evaluates the rest of the statement and throws the value away. It is how you say a `Result` (or any value) is deliberately ignored, and it means exactly `_ = swap(counter, _ + 1)`, which still works. `\` is valid only at the start of a statement, with an expression after it; `x = \f()` is an error, and a trailing `\` does not continue the line.
+
 ```
 hits = Atom[Int](0)
 a = swap(hits, _ + 1)
@@ -2052,11 +2054,11 @@ Output: `1 6 6`. **Several writers.** A channel end moves by default, and `clone
 
 ```
 fiber fn worker(id: Int, out: ChanW[Int]) Unit:
-  _ = write(out, id * 10)
+  \write(out, id * 10)
 rx2, tx2 = Chan[Int][3]()
-_ = run worker(1, clone(tx2))
-_ = run worker(2, clone(tx2))
-_ = run worker(3, move tx2)
+\run worker(1, clone(tx2))
+\run worker(2, clone(tx2))
+\run worker(3, move tx2)
 a = read(rx2).get_or(0)
 b = read(rx2).get_or(0)
 c = read(rx2).get_or(0)
@@ -2070,10 +2072,10 @@ Output: `60`. The workers write 10, 20, and 30 in some order, and the three read
 ```
 fiber fn feed(tx: ChanW[String], msg: String) Unit:
   sleep(1s)
-  _ = write(tx, msg)
+  \write(tx, msg)
 fn start_feed() ChanR[String]:
   rx, tx = Chan[String][1]()
-  _ = run feed(tx, "hello from a fiber")
+  \run feed(tx, "hello from a fiber")
   rx
 inbox = start_feed()
 timeout = after(5s)
@@ -2104,16 +2106,16 @@ A short fiber can be written inline. The short form gives only the arguments, an
 
 ```
 fn greet(tx: ChanW[String]) Unit:
-  _ = run fn (tx):
-    _ = write(tx, "hi")
+  \run fn (tx):
+    \write(tx, "hi")
 ```
 
 The full form puts the arguments first and the parameters second, so the names inside can differ, and an argument can be a literal:
 
 ```
 fn start_counter(tx: ChanW[Int], start: Int) Unit:
-  _ = run fn (tx, start)(out, first):
-    _ = write(out, first + 1)
+  \run fn (tx, start)(out, first):
+    \write(out, first + 1)
 ```
 
 Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5): ...`). To wait for fibers, use a `scope:` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), an inline fiber body that ends in a value other than `Unit`, `return` in a daemon cycle (before `daemon:` in the entry file it ends the program), and a literal in the short form (`run fn (5):` needs the full form, `run fn (5)(x):`).
@@ -2129,14 +2131,14 @@ fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
   while true:
     select:
       case cancelled(stop) ->
-        _ = write(out, "worker ${id} stopping")
+        \write(out, "worker ${id} stopping")
         return
       case _ ->
         sleep(10ms)
 rx, tx = Chan[String][4]()
 scope s:
-  _ = run worker(1, clone(tx), s)
-  _ = run worker(2, tx, s)
+  \run worker(1, clone(tx), s)
+  \run worker(2, tx, s)
   sleep(50ms)
   cancel(s)
 println("scope over")
@@ -2151,7 +2153,7 @@ fn parse(text: String) Result[Int, Error]:
   if text == "": fail(7, "no input") else: Ok(1)
 fn job(out: ChanW[String]) Result[Int, Error]:
   scope s:
-    _ = run worker(1, out, s)
+    \run worker(1, out, s)
     n = parse("")?
     Ok(n)
 ```
@@ -2381,7 +2383,7 @@ close(l)
 sock = bind_udp(5300)?
 p = receive(sock, timeout: 2s)?
 println("${p.host}:${p.port} sent ${len(p.data)} bytes")
-_ = send_to(sock, p.host, p.port, p.data)
+\send_to(sock, p.host, p.port, p.data)
 close(sock)
 ```
 
@@ -2392,7 +2394,7 @@ close(sock)
 ```
 rx, tx = Chan[Int][1]()
 println(read(rx, timeout: 50ms))
-_ = write(tx, 7)
+\write(tx, 7)
 println(read(rx, timeout: 50ms))
 r = run_command("sleep", List("2"), timeout: 100ms)
 when r:
@@ -2455,7 +2457,7 @@ fn serve(l: Listener) Unit:
 init:
   path = temp_dir() + "/demo.sock"
   l = listen_unix(path)?
-  _ = run serve(move l)
+  \run serve(move l)
   c = connect_unix(path)?
   println(c, "hi")
   println(read_line(c)?)
@@ -2642,7 +2644,7 @@ fn work(done: ChanW[Int]) Unit:
 
 rx = signals()
 done_r, done_w = Chan[Int][1]()
-_ = run work(done_w)
+\run work(done_w)
 select:
   case read(rx) -> exit(130)
   case read(done_r) -> println("finished")
@@ -2822,10 +2824,10 @@ fn move_funds(
 ) Result[Unit, Error]:
   debit = sql(tx):
     UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
-  _ = debit?
+  \debit?
   credit = sql(tx):
     UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
-  _ = credit?
+  \credit?
   Ok(())
 
 fn transfer(
@@ -3043,6 +3045,32 @@ println(retry(5, 10ms, flaky))
 ```
 
 Output: `Err(List("bad -1", "bad -3"))`, `List(5, 7) List("bad -1", "bad -3")`, `Ok(0)`, then `Ok(3)`.
+
+**Different checks, one result.** `validate` needs one function over many items. A form is usually the other shape: several independent checks of different types, combined by one function. `map_all(f, r1, r2, ...)` takes two to six `Result`s that share an error type and a function with one parameter for each. If all are `Ok`, you get `Ok(f(values))`; otherwise `Err` with the list of *every* error, in argument order, so the mixer sees all the problems at once.
+
+```
+tuple User:
+  name: String
+  email: String
+
+fn check_name(s: String) Result[String, String]:
+  when s == "":
+    true -> Err("name is empty")
+    false -> Ok(s)
+
+fn check_email(s: String) Result[String, String]:
+  when s.contains("@"):
+    true -> Ok(s)
+    false -> Err("bad email: ${s}")
+
+fn create(name: String, email: String) Result[User, List[String]]:
+  map_all(User, check_name(name), check_email(email))
+
+println(create("ann", "ann@x.org"))
+println(create("", "nope"))
+```
+
+Output: `Ok(User(name: "ann", email: "ann@x.org"))`, then `Err(List("name is empty", "bad email: nope"))`. A function with the wrong number of parameters is a compile error. Every argument must have the same error type; wrap one with `map_err` to line them up. The checks run one after another; use `par_traverse` when each is slow and the items have one type.
 
 **24f. Functor, Applicative, and Monad**
 
@@ -3472,7 +3500,7 @@ What the collector can't do is free data the program itself keeps. An Atom that 
 ```
 log = Atom[List[String]](List())
 fn note(msg: String) Unit:
-  _ = swap(log, _ + msg)
+  \swap(log, _ + msg)
 ```
 
 Every call to `note` makes the list longer, and the list stays reachable through `log`. This is the one way memory leaks in moxie/gc. If you only need recent history, keep a `Ring` instead of a list. `Ring[T](n)` is an immutable buffer that holds at most `n` items, and adding to a full ring drops the oldest:
@@ -3480,7 +3508,7 @@ Every call to `note` makes the list longer, and the list stays reachable through
 ```
 log = Atom[Ring[String]](Ring[String](3))
 fn note(msg: String) Unit:
-  _ = swap(log, _ + msg)
+  \swap(log, _ + msg)
 for i in 1..=5:
   note("m$i")
 r = @log

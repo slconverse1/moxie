@@ -61,7 +61,7 @@ A lambda is a function with no name, written `(params): body`. It is meant to be
 ## Errors
 
 - Handle a `Result` with `?` when the caller can't do anything useful, and with `when` when it can.
-- Discard a result on purpose with `_ =`, so the next reader knows it was deliberate.
+- Discard a result on purpose with `\`, so the next reader knows it was deliberate.
 - Use assertions and aborts for bugs, never for expected failures such as a missing file or bad input.
 
 ## Fibers and channels
