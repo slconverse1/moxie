@@ -9,7 +9,8 @@ A type is `None` (not known: matches anything), a scalar name (`"Int"`, `"Float"
     ("app", head, args)        a generic type applied to arguments: Box[Int], List[T], Result[A, E]  (args may hold None)
     ("fn", params, ret)        a function type
     ("tup", items)             a tuple of types
-    ("param", name)            a type parameter of the function being checked
+    ("param", name)            a type parameter of a function being called (bound by unification at the call)
+    ("rigid", name)            a type parameter of the function being checked: only itself fits it
     ("appv", name, args)       a type parameter applied to arguments: `F[A]` where `F[_]` is a constructor parameter
     ("ctor", head, fixed)      what such a parameter is bound to: `head` with `fixed` as its leading arguments (`Result[String, _]`)
 
@@ -39,7 +40,7 @@ def show(t):
         return f"({ps}) -> {show(t[2])}"
     if tag == "tup":
         return "(" + ", ".join(show(i) for i in t[1]) + ")"
-    if tag == "param":
+    if tag in ("param", "rigid"):
         return t[1]
     if tag == "appv":
         return f"{t[1]}[{', '.join(show(a) for a in t[2])}]"
@@ -57,6 +58,8 @@ def compatible(exp, act):
     strict integer checks) and on anything unknown."""
     if is_wild(exp) or is_wild(act) or exp == act:
         return True
+    if (exp.__class__ is tuple and exp[0] == "rigid") or (act.__class__ is tuple and act[0] == "rigid"):
+        return False                      # a type parameter of the function being checked fits only itself
     if isinstance(exp, str) and isinstance(act, str):
         return exp in NUMERIC and act in NUMERIC
     et = exp[0] if exp.__class__ is tuple else None

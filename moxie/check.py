@@ -480,7 +480,7 @@ class Checker:
             g0 = t.groups[0] if isinstance(t.groups[0], list) else [t.groups[0]]
             return ("appv", n, tuple(self.ty_of_type(x, depth + 1, keep, False) for x in g0))
         if n in self.fn_tparams:
-            return None if top else (None if t.groups else ("param", n))
+            return None if t.groups else ("rigid", n)
         app = self.app_type(t, n, depth, keep)
         if app is not None:
             return app
@@ -564,7 +564,7 @@ class Checker:
             return
         if exp.__class__ is tuple and act.__class__ is tuple and exp[0] == "coll" and act[0] == "coll":
             return
-        if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param"):
+        if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param", "rigid") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param", "rigid"):
             if tys.compatible(exp, act):
                 return
         self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`")

@@ -27,6 +27,10 @@ BAD = [
  ("a lambda parameter takes the element type", 'xs = List(1, 2, 3)\nn: Int = xs |> map((x): x + "a") |> count()\n', "cannot apply `+` to `Int` and `String`"),
  ("upper of a String is a String", 'h: Int = upper("a")\n', "expected `Int`, found `String`"),
  ("map over a Result", 'r: Result[Int, String] = Ok(1)\nn: Int = map((x): x + 1, r)\n', "expected `Int`, found `Result[Int, String]`"),
+ ("T returned as an Int", 'fn bad[T](x: T) Int:\n  x\n', "expected `Int`, found `T`"),
+ ("an Int returned as T", 'fn bad[T](x: T) T:\n  1\n', "expected `T`, found `Int`"),
+ ("a List[T] returned as List[Int]", 'fn bad[T](xs: List[T]) List[Int]:\n  xs\n', "expected `List[Int]`, found `List[T]`"),
+ ("one parameter returned as another", 'fn bad[T, U](x: T, y: U) T:\n  y\n', "expected `T`, found `U`"),
  ("a literal returned as the wrong type", 'fn g() Int: "s"\n', "expected `Int`, found `String`"),
 ]
 GOOD = [
@@ -38,6 +42,8 @@ GOOD = [
  ("a pipeline checks and runs", 'xs = List(1, 2, 3)\nys: List[Int] = xs |> map((x): x * 2) |> collect()\nprintln(ys |> sum())\n', "12"),
  ("upper of a Char is a Char", 'c: Char = upper(\'a\')\nprintln(c)\n', "A"),
  ("a user type with its own map is left alone", BOX + 'fn map[A, B](f: (A) -> B, b: Box[A]) Box[B]:\n  Box(v: f(b.v))\nz: Box[Int] = map((x): x + 1, Box(v: 1))\nprintln(z.v)\n', "2"),
+ ("T passed on, returned, and stored", 'fn id[T](x: T) T:\n  x\nfn one[T](x: T) List[T]:\n  List(id(x))\nfn keep[T](xs: List[T]) List[T]:\n  xs\nprintln(len(keep(one(3))))\n', "1"),
+ ("a bounded T used with its operators", 'fn dbl[T: Numeric](x: T) T:\n  x + x\nprintln(dbl(2))\n', "4"),
  ("sizes agree", 'x: Array[Int][2] = Array(1, 2)\nprintln(x(1))\n', "2"),
  ("a generic function with a wrapper", BOX + 'fn wrap[T](x: T) Box[T]:\n  Box(v: x)\nz: Box[String] = wrap("s")\nprintln(z.v)\n', "s"),
  ("first of a list", 'fn first[T](xs: List[T]) T: xs(0)\ny: String = first(List("a", "b"))\nprintln(y)\n', "a"),
