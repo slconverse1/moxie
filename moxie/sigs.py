@@ -138,4 +138,29 @@ fn contains[T](xs: Seq[T], x: T) Bool: 0
 fn contains[K, V](d: Dict[K, V], k: K) Bool: 0
 fn secret_eq[T](a: T, b: T) Bool: 0
 fn close[T](x: T) Unit: 0
+fn trim(s: String) String: 0
+fn starts_with(s: String, prefix: String) Bool: 0
+fn starts_with(s: String, c: Char) Bool: 0
+fn ends_with(s: String, suffix: String) Bool: 0
+fn ends_with(s: String, c: Char) Bool: 0
+fn char_count(s: String) Int: 0
+fn grapheme_count(s: String) Int: 0
+fn path_join(base: String, rest: String) String: 0
+fn is_ok[T, E](r: Result[T, E]) Bool: 0
+fn is_err[T, E](r: Result[T, E]) Bool: 0
+fn is_nan(x: Double) Bool: 0
+fn is_inf(x: Double) Bool: 0
+fn is_finite(x: Double) Bool: 0
+fn sqrt(x: Double) Double: 0
+fn cwd() String: 0
+fn hostname() String: 0
+fn os_name() String: 0
+fn temp_dir() String: 0
+fn home_dir[E]() Result[String, E]: 0
+fn list_dir[E](p: String) Result[Array[String], E]: 0
+fn path_exists[E](p: String) Result[Bool, E]: 0
+fn remove_dir[E](p: String) Result[Unit, E]: 0
+fn rename_path[E](a: String, b: String) Result[Unit, E]: 0
+fn now() Duration: 0
+fn monotonic() Duration: 0
 '''

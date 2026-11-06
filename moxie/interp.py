@@ -165,6 +165,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         except Abort as a:
             self.err.write(f"abort (line {a.line or self.line}): {a.msg}\n")
             return 1
+        except MoxieSyntaxError as e:                  # a package that was only read when the import ran (check skipped)
+            self.err.write(str(e) + "\n")
+            return 2
         return 0
 
     DECL_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "ImplDecl", "AliasDecl",
@@ -253,9 +256,37 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         if pm.restricted:
             for line, name, want in self.unmet_needs(pm, prog):
                 diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
+        diags.extend(self.package_syntax_diags(prog, Diag))
         if self.pkg_ceilings:
             diags.extend(self.package_diags(prog, Diag))
         diags.extend(self.native_diags(prog, Diag))
+        return diags
+
+    def package_syntax_diags(self, prog, Diag):
+        """A syntax error in an imported package is reported before anything runs, with the package's file, line and column; the
+        line given is the import in the file being checked."""
+        from .packages import parse_package
+        diags, seen, queue = [], set(), [(prog, 0)]
+        while queue:
+            cur, via = queue.pop(0)
+            for st in cur.stmts:
+                if st.__class__ is not ImportDecl:
+                    continue
+                k = ".".join(st.pkg)
+                if k in seen:
+                    continue
+                seen.add(k)
+                found = self.find_package(st.pkg)
+                if found is None:
+                    continue
+                try:
+                    pp = parse_package(found[0])[1]
+                except MoxieSyntaxError as e:
+                    diags.append(Diag(via or st.line, f"package '{k}' has a syntax error: {e}"))
+                    continue
+                except OSError:
+                    continue
+                queue.append((pp, via or st.line))
         return diags
 
     def native_diags(self, prog, Diag):

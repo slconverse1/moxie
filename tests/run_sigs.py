@@ -90,6 +90,20 @@ SAMPLES = [
  ("Double", "random()"),
  ("List[Int]", "iterate(1, (n): n * 2) |> take(3) |> collect()"),
  ("Int", "random_int(1, 1)"),
+ ("String", '"  hi ".trim()'),
+ ("Bool", 'starts_with("abc", "a")'),
+ ("Bool", 'starts_with("abc", \'a\')'),
+ ("Bool", 'ends_with("abc", "c")'),
+ ("Int", 'char_count("héllo")'),
+ ("Int", 'grapheme_count("hello")'),
+ ("String", 'path_join("a", "b")'),
+ ("Bool", "is_ok(r)"),
+ ("Bool", "is_err(r)"),
+ ("Bool", "is_nan(1.5)"),
+ ("Bool", "is_finite(1.5)"),
+ ("Double", "sqrt(4.0)"),
+ ("String", "cwd()"),
+ ("String", "os_name()"),
 ]
 WRONG = {"Int": "String", "Double": "String", "Bool": "String", "String": "Int", "Char": "Int", "Unit": "Int"}
 
