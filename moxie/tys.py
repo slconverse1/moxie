@@ -8,7 +8,9 @@ A type is `None` (not known: matches anything), a scalar name (`"Int"`, `"Float"
     ("secret",)                Secret
     ("app", head, args)        a generic type applied to arguments: Box[Int], List[T], Result[A, E]  (args may hold None)
     ("fn", params, ret)        a function type
-    ("tup", items)             a tuple of types
+    ("tup", items[, labels])   a tuple of types; labels (a tuple of names or None, one per item) when it has field names:
+                               (id: Int, name: String).  Labels do not take part in compatible/unify (a tuple is checked by position);
+                               they are what a type function matches on.  In a type function's arm a label may be ("pvar", n) or ("param", n)
     ("param", name)            a type parameter of a function being called (bound by unification at the call)
     ("rigid", name)            a type parameter of the function being checked: only itself fits it
     ("lit", n)                 a number as a type (`0`, `1 + Length[Rest]`), for type functions
@@ -46,7 +48,8 @@ def show(t):
         ps = ", ".join(show(p) for p in t[1])
         return f"({ps}) -> {show(t[2])}"
     if tag == "tup":
-        return "(" + ", ".join(show(i) for i in t[1]) + ")"
+        labs = t[2] if len(t) > 2 else (None,) * len(t[1])
+        return "(" + ", ".join((f"{show_label(l)}: " if l is not None else "") + show(i) for l, i in zip(labs, t[1])) + ")"
     if tag == "spread":
         return "..." + show(t[1])
     if tag == "lit":
@@ -64,6 +67,10 @@ def show(t):
     if tag == "ctor":
         return f"{t[1]}[{', '.join([show(a) for a in t[2]] + ['_'])}]"
     return "?"
+
+
+def show_label(l):
+    return l if isinstance(l, str) else show(l)
 
 
 def show_size(s):
@@ -163,27 +170,43 @@ def subst(t, binds):
     if tag == "fn":
         return ("fn", tuple(subst(p, binds) for p in t[1]), subst(t[2], binds))
     if tag == "tup":
-        out = []
-        for i in t[1]:
+        out, labs = [], []
+        tl = t[2] if len(t) > 2 else (None,) * len(t[1])
+        for i, lab in zip(t[1], tl):
             if i.__class__ is tuple and i[0] == "spread":
                 r = subst(i[1], binds)
                 if r.__class__ is tuple and r[0] == "tup":
                     out.extend(r[1])
+                    labs.extend(r[2] if len(r) > 2 else (None,) * len(r[1]))
                 elif r == "Unit":
                     pass
                 elif r is None:
                     return None                    # the rest of the tuple is unknown, so the tuple is
                 else:
                     out.append(("spread", r))
+                    labs.append(None)
             else:
                 out.append(subst(i, binds))
-        return ("tup", tuple(out))
+                labs.append(_label_subst(lab, binds))
+        return ("tup", tuple(out), tuple(labs)) if any(l is not None for l in labs) else ("tup", tuple(out))
     if tag == "spread":
         return ("spread", subst(t[1], binds))
     return t
 
 
 _PARTIAL = [False]
+
+
+def _label_subst(lab, binds):
+    """A label that is a variable becomes the name its binding (a string type) gives; one that is not bound yet stays."""
+    if lab.__class__ is not tuple:
+        return lab
+    v = binds.get(lab[1])
+    if v.__class__ is tuple and v[0] == "slit":
+        return v[1]
+    if v is None and not _PARTIAL[0]:
+        return None
+    return lab
 
 
 def subst_partial(t, binds):
@@ -195,6 +218,7 @@ def subst_partial(t, binds):
         _PARTIAL[0] = False
 
 
+UNFOLD = None           # set by the checker: a declared tuple type -> the same as a labeled ("tup", ...), or None
 REDUCER = None          # set by the checker: (name, args) -> the reduced type, or a symbolic ("tapp", name, args)
 
 
@@ -243,7 +267,10 @@ def join(a, b):
         return "conflict" if "conflict" in parts else ("app", a[1], tuple(parts)) + (a[3:] if a[3:] == b[3:] else ())
     if a.__class__ is tuple and b.__class__ is tuple and a[0] == b[0] == "tup" and len(a[1]) == len(b[1]):
         parts = [join(x, y) for x, y in zip(a[1], b[1])]
-        return "conflict" if "conflict" in parts else ("tup", tuple(parts))
+        if "conflict" in parts:
+            return "conflict"
+        la, lb = (a[2] if len(a) > 2 else None), (b[2] if len(b) > 2 else None)
+        return ("tup", tuple(parts)) + ((la,) if la is not None and la == lb else ())
     if a.__class__ is tuple and b.__class__ is tuple and a[0] == b[0] == "fn" and len(a[1]) == len(b[1]):
         parts = [join(x, y) for x, y in zip(a[1], b[1])] + [join(a[2], b[2])]
         return "conflict" if "conflict" in parts else ("fn", tuple(parts[:-1]), parts[-1])
@@ -388,9 +415,13 @@ def tmatch(pat, act, binds):
         items = list(pat[1])
         if act == "Unit":
             act = ("tup", ())
+        if act.__class__ is tuple and act[0] in ("named", "app") and UNFOLD is not None:
+            act = UNFOLD(act) or act                    # a declared tuple is its fields, named
         if act.__class__ is not tuple or act[0] != "tup":
             return "no"
-        return _tup_match(items, list(act[1]), binds)
+        pl = list(pat[2]) if len(pat) > 2 else [None] * len(items)
+        al = list(act[2]) if len(act) > 2 else [None] * len(act[1])
+        return _tup_match(items, list(act[1]), binds, pl, al)
     if pt == "app":
         if act.__class__ is not tuple or act[0] != "app" or act[1] != pat[1] or len(act[2]) != len(pat[2]):
             return "no"
@@ -419,21 +450,43 @@ def tmatch(pat, act, binds):
     return "yes" if pat == act else "no"
 
 
-def _tup_match(items, acts, binds):
+def _label_match(pl, al, binds):
+    """A pattern's label against the item's: None matches anything; a variable binds the name as a string type; a string type
+    (a parameter already filled in) must be that name."""
+    if pl is None:
+        return "yes"
+    if al is None:
+        return "no"
+    if pl.__class__ is tuple:
+        if pl[0] == "pvar":
+            return tmatch(pl, ("slit", al), binds)
+        if pl[0] == "slit":
+            return "yes" if pl[1] == al else "no"
+        return _stuck(pl) or "no"
+    return "yes" if pl == al else "no"
+
+
+def _tup_match(items, acts, binds, pl, al):
     spread = [i for i, x in enumerate(items) if x.__class__ is tuple and x[0] == "spread"]
     if not spread:
         if len(items) != len(acts):
             return "no"
-        return _combine([tmatch(x, y, binds) for x, y in zip(items, acts)])
+        return _combine([_combine([_label_match(a, b, binds), tmatch(x, y, binds)]) for a, b, x, y in zip(pl, al, items, acts)])
     k = spread[0]
     before, after = items[:k], items[k + 1:]
     if len(acts) < len(before) + len(after):
         return "no"
-    mid = acts[len(before):len(acts) - len(after)]
-    rs = [tmatch(x, y, binds) for x, y in zip(before, acts[:len(before)])]
-    rs += [tmatch(x, y, binds) for x, y in zip(after, acts[len(acts) - len(after):])]
+    nb, na = len(before), len(after)
+    mid = acts[nb:len(acts) - na]
+    midl = al[nb:len(acts) - na]
+    rs = []
+    for lab, alab, x, y in zip(pl[:nb], al[:nb], before, acts[:nb]):
+        rs += [_label_match(lab, alab, binds), tmatch(x, y, binds)]
+    for lab, alab, x, y in zip(pl[k + 1:], al[len(acts) - na:], after, acts[len(acts) - na:]):
+        rs += [_label_match(lab, alab, binds), tmatch(x, y, binds)]
     inner = items[k][1]
-    rs.append(tmatch(inner, ("tup", tuple(mid)), binds))
+    rest = ("tup", tuple(mid), tuple(midl)) if any(l is not None for l in midl) else ("tup", tuple(mid))
+    rs.append(tmatch(inner, rest, binds))
     return _combine(rs)
 
 

@@ -217,6 +217,7 @@ class Checker:
         self.pv = frozenset()
         self.tf_steps = 0
         self.tf_depth = 0
+        self.in_tfun = False
         self.tf_fuel = TF_FUEL
         self.tf_big = False
         self.tf_trail = []
@@ -236,6 +237,7 @@ class Checker:
     # ------------------------------------------------------------ entry
     def check(self, prog):
         tys.REDUCER = self.reduce_tapp
+        tys.UNFOLD = self.unfold
         for st in prog.stmts:
             self.collect(st)
         self.find_consumers(prog)
@@ -478,8 +480,10 @@ class Checker:
             ps = tuple(self.ty_of_type(p[1] if isinstance(p, tuple) else p, depth + 1, keep, False) for p in (t.params or []))
             return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
         if c is TTuple:
-            return ("tup", tuple(("spread", self.ty_of_type(ft, depth + 1, keep, False)) if lab == "..." else
-                                 self.ty_of_type(ft, depth + 1, keep, False) for lab, ft in t.items))
+            items = tuple(("spread", self.ty_of_type(ft, depth + 1, keep, False)) if lab == "..." else
+                          self.ty_of_type(ft, depth + 1, keep, False) for lab, ft in t.items)
+            labs = tuple(None if lab == "..." else self.tuple_label(lab, keep) for lab, ft in t.items)
+            return ("tup", items, labs) if any(l is not None for l in labs) else ("tup", items)
         if c is TApp:
             from .typelam import reduce_app, TypeLambdaError
             try:
@@ -529,6 +533,36 @@ class Checker:
             return ("named", n)
         return None
 
+    def tuple_label(self, lab, keep):
+        """A field name in a tuple type.  Inside a type function's arms a name that is a parameter of the function or a variable of
+        the pattern stands for a name (a string type), so `(K: T, ...Rest)` finds the field called by the type given for K."""
+        if lab is None or lab == "_":
+            return None
+        if self.in_tfun:
+            if keep and lab in keep:
+                return ("param", lab)
+            if lab in self.pv:
+                return ("pvar", lab)
+        return lab
+
+    def unfold(self, t):
+        """A declared tuple type as the labeled tuple of its fields (a generic one with its arguments filled in)."""
+        td = self.tuples.get(t[1])
+        if td is None or td.__class__ is not TupleDecl:
+            return None
+        keep = {tp.name for tp in td.tparams or []}
+        binds = dict(zip([tp.name for tp in td.tparams or []], t[2])) if t[0] == "app" else {}
+        if keep and t[0] != "app":
+            return None
+        saved, self.fn_tparams, self.in_tfun = self.fn_tparams, (), False
+        try:
+            items = [self.ty_of_type(f.type, 0, keep or None, False) for f in td.fields or []]
+        finally:
+            self.fn_tparams = saved
+        r = ("tup", tuple(tys.subst_partial(i, binds) if i is not None and keep else i for i in items),
+             tuple(f.name for f in td.fields or []))
+        return r
+
     # ------------------------------------------------------------ type functions (`type alias F[T] = when T: ...`)
     def tfun(self, name):
         """(parameter names, scrutinee type, [(pattern, result)]) for a type function, built once from its declaration."""
@@ -538,8 +572,9 @@ class Checker:
         a = self.aliases[name]
         params = [tp.name for tp in a.tparams]
         self.tfuns[name] = tf = (params, None, [])         # entered first, so an arm that names the function itself finds it
-        saved_pv, saved_tp = self.pv, self.fn_tparams
+        saved_pv, saved_tp, saved_tf = self.pv, self.fn_tparams, self.in_tfun
         self.fn_tparams = ()
+        self.in_tfun = True
         try:
             keep = set(params)
             scrut = self.ty_of_type(a.type.scrut, 0, keep, False)
@@ -551,7 +586,7 @@ class Checker:
                 arms.append((p, r, (guard, self.pv, keep) if guard is not None else None))
             self.tfuns[name] = tf = (params, scrut, arms)
         finally:
-            self.pv, self.fn_tparams = saved_pv, saved_tp
+            self.pv, self.fn_tparams, self.in_tfun = saved_pv, saved_tp, saved_tf
         return tf
 
     def pattern_vars(self, pat, params):
@@ -570,6 +605,8 @@ class Checker:
                         walk(y)
             elif c is TTuple:
                 for lab, y in x.items:
+                    if lab and lab not in ("...", "_") and lab not in params and lab not in out:
+                        out.append(lab)
                     walk(y)
             elif c is TFn:
                 for lab, y in x.params:
@@ -936,10 +973,16 @@ class Checker:
         return "Decimal", None
 
     def e_StrLit(self, n, sc):
+        text = []
         for p in n.parts or []:
             if hasattr(p, "_fields"):
                 self.ev(p, sc)
-        return "String", None
+                text = None
+            elif text is not None and isinstance(p, str):
+                text.append(p)
+            else:
+                text = None
+        return "String", ("".join(text) if text is not None else None)
 
     def e_Interp(self, n, sc):
         self.ev(n.expr, sc)
@@ -2223,13 +2266,20 @@ class Checker:
         if len(args) > len(params) or any(p.variadic for p in params):
             return None
         binds = {}
+        singles = set()                 # a parameter used inside a type function keeps a literal argument's own type ("name", 3)
+        for p in params:
+            self.tapp_params(self.ty_of_type(p.type, 0, keep), singles, False)
+        if fd.ret is not None:
+            self.tapp_params(self.ty_of_type(fd.ret, 0, keep), singles, False)
         for p, a, (t, _c) in zip(params, args, ats):
             pt = self.ty_of_type(p.type, 0, keep)
             if pt.__class__ is not tuple or t is None:
                 continue
             if pt[0] == "param":
                 bt = self.base(t)
-                if bt.__class__ is not tuple or bt[0] in ("app", "fn", "tup"):
+                if pt[1] in singles and bt in ("String", "Int") and _c is not None and bt != "Bool":
+                    binds[pt[1]] = ("slit", _c) if bt == "String" else ("lit", _c)
+                elif bt.__class__ is not tuple or bt[0] in ("app", "fn", "tup", "named"):
                     j = tys.join(binds.get(pt[1]), bt)
                     if j != "conflict":
                         binds[pt[1]] = j
@@ -2247,9 +2297,23 @@ class Checker:
             return None
         if ret.__class__ is tuple and ret[0] == "param":
             return binds.get(ret[1])
-        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup", "appv"):
+        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup", "appv", "tapp"):
             return tys.subst(ret, binds)
         return ret if not tys.params_in(ret) else None
+
+    def tapp_params(self, t, out, inside):
+        """Collect the type parameters that appear inside a type-function application."""
+        if t.__class__ is not tuple:
+            return
+        if t[0] == "param" and inside:
+            out.add(t[1])
+        for x in t[1:]:
+            if x.__class__ is tuple:
+                if x and x[0].__class__ is str and x[0] in ("param", "app", "tapp", "tup", "fn", "spread", "appv"):
+                    self.tapp_params(x, out, inside or t[0] == "tapp")
+                else:
+                    for y in x:
+                        self.tapp_params(y, out, inside or t[0] == "tapp")
 
     def generic_tuple(self, td, n, args, ats):
         """`Box(v: 1)`: unify the field types with the arguments, giving `Box[Int]`; a field that clashes is an error."""
@@ -2680,15 +2744,19 @@ class Checker:
         return self.ev(e, sc)
 
     def e_TupleE(self, n, sc):
-        types = []
+        types, labs = [], []
         plain = True
         for it in n.items or []:
             t = self.ev(it[1] if isinstance(it, tuple) and len(it) > 1 else it, sc)[0]
             types.append(self.base(t))
-            if not (isinstance(it, tuple) and len(it) > 1 and it[0] is None and not (len(it) > 2 and it[2])):
+            if isinstance(it, tuple) and len(it) > 1:
+                labs.append(it[0])
+            else:
+                labs.append(None)
+            if not (isinstance(it, tuple) and len(it) > 1 and not (len(it) > 2 and it[2])):
                 plain = False
         if plain and len(types) >= 2:
-            return ("tup", tuple(types)), None
+            return (("tup", tuple(types), tuple(labs)) if any(labs) else ("tup", tuple(types))), None
         return None, None
 
     def e_PathE(self, n, sc):

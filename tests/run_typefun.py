@@ -46,6 +46,18 @@ GOOD += [
  ("a string arm", COL + 'e: Col["name"] = "x"\nprintln(e)\n', "x"),
  ("== in a guard: equal types", SAME + 'g: Same[Int, Int] = true\nprintln(g)\n', "true"),
 ]
+GET = 'type alias Get[R, K] = when R:\n  (K: T, ...Rest) -> T\n  (_: _, ...Rest) -> Get[Rest, K]\nfn get[R, K](row: R, key: K) Get[R, K]:\n  todo\n'
+NAMES = 'type alias Names[R] = when R:\n  () -> ()\n  (k: _, ...Rest) -> (k, ...Names[Rest])\n'
+USER = 'tuple User:\n  id: Int\n  name: String\n  zip: Int\n'
+BAD += [
+ ("get finds a field by name: wrong type", GET + USER + 'u = User(id: 1, name: "a", zip: 3)\nx: Int = get(u, "name")\n', "expected `Int`, found `String`"),
+ ("get: no such field", GET + USER + 'u = User(id: 1, name: "a", zip: 3)\nz = get(u, "nope")\n', "no arm of `Get` matches"),
+ ("labels are shown", GET + 'x: Get[(a: Int, b: String), "b"] = 1\n', "expected `String`, found `Int`"),
+ ("field names as strings", NAMES + 'x: Names[(a: Int, b: String)] = (1, 2)\n', "expected `(\"a\", \"b\")`"),
+]
+GOOD += [
+ ("get finds a field by name", GET + USER + 'fn look(u: User) Unit:\n  y: String = get(u, "name")\n  z: Int = get(u, "zip")\n  println(y)\nprintln("ok")\n', "ok"),
+]
 fails = []
 
 
