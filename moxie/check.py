@@ -1406,9 +1406,15 @@ class Checker:
             return
         self.err(n.line, f"`{tname}` has no field `{nm}`" + (f"; its fields are {', '.join('`'+x+'`' for x in names)}" if names else ""))
 
+    def arity_known(self, ft):
+        """True when a function type states its parameter count (no parameter standing for a whole argument list)."""
+        return all(not (p.__class__ is tuple and p[0] in ("param", "rigid", "appv", "ctor", "tapp")) for p in ft[1])
+
     def e_Lambda(self, n, sc):
         inner = Sc(sc, open_=not n.params)
         expect, self.lam_expect = self.lam_expect, None
+        if expect and expect[0] == "fn" and n.params and len(expect[1]) != len(n.params) and self.arity_known(expect):
+            self.err(n.line, f"this function takes {len(n.params)} parameter{'s' if len(n.params) != 1 else ''}, but it is used where one with {len(expect[1])} is expected")
         eps = expect[1] if expect and len(expect[1]) == len(n.params or []) else ()
         ptypes = []
         for i, p in enumerate(n.params or []):
@@ -2217,8 +2223,9 @@ class Checker:
         self.ev(fn, sc)
         return None, None
 
-    def collection_ctor(self, name, args, ats):
-        """`List(1, 2)` is `List[Int]`: the elements share one type; an unknown element leaves it unknown."""
+    def collection_ctor(self, name, args, ats, n=None):
+        """`List(1, 2)` is `List[Int]`: the elements share one type; an unknown element leaves it unknown.  Two settled
+        elements of different plain types (`Int` and `String`, or `Result[Int, String]` and `Result[Int, Int]`) are an error."""
         if extra_bad(args):
             return None
         el = None
@@ -2226,8 +2233,12 @@ class Checker:
             t = self.base(t)
             if t is None:
                 return ("app", name, (None,))
+            prev = el
             el = tys.join(el, t)
             if el == "conflict":
+                plain = lambda x: not self.has_unsettled(x) and (x.__class__ is str or x[0] == "app")
+                if n is not None and plain(prev) and plain(t):
+                    self.err(n.line, f"the elements of `{name}(...)` must share one type, but found `{tshow(prev)}` and `{tshow(t)}`")
                 return ("app", name, (None,))
         if name == "Array":
             return ("app", name, (el,), len(ats))
@@ -2383,6 +2394,14 @@ class Checker:
             if getattr(n.fn, "name", None) == "len" and any(t is not None and (t[0] == "tup" or t[0] == "named" and t[1] in self.tuples)
                                                            for t in ft if t.__class__ is tuple):
                 return ats, "Int"                 # `len` of a tuple counts its fields
+            known = [t if t is not None and t[0] != "fn" and not self.has_unsettled(t) else None for t in ft]
+            alone = lambda sg: all(tys.match(pt, self.base(t), {}) for pt, t in zip(sg[1], known) if t is not None)
+            if any(t is not None for t in known) and not any(self.sig_fit(sg, known) is not None for sg in over) \
+                    and any(alone(sg) for sg in over):         # each argument fits its own parameter; only the shared type parameter clashes
+                ft = [t for t in known if t is not None]          # the settled arguments alone already clash (a repeated type parameter)
+                self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take these arguments: they do not agree on one type for a repeated type parameter "
+                         f"({', '.join(tshow(t) for t in ft)}); it takes " + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:1]))
+                return ats, None
             if all(t is not None and not self.has_unsettled(t) for t in ft) or (len(over) == 1 and any(
                     t is not None and not self.has_unsettled(t) and pt is not None and t[0] != "fn" and (pt.__class__ is not tuple or pt[0] != "fn")
                     and not tys.match(pt, self.base(t), {}) for pt, t in zip(over[0][1], ft))):
@@ -2431,7 +2450,7 @@ class Checker:
             return ("app", "Result", (t, None) if name == "Ok" else (None, t)), None
         if name in ("List", "Array", "Set") and not extra and name not in self.fns and name not in self.tuples \
                 and name not in self.aliases and args and n.trailing is None:
-            return self.collection_ctor(name, args, ats), None
+            return self.collection_ctor(name, args, ats, n), None
         if name == "secret" and name not in self.fns:
             return ("secret",), None
         if name in self.tuples:
