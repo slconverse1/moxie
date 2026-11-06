@@ -2200,7 +2200,7 @@ class Checker:
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
     RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal"}
-    OPTIONS = {"retry": {"when": None},
+    OPTIONS = {"retry": {"when": None}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
                "run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
                "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
 

@@ -261,15 +261,39 @@ def _blocking(I, f, fn):
     return S_.park_thread(I, fn)
 
 
-def _read_line(I, a):
+def _wait_readable(io, secs):
+    """True when a socket Io has something to read (buffered, or arriving within `secs`), or has ended."""
+    import select
+    s = io.sock
+    s.setblocking(False)
+    try:
+        try:
+            if io.f.peek(1):
+                return True
+        except OSError:
+            pass
+    finally:
+        s.setblocking(True)
+    return bool(select.select([s], [], [], secs)[0])
+
+
+def _read_line(I, a, tmo=None):
     f = _inp(I, a)
     _prompt_flush(I)
+    if tmo is not None:
+        io = a[0] if a and isinstance(a[0], IoV) else None
+        if io is None:
+            raise Abort("`timeout:` works on a socket, not on standard input")
+        if io.kind == "socket" and io.sock is not None:         # a file never waits, so only a socket can time out
+            secs = tmo.ns / 1e9
+            if not (yield from S_.park_thread(I, lambda: _wait_readable(io, secs))):
+                return err_reserved("TIMED_OUT", "read_line: timed out")
     return (yield from _blocking(I, f, lambda: _read_line_f(f)))
 
 
 @bi("read_line", "first", True)
 def b_read_line(I, a, kw, ta):
-    return (yield from _read_line(I, a))
+    return (yield from _read_line(I, a, kw.get("timeout")))
 
 
 @bi("read_all", "first", True)
@@ -403,15 +427,19 @@ def b_connect(I, a, kw, ta):
     if not I.perms.connect_ok(a[0], a[1]):
         return denied(f"{a[0]}:{a[1]}", "net.connect")
 
+    tmo = kw.get("timeout")
+
     def work():
         try:
-            s = socket.create_connection((a[0], int(a[1])), timeout=30)
+            s = socket.create_connection((a[0], int(a[1])), timeout=30 if tmo is None else tmo.ns / 1e9)
             s.settimeout(None)
             return s
         except OSError as e:
             return e
     s = yield from S_.park_thread(I, work)
     if isinstance(s, OSError):
+        if isinstance(s, socket.timeout):
+            return err_reserved("TIMED_OUT", f"{a[0]}:{a[1]}: timed out")
         return io_error(s, f"{a[0]}:{a[1]}")
     return Ok(IoV(I, "socket", s.makefile("rwb"), s))
 
@@ -503,9 +531,16 @@ def b_accept(I, a, kw, ta):
     if not isinstance(l, ListenerV) or l.closed:
         raise Abort("accept needs an open Listener")
 
+    tmo = kw.get("timeout")
+
     def work():
         try:
-            c = l.sock.accept()[0]
+            l.sock.settimeout(None if tmo is None else tmo.ns / 1e9)
+            try:
+                c = l.sock.accept()[0]
+            finally:
+                l.sock.settimeout(None)
+            c.settimeout(None)
             if l.ctx is not None:
                 try:
                     c = l.ctx.wrap_socket(c, server_side=True)
@@ -517,6 +552,9 @@ def b_accept(I, a, kw, ta):
             return e
     c = yield from S_.park_thread(I, work)
     if isinstance(c, OSError):
+        import socket
+        if isinstance(c, socket.timeout):
+            return err_reserved("TIMED_OUT", "accept: timed out")
         return io_error(c)
     return Ok(IoV(I, "socket", c.makefile("rwb"), c))
 
@@ -587,7 +625,7 @@ def b_receive(I, a, kw, ta):
     if isinstance(r, OSError):
         import socket
         if isinstance(r, socket.timeout):
-            return err_reserved("IO_ERROR", "receive: timed out")
+            return err_reserved("TIMED_OUT", "receive: timed out")
         return io_error(r)
     raw, (host, port) = r[0], r[1][:2]
     cls = INT_CLASSES.get("UInt8")
@@ -1070,10 +1108,38 @@ def b_parse_number(I, a, kw, ta):
         return err_reserved("MISSING", "not a number")
 
 
+def _timed_read(I, x, d):
+    """read(ch, timeout: d): the value, or Err(TIMED_OUT) once `d` has passed with nothing to read."""
+    S = I.sched
+    if isinstance(x, S_.TimerV):
+        if x.fired:
+            return (yield from x.chan_read(I))
+        readers = x.readers
+    else:
+        if x.ready() or x.chan.wcount <= 0:
+            return (yield from x.chan_read(I))
+        readers = x.chan.readers
+    f = S.cur
+    dl = S_.DeadlineV(f)
+    S.arm_timer(dl, d.ns)
+    readers.append(f)
+    r = yield ("block",)
+    S.disarm(dl)
+    if r is S_.TIMED_OUT_MARK:
+        try:
+            readers.remove(f)
+        except ValueError:
+            pass
+        return err_reserved("TIMED_OUT", "read: timed out")
+    return r
+
+
 @bi("read")
 def b_read(I, a, kw, ta):
     x = a[0]
     if hasattr(x, "chan_read"):
+        if kw.get("timeout") is not None:
+            return (yield from _timed_read(I, x, kw["timeout"]))
         return (yield from x.chan_read(I))
     if isinstance(x, str):
         return I.read_text(x, ta)

@@ -238,6 +238,17 @@ class TimerV:
         return r
 
 
+class DeadlineV(TimerV):
+    """An unnamed timer that wakes one blocked fiber with TIMED_OUT_MARK (a read or wait with `timeout:`)."""
+
+    def __init__(self, fiber):
+        TimerV.__init__(self)
+        self.fiber = fiber
+
+
+TIMED_OUT_MARK = object()
+
+
 class AtomV:
     tname_ = "Atom"
 
@@ -432,6 +443,10 @@ class Scheduler:
         t.every = None
 
     def fire_timer(self, t):
+        if t.__class__ is DeadlineV:
+            if not t.fiber.done and t.fiber.state == "blocked":
+                self.wake(t.fiber, TIMED_OUT_MARK)
+            return
         t.fired = True
         if t.readers:
             f = t.readers.pop(0)

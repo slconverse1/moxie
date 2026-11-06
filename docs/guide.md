@@ -2394,6 +2394,23 @@ close(sock)
 
 `receive` parks only its own fiber and returns a `Packet` (`host`, `port`, and `data`, an `Array[Byte]`). The `timeout:` argument turns a wait into an `Err` after that long, which is how a program notices a lost packet. `send_to` takes the bytes as an `Array[Byte]` or a `String` (sent as UTF-8), and a datagram holds at most 65507 bytes. `bind_udp` is checked against `net.listen` and `send_to` against `net.connect`. A `Udp` is a resource like an `Io`: close it, or the runtime closes it when the program ends. **Mistakes:** treating a datagram as a stream (one `receive` is one `send_to`, never half of one), waiting with no `timeout:` for a packet that may have been lost, sending more than one datagram can hold, and passing a `Udp` to `read_line`.
 
+**Waiting with a deadline.** Every call that can wait on the outside world takes `timeout:`, a `Duration`: `read(ch, timeout: d)`, `accept`, `connect`, `wait_child`, `read_line` on a socket, and the `receive` and `run_command` above. When the time passes with nothing to show, the call returns `Err` with the reserved code `TIMED_OUT`, so a timeout is never confused with a dropped connection (`IO_ERROR`) and `retry` treats it as worth another try. A timeout gives up waiting; it does not undo anything, so a `run_command` that times out has had its program killed, and a `read` that times out has taken nothing from the channel. `read_line` waits for data to arrive, not for a whole line, and it can't time out on standard input (that is a runtime error); to stop a loop over `lines`, read with `read_line` and a timeout instead.
+
+```
+rx, tx = Chan[Int][1]()
+println(read(rx, timeout: 50ms))
+_ = write(tx, 7)
+println(read(rx, timeout: 50ms))
+r = run_command("sleep", List("2"), timeout: 100ms)
+when r:
+  Err(e) -> println("code ${e.code}")
+  Ok(_) -> println("finished")
+println(retry(3, 10ms, fn (): read(rx, timeout: 10ms)))
+close(tx)
+```
+
+Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn (): ...`, as a plain lambda must be pure.
+
 **Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
 
 ```

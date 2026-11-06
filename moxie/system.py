@@ -292,7 +292,7 @@ def b_run_command(I, a, kw, ta):
             return e
     r = yield from S_.park_thread(I, work)
     if r == "timeout":
-        return err_reserved("IO_ERROR", f"{a[0]}: timed out")
+        return err_reserved("TIMED_OUT", f"{a[0]}: timed out")
     if isinstance(r, OSError):
         return io_error(r, str(a[0]))
     try:
@@ -343,7 +343,16 @@ def b_child_stdin(I, a, kw, ta):
 @bi("wait_child", "first", True)
 def b_wait_child(I, a, kw, ta):
     c = _child(a, "wait_child")
-    r = yield from S_.park_thread(I, lambda: c.proc.wait())
+    tmo = kw.get("timeout")
+
+    def work():
+        try:
+            return c.proc.wait(timeout=None if tmo is None else tmo.ns / 1e9)
+        except subprocess.TimeoutExpired:
+            return None
+    r = yield from S_.park_thread(I, work)
+    if r is None:
+        return err_reserved("TIMED_OUT", "wait_child: timed out")
     return Ok(_exit_code(r))
 
 
