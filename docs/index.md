@@ -55,7 +55,7 @@ The [Tutorial](tutorial.html) builds one program step by step and assumes you ha
 
 ## About us
 
-Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer lives on paper alone. It's a software project undertaken by me, Steve Converse, in collaboration with Google's generative AI and Anthropic's Claude, without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
+Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer lives on paper alone. It's a software project undertaken by me, Steve Converse (feature selection), in collaboration with Google's generative AI (feature analysis) and Anthropic's Claude (feature selection, analysis, and implementation), without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
 
 The interpreter runs moxie programs, including the examples in the Mixer's Guide, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the no-GC memory model and the speed in FCFX, are still promises, not demonstrations.
 
