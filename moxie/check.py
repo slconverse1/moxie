@@ -284,9 +284,14 @@ class Checker:
             from .parser import parse_program
             from . import mxprelude as M
             prog = parse_program(M.SRC + (M.GC_SRC if GC[0] else ""), "<prelude>")
-            Checker._prelude_types[GC[0]] = [st for st in prog.stmts if st.__class__ in (TupleDecl, EnumDecl)]
+            Checker._prelude_types[GC[0]] = [st for st in prog.stmts if st.__class__ in (TupleDecl, EnumDecl, IfaceDecl, ImplDecl)]
+        mark = len(self.diags)
         for st in Checker._prelude_types[GC[0]]:
-            (self.tuples if st.__class__ is TupleDecl else self.enums)[st.name] = st
+            if st.__class__ in (TupleDecl, EnumDecl):
+                (self.tuples if st.__class__ is TupleDecl else self.enums)[st.name] = st
+            else:
+                self.collect(st)                  # interfaces and impls, so a bound like `T: Monoid` is checked
+        del self.diags[mark:]
 
     def fold_binding(self, st):
         """`N = fib(10)`: a top-level binding whose value the compiler can work out is a constant (a size may use it, and a call that

@@ -59,6 +59,82 @@ tuple Output:
   stdout: String
   stderr: String
 
+interface Semigroup:
+  fn combine(self, other: Self) Self
+
+interface Monoid:
+  Semigroup
+  static fn empty() Self
+
+impl Semigroup for String:
+  fn combine(self, other: String) String: self + other
+
+impl Monoid for String:
+  static fn empty() String: ""
+
+impl[T] Semigroup for List[T]:
+  fn combine(self, other: List[T]) List[T]: self + other
+
+impl[T] Monoid for List[T]:
+  static fn empty() List[T]: List()
+
+tuple Sum[T]:
+  value: T
+
+impl[T: Addable] Semigroup for Sum[T]:
+  fn combine(self, other: Sum[T]) Sum[T]: Sum(self.value + other.value)
+
+impl[T: Addable] Monoid for Sum[T]:
+  static fn empty() Sum[T]: Sum(0)
+
+tuple Product[T]:
+  value: T
+
+impl[T: Numeric] Semigroup for Product[T]:
+  fn combine(self, other: Product[T]) Product[T]: Product(self.value * other.value)
+
+impl[T: Numeric] Monoid for Product[T]:
+  static fn empty() Product[T]: Product(1)
+
+tuple All:
+  value: Bool
+
+impl Semigroup for All:
+  fn combine(self, other: All) All: All(self.value and other.value)
+
+impl Monoid for All:
+  static fn empty() All: All(true)
+
+tuple Any:
+  value: Bool
+
+impl Semigroup for Any:
+  fn combine(self, other: Any) Any: Any(self.value or other.value)
+
+impl Monoid for Any:
+  static fn empty() Any: Any(false)
+
+tuple Min[T]:
+  value: T
+
+impl[T: Ordered] Semigroup for Min[T]:
+  fn combine(self, other: Min[T]) Min[T]: Min(min(self.value, other.value))
+
+tuple Max[T]:
+  value: T
+
+impl[T: Ordered] Semigroup for Max[T]:
+  fn combine(self, other: Max[T]) Max[T]: Max(max(self.value, other.value))
+
+fn fold_all[T: Monoid](xs) T:
+  items = xs |> to_stream() |> collect()
+  when items:
+    List(h, ...t) -> t |> to_stream() |> reduce(h, (acc, x): acc.combine(x))
+    _ -> T.empty()
+
+fn fold_map[T, M: Monoid](f, xs) M:
+  fold_all[M](xs |> to_stream() |> map(f) |> collect())
+
 tuple NonEmpty[T]:
   head: T
   tail: List[T]

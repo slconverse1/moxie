@@ -1267,7 +1267,7 @@ maxes: Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
 println("${mconcat(nums)} ${mconcat(maxes).value}")
 ```
 
-Output: `6 9`. `Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. A member with no receiver is a `static fn`, reached through the type, so Haskell's `mempty` is `T.empty()`. The compiler specializes `mconcat` for each type, with no tables at run time.
+Output: `6 9`. `Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. The prelude already declares `Semigroup` and `Monoid` (chapter 24l) with instances for `String` and `List`; this example writes its own so you can see how an interface is built, and a declaration in your program is the one it uses. A member with no receiver is a `static fn`, reached through the type, so Haskell's `mempty` is `T.empty()`. The compiler specializes `mconcat` for each type, with no tables at run time.
 
 **2. Associated types**
 
@@ -3383,6 +3383,30 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
 - **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.
 - **Checked monad laws.** The interfaces are conventions, as in Haskell.
+
+**24l. Semigroup and Monoid**
+
+The prelude declares `Semigroup` (`fn combine(self, other: Self) Self`, which must be associative) and `Monoid` (a `Semigroup` plus `static fn empty() Self`, the identity), as in Haskell and Cats. `String` and `List[T]` implement both, with `+` as `combine` and `""` and `List()` as `empty`. For the other combinations that make sense, the prelude has small wrapper tuples with one field, `value`: `Sum[T]` (for any `Addable`), `Product[T]` (any `Numeric`), `All` and `Any` (`Bool`, with `and` and `or`), and, as semigroups only because they have no identity, `Min[T]` and `Max[T]` (any `Ordered`). A number has more than one monoid, so it has none of its own: you pick one by wrapping it. `fold_all(xs)` combines a stream or list of monoid values (Haskell's `mconcat`), and `fold_map(f, xs)` maps each item to a monoid value first (`foldMap`). Your own types join with an `impl`, as in chapter 8d, and nothing needs importing:
+
+```
+println(fold_all(List("a", "b", "c")))
+println(fold_all(List(List(1), List(2, 3))))
+println(fold_all(List(Sum(1), Sum(2), Sum(3))))
+println(fold_map(fn (w): List(len(w)), List("a", "bb", "ccc")))
+println(fold_map(fn (n): Min(n), List(4, 2, 8)))
+tuple Stats deriving show:
+  count: Int
+  total: Int
+impl Semigroup for Stats:
+  fn combine(self, other: Stats) Stats:
+    Stats(count: self.count + other.count, total: self.total + other.total)
+impl Monoid for Stats:
+  static fn empty() Stats: Stats(count: 0, total: 0)
+println(fold_map(fn (n): Stats(count: 1, total: n), List(4, 6, 8)))
+println(fold_all[Stats](List()))
+```
+
+Output: `abc`, `List(1, 2, 3)`, `Sum(value: 6)`, `List(1, 2, 3)`, `Min(value: 2)`, `Stats(count: 3, total: 18)`, then `Stats(count: 0, total: 0)`. An empty input gives `empty()`, so name the type when nothing else says which one (`fold_all[Stats](List())`). `Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there is no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
 
 **Chapter 25: Moxie for imperative programmers**
 
