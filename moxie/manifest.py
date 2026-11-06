@@ -3,7 +3,7 @@ import os
 
 FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
-PROGRAM_KEYS = {"memory", "key_warning", "type_fuel"}
+PROGRAM_KEYS = {"memory", "key_warning", "type_fuel", "eval_fuel"}
 NATIVE_KEYS = {"libs", "paths"}
 MEMORY_KEYS = {"heap", "slice"}
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "KIB": 1024, "MIB": 1024 ** 2, "GIB": 1024 ** 3}
@@ -67,6 +67,10 @@ def load(path):
         tf = out["program"]["type_fuel"]
         if not isinstance(tf, int) or isinstance(tf, bool) or tf < 1:
             raise ManifestError(f"{m}: [program] type_fuel must be a whole number of reductions, 1 or more (the default is 64)")
+    if "eval_fuel" in out["program"]:
+        ef = out["program"]["eval_fuel"]
+        if not isinstance(ef, int) or isinstance(ef, bool) or ef < 1:
+            raise ManifestError(f"{m}: [program] eval_fuel must be a whole number of steps, 1 or more (the default is 200000)")
     if "slice" in out["memory"]:
         sl = out["memory"]["slice"]
         mt = __import__("re").fullmatch(r"\s*(\d+)\s*(ns|us|ms|s)?\s*", sl) if isinstance(sl, str) else None

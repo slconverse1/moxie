@@ -42,6 +42,7 @@ def _tn(x):
 
 
 NOCONST = object()
+CT = [None]            # the compile-time evaluator of the program being checked (cteval.CtEval)
 
 
 def names_of(e):
@@ -76,6 +77,15 @@ def const_eval(e, env):
         return "".join(e.parts) if all(isinstance(x, str) for x in e.parts) else NOCONST
     if c is Name:
         return env.get(e.name, NOCONST)
+    if c is Call and CT[0] is not None and e.fn.__class__ is Name and CT[0].can_call(e.fn.name):
+        args = [a.expr for a in e.args or []]
+        if any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
+            return NOCONST
+        vals = [const_eval(a, env) for a in args]
+        if any(v is NOCONST for v in vals):
+            return NOCONST
+        r = CT[0].call(e.fn.name, vals, getattr(e, "line", 0))
+        return r[0] if r else NOCONST
     if c is Unary:
         v = const_eval(e.e, env)
         if v is NOCONST:
@@ -218,6 +228,7 @@ class Checker:
         self.tf_steps = 0
         self.tf_depth = 0
         self.in_tfun = False
+        self.consts = {}                 # top-level constant bindings the compiler could evaluate
         self.tf_fuel = TF_FUEL
         self.tf_big = False
         self.tf_trail = []
@@ -244,8 +255,32 @@ class Checker:
         self.find_consumers(prog)
         top = Sc()
         for st in prog.stmts:
+            self.fold_binding(st)
             self.ev(st, top)
+        if CT[0] is not None:
+            seen = {(d.line, d.msg) for d in self.diags}
+            for line, msg in CT[0].errors:
+                if (line, msg) not in seen:
+                    self.diags.append(Diag(line, msg))
         return self.diags
+
+    def fold_binding(self, st):
+        """`N = fib(10)`: a top-level binding whose value the compiler can work out is a constant (a size may use it, and a call that
+        aborts is a compile error)."""
+        if st.__class__ is not Assign or st.op not in (None, "", "="):
+            return
+        tg = st.targets
+        if isinstance(tg, list):
+            tg = tg[0] if len(tg) == 1 else None
+        if tg.__class__.__name__ == "PBind":
+            name = tg.name
+        elif tg.__class__.__name__ == "PCon" and len(tg.path) == 1 and tg.args is None:
+            name = tg.path[0]
+        else:
+            return
+        v = const_eval(st.value, self.consts)
+        if v is not NOCONST:
+            self.consts[name] = v
 
     # ------------------------------------------------------------ ownership
     def is_res_type(self, t):
@@ -456,6 +491,9 @@ class Checker:
         if c is Unary and e.op == "-":
             v = self.const_int(e.e)
             return -v if v is not None else None
+        if c is Call:
+            v = const_eval(e, {})
+            return v if isinstance(v, int) and not isinstance(v, bool) else None
         if c is Binary and e.op in ("+", "-", "*"):
             a, b = self.const_int(e.l), self.const_int(e.r)
             if a is None or b is None:
@@ -835,6 +873,11 @@ class Checker:
             return ("lit", e.v)
         if c is StrLit and all(isinstance(p, str) for p in e.parts or []):
             return ("slit", "".join(e.parts or []))
+        if c is Call:
+            v = const_eval(e, self.consts)
+            if isinstance(v, bool) or v is NOCONST:
+                return None
+            return ("lit", v) if isinstance(v, int) else ("slit", v) if isinstance(v, str) else None
         if c is Name:
             return self.ty_of_type(TName([e.name], [], line=0), depth + 1, keep, False)
         if c is GenApp and e.base.__class__ is Name:
@@ -860,6 +903,9 @@ class Checker:
                     return ("pvar", nm)
                 if keep and nm in keep:
                     return ("param", nm)
+                v = self.consts.get(nm)
+                if isinstance(v, int) and not isinstance(v, bool):
+                    return v                       # a constant binding such as `N = fib(10)` used as a size
             elif len(x.path) == 1 and x.path[0] in self.aliases and getattr(self.aliases[x.path[0]], "type", None).__class__ is TMatch:
                 r = self.ty_of_type(x, 0, keep, False)          # a type function that computes a number: Array[Int][Length[T]]
                 return r[1] if r.__class__ is tuple and r[0] == "lit" else None
@@ -877,6 +923,8 @@ class Checker:
             return self.size_term(TName([e.name], [], line=0), keep)
         if c is IntLit:
             return e.v
+        if c is Call:
+            return self.const_int(e)
         if c is Binary and e.op in ("+", "-", "*"):
             a, b = self.size_expr(e.l, keep), self.size_expr(e.r, keep)
             if a is None or b is None:
@@ -2872,7 +2920,16 @@ def check_key_sizes(prog, threshold):
     return diags
 
 
-def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None):
+def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None, eval_fuel=None):
+    from .cteval import CtEval
+    CT[0] = CtEval(prog, search_dir, eval_fuel)
+    try:
+        return _check_program(prog, prelude_names, search_dir, key_warn, type_fuel)
+    finally:
+        CT[0] = None
+
+
+def _check_program(prog, prelude_names, search_dir, key_warn, type_fuel):
     ck = Checker(prelude_names)
     if type_fuel:
         ck.tf_fuel = type_fuel

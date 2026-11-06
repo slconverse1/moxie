@@ -103,3 +103,6 @@ Tuple types keep field names; `(K: T, ...Rest)` looks a field up by name, a bare
 
 ## Interface patterns (done)
 `X: Iface` in a type-function arm matches a type that implements the interface. `given`/`summon` were not added: `interface`+`impl`+`deriving` already cover instance lookup.
+
+## Compile-time evaluation (done, scalar results)
+User pure functions run at compile time in sizes, type-level numbers and top-level bindings; aborts and fuel are compile errors. Open: calls on type variables inside guards.
