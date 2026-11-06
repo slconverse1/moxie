@@ -48,5 +48,29 @@ rc, o = run("check", FIB + 'a: Array[Int][fib(12)] = Array(1)\n', '[program]\nev
 report("eval_fuel stops a slow call", "did not finish in 100 steps" in o, o)
 rc, o = run("check", FIB + 'a: Array[Int][fib(12)] = Array(1)\n', '[program]\neval_fuel = 0\n')
 report("eval_fuel must be 1 or more", "eval_fuel must be a whole number" in o, o)
+PKG = 'export fn big(n: Int) Bool:\n  n > 3\nexport fn double(n: Int) Int:\n  n * 2\nexport fn noisy(n: Int) Int:\n  println(n)\n  n\n'
+GUARD = 'type alias Pad[N] = when N:\n  M if %s(M) -> Array[Int][M]\n  M -> Array[Int][3]\n'
+
+
+def run_pkg(cmd, src):
+    d = tempfile.mkdtemp()
+    os.mkdir(os.path.join(d, "mathx"))
+    open(os.path.join(d, "mathx", "mathx.mxi"), "w").write(PKG)
+    open(os.path.join(d, "main.mxi"), "w").write(src)
+    r = subprocess.run([sys.executable, "-m", "moxie", cmd, os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=120)
+    return r.returncode, r.stdout.decode() + r.stderr.decode()
+
+
+for name, src, want in (
+        ("a guard calls a package function", 'import mathx\n' + GUARD % "mathx.big" + 'a: Pad[5] = Array(1, 2)\n', "expected `Array[Int][5]`, found `Array[Int][2]`"),
+        ("a guard calls a package function: the other arm", 'import mathx\n' + GUARD % "mathx.big" + 'a: Pad[2] = Array(1, 2)\n', "expected `Array[Int][3]`, found `Array[Int][2]`"),
+        ("a guard calls an imported name", 'import mathx (big)\n' + GUARD % "big" + 'a: Pad[5] = Array(1, 2)\n', "expected `Array[Int][5]`, found `Array[Int][2]`"),
+        ("a size from a package function", 'import mathx\nb: Array[Int][mathx.double(2)] = Array(1)\n', "expected `Array[Int][4]`, found `Array[Int][1]`")):
+    rc, o = run_pkg("check", src)
+    report(name, want in o, o)
+rc, o = run_pkg("run", 'import mathx\n' + GUARD % "mathx.big" + 'a: Pad[5] = Array(1, 2, 3, 4, 5)\nprintln(a(4))\n')
+report("a package guard runs", rc == 0 and "5" in o, o)
+rc, o = run_pkg("run", 'import mathx\nx = mathx.noisy(3)\nprintln("done")\n')
+report("an impure package function is left to run time", rc == 0 and "3" in o and "done" in o, o)
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)

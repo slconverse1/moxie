@@ -43,13 +43,22 @@ class CtEval:
                 s = ef.sum.get(nm)
                 if s is not None and not s.eff and all("impure" not in (d.flags or ()) for d in ds):
                     self.pure.add(nm)
+            self.ef = ef
+            for nm, (sub, orig) in ef.imported.items():                  # `import mathx (big)`: big
+                if nm not in ef.defs and self._pkg_pure(sub, orig):
+                    self.pure.add(nm)
+            for alias, sub in ef.pkgs.items():                           # `import mathx`: mathx.big
+                for orig in sub.defs:
+                    if self._pkg_pure(sub, orig):
+                        self.pure.add(f"{alias}.{orig}")
             I = Interp(out=io.StringIO(), err=io.StringIO(), search_dir=self.search_dir)
             I.perms = Perms.none()
             env = I.new_module_env()
             I.module_env = env
             I.main_prog = self.prog
             keep = [st for st in self.prog.stmts
-                    if st.__class__.__name__ in ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "AliasDecl", "IfaceDecl", "ImplDecl")]
+                    if st.__class__.__name__ in ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "AliasDecl", "IfaceDecl", "ImplDecl",
+                                                 "ImportDecl")]
 
             def body():
                 return (yield from I.exec_stmts(keep, env))
@@ -74,6 +83,23 @@ class CtEval:
             return counted
         I.disp = {k: wrap(v) for k, v in I.disp.items()}
 
+    @staticmethod
+    def _pkg_pure(sub, orig):
+        s = sub.sum.get(orig)
+        return s is not None and not s.eff and all("impure" not in (d.flags or ()) for d in sub.defs.get(orig, ()))
+
+    def key_of(self, fn):
+        """The name a call is known by (`big`, or `mathx.big` for a function of an imported package) when it is a pure function the
+        compiler can run, else None."""
+        c = fn.__class__.__name__
+        if c == "Name":
+            key = fn.name
+        elif c == "Field" and fn.obj.__class__.__name__ == "Name":
+            key = f"{fn.obj.name}.{fn.name}"
+        else:
+            return None
+        return key if self.can_call(key) else None
+
     def can_call(self, name):
         return self.setup() and name in self.pure
 
@@ -86,11 +112,13 @@ class CtEval:
         if not self.can_call(name):
             return None
         I = self.I
-        f = self.env.lookup(name, I)
         self.left = self.fuel
         I.err = io.StringIO()
+        from .ast import Name, Field
+        node = Field(Name(name.split(".")[0], line=0), name.split(".")[1], line=0) if "." in name else Name(name, line=0)
 
         def go():
+            f = yield from I.ev(node, self.env)
             return (yield from I.apply(f, list(args)))
         try:
             v = I.sched.run_main(go())

@@ -78,14 +78,14 @@ def const_eval(e, env):
         return "".join(e.parts) if all(isinstance(x, str) for x in e.parts) else NOCONST
     if c is Name:
         return env.get(e.name, NOCONST)
-    if c is Call and CT[0] is not None and e.fn.__class__ is Name and CT[0].can_call(e.fn.name):
+    if c is Call and CT[0] is not None and CT[0].key_of(e.fn) is not None:
         args = [a.expr for a in e.args or []]
         if any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
             return NOCONST
         vals = [const_eval(a, env) for a in args]
         if any(v is NOCONST for v in vals):
             return NOCONST
-        r = CT[0].call(e.fn.name, vals, getattr(e, "line", 0))
+        r = CT[0].call(CT[0].key_of(e.fn), vals, getattr(e, "line", 0))
         return r[0] if r else NOCONST
     if c is Unary:
         v = const_eval(e.e, env)
@@ -1018,13 +1018,13 @@ class Checker:
         if c is StrLit and all(isinstance(p, str) for p in e.parts or []):
             return ("slit", "".join(e.parts or []))
         if c is Call:
-            if e.fn.__class__ is not Name or CT[0] is None or not CT[0].can_call(e.fn.name) \
+            if CT[0] is None or CT[0].key_of(e.fn) is None \
                     or any(a.expr is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
                 return None
             args = tuple(self.type_num(a.expr, depth, keep) for a in e.args or [])
             if any(a is None for a in args):
                 return None
-            return tys.subst_partial(("cfn", e.fn.name, args), {})
+            return tys.subst_partial(("cfn", CT[0].key_of(e.fn), args), {})
         if c is Name:
             return self.ty_of_type(TName([e.name], [], line=0), depth + 1, keep, False)
         if c is GenApp and e.base.__class__ is Name:
