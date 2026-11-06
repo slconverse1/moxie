@@ -1170,7 +1170,7 @@ That works for `Maybe.Just(21)` and `Ok(21)` alike.
 
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
 - A State monad can be defined, and **[gc]** it has none of no-GC moxie's limits. `ref` threading is still the simple way to carry state.
-- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. Matching on types and recursion at the type level are covered in superpower 21.
+- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. Matching on types and recursion at the type level are covered in superpower 24.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
 
@@ -1382,7 +1382,139 @@ println(xs)
 
 The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees, so the convention is a small moxie wrapper around each call. The Guide's sections 20a to 20d go through all of it.
 
-## 21. Type-level programming
+## 21. Resources have one owner
+
+A channel end, a timer, a future, a file, a socket, a child process, a terminal, or a handle from a C library is a resource: a value with an identity, not just a number or a piece of text. You can't copy a file the way you copy an `Int`, so moxie doesn't try. A resource has exactly one owner at a time, it moves rather than copies, and a tuple that holds one is a resource too. Where a language with a collector would tidy up later, moxie closes things at a place you can see, and the compiler checks it. There's no borrow checker to feed with lifetimes and no `&` to write. There is one rule, with two cases:
+
+```
+fn put_one(out: ChanW[Int]) Unit:
+  _ = write(out, 1)
+
+fn finish(out: ChanW[Int]) Unit:
+  close(out)
+
+rx, tx = Chan[Int][4]()
+put_one(tx)
+put_one(tx)
+finish(move tx)
+println("${read(rx).get_or(0)} ${read(rx).get_or(0)}")
+```
+
+Output: `1 1`. A function that only *uses* a resource, like `put_one`, borrows it for the call, and you keep it. A function that closes it, passes it on, or returns it, like `finish`, *takes it over*, and then the call says so with `move`, and the name is gone afterward. The compiler works out which functions take over, so you never declare it. Forget the word and you hear about it:
+
+```
+finish(tx)   // error: `finish` takes ownership of `tx` (it closes it, moves it,
+             // or returns it), so write `finish(move tx)`; after that call, `tx` is gone
+```
+
+**Loops are where it bites.** A loop runs its body again, and a resource that moved the first time round isn't there the second time. So the compiler refuses a move that could be followed by another trip round:
+
+```
+for i in 1..=3:
+  finish(move tx)   // error: `tx` is moved inside a loop; a resource may be
+                    // moved only on an exiting path
+```
+
+A move is fine on a path that leaves the loop (a `break`, a `return`, a `?`). The same goes for a fiber: `run worker(tx, i)` always moves `tx` to the new fiber, which closes it when it ends, so doing that inside a loop is an error too ("handed to the new fiber inside a loop"). The way through is `clone`, which makes another handle for the same channel, and it's allowed in a loop only to feed a `run` whose fiber function has a declared limit:
+
+```
+fiber[3] fn worker(out: ChanW[Int], n: Int) Unit:
+  _ = write(out, n)
+
+rx, tx = Chan[Int][4]()
+for i in 1..=3:
+  _ = run worker(clone(tx), i)
+close(tx)
+println("${read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)}")
+```
+
+Output: `6`. The limit (`fiber[3]`) is what lets the compiler count the handles before the program starts. That is also why atoms, channels, timers, and futures can't be *created* inside a loop or recursion: every one of them takes a slot in a pool sized up front. A resource with an explicit close, bound to a name and released in the same scope, is gone before its loop goes round again.
+
+None of this costs anything at run time. It's all decided by the compiler, so there are no reference counts and no collector to run, which is the same reason moxie/gc keeps these rules exactly as they are.
+
+## 22. Effects you never write
+
+Haskell tracks effects by putting them in the type: an `IO` function can't hide inside a pure one. Koka and Scala's effect libraries do something similar with more machinery. Moxie tracks them too, but you don't write them, and nothing threads through your types. The compiler works out what each function does: it prints, it waits (parks) on a channel or a timer, it uses a resource, or it uses the system (`cwd()`, `hostname()`). A caller inherits what its callees do, all the way up:
+
+```
+fn square(n: Int) Int:
+  n * n
+
+fn log_square(n: Int) Int:
+  println("squaring ${n}")
+  square(n)
+
+fn report(n: Int) Unit:
+  println(log_square(n))
+
+pure fn area(w: Int, h: Int) Int:
+  w * h
+
+report(3)
+println(area(2, 5))
+```
+
+Output: `squaring 3`, `9`, and then `10`. Nothing above declares an effect, and adding a `println` while you debug never means editing a caller. When you *want* the compiler to hold you to something, you say so before `fn`: `pure`, `prints`, `parks`, or `impure` for "does something". A declaration is an agreement checked in both directions:
+
+```
+pure fn total(n: Int) Int:
+  log_square(n)        // error: pure fn 'total' prints (calls 'println')
+
+prints fn quiet(n: Int) Int:
+  n * 2                // error: fn 'quiet' is declared prints but never does
+
+pure fn peek(a: Atom[Int]) Int:
+  @a                   // error: pure fn 'peek' uses a resource (calls '@')
+```
+
+The compiler rejects a body that does more than it declared, and it rejects a declaration the body no longer earns, so a stale `prints` can't linger after the print is gone. An interface member can be declared the same way, and then the declaration is an upper bound: an impl may do less, never more, and code that calls through the interface is checked against it. Debugging output (`dbg`, `trace`) is exempt and is removed from release builds, but `println` is real output and counts.
+
+Purity isn't only a label. `swap`, `debug_assert`, contract conditions, and the compile-time evaluation of your own functions (superpower 24) all require a pure function, with or without the word. That's what lets the compiler run your code while it checks your code.
+
+Effects say what code *does*. Permissions (superpower 20) say what a program is *allowed to reach*. The two meet at the edges: a call that uses the system is an effect, and whether it may touch the file system or the network is a permission the program was given.
+
+## 23. Contracts
+
+A contract states what a function needs and what it promises, in the code instead of a comment. `requires` is a precondition the caller must meet, `ensures` is a postcondition the function guarantees (it may name `result`), and `invariant` is a condition every value of a tuple type must satisfy:
+
+```
+tuple Account:
+  owner: String
+  balance: Int
+  invariant balance >= 0
+
+fn withdraw(a: Account, amt: Int) Account:
+  requires amt > 0
+  ensures result.balance == a.balance - amt
+  Account(owner: a.owner, balance: a.balance - amt)
+
+acct = Account(owner: "ada", balance: 50)
+println(withdraw(acct, 20).balance)
+```
+
+Output: `30`. Because values never change, an invariant only needs checking where a value is built (a constructor call, a rebuild, a field update, `read`), so every `Account` that exists satisfies it. Contracts are for bugs, not for expected failures; an expected failure still returns a `Result`. When one fails the program aborts, and the message says whose fault it was:
+
+```
+println(withdraw(acct, 0).balance)
+// compile error: this call to `withdraw` always fails its precondition `amt > 0` (amt = 0)
+
+println(withdraw(acct, 80).balance)
+// abort: invariant of Account failed: balance >= 0 (supplier bug)
+
+go(0)    // where go calls withdraw(acct, n) with n = 0 at run time
+// abort: requires failed in withdraw: amt > 0 (caller bug)
+```
+
+- **Blame.** A failed `requires` is a caller bug. A failed `ensures` or `invariant` is a supplier bug.
+- **Caught early when it can be.** A `requires` whose arguments are all constants and that fails is a compile error, the same way a constant index out of range is.
+- **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them.
+- **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
+- **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
+- **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
+
+Eiffel made contracts famous. In moxie they sit beside the types, and the checker uses what it can see at compile time before the run-time check ever has to fire.
+
+## 24. Type-level programming
 
 Most languages let you write functions on values. Moxie also lets you write functions on *types*, and run them while the compiler checks your program. A type alias whose body is a `when` is a function that takes a type apart and builds another, with an arm for each shape:
 
@@ -1434,7 +1566,7 @@ Output: `ada (1, "a", true) Array(1, 2) Ada Array(1, 2, 3, 4, 5)`. Change any of
 
 Scala does much of this with implicits and inline code, and C++ with templates. In moxie it is the same `when` you use on values, one pass, with the same error messages as the rest of the checker.
 
-## 22. FCFX
+## 25. FCFX
 
 This is the one the whole language is built around.
 
