@@ -1534,6 +1534,49 @@ class Checker:
                 return True
         return False
 
+    def literal_count(self, head, v):
+        """How many elements the literal `v` of the collection `head` has, or None when that is not known from the text."""
+        if head == "Array" and v.__class__ is TupleE:
+            if any(sp for _l, _e, sp in v.items):
+                return None
+            return len(v.items)
+        if v.__class__ is not Call or v.fn.__class__ is not Name or v.fn.name != head or v.trailing is not None or head in self.tuples:
+            return None
+        if any(getattr(a, "mod", None) or getattr(a, "spread", None) or a.expr.__class__ is CompE for a in v.args):
+            return None
+        if head == "Dict":
+            keys = [a.label for a in v.args]
+            return None if any(k is None for k in keys) else len(set(keys))
+        if head == "Set":
+            lits = [(a.expr.__class__.__name__, getattr(a.expr, "v", None)) for a in v.args if a.expr.__class__ in (IntLit, StrLit)]
+            return len(v.args) - (len(lits) - len(set(lits)))
+        return len(v.args)
+
+    def check_literal_capacity(self, n, ann):
+        """`a: Set[Int][8] = Set(1, 2)` says 8 on the left and 2 on the right; the size written on a declaration must be the literal's.
+        Room is written on the constructor (`Set[Int][8](1, 2)`), and a value with no known count (a comprehension) takes the declared size."""
+        from .values import GC
+        a = n.ann
+        if (GC[0] and a.__class__ is TName and a.path[-1] != "Array") or a.__class__ is not TName or a.path[-1] not in ("Set", "List", "Dict", "Array") or len(a.groups or []) < 2 or a.path[-1] in self.tuples:
+            return
+        g = a.groups[1]
+        g = g[0] if isinstance(g, list) and g else g
+        size = self.const_int(g.expr) if g.__class__ is TExpr else None
+        if size is None and g.__class__ is TExpr and g.expr.__class__ is Name and isinstance(self.consts.get(g.expr.name), int):
+            size = self.consts[g.expr.name]
+        head = a.path[-1]
+        k = self.literal_count(head, n.value) if size is not None else None
+        if head == "Array" and n.value.__class__ is not TupleE:
+            return                                  # an `Array(...)` call is checked as a type below
+        if k is not None and k != 0 and k != size:        # an empty literal takes the declared size
+            what = f"the declared size {size} does not match the {k} element{'' if k == 1 else 's'} of this {head} literal; "
+            if head == "Array":
+                self.err(n.line, what + f"an Array has exactly the elements it is written with, so write {k} or leave the size out")
+            else:
+                args = ", ".join("..." if x is None else tshow(x) for x in ann[2]) if ann.__class__ is tuple and ann[0] == "app" else "..."
+                self.err(n.line, what + f"write the size you mean on the constructor to give it room (`{head}[{args}][{size}](...)`), "
+                         f"or write {k}, or leave the size out")
+
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
@@ -1541,8 +1584,7 @@ class Checker:
             self.check_type_arity(n.ann, n.line)
         if n.ann is not None and n.op == "=":
             self.compat(ann, t, c, n.line)
-            if ann is not None and ann.__class__ is tuple and ann[0] == "bounded" and n.value.__class__ is IntLit:
-                pass
+            self.check_literal_capacity(n, ann)
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is IntLit:
             self.check_fit(n.ann.path[-1], n.value.v, n.line)
         res = self.is_resource_expr(n.value)

@@ -1079,7 +1079,7 @@ An `interface` says what a type can do, and an `impl` says that a type does it. 
 When you want a mixed bag of types, say `any Voice`:
 
 ```
-crowd: List[any Voice][4] = List(Dog(name: "Rex"), Robot(serial: 7))
+crowd = List[any Voice][4](Dog(name: "Rex"), Robot(serial: 7))
 for s in crowd:
   println(s.speak())
 ```

@@ -582,16 +582,16 @@ Output: `start 2`. Values can be any storable type, including plain functions (c
 **Combining collections.** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Each keeps `a`'s capacity, so each returns a `Result`: `Err` with `NO_SLOT` when the combined collection does not fit, as `put` does. Unlike `combine` on a `String` or a `List`, these are not `Semigroup` instances, because a collection that can run out of room has no total, associative `combine`; fold several with `reduce` and `?`.
 
 ```
-a: Set[Int][8] = Set(1, 2)
-b: Set[Int][8] = Set(2, 3)
+a = Set[Int][8](1, 2)
+b = Set[Int][8](2, 3)
 println(union(a, b))
-d: Dict[String, Int][4] = Dict("a": 1, "b": 2)
-e: Dict[String, Int][4] = Dict("b": 9, "c": 3)
+d = Dict[String, Int][4]("a": 1, "b": 2)
+e = Dict[String, Int][4]("b": 9, "c": 3)
 println(merge(d, e))
 println(merge_with((x, y): x + y, d, e))
 ```
 
-Output: `Ok(Set(1, 2, 3))`, `Ok(Dict("a": 1, "b": 9, "c": 3))`, then `Ok(Dict("a": 1, "b": 11, "c": 3))`. A set literal's capacity is its length, so `union(Set(1, 2), Set(2, 3))` is `Err` unless one operand is declared with room, as above.
+Output: `Ok(Set(1, 2, 3))`, `Ok(Dict("a": 1, "b": 9, "c": 3))`, then `Ok(Dict("a": 1, "b": 11, "c": 3))`. A set literal's capacity is its length, so `union(Set(1, 2), Set(2, 3))` is `Err` unless an operand is built with room, as above (`Set[Int][8](1, 2)`).
 
 **5e. MultiArrays and their slices**
 
@@ -1405,7 +1405,7 @@ impl Voice for Dog:
 impl Voice for Robot:
   fn speak() String:
     "Beep Boep! Serial count is ${serial}"
-crowd: List[any Voice][4] = List(Dog(name: "Rex"), Robot(serial: 7))
+crowd = List[any Voice][4](Dog(name: "Rex"), Robot(serial: 7))
 for s in crowd:
   println(s.speak())
 ```

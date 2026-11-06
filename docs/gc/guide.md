@@ -582,11 +582,11 @@ Output: `start 2`. Values can be any storable type, including functions and clos
 **Combining collections.** **[gc]** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Nothing can be full, so each returns the plain collection, as `put` does, and a program meant to run in both dialects handles the `Result` that no-GC moxie returns.
 
 ```
-a: Set[Int][8] = Set(1, 2)
-b: Set[Int][8] = Set(2, 3)
+a = Set[Int][8](1, 2)
+b = Set[Int][8](2, 3)
 println(union(a, b))
-d: Dict[String, Int][4] = Dict("a": 1, "b": 2)
-e: Dict[String, Int][4] = Dict("b": 9, "c": 3)
+d = Dict[String, Int][4]("a": 1, "b": 2)
+e = Dict[String, Int][4]("b": 9, "c": 3)
 println(merge(d, e))
 println(merge_with((x, y): x + y, d, e))
 ```
