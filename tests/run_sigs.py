@@ -103,6 +103,16 @@ SAMPLES = [
  ("Bool", "is_finite(1.5)"),
  ("Double", "sqrt(4.0)"),
  ("String", "cwd()"),
+ ("List[Int]", "xs |> distinct_by((x): x % 2) |> collect()"),
+ ("List[(Int, String, Int)]", "zip3(xs, ws, xs) |> collect()"),
+ ("Dict[Int, Int]", "frequencies(xs)"),
+ ("Dict[Bool, Int]", "count_by((x): x > 1, xs)"),
+ ("List[List[Int]]", "transpose(List(xs, xs))"),
+ ("(List[Int], List[String])", "partition_results(List(r, Err(\"x\")))"),
+ ("Result[List[Int], List[String]]", "collect_errors(List(r, r))"),
+ ("Result[List[Int], List[String]]", "validate((x): Ok(x), xs) |> map_err((e): List(\"e\"))"),
+ ("Result[Int, String]", "recover(r, (e): 0)"),
+ ("Int", "tap(3, (x): x)"),
  ("String", "os_name()"),
 ]
 WRONG = {"Int": "String", "Double": "String", "Bool": "String", "String": "Int", "Char": "Int", "Unit": "Int"}

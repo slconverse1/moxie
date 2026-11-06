@@ -181,6 +181,17 @@ fn to_instant[E](t: DateTime, zone: String) Result[Duration, E]: 0
 fn to_utc(d: Duration) DateTime: 0
 fn to_local(d: Duration) DateTime: 0
 fn to_zone[E](d: Duration, zone: String) Result[DateTime, E]: 0
+fn distinct_by[T, K](f: (T) -> K, xs: Seq[T]) Stream[T]: 0
+fn zip3[A, B, C](a: Seq[A], b: Seq[B], c: Seq[C]) Stream[(A, B, C)]: 0
+fn frequencies[T](xs: Seq[T]) Dict[T, Int]: 0
+fn count_by[T, K](f: (T) -> K, xs: Seq[T]) Dict[K, Int]: 0
+fn transpose[T](rows: Seq[Seq[T]]) List[List[T]]: 0
+fn partition_results[T, E](rs: Seq[Result[T, E]]) (List[T], List[E]): 0
+fn collect_errors[T, E](rs: Seq[Result[T, E]]) Result[List[T], List[E]]: 0
+fn validate[T, U, E](f: (T) -> Result[U, E], xs: Seq[T]) Result[List[U], List[E]]: 0
+fn recover[T, E](r: Result[T, E], f: (E) -> T) Result[T, E]: 0
+fn tap[T, U](x: T, f: (T) -> U) T: 0
+fn retry[T, E](n: Int, delay: Duration, f: () -> Result[T, E]) Result[T, E]: 0
 fn listen[E](port: Int) Result[Listener, E]: 0
 fn spawn[E](program: String) Result[Child, E]: 0
 fn spawn[E](program: String, args: List[String]) Result[Child, E]: 0

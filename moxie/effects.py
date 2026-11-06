@@ -23,7 +23,7 @@ SYSTEM = "uses the system"     # the clock, random numbers, exit, signals, and f
 SYSTEM_CALLS = ("to_local", "now", "monotonic", "random", "random_int", "random_bytes", "exit", "signals", "cwd", "home_dir",
                 "temp_dir", "hostname", "os_name", "is_terminal", "terminal_size", "raw_terminal", "watch")
 BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRINTS,
-           "read": PARKS, "write": PARKS, "sleep": PARKS,
+           "read": PARKS, "write": PARKS, "sleep": PARKS, "retry": PARKS,
            "read_line": PARKS, "read_all": PARKS, "stdin_lines": PARKS,
            "lines": PARKS, "open_file": PARKS, "read_file": PARKS, "write_file": PARKS, "read_bytes": PARKS,
            "write_bytes": PARKS, "list_dir": PARKS, "file_info": PARKS, "path_exists": PARKS, "make_dir": PARKS,

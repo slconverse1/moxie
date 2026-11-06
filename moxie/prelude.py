@@ -2200,6 +2200,140 @@ class _Intersperse:
 stage("intersperse", "last", lambda I, a: StreamV(lambda: _Intersperse(src_of(I, a[1]), a[0])))
 
 
+class _DistinctByIter:
+    def __init__(self, I, src, f):
+        self.I, self.src, self.f, self.seen = I, src, f, set()
+
+    def nxt(self):
+        while True:
+            x = yield from self.src.nxt()
+            if x is END:
+                return END
+            k = yield from self.I.apply(self.f, [x])
+            if k not in self.seen:
+                self.seen.add(k)
+                return x
+
+
+stage("distinct_by", "last", lambda I, a: StreamV(lambda: _DistinctByIter(I, src_of(I, a[1]), a[0])))
+
+
+class _Zip3Iter:
+    def __init__(self, a, b, c):
+        self.a, self.b, self.c = a, b, c
+
+    def nxt(self):
+        x = yield from self.a.nxt()
+        if x is END:
+            return END
+        y = yield from self.b.nxt()
+        if y is END:
+            return END
+        z = yield from self.c.nxt()
+        if z is END:
+            return END
+        return TupleV([x, y, z])
+
+
+stage("zip3", "first", lambda I, a: StreamV(lambda: _Zip3Iter(src_of(I, a[0]), src_of(I, a[1]), src_of(I, a[2]))))
+
+
+@bi("frequencies", "first", True)
+def b_frequencies(I, a, kw, ta):
+    items = yield from drain(I, a[0])
+    d = {}
+    for x in items:
+        d[x] = d.get(x, 0) + 1
+    return DictV(d, len(d))
+
+
+@bi("count_by", "last", True)
+def b_count_by(I, a, kw, ta):
+    items = yield from drain(I, a[1])
+    d = {}
+    for x in items:
+        k = yield from I.apply(a[0], [x])
+        d[k] = d.get(k, 0) + 1
+    return DictV(d, len(d))
+
+
+@bi("transpose", "first", True)
+def b_transpose(I, a, kw, ta):
+    rows = []
+    for r in (yield from drain(I, a[0])):
+        rows.append((yield from drain(I, r)))
+    width = max((len(r) for r in rows), default=0)
+    return ListV([ListV([r[i] for r in rows if i < len(r)]) for i in range(width)])
+
+
+@bi("partition_results", "first", True)
+def b_partition_results(I, a, kw, ta):
+    oks, errs = [], []
+    for r in (yield from drain(I, a[0])):
+        (errs if is_err(r) else oks).append(r.vals[0])
+    return TupleV([ListV(oks), ListV(errs)])
+
+
+def _gather(results):
+    oks, errs = [], []
+    for r in results:
+        (errs if is_err(r) else oks).append(r.vals[0])
+    return Err(ListV(errs)) if errs else Ok(ListV(oks))
+
+
+@bi("collect_errors", "first", True)
+def b_collect_errors(I, a, kw, ta):
+    return _gather((yield from drain(I, a[0])))
+
+
+@bi("validate", "last", True)
+def b_validate(I, a, kw, ta):
+    out = []
+    for x in (yield from drain(I, a[1])):
+        out.append((yield from I.apply(a[0], [x])))
+    return _gather(out)
+
+
+@bi("recover", "first", True)
+def b_recover(I, a, kw, ta):
+    r = a[0]
+    if is_err(r):
+        return Ok((yield from I.apply(a[1], [r.vals[0]])))
+    return r
+
+
+@bi("tap", "first", True)
+def b_tap(I, a, kw, ta):
+    yield from I.apply(a[1], [a[0]])
+    return a[0]
+
+
+_PERMANENT = {ERR_CODES[k] for k in ("NOT_FOUND", "DENIED", "BAD_ENCODING", "OUT_OF_RANGE", "MISSING", "TOO_LONG", "TOO_SHORT")}
+
+
+@bi("retry", "last", True)
+def b_retry(I, a, kw, ta):
+    """retry(n, delay, f): call f (no arguments) until it gives Ok, at most n times in all, waiting `delay` between tries."""
+    n, delay, f = a[0], a[1], a[2]
+    if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+        raise Abort("retry needs a number of tries of 1 or more")
+    when = kw.get("when")
+    r = None
+    for i in range(n):
+        r = yield from I.apply(f, [])
+        if not is_err(r):
+            return r
+        e = r.vals[0]
+        if when is not None:
+            again = yield from I.apply(when, [e])
+        else:
+            again = not (isinstance(e, TupleV) and e.tname == "Error" and e.vals[0] in _PERMANENT)
+        if not again or i == n - 1:
+            return r
+        yield ("sleep", delay.ns)
+    return r
+
+
 @bi("zip_with", "last", True)
 def b_zip_with(I, a, kw, ta):
     f = a[0]

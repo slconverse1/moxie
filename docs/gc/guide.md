@@ -1897,7 +1897,7 @@ println("${words |> to_stream() |> max_by(len)}")
 println("$short ${len(rest)}")
 ```
 
-Output: `List("pear", "fig", "banana", "kiwi")`, `pear|fig|banana|kiwi`, `Ok("fig") Ok("banana")`, then `List("pear", "fig") 3`. `zip_with`, `flatten`, `cycle`, and `split_at` work the same way:
+Output: `List("pear", "fig", "banana", "kiwi")`, `pear|fig|banana|kiwi`, `Ok("fig") Ok("banana")`, then `List("pear", "fig") 3`. `zip_with`, `flatten`, `cycle`, and `split_at` work the same way, and `distinct_by(key)` (the first element for each key), `zip3(a, b, c)`, `frequencies()` and `count_by(key)` (a `Dict` of counts), and `transpose()` (rows of any lengths to columns) join them:
 
 ```
 sums = zip_with(_1 + _2, List(1, 2, 3), List(10, 20, 30)) |> collect()
@@ -2950,6 +2950,29 @@ println("${is_ok(all_ok)} ${is_ok(one_bad)}")
 ```
 
 Output: `true false`. The error type is yours, so the same patterns work with an enum and `From` conversions (chapter 18).
+
+`traverse` stops at the first error, which is right for a pipeline and wrong for a form, where you want every problem at once. `validate(f, xs)` runs `f` on every item and gives `Ok` with the list of results, or `Err` with the list of *all* the errors; `collect_errors(rs)` does the same for a stream of `Result`s you already have. `partition_results(rs)` splits them into `(oks, errs)` and keeps going either way, `recover(r, f)` turns an `Err` into an `Ok` with a fallback computed from the error, and `tap(x, f)` runs `f(x)` for its effect and gives `x` back, which is handy for a log line in the middle of a pipeline (`f` may print, so write it `fn (x): ...`). `retry(n, delay, f)` calls `f` once and calls it again only if it gave an `Err`, waiting `delay` between tries, up to `n` tries in all; the last `Err` comes back if every try fails. It does not repeat an error that a second try can't change (`NOT_FOUND`, `DENIED`, `BAD_ENCODING`, `OUT_OF_RANGE`, `MISSING`, `TOO_LONG`, `TOO_SHORT`), and `when: (e): ...` replaces that rule with your own. Use it for calls that are safe to repeat (reads, lookups, connecting), because a call that half-worked will half-work again:
+
+```
+fn check(n: Int) Result[Int, String]:
+  when n > 0:
+    true -> Ok(n)
+    false -> Err("bad ${n}")
+inputs = List(5, -1, 7, -3)
+println(validate(check, inputs))
+(good, bad) = partition_results(inputs |> map(check) |> collect())
+println("$good $bad")
+println(recover(check(-2), (e): 0))
+tries = Atom[Int](0)
+fn flaky() Result[Int, String]:
+  k = swap(tries, _ + 1)
+  when k < 3:
+    true -> Err("not yet")
+    false -> Ok(k)
+println(retry(5, 10ms, flaky))
+```
+
+Output: `Err(List("bad -1", "bad -3"))`, `List(5, 7) List("bad -1", "bad -3")`, `Ok(0)`, then `Ok(3)`.
 
 **24f. Functor, Applicative, and Monad**
 
