@@ -2400,6 +2400,88 @@ def b_retry(I, a, kw, ta):
     return r
 
 
+def _library_fibers_ok(I, n):
+    """The fibers a library call starts count against the pool header's cap, like `run`."""
+    cap = getattr(I.sched, "fiber_cap", None)
+    if cap is not None and sum(1 for x in I.sched.fibers if not x.done) + n > cap:
+        raise Abort(f"the fiber blocks are all in use: the pool header allows {cap} fibers")
+
+
+@bi("race", "first", True)
+def b_race(I, a, kw, ta):
+    """race(f, g): run f and g (each takes the scope's Cancel token) and give the first result; the other is cancelled
+    and waited for before race returns."""
+    S, me = I.sched, I.sched.cur
+    f, g = a[0], a[1]
+    token = S_.CancelV()
+    sc = S_.ScopeState(me.scope, token)
+    box, waiting = [], [True]
+    _library_fibers_ok(I, 2)
+
+    def runner(fn):
+        r = yield from I.apply(fn, [token])
+        if not box:
+            box.append(r)
+        if waiting[0]:
+            waiting[0] = False
+            S.wake(me, None)
+        return r
+    me.scope = sc
+    try:
+        S.spawn(runner(f), "race")
+        S.spawn(runner(g), "race")
+        while not box:
+            yield ("block",)
+        token.flag = True
+        S.notify_sel(token)
+        yield from S_._join(S, me, sc)
+        return box[0]
+    finally:
+        me.scope = sc.parent
+
+
+@bi("with_timeout", "last", True)
+def b_with_timeout(I, a, kw, ta):
+    """with_timeout(d, f): run f (it takes a Cancel token and gives a Result); Err(TIMED_OUT) if it is still running after d.
+    On a timeout the token is set and with_timeout waits for f to notice and end."""
+    S, me = I.sched, I.sched.cur
+    d, f = a[0], a[1]
+    token = S_.CancelV()
+    sc = S_.ScopeState(me.scope, token)
+    box, waiting = [], [True]
+    _library_fibers_ok(I, 1)
+
+    def runner():
+        r = yield from I.apply(f, [token])
+        box.append(r)
+        if waiting[0]:
+            waiting[0] = False
+            S.wake(me, None)
+        return r
+    me.scope = sc
+    timed_out = False
+    dl = S_.DeadlineV(me)
+    try:
+        S.spawn(runner(), "with_timeout")
+        S.arm_timer(dl, d.ns)
+        while not box:
+            r = yield ("block",)
+            if r is S_.TIMED_OUT_MARK:
+                waiting[0] = False
+                timed_out = True
+                break
+        S.disarm(dl)
+        if timed_out:
+            token.flag = True
+            S.notify_sel(token)
+        yield from S_._join(S, me, sc)
+        if timed_out and not box:
+            return err_reserved("TIMED_OUT", "with_timeout: timed out")
+        return box[0] if not timed_out else err_reserved("TIMED_OUT", "with_timeout: timed out")
+    finally:
+        me.scope = sc.parent
+
+
 @bi("zip_with", "last", True)
 def b_zip_with(I, a, kw, ta):
     f = a[0]

@@ -2411,6 +2411,27 @@ close(tx)
 
 Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn (): ...`, as a plain lambda must be pure.
 
+**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `scope:`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c: Cancel) ...`; a plain lambda must be pure.
+
+```
+fn polite(c: Cancel) Result[Int, Error]:
+  while true:
+    select:
+      case cancelled(c) ->
+        return Err(Error(CLOSED, "cancelled"))
+      case _ ->
+        sleep(5ms)
+  Ok(0)
+fn quick(c: Cancel) Result[Int, Error]:
+  sleep(10ms)
+  Ok(42)
+println(race(polite, quick))
+println(with_timeout(1s, quick))
+println(with_timeout(50ms, polite))
+```
+
+Output: `Ok(42)`, `Ok(42)`, then `Err(Error(code: 12, message: "with_timeout: timed out"))`.
+
 **Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
 
 ```

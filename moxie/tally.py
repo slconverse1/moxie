@@ -31,6 +31,24 @@ MAKERS = {"Atom": "Atom", "Cancel": "Cancel", "Timer": "Timer", "after": "Timer"
 LOOPS = (ForE, WhileE, CompE, ForM)
 
 
+class LibFibers:
+    """The fibers that library calls start (race, with_timeout, par_map, par_traverse): one entry per call site, as if each
+    site were a fiber function with that many slots."""
+    label = ""
+
+    def __init__(self):
+        self.lim, self.starts = {}, {}
+
+    def of_fn(self, name):
+        return Count()
+
+    def limit_of(self, name):
+        return self.lim.get(name)
+
+
+LIB_FIBERS = {"race": 2, "with_timeout": 1, "par_map": "limit", "par_traverse": "limit"}
+
+
 CLOSABLE = ("Io file", "Io socket", "Listener", "Connection")
 
 
@@ -144,6 +162,7 @@ class Tally:
         self.pkgs = {}                 # alias -> Tally of an imported package
         self.imported = {}             # name brought in by `import p (name)` -> (Tally, name)
         self.starts = {}             # function name -> set of fiber functions it starts with `run`
+        self.lib = LibFibers()
         self.start_sink = None
         self.defs = {}
         self.handle_fns = {}
@@ -366,6 +385,12 @@ class Tally:
         if c is Call:
             nm, kind = self.callee(n.fn)
             own = self.pk(n.fn)
+            if own is None and nm in LIB_FIBERS and nm not in self.defs and n.fn.__class__ is Name and self.start_sink is not None:
+                k = LIB_FIBERS[nm]
+                if k == "limit":
+                    k = next((a.expr.v for a in n.args if getattr(a, "label", None) == "limit" and a.expr.__class__ is IntLit), None)
+                self.lib.lim[f"{nm}@{n.line}"] = k
+                self.start_sink.add((self.lib, f"{nm}@{n.line}"))
             if own is not None:
                 self.call_in(out, own[1], n, in_loop, fiber, owner=own[0])
             elif kind is not None:
