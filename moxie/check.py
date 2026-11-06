@@ -2240,6 +2240,9 @@ class Checker:
             return ats, cands[0][2]               # every overload that fits gives the same type (`contains` is a Bool)
         if not cands and over:
             ft = full(None)
+            if getattr(n.fn, "name", None) == "len" and any(t is not None and (t[0] == "tup" or t[0] == "named" and t[1] in self.tuples)
+                                                           for t in ft if t.__class__ is tuple):
+                return ats, "Int"                 # `len` of a tuple counts its fields
             if all(t is not None and not self.has_unsettled(t) for t in ft):
                 self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take ({', '.join(tshow(t) for t in ft)}); it takes "
                          + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]))
@@ -2273,8 +2276,8 @@ class Checker:
     # (`upper` on a String or a Char, `floor` giving an Int or a Double) is left out: the checker has no overloads yet.
     BUILTIN_RET = {"len": "Int", "trim": "String", "starts_with": "Bool", "ends_with": "Bool", "is_ok": "Bool", "is_err": "Bool",
                    "is_nan": "Bool", "is_inf": "Bool", "is_finite": "Bool", "show": "String", "sqrt": "Float",
-                   "is_cancelled": "Bool", "path_exists": "Bool", "hostname": "String", "cwd": "String", "os_name": "String",
-                   "temp_dir": "String", "home_dir": "String", "path_join": "String", "char_count": "Int", "grapheme_count": "Int"}
+                   "is_cancelled": "Bool", "hash": "Int", "hostname": "String", "cwd": "String", "os_name": "String",
+                   "temp_dir": "String", "path_join": "String", "char_count": "Int", "grapheme_count": "Int"}
 
     def call_known(self, n, name, args, ats, extra):
         if name in self.BUILTIN_RET and name not in self.fns and name not in self.tuples and name not in self.aliases \

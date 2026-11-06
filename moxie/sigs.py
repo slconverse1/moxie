@@ -170,6 +170,20 @@ fn remove[T](xs: Array[T], x: T) Array[T]: 0
 fn clear[K, V](d: Dict[K, V]) Dict[K, V]: 0
 fn clear[T](s: Set[T]) Set[T]: 0
 fn clear[T](xs: List[T]) List[T]: 0
+fn len(s: String) Int: 0
+fn len[T](xs: Seq[T]) Int: 0
+fn len[K, V](d: Dict[K, V]) Int: 0
+fn parse_iso[E](s: String) Result[DateTime, E]: 0
+fn parse_time[E](s: String, fmt: String) Result[DateTime, E]: 0
+fn parse_time[E](s: String, fmt: String, loc: Locale) Result[DateTime, E]: 0
+fn to_instant[E](t: DateTime) Result[Duration, E]: 0
+fn to_instant[E](t: DateTime, zone: String) Result[Duration, E]: 0
+fn to_utc(d: Duration) DateTime: 0
+fn to_local(d: Duration) DateTime: 0
+fn to_zone[E](d: Duration, zone: String) Result[DateTime, E]: 0
+fn listen[E](port: Int) Result[Listener, E]: 0
+fn spawn[E](program: String) Result[Child, E]: 0
+fn spawn[E](program: String, args: List[String]) Result[Child, E]: 0
 '''
 
 
