@@ -231,7 +231,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
 
     def static_check(self, prog):
         from .check import check_program, Diag
-        diags = check_program(prog, set(self.prelude.vars), self.search_dir)
+        from .manifest import parse_size
+        kw = (getattr(self, "manifest", None) or {}).get("program", {}).get("key_warning")
+        diags = check_program(prog, set(self.prelude.vars), self.search_dir,
+                              parse_size(kw) if kw is not None else 64)
         from .values import GC
         if not GC[0]:
             from .tally import tally_problems

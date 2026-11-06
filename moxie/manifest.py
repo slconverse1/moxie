@@ -3,7 +3,7 @@ import os
 
 FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
-PROGRAM_KEYS = {"memory"}
+PROGRAM_KEYS = {"memory", "key_warning"}
 NATIVE_KEYS = {"libs", "paths"}
 MEMORY_KEYS = {"heap", "slice"}
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "KIB": 1024, "MIB": 1024 ** 2, "GIB": 1024 ** 3}
@@ -60,7 +60,7 @@ def load(path):
             if k not in keys:
                 raise ManifestError(f"{m}: unknown key '{k}' in [{table}] (known: {', '.join(sorted(keys))})")
         out[table] = dict(t)
-    for table, key in (("fibers", "memory"), ("fibers", "strings"), ("fibers", "temps"), ("fibers", "stack"), ("program", "memory"), ("memory", "heap")):
+    for table, key in (("fibers", "memory"), ("fibers", "strings"), ("fibers", "temps"), ("fibers", "stack"), ("program", "memory"), ("program", "key_warning"), ("memory", "heap")):
         if key in out[table] and parse_size(out[table][key]) is None:
             raise ManifestError(f"{m}: [{table}] {key} must be a size such as \"64KiB\" (1024-based) or \"64KB\" (1000-based)")
     if "slice" in out["memory"]:

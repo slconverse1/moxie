@@ -1885,11 +1885,36 @@ def check_package_access_diags(prog, search_dir):
     return check_package_access(prog, search_dir) if search_dir is not None else []
 
 
-def check_program(prog, prelude_names, search_dir=None):
+KEY_WARN_DEFAULT = 64        # bytes: a Dict key or Set element above this gets a warning (Spec section 6)
+
+
+def check_key_sizes(prog, threshold):
+    """Warn about a Dict key or Set element type whose fixed size is above the threshold."""
+    from .effects import _children
+    from .layout import layout, type_decls
+    decls = type_decls(prog)
+    diags, todo = [], [(prog, 0)]
+    while todo:
+        n, line = todo.pop()
+        line = getattr(n, "line", None) or line
+        if n.__class__ is TName and len(n.path) == 1 and n.path[0] in ("Dict", "Set") and n.groups and len(n.groups[0]) >= 1:
+            kt = n.groups[0][0]
+            r = layout(kt, decls)
+            if r is not None and r[0] > threshold:
+                what = "key" if n.path[0] == "Dict" else "element"
+                diags.append(Diag(line, f"a {n.path[0]} {what} of {r[0]} bytes is above the {threshold}-byte warning size: "
+                                        f"keys are copied and hashed whole, so key on a small id or a Keyword instead", "warning"))
+        todo.extend((c, line) for c in _children(n))
+    return diags
+
+
+def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT):
     ck = Checker(prelude_names)
     ck.search_dir = search_dir
     diags = ck.check(prog)
     diags.extend(check_package_access_diags(prog, search_dir))
+    if key_warn:
+        diags.extend(check_key_sizes(prog, key_warn))
     from .effects import check_effects
     seen = {(d.line, d.msg) for d in diags}
     for line, msg in check_effects(prog, search_dir):

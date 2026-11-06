@@ -1,7 +1,8 @@
 """Effect inference (Spec section 14), first version.
 
 An effect is "parks" (read, write, sleep, select without default, a database
-query) or "prints".  Using a resource is not tracked yet.
+query), "prints", "uses the system" (the clock, random numbers, ...), or "uses a resource"
+(creating, closing, cloning, or changing a channel, timer, future, cancel token, or atom).
 
 A function's effects are the union of the effects of the calls in its body.
 Recursion is solved by iterating to a fixed point.  A call through a function
@@ -28,6 +29,10 @@ BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRI
            "write_bytes": PARKS, "list_dir": PARKS, "file_info": PARKS, "path_exists": PARKS, "make_dir": PARKS,
            "remove_file": PARKS, "remove_dir": PARKS, "rename_path": PARKS, "connect": PARKS, "listen": PARKS, "bind_udp": PARKS, "send_to": PARKS, "receive": PARKS, "connect_tls": PARKS, "listen_tls": PARKS, "accept": PARKS,
            "lookup_host": PARKS, "run_command": PARKS, "spawn": PARKS, "wait_child": PARKS, "kill_child": PARKS, "make_fifo": PARKS, "listen_unix": PARKS, "connect_unix": PARKS, "read_key": PARKS, "make_temp_file": PARKS, "make_temp_dir": PARKS, **{n: SYSTEM for n in SYSTEM_CALLS}}
+RESOURCE = "uses a resource"     # creating, closing, cloning, or changing a channel, timer, future, cancel token, or atom
+RESOURCE_CALLS = ("Chan", "Timer", "after", "Future", "Cancel", "Atom", "clone", "close", "arm", "arm_every", "disarm",
+                  "resolve", "reject", "cancel", "swap", "reset")
+BUILTIN.update({n: RESOURCE for n in RESOURCE_CALLS})
 EXEMPT = {"dbg", "trace"}
 
 
@@ -358,6 +363,8 @@ class Effects:
             else:
                 self.walk(st, fnnames, acc, summ)
             return
+        if c is Deref:
+            acc.setdefault(RESOURCE, ("@", getattr(n, "line", 0), "@"))
         if c is SqlE:
             acc.setdefault(PARKS, ("query", getattr(n, "line", 0), "query"))
         if c is ScopeE:
@@ -495,7 +502,7 @@ class Effects:
                 for eff, (callee, ln, root) in acc.items():
                     if eff not in dec:
                         who = "pure " if not dec else ""
-                        if eff == SYSTEM and dec:
+                        if eff in (SYSTEM, RESOURCE) and dec:
                             self.diags.append((ln or d.line, f"fn '{d.name}' {eff} (calls '{root}'), so it must be declared impure"))
                             continue
                         self.diags.append((ln or d.line, f"{who}fn '{d.name}' {eff} (calls '{root}'), but it is not declared {eff}"
@@ -507,7 +514,7 @@ class Effects:
         key = (ctx[1] if isinstance(ctx, tuple) else None, d.name)
         if key in self.bounds and ctx != "top" or (ctx == "top" and (None, d.name) in self.bounds):
             bound = self.bounds.get(key)
-            allowed = {PARKS, PRINTS} if bound == "some" else (bound or set())
+            allowed = {PARKS, PRINTS, SYSTEM, RESOURCE} if bound == "some" else (bound or set())
             for eff, (callee, ln, root) in acc.items():
                 if eff not in allowed:
                     self.diags.append((ln or d.line, f"'{d.name}' {eff} (calls '{root}'), which its declaration does not allow"))

@@ -638,3 +638,11 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 ## Secret[T] (moxie/secret.py)
 
 `SecretV` holds the value; `__str__` and `__repr__` give `Secret(***)`, so show, interpolation, print, and dbg are all redacted, and `__eq__`, ordering, and `__hash__` abort. `secret_eq` uses `hmac.compare_digest` on the UTF-8 bytes. The checker knows the type `("secret",)`: `secret(x)` and `Secret[T]` produce it, comparing one is a compile error, and passing a `String` where a `Secret` is expected (or the reverse) is a type mismatch. `layout` gives a `Secret[T]` the size of `T`. Tests: `tests/run_secret.py`.
+
+## Dict key size warning (check.check_key_sizes)
+
+A `Dict[K, V]` or `Set[T]` written in the program whose key type has a fixed `layout` size above 64 bytes (`[program] key_warning` in the manifest changes it; 0 turns it off) gets a warning at check time. Types with no fixed size (`String` without a capacity, lists) don't warn. Tests: `tests/run_keywarn.py`.
+
+## The resource effect (effects.py)
+
+`RESOURCE` ("uses a resource") joins parks, prints, and system. `RESOURCE_CALLS` (Chan, Timer, after, Future, Cancel, Atom, clone, close, arm, arm_every, disarm, resolve, reject, cancel, swap, reset) and the `@` read (`Deref`) have it, and it travels through callees and parameters like the others. Like "uses the system" it has no keyword: a declared non-empty set needs `impure` to cover it, and an `impure` upper bound allows it. Tests: `tests/run_effects.py`.
