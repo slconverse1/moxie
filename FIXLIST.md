@@ -13,3 +13,4 @@ Remaining interpreter limits (not language changes)
 * sqlite has no boolean type, so BOOLEAN columns come back as `Int`; NULL becomes `()`.
 * Static checks are conservative: generics are checked only in part (see the Spec) and unions are unchecked; implicit Int to Double for non-literals is not flagged.
 * Fragments not run as programs: Guide #103, #132 (deliberate error), #144 (needs a database), #140 (two files).
+* Generic types are not checked (see TYPE-LEVEL.md): `b: Box[Int] = Box(v: "x")`, `x: Array[Int][3] = Array(1, 2)`, and a `String` returned into an `Int` from `first(Array("a", "b", "c"))` all pass `moxie check`. The checker has no representation for parameterized types.
