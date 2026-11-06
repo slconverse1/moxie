@@ -42,6 +42,7 @@ def _tn(x):
 
 
 NOCONST = object()
+NOANY = object()
 CT = [None]            # the compile-time evaluator of the program being checked (cteval.CtEval)
 
 
@@ -228,6 +229,8 @@ class Checker:
         self.tf_steps = 0
         self.tf_depth = 0
         self.in_tfun = False
+        self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
+        self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
         self.consts = {}                 # top-level constant bindings the compiler could evaluate
         self.tf_fuel = TF_FUEL
@@ -580,8 +583,68 @@ class Checker:
             return ("named", n)
         return None
 
+    def iface_member(self, iname, name, seen=None):
+        """(the member's FnDecl, the associated-type names of its interface) for `name` in the interface or those it embeds."""
+        seen = set() if seen is None else seen
+        d = self.iface_decls.get(iname)
+        if d is None or iname in seen:
+            return None
+        seen.add(iname)
+        assoc = {m.name for m in d.members or [] if m.__class__ is AliasDecl}
+        for m in d.members or []:
+            if m.__class__ is FnDecl and m.name == name:
+                return m, assoc
+        for e in d.embeds or []:
+            r = self.iface_member(_tn(e), name, seen)
+            if r is not None:
+                return r
+        return None
+
+    def any_fn_result(self, n, sc, fn, args):
+        """`first_of(a)` where `fn first_of(c: any Container) c.Item` and a is itself a parameter typed `any`: the result is `a.Item`."""
+        d = self.fns[fn.name][0]
+        r = d.ret
+        if r.__class__ is not TName or len(r.path) != 2 or r.groups or len(args) != len(d.params or []):
+            return None
+        for p, a in zip(d.params, args):
+            if p.name == r.path[0] and p.type.__class__ is TAny and getattr(a, "expr", None).__class__ is Name:
+                at = self.any_vars.get(sc.find(a.expr.name))
+                if at is not None and at[1] == _tn(p.type.iface):
+                    return ("hid", at[2], r.path[1])
+        return None
+
+    def any_member_call(self, n, sc, fn, ats):
+        """`a.m(args)` where a is a parameter typed `any I`: a member whose result or parameter is an associated type of I has the type
+        `a.Item`, which belongs to this one value."""
+        v = sc.find(fn.obj.name)
+        at = self.any_vars.get(v) if v is not None else None
+        if at is None:
+            return NOANY
+        found = self.iface_member(at[1], fn.name)
+        if found is None:
+            return NOANY
+        d, assoc = found
+
+        def own(t):
+            if t.__class__ is TName and len(t.path) == 1 and t.path[0] in assoc and not t.groups:
+                return ("hid", at[2], t.path[0])
+            if t.__class__ is TName and len(t.path) == 2 and t.path[0] == "Self" and t.path[1] in assoc:
+                return ("hid", at[2], t.path[1])
+            return None
+        for p, (act, const) in zip(d.params or [], ats):
+            exp = own(p.type) if p.type is not None else None
+            if exp is not None and act is not None:
+                self.compat(exp, self.base(act), const, n.line, "argument")
+        r = own(d.ret) if d.ret is not None else None
+        return r if r is not None else (None if d.ret is not None else NOANY)
+
     def assoc_type(self, base, member, keep):
         """`Names.Item` (a concrete type) is what its impl says; `C.Item` for a parameter stays symbolic until C is known."""
+        if base in self.any_params:                        # a.Item for a parameter a: its own hidden type, or its concrete type's
+            at = self.any_params[base]
+            if at.__class__ is tuple and at[0] == "any":
+                return ("hid", at[2], member)
+            return self.assoc_of(at[1], member) if at.__class__ is tuple and at[0] in ("named", "app") else None
         if keep and base in keep:
             return ("tapp", "@" + member, (("param", base),))
         if base in self.fn_tparams:
@@ -1953,6 +2016,14 @@ class Checker:
                 self.mark_gone(n, sc, args[0].expr.name, "closed")
         if fn.__class__ is Field:
             self.check_receiver(n, sc, fn)
+            if fn.obj.__class__ is Name and self.any_vars:
+                r = self.any_member_call(n, sc, fn, ats)
+                if r is not NOANY:
+                    return r, None
+        if fn.__class__ is Name and self.any_vars and sc.find(fn.name) is None and len(self.fns.get(fn.name, ())) == 1:
+            r = self.any_fn_result(n, sc, fn, args)
+            if r is not None:
+                return r, None
         if fn.__class__ is Name and fn.name in self.handle_types.values():
             for a in args:        # the function that closes a handle consumes it
                 x = a.expr if hasattr(a, "expr") else None
@@ -2513,6 +2584,7 @@ class Checker:
         inner = Sc(sc)
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
         self.tp_vars = {}
+        saved_any, self.any_params = self.any_params, {}
         saved_decl, self.tp_decl = self.tp_decl, {t.name: t for t in (n.tparams or [])}
         self.fn_tparams = tuple(t.name for t in (n.tparams or []))
         self.loop_depth, self.exit_ctx, self.moved = 0, False, {}
@@ -2522,10 +2594,16 @@ class Checker:
             res = self.is_res_type(p.type)
             if p.name:
                 pty = self.ty_of_type(p.type)
+                if p.type.__class__ is TAny and _tn(p.type.iface) in self.iface_decls and not p.variadic:
+                    self.any_params[p.name] = ("any", _tn(p.type.iface), f"{p.name}@{n.line}")
+                elif pty.__class__ is tuple and pty[0] in ("named", "app"):
+                    self.any_params[p.name] = pty
                 if p.variadic:
                     from .values import GC
                     pty = ("app", "List" if GC[0] else "Array", (pty,))       # inside the body, `...T` is an Array of T (a List in moxie/gc)
                 inner.vars[p.name] = Var(pty, res, 0)
+                if self.any_params.get(p.name, (None,))[0] == "any":
+                    self.any_vars[inner.vars[p.name]] = self.any_params[p.name]
                 tp = self.bare_tparam(n, p.type)
                 if tp is not None:
                     self.tp_vars[inner.vars[p.name]] = tp
@@ -2553,6 +2631,7 @@ class Checker:
             if "tailrec" in (n.flags or ()):
                 self.check_tailrec(n)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
+        self.any_params = saved_any
         self.tp_decl = saved_decl
         return None, None
 
@@ -2634,6 +2713,11 @@ class Checker:
         """A name, or a call whose arguments are literals and names: checked again for the function's result type without side effects."""
         if e.__class__ is Name:
             return True
+        if e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name and e.trailing is None \
+                and self.any_params.get(e.fn.obj.name, (None,))[0] == "any":
+            return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
+                       (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
+                       for a in e.args or [])           # a member call on an `any` parameter has a type of its own
         if e.__class__ is not Call or e.fn.__class__ is not Name or e.trailing is not None:
             return False
         return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
@@ -2642,7 +2726,9 @@ class Checker:
 
     def quiet(self, e, sc):
         n = len(self.diags)
-        r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e) else (None, None)
+        anyc = (self.any_vars and e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name
+                and sc.find(e.fn.obj.name) in self.any_vars)          # a member call on an `any` parameter has a known type
+        r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or anyc or self.simple_tail(e) else (None, None)
         del self.diags[n:]
         return r
 

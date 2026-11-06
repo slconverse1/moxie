@@ -75,6 +75,16 @@ BAD += [
 GOOD += [
  ("an associated type from a call is right", CONT + 'a: String = head(Names(xs: List("a")))\nprintln(a)\n', "a"),
 ]
+ANY = 'interface Container:\n  type Item\n  fn first() Item\n  fn put(x: Item) Unit\n'
+BAD += [
+ ("one any value's Item is not another's", ANY + 'fn mv(from: any Container, to: any Container) Unit:\n  to.put(from.first())\n', "expected `to.Item`, found `from.Item`"),
+ ("a tail call on the wrong any", ANY + 'fn mix(a: any Container, b: any Container) a.Item:\n  b.first()\n', "expected `a.Item`, found `b.Item`"),
+ ("a result tied to the argument", ANY + 'fn first_of(c: any Container) c.Item:\n  c.first()\nfn use(a: any Container, b: any Container) Unit:\n  b.put(first_of(a))\n', "expected `b.Item`, found `a.Item`"),
+ ("x.Item of a concrete parameter", CONT + 'fn f(n: Names) n.Item:\n  return 3\n', "expected `String`, found `Int`"),
+]
+GOOD += [
+ ("the same any value agrees with itself", ANY + 'fn copy_first(c: any Container) Unit:\n  c.put(c.first())\nfn first_of(c: any Container) c.Item:\n  c.first()\nfn twice(a: any Container) Unit:\n  a.put(first_of(a))\nprintln("ok")\n', "ok"),
+]
 fails = []
 
 

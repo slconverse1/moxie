@@ -8,6 +8,7 @@ A type is `None` (not known: matches anything), a scalar name (`"Int"`, `"Float"
     ("secret",)                Secret
     ("app", head, args)        a generic type applied to arguments: Box[Int], List[T], Result[A, E]  (args may hold None)
     ("fn", params, ret)        a function type
+    ("hid", key, member)       the hidden type of one `any` value: `a.Item` for the parameter a (key "a@line"); fits only itself
     ("tup", items[, labels])   a tuple of types; labels (a tuple of names or None, one per item) when it has field names:
                                (id: Int, name: String).  Labels do not take part in compatible/unify (a tuple is checked by position);
                                they are what a type function matches on.  In a type function's arm a label may be ("pvar", n) or ("param", n)
@@ -58,6 +59,8 @@ def show(t):
         return '"' + t[1] + '"'
     if tag == "sz":
         return f"{show(t[2])} {t[1]} {show(t[3])}"
+    if tag == "hid":                                       # the member type of one `any` value: a.Item
+        return f"{t[1].split('@')[0]}.{t[2]}"
     if tag == "tapp":
         if t[1].startswith("@"):                           # an associated type: C.Item
             return f"{show(t[2][0])}.{t[1][1:]}"
@@ -110,7 +113,7 @@ def compatible(exp, act):
     strict integer checks) and on anything unknown."""
     if is_wild(exp) or is_wild(act) or exp == act:
         return True
-    if (exp.__class__ is tuple and exp[0] in ("rigid", "tapp")) or (act.__class__ is tuple and act[0] in ("rigid", "tapp")):
+    if (exp.__class__ is tuple and exp[0] in ("rigid", "tapp", "hid")) or (act.__class__ is tuple and act[0] in ("rigid", "tapp", "hid")):
         return False                      # a type parameter of the function being checked fits only itself
     if isinstance(exp, str) and isinstance(act, str):
         return exp in NUMERIC and act in NUMERIC

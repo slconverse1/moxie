@@ -109,3 +109,6 @@ User pure functions run at compile time in sizes, type-level numbers and top-lev
 
 ## Associated types (done in the checker)
 `Names.Item` and `C.Item` resolve through the impl. Moxie has no per-value type members, so two values of one type always share an `Item`; a value-path form `c.Item` would be sugar for `C.Item` and was not added.
+
+## Per-instance (path-dependent) types for `any` (done for named parameters)
+`a.Item` ties a member type to one `any` value. No new syntax: a lowercase path in a type is a value path. Open: `any` locals, dependent function types.
