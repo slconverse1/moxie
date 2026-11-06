@@ -19,6 +19,8 @@ BAD = [
  ("a constructor parameter F[_] fixes the wrapper", BOX + 'fn lift[F[_], A](x: F[A]) F[A]: x\na: Box[Int] = lift(Box(v: "s"))\n', "expected `Box[Int]`, found `Box[String]`"),
  ("A from F[A]", BOX + 'fn unbox[F[_], A](x: F[A]) A: x.v\nb: Int = unbox(Box(v: "s"))\n', "expected `Int`, found `String`"),
  ("a type lambda applied in a type", 'fn f() ([A] -> Result[A, String])[Int]:\n  Ok("x")\n', "expected `Result[Int, String]`"),
+ ("len gives an Int", 'n: String = len(Array(1, 2))\n', "expected `String`, found `Int`"),
+ ("a predicate gives a Bool", 'b: Int = starts_with("a", "b")\n', "expected `Int`, found `Bool`"),
  ("a literal returned as the wrong type", 'fn g() Int: "s"\n', "expected `Int`, found `String`"),
 ]
 GOOD = [
@@ -26,6 +28,7 @@ GOOD = [
  ("Box[Double] from an Int", BOX + 'b: Box[Double] = Box(v: 3)\nprintln(b.v)\n', "3"),
  ("lambda inference accepts a good program", 'fn app2[T, U](x: T, f: (T) -> U) U: f(x)\nc: Int = app2(3, (n): n + 1)\nprintln(c)\n', "4"),
  ("a constructor parameter in a good call", BOX + 'fn lift[F[_], A](x: F[A]) F[A]: x\nb: Box[String] = lift(Box(v: "s"))\nprintln(b.v)\n', "s"),
+ ("a user's own len is not the builtin", 'fn len(x: String) String: x\ns: String = len("ab")\nprintln(s)\n', "ab"),
  ("sizes agree", 'x: Array[Int][2] = Array(1, 2)\nprintln(x(1))\n', "2"),
  ("a generic function with a wrapper", BOX + 'fn wrap[T](x: T) Box[T]:\n  Box(v: x)\nz: Box[String] = wrap("s")\nprintln(z.v)\n', "s"),
  ("first of a list", 'fn first[T](xs: List[T]) T: xs(0)\ny: String = first(List("a", "b"))\nprintln(y)\n', "a"),

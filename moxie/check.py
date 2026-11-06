@@ -1509,7 +1509,17 @@ class Checker:
         keep = {tp.name for tp in fd.tparams or []}
         return [self.ty_of_type(p.type, 0, keep) for p in fd.params or []], keep
 
+    # Builtins whose result type does not depend on what they are given.  A builtin that works on several kinds of value
+    # (`upper` on a String or a Char, `floor` giving an Int or a Double) is left out: the checker has no overloads yet.
+    BUILTIN_RET = {"len": "Int", "trim": "String", "starts_with": "Bool", "ends_with": "Bool", "is_ok": "Bool", "is_err": "Bool",
+                   "is_nan": "Bool", "is_inf": "Bool", "is_finite": "Bool", "show": "String", "sqrt": "Float",
+                   "is_cancelled": "Bool", "path_exists": "Bool", "hostname": "String", "cwd": "String", "os_name": "String",
+                   "temp_dir": "String", "home_dir": "String", "path_join": "String", "char_count": "Int", "grapheme_count": "Int"}
+
     def call_known(self, n, name, args, ats, extra):
+        if name in self.BUILTIN_RET and name not in self.fns and name not in self.tuples and name not in self.aliases \
+                and name not in self.cases and not extra_bad(args) and not any(k[1] == name for k in self.methods):
+            return self.BUILTIN_RET[name], None
         if name in ("Ok", "Err") and not extra and len(args) == 1 and name not in self.fns and name not in self.tuples \
                 and name not in self.cases and not extra_bad(args):
             t = self.base(ats[0][0])
