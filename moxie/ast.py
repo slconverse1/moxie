@@ -144,6 +144,7 @@ def _defs():
         "TUnion": "members",
         "TAny": "iface",
         "TStatic": "inner",
+        "TMatch": "scrut arms",          # when T: pattern -> type ...  (a type function; arms are (pattern, result) pairs)
         "TLambda": "params body",        # [A, M[_]] -> T: a type-level function (params are TParam)
         "TApp": "fn groups",             # ([A] -> T)[Int]: a lambda applied where it is written
         "THole": "",

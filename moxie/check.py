@@ -213,6 +213,14 @@ class Checker:
         self.pending_gone = []
         self.ifaces = set()
         self.iface_decls = {}
+        self.tfuns = {}
+        self.pv = frozenset()
+        self.tf_steps = 0
+        self.tf_depth = 0
+        self.tf_fuel = TF_FUEL
+        self.tf_big = False
+        self.tf_trail = []
+        self.cur_line = 0
         self.tp_decl = {}
 
     # ------------------------------------------------------------ reporting
@@ -227,6 +235,7 @@ class Checker:
 
     # ------------------------------------------------------------ entry
     def check(self, prog):
+        tys.REDUCER = self.reduce_tapp
         for st in prog.stmts:
             self.collect(st)
         self.find_consumers(prog)
@@ -463,11 +472,14 @@ class Checker:
             return "Unit"
         if c is TStatic:
             return self.ty_of_type(t.inner, depth + 1, keep, top)
+        if c is TExpr:
+            return self.type_num(t.expr, depth, keep)
         if c is TFn:
             ps = tuple(self.ty_of_type(p[1] if isinstance(p, tuple) else p, depth + 1, keep, False) for p in (t.params or []))
             return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
         if c is TTuple:
-            return ("tup", tuple(self.ty_of_type(ft, depth + 1, keep, False) for _, ft in t.items))
+            return ("tup", tuple(("spread", self.ty_of_type(ft, depth + 1, keep, False)) if lab == "..." else
+                                 self.ty_of_type(ft, depth + 1, keep, False) for lab, ft in t.items))
         if c is TApp:
             from .typelam import reduce_app, TypeLambdaError
             try:
@@ -477,6 +489,8 @@ class Checker:
         if c is not TName or len(t.path) != 1:
             return None
         n = t.path[0]
+        if n in self.pv and not t.groups:
+            return ("pvar", n)
         if keep and n in keep:
             if not t.groups:
                 return ("param", n)
@@ -515,6 +529,179 @@ class Checker:
             return ("named", n)
         return None
 
+    # ------------------------------------------------------------ type functions (`type alias F[T] = when T: ...`)
+    def tfun(self, name):
+        """(parameter names, scrutinee type, [(pattern, result)]) for a type function, built once from its declaration."""
+        tf = self.tfuns.get(name)
+        if tf is not None:
+            return tf
+        a = self.aliases[name]
+        params = [tp.name for tp in a.tparams]
+        self.tfuns[name] = tf = (params, None, [])         # entered first, so an arm that names the function itself finds it
+        saved_pv, saved_tp = self.pv, self.fn_tparams
+        self.fn_tparams = ()
+        try:
+            keep = set(params)
+            scrut = self.ty_of_type(a.type.scrut, 0, keep, False)
+            arms = []
+            for pat, res in a.type.arms:
+                self.pv = frozenset(self.pattern_vars(pat, keep))
+                p = self.ty_of_type(pat, 0, keep, False)
+                r = self.ty_of_type(res, 0, keep, False)
+                arms.append((p, r))
+            self.tfuns[name] = tf = (params, scrut, arms)
+        finally:
+            self.pv, self.fn_tparams = saved_pv, saved_tp
+        return tf
+
+    def pattern_vars(self, pat, params):
+        """The names a pattern binds: a bare name that is not a known type and not a parameter of the type function."""
+        out = []
+
+        def walk(x):
+            c = x.__class__
+            if c is TName:
+                if len(x.path) == 1 and not x.groups:
+                    nm = x.path[0]
+                    if nm not in params and not self.known_type_name(nm) and nm not in out:
+                        out.append(nm)
+                for g in x.groups or []:
+                    for y in g if isinstance(g, list) else [g]:
+                        walk(y)
+            elif c is TTuple:
+                for lab, y in x.items:
+                    walk(y)
+            elif c is TFn:
+                for lab, y in x.params:
+                    walk(y)
+                walk(x.ret)
+            elif c is TExpr and x.expr.__class__ is Name:
+                nm = x.expr.name
+                if nm not in params and nm not in out:
+                    out.append(nm)
+        walk(pat)
+        return out
+
+    def known_type_name(self, nm):
+        return (nm in INTS or nm in ("Double", "Float", "String", "Bool", "Char", "Unit", "Decimal", "Secret") or nm in self.BUILTIN_GENERICS
+                or nm in self.tuples or nm in self.enums or nm in self.aliases or nm in self.ifaces)
+
+    def apply_tfun(self, name, args):
+        return self.reduce_tapp(name, tuple(args))
+
+    def reduce_tapp(self, name, args):
+        """Apply the type function `name` to `args`: the first arm whose pattern matches gives the result.  When the argument is not
+        known well enough to choose an arm the application stays symbolic (a type parameter) or unknown (None).  Each reduction costs
+        one unit of fuel; a use that spends `tf_fuel` units is an error, so a type function that never ends cannot hang the checker."""
+        if name not in self.aliases or self.aliases[name].type.__class__ is not TMatch:
+            return None
+        if any("pvar" in str(a) for a in args):
+            return ("tapp", name, args)            # the arm is still being written down: leave the call as it is
+        self.tf_depth += 1
+        if self.tf_depth == 1:
+            self.tf_steps = 0
+            self.tf_trail = []
+            self.tf_big = False
+        try:
+            self.tf_steps += 1
+            self.tf_trail.append((name, args))
+            big = sum(tys.tree_size(a) for a in args) > TF_MAX_NODES
+            if self.tf_steps > self.tf_fuel or big:
+                if self.tf_steps == self.tf_fuel + 1 or big and not self.tf_big:
+                    self.tf_big = big
+                    tail = "; ".join(f"{nm}[{', '.join(tys.show(a)[:40] for a in ar)}]" for nm, ar in self.tf_trail[-3:])
+                    why = "grew past the size limit" if big else f"did not finish in {self.tf_fuel} reductions"
+                    self.err(self.cur_line, f"type function `{name}` {why} (last: {tail}); "
+                             f"it may call itself on a type that never gets smaller")
+                return None
+            params, scrut, arms = self.tfun(name)
+            if len(args) != len(params):
+                return None
+            binds0 = dict(zip(params, args))
+            sc = tys.subst(scrut, binds0)
+            for pat, res in arms:
+                pb = {}
+                r = tys.tmatch(tys.subst_partial(pat, binds0), sc, pb)
+                if r == "yes":
+                    return tys.subst(res, {**binds0, **pb})
+                if r == "unk":
+                    return None
+                if r == "sym":
+                    return ("tapp", name, args)
+            self.err(self.cur_line, f"no arm of `{name}` matches `{tys.show(sc)}`")
+            return None
+        finally:
+            self.tf_depth -= 1
+
+    def check_tfun_decl(self, n):
+        """A type function is built when it is declared (so its arms are read once); one that calls itself on a type that is not a piece
+        of what it matched gets a warning, since only the fuel limit would stop it."""
+        if n.type.__class__ is not TMatch or not n.tparams:
+            return
+        self.tfun(n.name)
+        params, scrut, arms = self.tfuns[n.name]
+        for pat, res in arms:
+            inside = set()
+            self.collect_pvars(pat, inside, top=True)
+            for call in self.self_calls(res, n.name):
+                used = set()
+                for a in call[2]:
+                    self.collect_pvars(a, used, top=False)
+                if not (used & inside) and not any(self.has_size_step(a) for a in call[2]):
+                    self.diags.append(Diag(n.line, f"`{n.name}` calls itself on `{', '.join(tys.show(a) for a in call[2])}`, which is not a piece "
+                                                   f"of what its arm matched, so it may not end (the checker stops it after {self.tf_fuel} reductions)", "warning"))
+                    break
+
+    def collect_pvars(self, t, out, top):
+        if t.__class__ is not tuple:
+            return
+        if t[0] == "pvar":
+            if not top:
+                out.add(t[1])
+            return
+        if t[0] == "app":
+            for a in t[2]:
+                self.collect_pvars(a, out, False)
+            if len(t) > 3 and t[3].__class__ is tuple:
+                self.collect_pvars(t[3], out, False)
+        elif t[0] in ("tup",):
+            for a in t[1]:
+                self.collect_pvars(a, out, False)
+        elif t[0] == "spread":
+            self.collect_pvars(t[1], out, False)
+        elif t[0] == "fn":
+            for a in t[1]:
+                self.collect_pvars(a, out, False)
+            self.collect_pvars(t[2], out, False)
+        elif t[0] == "tapp":
+            for a in t[2]:
+                self.collect_pvars(a, out, False)
+        elif t[0] == "sz":
+            self.collect_pvars(t[2], out, False)
+            self.collect_pvars(t[3], out, False)
+
+    def self_calls(self, t, name, out=None):
+        out = [] if out is None else out
+        if t.__class__ is tuple:
+            if t[0] == "tapp" and t[1] == name:
+                out.append(t)
+            if t[0] in ("app", "tapp"):
+                for a in t[2]:
+                    self.self_calls(a, name, out)
+            elif t[0] == "tup":
+                for a in t[1]:
+                    self.self_calls(a, name, out)
+            elif t[0] == "spread":
+                self.self_calls(t[1], name, out)
+            elif t[0] == "fn":
+                for a in t[1]:
+                    self.self_calls(a, name, out)
+                self.self_calls(t[2], name, out)
+        return out
+
+    def has_size_step(self, t):
+        return t.__class__ is tuple and t[0] == "app" and len(t) > 3 and t[3].__class__ is tuple and t[3][0] == "sz"
+
     def app_type(self, t, n, depth, keep):
         """("app", head, args) for `Box[Int]`, `List[T]`, a generic alias, or None when `t` is not an application the checker models."""
         g = t.groups or []
@@ -523,6 +710,10 @@ class Checker:
         first = g[0] if isinstance(g[0], list) else [g[0]]
         if n in self.aliases and getattr(self.aliases[n], "tparams", None):
             a = self.aliases[n]
+            if a.type.__class__ is TMatch:
+                if len(a.tparams) != len(first):
+                    return None
+                return self.apply_tfun(n, tuple(self.ty_of_type(x, depth + 1, keep, False) for x in first))
             if a.kind != "alias" or any(tp.holes for tp in a.tparams) or len(a.tparams) != len(first):
                 return None
             binds = {tp.name: self.ty_of_type(x, depth + 1, keep, False) for tp, x in zip(a.tparams, first)}
@@ -540,10 +731,64 @@ class Checker:
         args = tuple(self.ty_of_type(x, depth + 1, keep, False) for x in first)
         if n == "Array" and len(g) > 1 and g[1]:
             x = g[1][0] if isinstance(g[1], list) else g[1]
-            k = self.const_int(x.expr) if x.__class__ is TExpr else None
+            k = self.size_term(x, keep)
             if k is not None:
                 return ("app", n, args, k)
         return ("app", n, args)
+
+    def type_num(self, e, depth, keep):
+        """A number written where a type goes: ("lit", n), or arithmetic on such numbers and on type functions (`1 + Length[Rest]`)."""
+        c = e.__class__
+        if c is IntLit:
+            return ("lit", e.v)
+        if c is Name:
+            return self.ty_of_type(TName([e.name], [], line=0), depth + 1, keep, False)
+        if c is GenApp and e.base.__class__ is Name:
+            return self.ty_of_type(TName([e.base.name], list(e.groups), line=0), depth + 1, keep, False)
+        if c is Binary and e.op in ("+", "-", "*"):
+            a, b = self.type_num(e.l, depth, keep), self.type_num(e.r, depth, keep)
+            if a is None or b is None:
+                return None
+            if a[0] == "lit" and b[0] == "lit":
+                return ("lit", a[1] + b[1] if e.op == "+" else a[1] - b[1] if e.op == "-" else a[1] * b[1])
+            return ("sz", e.op, a, b)
+        return None
+
+    def size_term(self, x, keep):
+        """A size written in a type: an int, a size variable (a pattern variable, or a parameter of the type function or callee), or
+        `N - 1` and the like; None when it is not worked out."""
+        if x.__class__ is TName:
+            if len(x.path) == 1 and not x.groups:
+                nm = x.path[0]
+                if nm in self.pv:
+                    return ("pvar", nm)
+                if keep and nm in keep:
+                    return ("param", nm)
+            elif len(x.path) == 1 and x.path[0] in self.aliases and getattr(self.aliases[x.path[0]], "type", None).__class__ is TMatch:
+                r = self.ty_of_type(x, 0, keep, False)          # a type function that computes a number: Array[Int][Length[T]]
+                return r[1] if r.__class__ is tuple and r[0] == "lit" else None
+            return None
+        if x.__class__ is not TExpr:
+            return None
+        k = self.const_int(x.expr)
+        if k is not None:
+            return k
+        return self.size_expr(x.expr, keep)
+
+    def size_expr(self, e, keep):
+        c = e.__class__
+        if c is Name:
+            return self.size_term(TName([e.name], [], line=0), keep)
+        if c is IntLit:
+            return e.v
+        if c is Binary and e.op in ("+", "-", "*"):
+            a, b = self.size_expr(e.l, keep), self.size_expr(e.r, keep)
+            if a is None or b is None:
+                return None
+            if a.__class__ is int and b.__class__ is int:
+                return a + b if e.op == "+" else a - b if e.op == "-" else a * b
+            return ("sz", e.op, a, b)
+        return None
 
     def compat(self, exp, act, const, line, what="value"):
         """Report a mismatch between an expected and an actual type."""
@@ -615,6 +860,8 @@ class Checker:
         if not hasattr(n, "_fields"):
             return None, None
         m = getattr(self, "e_" + n.__class__.__name__, None)
+        if getattr(n, "line", 0):
+            self.cur_line = n.line
         if m is not None:
             r = m(n, sc)
             return r if r is not None else (None, None)
@@ -2317,6 +2564,7 @@ class Checker:
 
     def e_AliasDecl(self, n, sc):
         self.check_type_arity(n.type, n.line)
+        self.check_tfun_decl(n)
         return None, None
 
     def e_TestDecl(self, n, sc):
@@ -2379,8 +2627,15 @@ class Checker:
         return self.ev(e, sc)
 
     def e_TupleE(self, n, sc):
+        types = []
+        plain = True
         for it in n.items or []:
-            self.ev(it[1] if isinstance(it, tuple) and len(it) > 1 else it, sc)
+            t = self.ev(it[1] if isinstance(it, tuple) and len(it) > 1 else it, sc)[0]
+            types.append(self.base(t))
+            if not (isinstance(it, tuple) and len(it) > 1 and it[0] is None and not (len(it) > 2 and it[2])):
+                plain = False
+        if plain and len(types) >= 2:
+            return ("tup", tuple(types)), None
         return None, None
 
     def e_PathE(self, n, sc):
@@ -2465,6 +2720,8 @@ def check_package_access_diags(prog, search_dir):
     return check_package_access(prog, search_dir) if search_dir is not None else []
 
 
+TF_MAX_NODES = 4000       # a type function's argument larger than this (counted as a tree) stops the reduction too
+TF_FUEL = 64               # reductions of type functions allowed in one use before the checker gives up (see apply_tfun)
 KEY_WARN_DEFAULT = 64        # bytes: a Dict key or Set element above this gets a warning (Spec section 6)
 
 

@@ -1321,6 +1321,30 @@ println(x)
 
 Output: `Ok(1) Ok(1)`, then `Ok(3)`. A generic alias such as `Fail` is a type lambda with a name. The lambda is replaced by its body when it is used, so nothing about it exists at run time, and it never loops, because a lambda cannot refer to itself. **Mistakes:** giving a two-parameter lambda where `F[_]` wants one (the compiler reports the arity), and applying a lambda to the wrong number of types.
 
+**Type functions.** A type lambda only substitutes. When a type has to be taken apart, write a type alias whose body is a `when`, with an arm for each shape:
+
+```
+type alias Elem[T] = when T:
+  List[X] -> X
+  Array[X][N] -> X
+
+type alias Concat[A, B] = when A:
+  () -> B
+  (H, ...T) -> (H, ...Concat[T, B])
+
+type alias Length[T] = when T:
+  () -> 0
+  (H, ...Rest) -> 1 + Length[Rest]
+
+fn head_of(xs: Array[Int][3]) Elem[Array[Int][3]]:
+  xs(0)
+joined: Concat[(Int, String), (Bool,)] = (1, "a", true)
+sized: Array[Int][Length[(Int, String)]] = Array(1, 2)
+println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
+```
+
+Output: `7 a 2`. `Elem[Array[Int][3]]` is `Int`, because the first arm that matches wins. A bare name in a pattern that is not a known type (`X`, `N`, `H`) is a variable the match binds, and `...Rest` binds the remaining items of a tuple type, as `...rest` does in a list pattern. Numbers are types, so `Length` counts, and `Array[X][N - 1]` computes a size. An alias may call itself, so a type function can loop over a tuple type. Because that makes the type language a program, the checker limits it: a use that takes more than 64 reductions (or a type that grows past 4,000 parts) is an error that shows the last few steps, and a function that calls itself on a type that is not a piece of what it matched gets a warning. If no arm matches, the compiler says which type had no arm. Inside a generic function the type is not known yet, so `Elem[T]` waits until the call. A type function exists only while the program is checked. **Mistakes:** an arm that does not shrink (it ends only at the limit), and expecting a pattern name to mean a type you declared later in the file (a name that is already a type is a constant, not a variable).
+
 
 **4. Conditional instances**
 
@@ -3178,7 +3202,6 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 
 **24k. What moxie leaves out, on purpose**
 
-- **Type-level matching and recursion.** A type lambda only substitutes; it cannot look inside a type or call itself.
 - **Stored capturing closures.** A capturing closure can't live in a concrete tuple field, Dict, or channel, so a State value is a transient local, and plain functions are what you store.
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
 - **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.

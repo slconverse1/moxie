@@ -131,11 +131,19 @@ class PBase:
                 return TUnit(line=line)
             while True:
                 label = None
+                if self.at_op("..."):                       # (H, ...Rest): the rest of a tuple type, in a type function
+                    self.next()
+                    items.append(("...", self.parse_type()))
+                    if not self.eat_op(","):
+                        break
+                    continue
                 if self.peek().kind == "NAME" and self.at_op(":", 1):
                     label = self.next().val
                     self.next()
                 items.append((label, self.parse_type()))
                 if not self.eat_op(","):
+                    break
+                if self.at_op(")"):                         # (Bool,): a trailing comma makes a one-item tuple type
                     break
             self.expect_op(")")
             if len(items) == 1 and items[0][0] is None and items[0][1].__class__ is TLambda and self.at_op("[") and not self.peek().sp:

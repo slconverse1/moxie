@@ -288,8 +288,46 @@ class Parser(ExprParser):
         if self.at_op("["):
             tparams = self.parse_tparams_v2()
         self.expect_op("=")
-        typ = self.parse_type()
+        if self.at_name("when"):
+            typ = self.parse_type_match()
+        else:
+            typ = self.parse_type()
         return AliasDecl(kind, name, tparams, typ, mods[0] if mods else None, line=line)
+
+    def parse_arm_result(self):
+        """The result of an arm of a type function: a type, or arithmetic on types and numbers (`1 + Length[Rest]`)."""
+        save = self.p
+        try:
+            t = self.parse_type()
+            if self.peek().kind in ("NL", "DEDENT", "EOF"):
+                return t
+        except MoxieSyntaxError:
+            pass
+        self.p = save
+        e = self.parse_expr()
+        return TExpr(e, line=e.line)
+
+    def parse_type_match(self):
+        """`when T:` and then, indented, `pattern -> type` arms: a type function that looks at the shape of a type."""
+        line = self.next().line
+        scrut = self.parse_type()
+        self.expect_op(":")
+        self.expect_nl_indent()
+        arms = []
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            if self.peek().kind == "INT":                # a number is a type too: `() -> 0`
+                tk = self.next()
+                pat = TExpr(IntLit(tk.val, tk.extra, line=tk.line), line=tk.line)
+            else:
+                pat = self.parse_type_prim()             # no `->` inside: a function type here is written in parentheses
+            self.expect_op("->")
+            arms.append((pat, self.parse_arm_result()))
+            self.end_line()
+        self.expect_dedent()
+        return TMatch(scrut, arms, line=line)
 
     # ------------------------------------------------------------ declarations
     def try_decl(self):
