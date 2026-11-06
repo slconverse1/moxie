@@ -40,6 +40,17 @@ You can try moxie/gc three ways, from least to most effort. Remember that what y
    `python3 -m moxie --gc check hello.mxi` checks a program without running it, and `test` runs its `test` blocks.
 3. **Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
 
+**On a Mac.** Check `python3 --version` in Terminal. If it is older than 3.11, install a current Python from python.org or with `brew install python`. Then:
+
+```
+mkdir -p ~/moxie-work && cd ~/moxie-work
+curl -LO https://slconverse1.github.io/moxie/moxie.zip
+unzip moxie.zip
+python3 -m moxie --gc run hello.mxi
+```
+
+with `hello.mxi` saved next to the `moxie` folder. To run moxie from any folder, add `export PYTHONPATH="$HOME/moxie-work:$PYTHONPATH"` and `alias moxie='python3 -m moxie --gc'` to `~/.zshrc`, run `source ~/.zshrc`, and then `moxie run main.mxi` works anywhere, with the gc rules. The interpreter reaches native libraries through `ctypes`, which the browser version cannot do.
+
 The [Tutorial](tutorial.html) builds one program step by step and assumes you have it running.
 
 ## About us
