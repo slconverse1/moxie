@@ -572,6 +572,9 @@ class Checker:
             return "Float"
         if n in ("String", "Bool", "Char", "Unit", "Decimal"):
             return n
+        if n in ("Io", "Listener", "Udp", "Child", "Terminal") and not t.groups and n not in self.tuples \
+                and n not in self.enums and n not in self.aliases:
+            return ("named", n)
         if n == "Secret" and n not in self.tuples and n not in self.enums and n not in self.aliases:
             return ("secret",)
         if n in self.aliases:
@@ -1289,7 +1292,10 @@ class Checker:
         return None, None
 
     def e_Q(self, n, sc):
-        self.ev(n.e, sc)
+        t = self.base(self.ev(n.e, sc)[0])
+        if t.__class__ is tuple and t[0] == "app" and t[1] == "Result" and len(t[2]) == 2 and t[2][0] is not None \
+                and not tys.params_in(t[2][0]):
+            return t[2][0], None                  # `spawn("cat")?` is the Child
         return None, None
 
     def e_Move(self, n, sc):
@@ -2048,9 +2054,12 @@ class Checker:
                 extra = 1
             else:
                 ufcs = "skip"
-        ov = self.sig_overloads(fn, args, sc, extra, ufcs=ufcs is True) if n.trailing is None and plan is None and ufcs != "skip" else None
-        if ov is not None and ov[0] and all(hasattr(a, "expr") for a in args):
-            ats, sigres = self.sig_args(n, ov[0], ov[1], args, asc, sc, extra)
+        sargs, opt_ats = self.split_options(n, fn, args, sc, extra, asc)
+        ov = self.sig_overloads(fn, sargs, sc, extra, ufcs=ufcs is True) if n.trailing is None and plan is None and ufcs != "skip" else None
+        if ov is not None and ov[0] and all(hasattr(a, "expr") for a in sargs):
+            ats, sigres = self.sig_args(n, ov[0], ov[1], sargs, asc, sc, extra)
+            if sargs is not args:
+                ats = ats + opt_ats
             args_iter = ()
         else:
             self.pipe_ty = None
@@ -2157,6 +2166,32 @@ class Checker:
 
     _sigs = {}                      # by dialect: GC[0] False (moxie) or True (moxie/gc)
 
+    # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
+    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal"}
+    OPTIONS = {"run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
+               "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
+
+    def split_options(self, n, fn, args, sc, extra, asc):
+        """For `run_command("ls", stdin: "x")`: the positional arguments, and the evaluated option values after checking each
+        label is one the function takes and its value fits.  Calls with any other labels are returned unchanged."""
+        opts = self.OPTIONS.get(fn.name) if fn.__class__ is Name else None
+        labeled = [a for a in args if getattr(a, "label", None)]
+        if opts is None or not labeled or extra or sc.find(fn.name) is not None or fn.name in self.fns or fn.name in self.tuples \
+                or any(k[1] == fn.name for k in self.methods) or any(getattr(a, "mod", None) for a in args) \
+                or not all(hasattr(a, "expr") for a in args):
+            return args, []
+        ats = []
+        for a in labeled:
+            if a.label not in opts:
+                self.err(n.line, f"`{fn.name}` has no option `{a.label}`; it takes " + ", ".join(f"`{k}`" for k in opts))
+                return args, []
+            r = self.ev(a.expr, asc)
+            ats.append(r)
+            want, got = opts[a.label], self.base(r[0])
+            if want is not None and got is not None and not self.has_unsettled(got) and not tys.compatible(want, got):
+                self.err(n.line, f"option `{a.label}` of `{fn.name}` expects `{tshow(want)}`, found `{tshow(got)}`")
+        return [a for a in args if not getattr(a, "label", None)], ats
+
     def sig_overloads(self, fn, args, sc, extra, ufcs=False):
         """The prelude signatures for a call of a builtin by its plain name (or as a method of a receiver of known type), or None."""
         if not ufcs and (fn.__class__ is not Name or sc.find(fn.name) is not None):
@@ -2179,6 +2214,8 @@ class Checker:
             return True
         if t.__class__ is not tuple:
             return False
+        if t[0] == "named" and t[1] in self.RES_NAMED and t[1] not in self.tuples and t[1] not in self.enums:
+            return False                      # a resource type is exactly itself
         if t[0] in ("param", "rigid", "appv", "ctor", "named"):
             return True
         if t[0] == "app":

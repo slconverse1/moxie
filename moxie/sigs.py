@@ -184,6 +184,14 @@ fn to_zone[E](d: Duration, zone: String) Result[DateTime, E]: 0
 fn listen[E](port: Int) Result[Listener, E]: 0
 fn spawn[E](program: String) Result[Child, E]: 0
 fn spawn[E](program: String, args: List[String]) Result[Child, E]: 0
+fn connect[E](host: String, port: Int) Result[Io, E]: 0
+fn accept[E](l: Listener) Result[Io, E]: 0
+fn wait_child[E](c: Child) Result[Int, E]: 0
+fn kill_child(c: Child) Unit: 0
+fn raw_terminal[E]() Result[Terminal, E]: 0
+fn read_key[E](t: Terminal) Result[Key, E]: 0
+fn run_command[E](program: String) Result[Output, E]: 0
+fn run_command[E](program: String, args: List[String]) Result[Output, E]: 0
 '''
 
 

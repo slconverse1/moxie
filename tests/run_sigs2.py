@@ -9,9 +9,17 @@ BAD = [
  ("parse_time takes two strings", 'r = parse_time("2024", 3)\n', "`parse_time` can't take"),
  ("listen takes a port", 'l = listen("80")\n', "`listen` can't take (String)"),
  ("spawn takes a program name", 'c = spawn(1)\n', "`spawn` can't take (Int)"),
+ ("accept takes a Listener", 'c = spawn("cat")?\nz = accept(c)\n', "`accept` can't take (Child)"),
+ ("wait_child gives an Int", 'c = spawn("cat")?\nk: String = wait_child(c)\n', "expected `String`, found `Result[Int"),
+ ("connect takes a port number", 'c = connect("localhost", "80")\n', "`connect` can't take (String, String)"),
+ ("read_key takes a Terminal", 'k = read_key(5)\n', "`read_key` can't take (Int)"),
+ ("run_command has no such option", 'r = run_command("echo", bogus: 1)\n', "`run_command` has no option `bogus`"),
+ ("run_command option type", 'r = run_command("echo", cwd: 5)\n', "option `cwd` of `run_command` expects `String`, found `Int`"),
 ]
 GOOD = [
  ("len of a tuple, collections and text", 'tuple P:\n  a: Int\n  b: Int\nprintln("${len("abc")} ${len(List(1, 2))} ${len(Dict("a": 1))} ${len((1, 2, 3))} ${len(P(a: 1, b: 2))}")\n', "3 2 1 3 2"),
+ ("run_command with options", 'o = run_command("echo", List("hi"), stdin: "x", timeout: 5s)?\nprintln(o.stdout.trim())\nprintln(o.code)\n', "hi\n0"),
+ ("spawn and wait_child", 'c = spawn("true")?\nprintln(wait_child(c)?)\nkill_child(c)\n', "0"),
  ("parse_iso and to_instant", 'd = parse_iso("2024-01-02")?\nprintln(iso(d))\n', "2024-01-02"),
 ]
 fails = []
