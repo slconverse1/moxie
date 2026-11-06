@@ -201,6 +201,7 @@ class Checker:
         self.diags = []
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
+        self.callee_fields = set()
         self.cases = {}            # bare case name -> [enum names]
         self.globals = set()
         self.moved = {}            # Var -> line
@@ -1375,6 +1376,7 @@ class Checker:
             for f in self.tuples[t[1]].fields or []:
                 if f.name == n.name:
                     return self.ty_of_type(f.type), None
+            self.no_such_field(n, t[1], self.tuples[t[1]])
         if t.__class__ is tuple and t[0] == "app" and t[1] in self.tuples:
             td = self.tuples[t[1]]
             if len(td.tparams or []) == len(t[2]):
@@ -1382,7 +1384,19 @@ class Checker:
                     if f.name == n.name:
                         ft = self.ty_of_type(f.type, 0, {tp.name for tp in td.tparams})
                         return tys.subst(ft, {tp.name: a for tp, a in zip(td.tparams, t[2])}), None
+                self.no_such_field(n, t[1], td)
         return None, None
+
+    def no_such_field(self, n, tname, td):
+        """`p.nope` on a tuple with no such field (a method or function of that name is not a field, so it is left alone)."""
+        nm = n.name
+        if id(n) in self.callee_fields or not isinstance(nm, str) or nm.isdigit() or nm in self.fns or nm in self.globals \
+                or any(k[1] == nm for k in self.methods) or nm in self.load_sigs() or getattr(td, "spread", None):
+            return
+        names = [f.name for f in td.fields or []]
+        if any(getattr(f, "name", None) in (None, "...") for f in td.fields or []):
+            return
+        self.err(n.line, f"`{tname}` has no field `{nm}`" + (f"; its fields are {', '.join('`'+x+'`' for x in names)}" if names else ""))
 
     def e_Lambda(self, n, sc):
         inner = Sc(sc, open_=not n.params)
@@ -2044,6 +2058,8 @@ class Checker:
 
     def _e_Call(self, n, sc, extra=0):
         fn = n.fn
+        if fn.__class__ is Field:
+            self.callee_fields.add(id(fn))
         args = n.args or []
         if fn.__class__ is Call or fn.__class__ is Name:
             if fn.__class__ is Call:
