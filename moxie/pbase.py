@@ -160,7 +160,12 @@ class PBase:
                 return THole(line=line)
             if t.val == "any" and self.peek(1).kind == "NAME" and self.peek(1).val not in HARD:
                 self.next()
-                return TAny(self.parse_type_prim(), line=line)
+                first = self.parse_type_prim()
+                also = []
+                while self.at_op("+") and self.peek(1).kind == "NAME" and self.peek(1).val not in HARD:
+                    self.next()                                  # any A + B: a value that implements both
+                    also.append(self.parse_type_prim())
+                return TAny(first, also, line=line)
             if t.val == "static":
                 self.next()
                 return TStatic(self.parse_type_prim(), line=line)

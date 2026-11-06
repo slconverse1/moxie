@@ -40,7 +40,7 @@ def subst(t, binds):
     if c is TStatic:
         return TStatic(subst(t.inner, binds), line=t.line)
     if c is TAny:
-        return TAny(subst(t.iface, binds), line=t.line)
+        return TAny(subst(t.iface, binds), [subst(x, binds) for x in t.also or []], line=t.line)
     if c is TLambda:
         inner = {k: v for k, v in binds.items() if k not in _names(t.params)}
         return TLambda(t.params, subst(t.body, inner), line=t.line)

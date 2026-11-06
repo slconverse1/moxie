@@ -103,6 +103,17 @@ BAD += [
 GOOD += [
  ("a guard that calls a function picks the arm", BIG + 'a: Pad2[5] = Array(1, 2, 3, 4, 5)\nb: Pad2[2] = Array(1, 2, 3)\nprintln(a(4))\n', "5"),
 ]
+NA = 'interface Named:\n  fn name() String\ninterface Aged:\n  fn age() Int\ntuple Dog:\n  n: String\ntuple Cat:\n  n: String\n  a: Int\nimpl Named for Dog:\n  fn name() String: n\nimpl Named for Cat:\n  fn name() String: n\nimpl Aged for Cat:\n  fn age() Int: a\n'
+DESC = 'fn describe(x: any Named + Aged) String:\n  "${x.name()} ${x.age()}"\n'
+BAD += [
+ ("an intersection needs every interface", NA + DESC + 'println(describe(Dog(n: "rex")))\n', "`Dog` doesn't implement `Aged`, which `any Named + Aged` needs for `x`"),
+ ("a single any is checked too", NA + 'fn f(x: any Aged) Int:\n  x.age()\nprintln(f(Dog(n: "r")))\n', "`Dog` doesn't implement `Aged`"),
+ ("X: A + B matches only both", NA + 'type alias Kind[T] = when T:\n  X: Named + Aged -> String\n  _ -> Int\nb: Kind[Dog] = "s"\n', "expected `Int`, found `String`"),
+]
+GOOD += [
+ ("an intersection takes a type with both", NA + DESC + 'println(describe(Cat(n: "tom", a: 3)))\n', "tom 3"),
+ ("X: A + B matches a type with both", NA + 'type alias Kind[T] = when T:\n  X: Named + Aged -> String\n  _ -> Int\na: Kind[Cat] = "s"\nprintln(a)\n', "s"),
+]
 fails = []
 
 

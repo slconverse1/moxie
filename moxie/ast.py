@@ -142,9 +142,9 @@ def _defs():
         "TTuple": "items",
         "TFn": "params ret recv",
         "TUnion": "members",
-        "TAny": "iface",
+        "TAny": "iface also",            # any Named + Aged: also lists the further interfaces (an intersection)
         "TStatic": "inner",
-        "TBound": "name iface",          # X: Show  in a type-function pattern: any type that implements Show, bound to X
+        "TBound": "name iface also",          # X: Show  in a type-function pattern: any type that implements Show, bound to X
         "TMatch": "scrut arms",          # when T: pattern -> type ...  (a type function; arms are (pattern, result) pairs)
         "TLambda": "params body",        # [A, M[_]] -> T: a type-level function (params are TParam)
         "TApp": "fn groups",             # ([A] -> T)[Int]: a lambda applied where it is written

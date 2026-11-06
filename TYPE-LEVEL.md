@@ -116,3 +116,5 @@ User pure functions run at compile time in sizes, type-level numbers and top-lev
 `any` locals are tracked too (a fresh hidden type per annotated binding; `y = a` shares a's).
 
 Done: guards that call pure functions on type variables (`M if big(M)`), the no-arm error names the whole application, and a constant that is always an `Err` is a warning.
+
+Intersection types: `any A + B` and `X: A + B`, using the `+` that joins bounds; `&` is not used.

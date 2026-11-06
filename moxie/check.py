@@ -527,7 +527,7 @@ class Checker:
         if c is TExpr:
             return self.type_num(t.expr, depth, keep)
         if c is TBound:
-            return ("bound", ("pvar", t.name), t.iface)
+            return ("bound", ("pvar", t.name), (t.iface,) + tuple(t.also or []))
         if c is TFn:
             ps = tuple(self.ty_of_type(p[1] if isinstance(p, tuple) else p, depth + 1, keep, False) for p in (t.params or []))
             return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
@@ -587,6 +587,29 @@ class Checker:
             return ("named", n)
         return None
 
+    def any_names(self, t):
+        """The interfaces of an `any A + B` as a tuple of names, when every one is declared in this program; else None."""
+        names = tuple(_tn(x) for x in [t.iface] + list(t.also or []))
+        return names if all(nm in self.iface_decls for nm in names) else None
+
+    def check_any_args(self, n, fn, args, ats):
+        """A call to a function whose parameter is `any A + B` (or `any A`): a known argument type must implement every interface."""
+        decls = self.fns.get(fn.name)
+        if not decls or len(decls) != 1:
+            return
+        d = decls[0]
+        for p, a, (t, _c) in zip(d.params or [], args, ats):
+            if p.type.__class__ is not TAny or t is None:
+                continue
+            t = self.base(t)
+            if t.__class__ is tuple and t[0] == "any":
+                missing = [i for i in [_tn(p.type.iface)] + [_tn(x) for x in p.type.also or []] if i not in t[1]]
+            else:
+                missing = [i for i in [_tn(p.type.iface)] + [_tn(x) for x in p.type.also or []] if self.implements(t, i) is False]
+            if missing:
+                want = " + ".join([_tn(p.type.iface)] + [_tn(x) for x in p.type.also or []])
+                self.err(n.line, f"`{tshow(t)}` doesn't implement `{missing[0]}`, which `any {want}` needs for `{p.name}`")
+
     def iface_member(self, iname, name, seen=None):
         """(the member's FnDecl, the associated-type names of its interface) for `name` in the interface or those it embeds."""
         seen = set() if seen is None else seen
@@ -613,7 +636,7 @@ class Checker:
         for p, a in zip(d.params, args):
             if p.name == r.path[0] and p.type.__class__ is TAny and getattr(a, "expr", None).__class__ is Name:
                 at = self.any_vars.get(sc.find(a.expr.name))
-                if at is not None and at[1] == _tn(p.type.iface):
+                if at is not None and at[1] == self.any_names(p.type):
                     return ("hid", at[2], r.path[1])
         return None
 
@@ -624,7 +647,7 @@ class Checker:
         at = self.any_vars.get(v) if v is not None else None
         if at is None:
             return NOANY
-        found = self.iface_member(at[1], fn.name)
+        found = next((f for f in (self.iface_member(i, fn.name) for i in at[1]) if f is not None), None)
         if found is None:
             return NOANY
         d, assoc = found
@@ -1504,8 +1527,8 @@ class Checker:
         src = self.any_vars.get(sc.find(n.value.name)) if n.value.__class__ is Name and n.value.name != name else None
         if src is not None:
             at = src
-        elif n.ann.__class__ is TAny and _tn(n.ann.iface) in self.iface_decls:
-            at = ("any", _tn(n.ann.iface), f"{name}@{n.line}")
+        elif n.ann.__class__ is TAny and self.any_names(n.ann):
+            at = ("any", self.any_names(n.ann), f"{name}@{n.line}")
         else:
             self.any_params.pop(name, None)             # a new binding of the name that is not an `any`
             return
@@ -2062,6 +2085,8 @@ class Checker:
                 r = self.any_member_call(n, sc, fn, ats)
                 if r is not NOANY:
                     return r, None
+        if fn.__class__ is Name and sc.find(fn.name) is None and len(self.fns.get(fn.name, ())) == 1:
+            self.check_any_args(n, fn, args, ats)
         if fn.__class__ is Name and self.any_vars and sc.find(fn.name) is None and len(self.fns.get(fn.name, ())) == 1:
             r = self.any_fn_result(n, sc, fn, args)
             if r is not None:
@@ -2636,8 +2661,8 @@ class Checker:
             res = self.is_res_type(p.type)
             if p.name:
                 pty = self.ty_of_type(p.type)
-                if p.type.__class__ is TAny and _tn(p.type.iface) in self.iface_decls and not p.variadic:
-                    self.any_params[p.name] = ("any", _tn(p.type.iface), f"{p.name}@{n.line}")
+                if p.type.__class__ is TAny and self.any_names(p.type) and not p.variadic:
+                    self.any_params[p.name] = ("any", self.any_names(p.type), f"{p.name}@{n.line}")
                 elif pty.__class__ is tuple and pty[0] in ("named", "app"):
                     self.any_params[p.name] = pty
                 if p.variadic:

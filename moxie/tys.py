@@ -425,10 +425,12 @@ def tmatch(pat, act, binds):
         st = _stuck(act)
         if st:
             return st
-        ok = IMPLEMENTS(act, pat[2]) if IMPLEMENTS is not None else None
-        if ok is None:
+        oks = [IMPLEMENTS(act, i) if IMPLEMENTS is not None else None for i in pat[2]]
+        if False in oks:
+            return "no"
+        if None in oks:
             return "unk"
-        return tmatch(pat[1], act, binds) if ok else "no"
+        return tmatch(pat[1], act, binds)
     if pt == "pvar":
         if pat[1] in binds:
             cur = binds[pat[1]]

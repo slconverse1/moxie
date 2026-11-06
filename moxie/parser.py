@@ -325,9 +325,14 @@ class Parser(ExprParser):
                 e = self.parse_atom()
                 pat = TExpr(e, line=e.line)
             elif self.peek().kind == "NAME" and self.peek(1).kind == "OP" and self.peek(1).val == ":" and self.peek(2).kind == "NAME":
-                tk = self.next()                         # `X: Show`, written like a bound `[T: Show]`
+                tk = self.next()                         # `X: Show` or `X: Show + Eq`, written like a bound `[T: Show + Eq]`
                 self.next()
-                pat = TBound(tk.val, self.next().val, line=tk.line)
+                first = self.next().val
+                also = []
+                while self.at_op("+") and self.peek(1).kind == "NAME":
+                    self.next()
+                    also.append(self.next().val)
+                pat = TBound(tk.val, first, also, line=tk.line)
             else:
                 pat = self.parse_type_prim()             # no `->` inside: a function type here is written in parentheses
             guard = None
