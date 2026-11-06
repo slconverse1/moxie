@@ -3174,7 +3174,7 @@ Output: `List("name?", "hello sam")`. `fold_free(program, on_done, step)` calls 
 
 **Transformers and the mtl classes** **[gc]**
 
-A **transformer** adds one capability to any monad underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs instead of which stack provides it: `MonadState[S]` (`get`, `put`, `modify`, `gets`), `MonadReader[R]` (`ask`, `asks`, `local`), `MonadWriter[W]` (`tell`), and `MonadError[E]` (`throw_error`, `catch_error`). You write the program once, with the class members called on `M`, and pick the stack where you call it:
+A **transformer** adds one capability to any monad underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs instead of which stack provides it: `MonadState[S]` (`get`, `put`, `modify`, `gets`), `MonadReader[R]` (`ask`, `asks`, `local`), `MonadWriter[W]` (`tell`, `listen`, `censor`), and `MonadError[E]` (`throw_error`, `catch_error`). You write the program once, with the class members called on `M`, and pick the stack where you call it:
 
 ```
 import fp.trans
@@ -3191,6 +3191,20 @@ println("${error_then_state(1)} ${error_then_state(9)}")
 ```
 
 Output: `Ok((2, 2)) Err("too big")`, then `(Ok(2), 2) (Err("too big"), 9)`. The same `tick` runs on both stacks, and the stack order decides what a failure costs: with `StateT` over `ExceptT` an error throws the state away, and with `ExceptT` over `StateT` the state survives it. Return-type polymorphism needs the type written out, so the stack goes in `[...]` at the call and `M.` does the rest inside. A class member reaches through every layer above the one that provides it (`M.get()` works on a `ReaderT` over a `StateT`), and each transformer has a `lift_state_t`, `lift_reader_t`, `lift_writer_t`, or `lift_except_t` that runs an action of the inner monad. A stack of `Result` or `List` at the bottom works too, so `StateT[List[_], Int, _]` explores every branch. There is no generic `lift` class: that would be a class over a constructor of constructors, which moxie leaves out, so each transformer has its own `lift_` function.
+
+Two more transformers cover the other monads in this chapter. `ContT` is a continuation transformer, and `MonadCont` gives any stack `M.call_cc`, which reaches through `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (an escape keeps the state as it was at the moment of the jump). `FreeT[F, M, A]` is a free program whose steps run in the monad `M`, and `MonadFree[F]` gives a stack `M.wrap(instruction)` to issue one:
+
+```
+import fp.trans
+
+fn find_first[M[_]: Monad + MonadCont](xs: List[Int], want: Int) M[Int]:
+  M.call_cc((leave): xs.reduce(M.pure(-1), (acc, x): acc.flat_map((r): if x == want: leave(x * 100) else: M.pure(r))))
+fn go(want: Int) Int:
+  trans.run_identity(trans.run_cont_t(find_first[trans.ContT[trans.Identity, Int, _]](List(1, 2, 3), want), (a): trans.Identity.pure(a)))
+println("${go(2)} ${go(9)}")
+```
+
+Output: `200 -1`. `fold_free_t(program, on_done, step)` is `fold_free` with `on_done` and `step` returning actions of `M`, so an interpreter can fail or log as it goes. A value that you build yourself with a bare constructor inside a lambda (`ContT(run: ...)`, `FreeT(run: ...)`) does not know its stack's types; build through `M.pure`, `M.wrap`, the class members, and the `lift_` functions, or inside a function that names the return type, and the stack works out its own inner monad.
 
 **24i. Lazy and infinite sequences**
 

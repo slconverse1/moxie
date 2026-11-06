@@ -102,6 +102,58 @@ chk("a StateT over List explores every branch", IMP + """m = trans.lift_state_t(
 println(trans.run_state_t(m, 10))
 """, 0, "List(((), 11), ((), 12))")
 
+chk("MonadWriter: listen and censor, also through a StateT", IMP + """fn logit[M[_]: Monad + MonadWriter[String]]() M[Int]:
+  M.censor((l): l + List("!"), M.listen(M.tell("a").flat_map((u): M.tell("b")).map((u): 5)).flat_map((p): M.tell("saw ${len(p(1))}").map((u): p(0))))
+println(trans.run_identity(trans.run_writer_t(logit[trans.WriterT[trans.Identity, String, _]]())))
+println(trans.run_identity(trans.run_writer_t(trans.run_state_t(logit[trans.StateT[trans.WriterT[trans.Identity, String, _], Int, _]](), 0))))
+""", 0, '(5, List("a", "b", "saw 2", "!"))\n((5, 0), List("a", "b", "saw 2", "!"))')
+
+chk("ContT: call_cc escapes from a fold", IMP + """fn find_first[M[_]: Monad + MonadCont](xs: List[Int], want: Int) M[Int]:
+  M.call_cc((leave): xs.reduce(M.pure(-1), (acc, x): acc.flat_map((r): if x == want: leave(x * 100) else: M.pure(r))))
+fn go(want: Int) Int:
+  trans.run_identity(trans.run_cont_t(find_first[trans.ContT[trans.Identity, Int, _]](List(1, 2, 3), want), (a): trans.Identity.pure(a)))
+println("${go(2)} ${go(9)}")
+""", 0, "200 -1")
+
+chk("MonadCont through a StateT keeps the state at the escape", IMP + """fn counter[M[_]: Monad + MonadState[Int] + MonadCont]() M[Int]:
+  M.call_cc((leave): M.put(5).flat_map((u): leave(1)).flat_map((u): M.put(99))).flat_map((a): M.get())
+fn go() (Int, Int):
+  trans.run_identity(trans.run_cont_t(trans.run_state_t(counter[trans.StateT[trans.ContT[trans.Identity, (Int, Int), _], Int, _]](), 0), (p): trans.Identity.pure(p)))
+println(go())
+""", 0, "(5, 5)")
+
+chk("ContT lifts MonadState and an inner monad", IMP + """fn bump[M[_]: Monad + MonadState[Int]]() M[Int]:
+  M.modify((n): n + 1).flat_map((u): M.get())
+fn go() (Int, Int):
+  trans.run_identity(trans.run_state_t(trans.run_cont_t(bump[trans.ContT[trans.StateT[trans.Identity, Int, _], (Int, Int), _]]().flat_map((a): trans.lift_cont_t(trans.StateT[trans.Identity, Int, _].gets((s): (a, s)))), (p): trans.StateT[trans.Identity, Int, _].pure(p)), 4)(0))
+println(go())
+""", 0, "(5, 5)")
+
+FREE = """enum Cmd[Next]:
+  Say(String, Next)
+  Ask((String) -> Next)
+impl Functor[Cmd]:
+  fn map[A, B](self: Cmd[A], f: (A) -> B) Cmd[B]:
+    when self:
+      Say(s, n) -> Say(s, f(n))
+      Ask(k) -> Ask((x): f(k(x)))
+fn dialog[M[_]: Monad + MonadFree[Cmd]]() M[String]:
+  M.wrap(Say("name?", ())).flat_map((u): M.wrap(Ask((x): x))).flat_map((n): M.wrap(Say("hi ${n}", ())).map((u): n))
+"""
+chk("FreeT over Result: a program interpreted with effects of the inner monad", IMP + FREE + """prog = dialog[trans.FreeT[Cmd, Result[_, Error], _]]()
+step = (c: Cmd[Result[List[String], Error]]): when c:
+  Say(s, rest) -> map_ok(rest, (l): List(s) + l)
+  Ask(k) -> k("sam")
+println(trans.fold_free_t(prog, (n): Ok(List("done ${n}")), step))
+""", 0, 'Ok(List("name?", "hi sam", "done sam"))')
+
+chk("FreeT: an inner failure stops the interpreter", IMP + FREE + """prog = dialog[trans.FreeT[Cmd, Result[_, Error], _]]()
+step = (c: Cmd[Result[List[String], Error]]): when c:
+  Say(s, rest) -> map_ok(rest, (l): List(s) + l)
+  Ask(k) -> Err(Error(MISSING, "no input"))
+println(is_err(trans.fold_free_t(prog, (n): Ok(List("done")), step)))
+""", 0, "true")
+
 chk("these packages are moxie/gc only", "import fp.trans\nprintln(1)\n", 2, "only in moxie/gc", flags=())
 
 print(f"{len(fails)} failed")

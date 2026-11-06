@@ -41,6 +41,8 @@ export interface MonadReader[M[_], R]:
 /// A monad with an append-only log of `W` entries.
 export interface MonadWriter[M[_], W]:
   static fn tell(entry: W) M[Unit]
+  static fn listen[A](m: M[A]) M[(A, List[W])]
+  static fn censor[A](f: (List[W]) -> List[W], m: M[A]) M[A]
 
 /// A monad that can fail with an error `E` and recover.
 export interface MonadError[M[_], E]:
@@ -140,6 +142,10 @@ impl[M[_]: Monad, W] Monad[WriterT[M, W, _]]:
 impl[M[_]: Monad, W] MonadWriter[WriterT[M, W, _], W]:
   static fn tell(entry: W) WriterT[M, W, Unit]:
     WriterT(run: M.pure(((), List(entry))))
+  static fn listen[A](m: WriterT[M, W, A]) WriterT[M, W, (A, List[W])]:
+    WriterT(run: m.run.map((p): ((p(0), p(1)), p(1))))
+  static fn censor[A](f: (List[W]) -> List[W], m: WriterT[M, W, A]) WriterT[M, W, A]:
+    WriterT(run: m.run.map((p): (p(0), f(p(1)))))
 
 /// Run an action of the inner monad `m` inside a `WriterT`.
 export fn lift_writer_t[M[_]: Monad, W, A](m: M[A]) WriterT[M, W, A]:
@@ -244,14 +250,26 @@ impl[M[_]: Monad + MonadReader[R], R, E] MonadReader[ExceptT[M, E, _], R]:
 impl[M[_]: Monad + MonadWriter[W], W, S] MonadWriter[StateT[M, S, _], W]:
   static fn tell(entry: W) StateT[M, S, Unit]:
     lift_state_t(M.tell(entry))
+  static fn listen[A](m: StateT[M, S, A]) StateT[M, S, (A, List[W])]:
+    StateT(run: (s): M.listen(m.run(s)).map((q): ((q(0)(0), q(1)), q(0)(1))))
+  static fn censor[A](f: (List[W]) -> List[W], m: StateT[M, S, A]) StateT[M, S, A]:
+    StateT(run: (s): M.censor(f, m.run(s)))
 
 impl[M[_]: Monad + MonadWriter[W], W, R] MonadWriter[ReaderT[M, R, _], W]:
   static fn tell(entry: W) ReaderT[M, R, Unit]:
     ReaderT(run: (r): M.tell(entry))
+  static fn listen[A](m: ReaderT[M, R, A]) ReaderT[M, R, (A, List[W])]:
+    ReaderT(run: (r): M.listen(m.run(r)))
+  static fn censor[A](f: (List[W]) -> List[W], m: ReaderT[M, R, A]) ReaderT[M, R, A]:
+    ReaderT(run: (r): M.censor(f, m.run(r)))
 
 impl[M[_]: Monad + MonadWriter[W], W, E] MonadWriter[ExceptT[M, E, _], W]:
   static fn tell(entry: W) ExceptT[M, E, Unit]:
     lift_except_t(M.tell(entry))
+  static fn listen[A](m: ExceptT[M, E, A]) ExceptT[M, E, (A, List[W])]:
+    ExceptT(run: M.listen(m.run).map((q): map_ok(q(0), (a): (a, q(1)))))
+  static fn censor[A](f: (List[W]) -> List[W], m: ExceptT[M, E, A]) ExceptT[M, E, A]:
+    ExceptT(run: M.censor(f, m.run))
 
 impl[M[_]: Monad + MonadError[E], E, S] MonadError[StateT[M, S, _], E]:
   static fn throw_error[A](e: E) StateT[M, S, A]:
@@ -270,3 +288,114 @@ impl[M[_]: Monad + MonadError[E], E, W] MonadError[WriterT[M, W, _], E]:
     WriterT(run: M.throw_error(e))
   static fn catch_error[A](m: WriterT[M, W, A], handler: (E) -> WriterT[M, W, A]) WriterT[M, W, A]:
     WriterT(run: M.catch_error(m.run, (e): handler(e).run))
+
+// ---------------------------------------------------------------- ContT and MonadCont
+
+/// A computation in the monad `M` that hands its result to a continuation producing an `R`.
+export tuple ContT[M[_], R, A]:
+  run: ((A) -> M[R]) -> M[R]
+
+impl[M[_]: Monad, R] Monad[ContT[M, R, _]]:
+  fn map[A, B](self: ContT[M, R, A], f: (A) -> B) ContT[M, R, B]:
+    ContT(run: (k): self.run((a): k(f(a))))
+  static fn pure[A](a: A) ContT[M, R, A]:
+    ContT(run: (k): k(a))
+  fn ap[A, B](self: ContT[M, R, (A) -> B], x: ContT[M, R, A]) ContT[M, R, B]:
+    self.flat_map((g): x.map(g))
+  fn flat_map[A, B](self: ContT[M, R, A], f: (A) -> ContT[M, R, B]) ContT[M, R, B]:
+    ContT(run: (k): self.run((a): f(a).run(k)))
+
+/// A monad with `call_cc`: `f` receives an escape that abandons the rest of `f`.
+export interface MonadCont[M[_]]:
+  static fn call_cc[A, B](f: ((A) -> M[B]) -> M[A]) M[A]
+
+impl[M[_]: Monad, R] MonadCont[ContT[M, R, _]]:
+  static fn call_cc[A, B](f: ((A) -> ContT[M, R, B]) -> ContT[M, R, A]) ContT[M, R, A]:
+    ContT(run: (k): f((a): ContT(run: (ignored): k(a))).run(k))
+
+/// Run an action of the inner monad `m` inside a `ContT`.
+export fn lift_cont_t[M[_]: Monad, R, A](m: M[A]) ContT[M, R, A]:
+  ContT(run: (k): m.flat_map(k))
+
+/// Run with a final continuation.
+export fn run_cont_t[M[_]: Monad, R, A](m: ContT[M, R, A], k: (A) -> M[R]) M[R]:
+  m.run(k)
+
+impl[M[_]: Monad + MonadCont, S] MonadCont[StateT[M, S, _]]:
+  static fn call_cc[A, B](f: ((A) -> StateT[M, S, B]) -> StateT[M, S, A]) StateT[M, S, A]:
+    StateT(run: (s): M.call_cc((c): f((a): StateT(run: (s2): c((a, s2)))).run(s)))
+
+impl[M[_]: Monad + MonadCont, R] MonadCont[ReaderT[M, R, _]]:
+  static fn call_cc[A, B](f: ((A) -> ReaderT[M, R, B]) -> ReaderT[M, R, A]) ReaderT[M, R, A]:
+    ReaderT(run: (r): M.call_cc((c): f((a): ReaderT(run: (r2): c(a))).run(r)))
+
+impl[M[_]: Monad + MonadCont, W] MonadCont[WriterT[M, W, _]]:
+  static fn call_cc[A, B](f: ((A) -> WriterT[M, W, B]) -> WriterT[M, W, A]) WriterT[M, W, A]:
+    WriterT(run: M.call_cc((c): f((a): WriterT(run: c((a, List())))).run))
+
+impl[M[_]: Monad + MonadCont, E] MonadCont[ExceptT[M, E, _]]:
+  static fn call_cc[A, B](f: ((A) -> ExceptT[M, E, B]) -> ExceptT[M, E, A]) ExceptT[M, E, A]:
+    ExceptT(run: M.call_cc((c): f((a): ExceptT(run: c(Ok(a)))).run))
+
+impl[M[_]: Monad, R, S] MonadState[ContT[M, R, _], S]:
+  static fn get() ContT[M, R, S]:
+    ContT(run: (k): M.get().flat_map(k))
+  static fn put(new: S) ContT[M, R, Unit]:
+    ContT(run: (k): M.put(new).flat_map(k))
+  static fn modify(f: (S) -> S) ContT[M, R, Unit]:
+    ContT(run: (k): M.modify(f).flat_map(k))
+  static fn gets[A](f: (S) -> A) ContT[M, R, A]:
+    ContT(run: (k): M.gets(f).flat_map(k))
+
+impl[M[_]: Monad + MonadReader[Q], R, Q] MonadReader[ContT[M, R, _], Q]:
+  static fn ask() ContT[M, R, Q]:
+    ContT(run: (k): M.ask().flat_map(k))
+  static fn asks[A](f: (Q) -> A) ContT[M, R, A]:
+    ContT(run: (k): M.asks(f).flat_map(k))
+  static fn local[A](f: (Q) -> Q, m: ContT[M, R, A]) ContT[M, R, A]:
+    ContT(run: (k): M.ask().flat_map((q): M.local(f, m.run((a): M.local((q2): q, k(a))))))
+
+// ---------------------------------------------------------------- FreeT and MonadFree
+
+/// One step of a `FreeT`: a finished value, or an instruction of `F` that holds the rest.
+export enum FreeStep[F[_], M[_], A]:
+  FtDone(A)
+  FtMore(F[FreeT[F, M, A]])
+
+/// A program of `F` instructions whose steps run in the monad `M`.
+export tuple FreeT[F[_], M[_], A]:
+  run: M[FreeStep[F, M, A]]
+
+impl[F[_]: Functor, M[_]: Monad] Monad[FreeT[F, M, _]]:
+  fn map[A, B](self: FreeT[F, M, A], f: (A) -> B) FreeT[F, M, B]:
+    self.flat_map((a): FreeT(run: M.pure(FtDone(f(a)))))
+  static fn pure[A](a: A) FreeT[F, M, A]:
+    FreeT(run: M.pure(FtDone(a)))
+  fn ap[A, B](self: FreeT[F, M, (A) -> B], x: FreeT[F, M, A]) FreeT[F, M, B]:
+    self.flat_map((g): x.map(g))
+  fn flat_map[A, B](self: FreeT[F, M, A], f: (A) -> FreeT[F, M, B]) FreeT[F, M, B]:
+    next = (st): when st:
+      FtDone(a) -> f(a).run
+      FtMore(fa) -> M.pure(FtMore(fa.map((n): n.flat_map(f))))
+    FreeT(run: self.run.flat_map(next))
+
+/// A monad that can issue the instructions of a functor `F`.
+export interface MonadFree[M[_], F[_]]:
+  static fn wrap[A](fa: F[A]) M[A]
+
+impl[F[_]: Functor, M[_]: Monad] MonadFree[FreeT[F, M, _], F]:
+  static fn wrap[A](fa: F[A]) FreeT[F, M, A]:
+    fn leaf(a: A) FreeT[F, M, A]:
+      FreeT(run: M.pure(FtDone(a)))
+    FreeT(run: M.pure(FtMore(fa.map(leaf))))
+
+/// Run an action of the inner monad `m` inside a `FreeT`.
+export fn lift_free_t[F[_]: Functor, M[_]: Monad, A](m: M[A]) FreeT[F, M, A]:
+  FreeT(run: m.map((a): FtDone(a)))
+
+/// Interpret a program: `on_done` handles the final value, `step` one instruction whose rest has been interpreted; both work in `M`.
+export fn fold_free_t[F[_]: Functor, M[_]: Monad, A, B](m: FreeT[F, M, A], on_done: (A) -> M[B], step: (F[M[B]]) -> M[B]) M[B]:
+  next = (st): when st:
+    FtDone(a) -> on_done(a)
+    FtMore(fa) -> step(fa.map((n): fold_free_t(n, on_done, step)))
+  m.run.flat_map(next)
