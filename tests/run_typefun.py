@@ -85,6 +85,14 @@ BAD += [
 GOOD += [
  ("the same any value agrees with itself", ANY + 'fn copy_first(c: any Container) Unit:\n  c.put(c.first())\nfn first_of(c: any Container) c.Item:\n  c.first()\nfn twice(a: any Container) Unit:\n  a.put(first_of(a))\nprintln("ok")\n', "ok"),
 ]
+MK = 'fn make() any Container:\n  todo\n'
+BAD += [
+ ("an any local has its own Item", ANY + MK + 'fn f(a: any Container) Unit:\n  x: any Container = make()\n  x.put(a.first())\n', "expected `x.Item`, found `a.Item`"),
+ ("an alias of an any local shares its Item", ANY + MK + 'fn f(a: any Container) Unit:\n  x: any Container = make()\n  z = x\n  a.put(z.first())\n', "expected `a.Item`, found `x.Item`"),
+]
+GOOD += [
+ ("an any local agrees with itself and its alias", ANY + MK + 'fn f(a: any Container) Unit:\n  x: any Container = make()\n  x.put(x.first())\n  y = a\n  y.put(a.first())\nprintln("ok")\n', "ok"),
+]
 fails = []
 
 

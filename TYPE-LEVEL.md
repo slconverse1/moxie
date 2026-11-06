@@ -112,3 +112,5 @@ User pure functions run at compile time in sizes, type-level numbers and top-lev
 
 ## Per-instance (path-dependent) types for `any` (done for named parameters)
 `a.Item` ties a member type to one `any` value. No new syntax: a lowercase path in a type is a value path. Open: `any` locals, dependent function types.
+
+`any` locals are tracked too (a fresh hidden type per annotated binding; `y = a` shares a's).

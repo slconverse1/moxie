@@ -1464,11 +1464,26 @@ class Checker:
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
+                self.bind_any_local(n, sc, tgt.name)
             elif tgt.__class__ is PPlace:
                 self.ev(tgt.expr, sc)
             else:
                 self.bind_pat(tgt, sc, None, res)
         return None, None
+
+    def bind_any_local(self, n, sc, name):
+        """`x: any Container = make()` gets a hidden type of its own, as a parameter does; `x = a` (or `x: any I = a`) for an `any` parameter or
+        local `a` is the same value, so it shares a's."""
+        src = self.any_vars.get(sc.find(n.value.name)) if n.value.__class__ is Name and n.value.name != name else None
+        if src is not None:
+            at = src
+        elif n.ann.__class__ is TAny and _tn(n.ann.iface) in self.iface_decls:
+            at = ("any", _tn(n.ann.iface), f"{name}@{n.line}")
+        else:
+            self.any_params.pop(name, None)             # a new binding of the name that is not an `any`
+            return
+        self.any_params[name] = at
+        self.any_vars[sc.vars[name]] = at
 
     FIT = {"Int8": (-128, 127), "Int16": (-32768, 32767), "Int32": (-2**31, 2**31 - 1),
            "Int64": (-2**63, 2**63 - 1), "Int": (-2**63, 2**63 - 1), "UInt8": (0, 255),
