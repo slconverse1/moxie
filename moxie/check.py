@@ -2383,6 +2383,13 @@ class Checker:
                 if pt is not None and pt[0] == "fn":
                     binds = self.sig_fit(sg, full(None)) or {}
                     expect = tys.subst(pt, binds)
+            if expect is None and len(cands) > 1:
+                slot = i + (1 if extra and pos == "first" else 0)
+                fts = [sg[1][slot] for sg in cands if slot < len(sg[1])]
+                if fts and all(f is not None and f[0] == "fn" and self.arity_known(f) for f in fts) and len({len(f[1]) for f in fts}) == 1 \
+                        and args[i].expr.params and len(args[i].expr.params) != len(fts[0][1]):
+                    self.err(n.line, f"this function takes {len(args[i].expr.params)} parameter{'s' if len(args[i].expr.params) != 1 else ''}, "
+                             f"but it is used where one with {len(fts[0][1])} is expected")
             self.lam_expect = expect
             ats[i] = self.ev(args[i].expr, asc)
             self.lam_expect = None
