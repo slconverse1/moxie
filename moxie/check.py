@@ -2220,7 +2220,45 @@ class Checker:
         if f.__class__ is Name and f.name == "Error" and (r is None or r[0] is None) \
                 and not any(f.name in d for d in (self.fns, self.tuples, self.aliases, self.enums)) and sc.find("Error") is None:
             return ("named", "Error"), None            # `Error(code, message)` is an Error
+        if r is None or r[0] is None:
+            et = self.enum_case_type(f, sc, n)
+            if et is not None:
+                return et, None                        # `Shape.Circle(1)` and `Circle(1)` are a Shape
         return r
+
+    def enum_case_type(self, f, sc, call=None):
+        """The type of a call of an enum case (`Shape.Circle(1)`, or `Circle(1)` when the name is unambiguous) for a plain enum;
+        None for anything else, a generic enum included."""
+        ed = None
+        if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name in self.enums and sc.find(f.obj.name) is None \
+                and f.obj.name not in self.fns and f.obj.name not in self.tuples:
+            ed, case = self.enums[f.obj.name], f.name
+        elif f.__class__ is Name and sc.find(f.name) is None and f.name not in self.fns and f.name not in self.tuples \
+                and f.name in self.cases and len(self.cases[f.name]) == 1:
+            ed, case = self.enums[self.cases[f.name][0]], f.name
+        if ed is None or not any(c.name == case for c in ed.cases):
+            return None
+        tps = getattr(ed, "tparams", None)
+        if tps:
+            if any(tp.holes for tp in tps):
+                return None
+            names = [tp.name for tp in tps]
+            binds = {}                                        # a type argument is known when a payload of exactly that type is given
+            cs = next(c for c in ed.cases if c.name == case)
+            flds = [x for x in cs.fields or [] if getattr(x, "name", None) not in (None, "...")]
+            for i, a in enumerate(getattr(call, "args", None) or []):
+                x = getattr(a, "expr", None)
+                fd = next((q for q in flds if q.name == getattr(a, "label", None)), None) if getattr(a, "label", None) \
+                    else (flds[i] if i < len(flds) else None)
+                ft = getattr(fd, "type", None)
+                if x is None or ft.__class__ is not TName or len(ft.path) != 1 or ft.groups or ft.path[0] not in names \
+                        or x.__class__ not in (Name, StrLit, BoolLit, CharLit) or getattr(a, "mod", None):
+                    continue
+                t = self.quiet(x, sc)[0]
+                if t is not None and not self.has_unsettled(t):
+                    binds.setdefault(ft.path[0], self.base(t))
+            return ("app", ed.name, tuple(binds.get(nm) for nm in names))
+        return ("named", ed.name)
 
     def _e_Call0(self, n, sc, extra=0):
         fn = n.fn
@@ -2522,6 +2560,10 @@ class Checker:
             return False
         if t[0] == "named" and t[1] in self.RES_NAMED and t[1] not in self.tuples and t[1] not in self.enums:
             return False                      # a resource type is exactly itself
+        if t[0] == "named" and ((t[1] in self.tuples and not self.tuples[t[1]].tparams and t[1] not in self.enums)
+                                or (t[1] in self.enums and not self.enums[t[1]].tparams and t[1] not in self.tuples)) \
+                and t[1] not in self.aliases:
+            return False                      # so is a declared plain tuple or enum
         if t[0] in ("param", "rigid", "appv", "ctor", "named"):
             return True
         if t[0] == "app":
@@ -3190,6 +3232,12 @@ class Checker:
             return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
                        (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
                        for a in e.args or [])           # a member call on an `any` parameter has a type of its own
+        if e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name and e.trailing is None \
+                and e.fn.obj.name in self.enums and e.fn.obj.name not in self.fns and e.fn.obj.name not in self.tuples \
+                and any(c.name == e.fn.name for c in self.enums[e.fn.obj.name].cases):
+            return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
+                       (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
+                       for a in e.args or [])           # `Shape.Circle(r)`: a constructor call with plain arguments
         if e.__class__ is not Call or e.fn.__class__ is not Name or e.trailing is not None:
             return False
         return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
