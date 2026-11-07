@@ -7,7 +7,7 @@ WORKER = '''fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
   while true:
     select:
       case cancelled(stop) ->
-        write(out, "worker ${id} stopping")
+        \\write(out, "worker ${id} stopping")
         return
       case _ ->
         sleep(10ms)
@@ -45,7 +45,7 @@ println("after")
 
 chk("a scope waits for its fibers at the end", '''fn slow(out: ChanW[String]) Unit:
   sleep(100ms)
-  write(out, "slow done")
+  \\write(out, "slow done")
 
 rx, tx = Chan[String][1]()
 scope:
@@ -92,7 +92,7 @@ select:
 
 chk("nested scopes wait for their own fibers", '''fn task(name: String, ms: Int, out: ChanW[String]) Unit:
   sleep(ms * 1ms)
-  write(out, name)
+  \\write(out, name)
 
 rx, tx = Chan[String][4]()
 scope:
@@ -107,7 +107,7 @@ println(read(rx))
 
 chk("a fiber started by a scoped fiber is waited for too", '''fn leaf(out: ChanW[String]) Unit:
   sleep(30ms)
-  write(out, "leaf")
+  \\write(out, "leaf")
 
 fn mid(out: ChanW[String]) Unit:
   _ = run leaf(out)

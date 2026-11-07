@@ -2254,7 +2254,7 @@ A moxie program has no garbage collector, so the compiler works out ahead of tim
 
 ```
 fiber[2] fn w(tx: ChanW[Int]) Unit:
-  write(tx, 2)
+  \write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
 println(read(rx)?)
@@ -2360,7 +2360,7 @@ Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` giv
 ```
 fn server(tx: ChanW[Int]) Unit:
   l = listen(0)?
-  write(tx, port_of(l))
+  \write(tx, port_of(l))
   c = accept(l)?
   println(c, "hello from server")
   close(c)
@@ -2677,7 +2677,7 @@ Output: `using Secret(***)`, then `true` when the variable is unset. Printing, i
 ```
 fn work(done: ChanW[Int]) Unit:
   sleep(1s)
-  write(done, 1)
+  \write(done, 1)
 
 rx = signals()
 done_r, done_w = Chan[Int][1]()

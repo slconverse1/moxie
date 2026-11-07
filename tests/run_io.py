@@ -13,7 +13,7 @@ CASES = [
  ("pure fn may not read a file", 'pure fn f() String: read_file("a")?\n', 2, "parks"),
  ("a file left open is closed at exit", f'w = open_file("{P}.4", Create)?\nprintln(w, "kept")\n', 0, ""),
  ("sockets: connect, accept, talk", 'l = listen(0)?\nc = connect("127.0.0.1", port_of(l))?\ns = accept(l)?\nprintln(c, "ping")\nprintln(read_line(s)?)\nprintln(s, "pong")\nprintln(read_line(c)?)\nclose(c)\nprintln(read_line(s))\nclose(s)\nclose(l)\n', 0, "ping\npong\nErr(Error(code: 1"),
- ("server and client fibers in one program", 'fn server(tx: ChanW[Int]) Unit:\n  l = listen(0)?\n  write(tx, port_of(l))\n  c = accept(l)?\n  println(c, "hello from server")\n  close(c)\n  close(l)\nrx, tx = Chan[Int][1]()\nrun server(tx)\nc = connect("127.0.0.1", read(rx)?)?\nprintln(read_line(c)?)\nclose(c)\n', 0, "hello from server"),
+ ("server and client fibers in one program", 'fn server(tx: ChanW[Int]) Unit:\n  l = listen(0)?\n  \\write(tx, port_of(l))\n  c = accept(l)?\n  println(c, "hello from server")\n  close(c)\n  close(l)\nrx, tx = Chan[Int][1]()\nrun server(tx)\nc = connect("127.0.0.1", read(rx)?)?\nprintln(read_line(c)?)\nclose(c)\n', 0, "hello from server"),
  ("connection refused", 'println(connect("127.0.0.1", 1))\n', 0, "code: 11"),
 ]
 fails = []

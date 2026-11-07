@@ -21,7 +21,7 @@ FIBER = '''fn hold(done: ChanW[Int]) Unit:
   xs = List[Int]()
   for i in 0..40000:
     gimme.1.xs = xs + i
-  write(done, len(xs))
+  \\write(done, len(xs))
 rx, tx = Chan[Int][1]()
 run hold(tx)
 println(read(rx)?)

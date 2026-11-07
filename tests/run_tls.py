@@ -28,7 +28,7 @@ def chk(name, got, rc, *words):
 
 SERVER = '''fn server(tx: ChanW[Int]) Unit:
   l = listen_tls(0, "cert.pem", "key.pem")?
-  write(tx, port_of(l))
+  \\write(tx, port_of(l))
   c = accept(l)?
   println(c, "hello over tls")
   close(c)
