@@ -2041,7 +2041,7 @@ when @r:
 
 Output: `hello 1`, then `answer 42`. The future's two ends have the types `FutureR[Int]` (the read end, `r`) and `FutureW[Int]` (the write end, `w`), just as a channel's ends are `ChanR` and `ChanW`. In `Chan[String][1]`, the first brackets are the element type and the second is the capacity (how many values can wait). **[gc]** The capacity may be any `Int` expression, and `Chan[String][#unbounded]()` never makes a writer wait, at the price of unbounded growth. `swap` applies a function that must not park to the old value, stores the result, and returns the new value. Extra arguments go in with a placeholder call (using `add` from chapter 6):
 
-**Discarding a result.** `\swap(counter, _ + 1)` and `\write(tx, "hello")` start with `\`, which evaluates the rest of the statement and throws the value away. It is how you say a `Result` (or any value) is deliberately ignored, and it means exactly `_ = swap(counter, _ + 1)`, which still works. `\` is valid only at the start of a statement, with an expression after it; `x = \f()` is an error, and a trailing `\` does not continue the line.
+**Discarding a result.** `\swap(counter, _ + 1)` and `\write(tx, "hello")` start with `\`, which evaluates the rest of the statement and throws the value away. It is how you say a `Result` (or any value) is deliberately ignored, and it means exactly `_ = swap(counter, _ + 1)`, which still works. `\` is valid only at the start of a statement, with an expression after it; `x = \f()` is an error. (A `\` at the *end* of a line is something else: it continues the statement on the next line, as in Python, though a dangling operator or comma or an open bracket usually does the job better.)
 
 ```
 hits = Atom[Int](0)

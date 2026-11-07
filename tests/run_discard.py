@@ -43,3 +43,11 @@ for flags in ((), ("--gc",)):
     if r.stdout.strip() != "true":
         print("FAIL fail ok", flags, r.stdout, r.stderr); fails += 1
 print("double wrap: FAIL" if fails else "double wrap: ok")
+
+# a trailing backslash is still a line continuation, and a discard can follow one
+cont = "fn f(x: Int) Int:\n  x + 1\ny = 1 + \\\n  2\n\\f(y)\nprintln(y)\n"
+for flags in ((), ("--gc",)):
+    r = run(cont, *flags)
+    if r.stdout.strip() != "3":
+        print("FAIL continuation", flags, r.stdout, r.stderr); fails += 1
+print("continuation: FAIL" if fails else "continuation: ok")

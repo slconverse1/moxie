@@ -46,7 +46,7 @@ class Parser(ExprParser):
         if t.kind == "OP" and t.val == "\\":
             self.next()
             if self._ends_stmt(self.peek()):
-                self.err("`\\` must be followed by the expression whose value it discards")
+                self.err("`\\` discards a value, so an expression must follow it on the same line")
             value = self.parse_expr()
             return self.trail_if(Assign(PWild(line=line), value, None, "=", None, line=line))
         if t.kind == "NAME":
