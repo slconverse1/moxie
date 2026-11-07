@@ -1609,7 +1609,7 @@ class Checker:
                 r = self.fns[f.name][0].ret            # a function whose result is a resource
                 if self.is_res_type(r):
                     return True
-                if (wrapped and r.__class__ is TName and r.path and r.path[-1] in ("Result", "Option")
+                if (wrapped and r.__class__ is TName and r.path and r.path[-1] == "Result"
                         and r.groups and r.groups[0] and self.is_res_type(r.groups[0][0])):
                     return True
             if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name == "Connection":

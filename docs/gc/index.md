@@ -456,7 +456,7 @@ If `acct` is `Active`, then `rank` is bound and the function carries on to the n
 
 Every programmer is well aware of the hazards of null. Well, moxie bans null altogether.
 
-So moxie has no null (and, obviously, no nullable types) and no "zero value" standing in for a missing one. Every binding needs a value. When something might legitimately be absent, you say so in the type: a `Result`, a `T | ()` union, or a `Maybe` enum of your own. Then the compiler makes you handle it, and a forgotten case is a compile error instead of a 3 a.m. crash. (`()` is the only value of the type `Unit`, and `Unit` is the empty tuple type, so `Int | ()` means "an `Int`, or nothing.")
+So moxie has no null (and, obviously, no nullable types) and no "zero value" standing in for a missing one. Every binding needs a value. When something might legitimately be absent, you say so in the type: a `Result`, a `T | ()` union, or an enum of your own. Then the compiler makes you handle it, and a forgotten case is a compile error instead of a 3 a.m. crash. (`()` is the only value of the type `Unit`, and `Unit` is the empty tuple type, so `Int | ()` means "an `Int`, or nothing.")
 
 "But now I have to check Results all day!" Not so. Moxie works hard to keep that to a minimum:
 
@@ -604,7 +604,7 @@ print("${area(Shape.Circle(2.0))} ${area(Shape.Rect(2.0, 3.0))} ")
 println("${area(Shape.Dot)}")
 ```
 
-Output: `12.0 6.0 0.0`. Each arm names its case and binds its fields in the same step, so there's no cast and no null check. That is also how moxie handles "absent": a missing value is just another case, such as a `Maybe`'s `Nothing`, that you match.
+Output: `12.0 6.0 0.0`. Each arm names its case and binds its fields in the same step, so there's no cast and no null check. That is also how moxie handles "absent": a missing value is just another case, such as a `Missing` case of your own enum, that you match.
 
 **The compiler checks that you covered everything.** Every `when` must cover every case, and `_ ->` is the fallback. If an enum has three cases and the `when` handles two, the program won't compile (the message is approximate):
 

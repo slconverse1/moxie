@@ -1251,9 +1251,8 @@ def b_ensure(I, a, kw, ta):
 
 @bi("guard")
 def b_guard(I, a, kw, ta):
-    mt = I.enums.get("Maybe")
     if a[0]:
-        return Ok(UNIT) if mt is None else I.enum_instance(mt.et, mt.et.cases["Just"], [UNIT]) if False else Ok(UNIT)
+        return Ok(UNIT)
     return err_reserved("MISSING", "guard")
 
 
@@ -1288,10 +1287,6 @@ def b_get_or(I, a, kw, ta):
     x = a[0]
     if isinstance(x, EnumV) and x.et is RESULT_T:
         return x.vals[0] if x.case == "Ok" else a[1]
-    if isinstance(x, EnumV) and x.case == "Just":
-        return x.vals[0]
-    if isinstance(x, EnumV) and x.case == "Nothing":
-        return a[1]
     r = I.index_get_safe(x, a[1])
     return r if r is not MISSING else a[2]
 

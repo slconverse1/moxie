@@ -1394,15 +1394,15 @@ interface Describable:
 impl Describable for Int:
   fn describe() String:
     "int $self"
-impl[A: Describable] Describable for Maybe[A]:
+tuple Box[A]:
+  value: A
+impl[A: Describable] Describable for Box[A]:
   fn describe() String:
-    when self:
-      Just(v) -> "just(${v.describe()})"
-      Nothing -> "nothing"
-println(Maybe.Just(7).describe())
+    "box(${self.value.describe()})"
+println(Box(7).describe())
 ```
 
-Output: `just(int 7)`. `Maybe[A]` is `Describable` exactly when `A` is.
+Output: `box(int 7)`. `Box[A]` is `Describable` exactly when `A` is.
 
 **5. Interface values** *(approved: `any`)*
 
@@ -1740,22 +1740,25 @@ println("$x $y")
 Output: `1.5 2.0`. `value is Pattern` is a Boolean test, and its names are visible in the `then` branch (and after `and`, but not under `or` or `not`):
 
 ```
-fn show_maybe(m: Maybe[Int]) String:
-  if m is Just(v): "value $v" else: "nothing"
-println("${show_maybe(Maybe.Just(7))} ${show_maybe(Maybe.Nothing)}")
+enum Reading:
+  Value(n: Int)
+  Missing
+fn show_reading(r: Reading) String:
+  if r is Value(n): "value $n" else: "missing"
+println("${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}")
 ```
 
-Output: `value 7 nothing`. A **let-else**, `Pattern = expr else: value`, leaves the whole function with the else value when the pattern doesn't match:
+Output: `value 7 missing`. A **let-else**, `Pattern = expr else: value`, leaves the whole function with the else value when the pattern doesn't match:
 
 ```
-fn times_ten(m: Maybe[Int]) Maybe[Int]:
-  Just(v) = m else: Maybe.Nothing
-  Maybe.Just(v * 10)
-print("${times_ten(Maybe.Just(7))} ${times_ten(Maybe.Nothing)} ")
-println("${times_ten(half(5))}")
+fn times_ten(r: Reading) Reading:
+  Value(n) = r else: Reading.Missing
+  Reading.Value(n * 10)
+print("${times_ten(Reading.Value(7))} ")
+println("${times_ten(Reading.Missing)}")
 ```
 
-Output: `Maybe.Just(70) Maybe.Nothing Maybe.Nothing` (using `Maybe` and `half` from chapter 10). **Mistakes:** a `when` that doesn't cover every case, a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
+Output: `Reading.Value(70) Reading.Missing` (using `Reading` from above). **Mistakes:** a `when` that doesn't cover every case, a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
 
 **12a. Binary patterns**
 
@@ -3391,7 +3394,7 @@ Output: `6`.
 - **Early exit:** use `return` for guard clauses (chapter 1a), `break(value)` and `else:` for loops (1b), and `break #label` from nested loops.
 - **Update a field:** `p.score += 10` rebuilds the tuple, and `p.update:` changes several fields at once (8a). A function that changes its caller's variable takes `ref` (6b).
 - **Swap:** `a, b = b, a`. **Update an element:** `numbers(i) = v` and `numbers(i) += 1` rebind the array, and an update that rebinds a name to an update of itself never copies when the old value is dead afterwards (`moxie build --report` lists the exceptions).
-- **Push to a list:** `list += 4`. **Null:** there is none; use `Result`, `T | ()`, or a `Maybe` enum.
+- **Push to a list:** `list += 4`. **Null:** there is none; use `Result`, `T | ()`, or an enum of your own.
 - **Outer variable from a nested block:** `gimme.1.x += 1` (1c).
 - **Pointers and linked structures:** use a recursive enum (chapter 15), a bounded `Dict` of ids, or a fiber that owns the data.
 - **Exceptions:** return a `Result` and use `?` (chapter 18). There is no `try`.
