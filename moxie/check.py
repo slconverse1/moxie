@@ -1290,6 +1290,11 @@ class Checker:
         a, b = self.base(lt), self.base(rt)
         op = n.op
         self.check_op_bound(n, sc)
+        dur = ("named", "Duration")
+        if (a == dur or b == dur) and "Duration" not in self.tuples and "Duration" not in self.aliases:
+            r = self.duration_op(n, a, b, dur)
+            if r is not NOANY:
+                return r
         if op in ("==", "!=", "<", ">", "<=", ">="):
             if a == ("secret",) or b == ("secret",):
                 self.err(n.line, "a Secret can't be compared with " + op + "; use secret_eq(a, b), or compare what reveal gives")
@@ -1315,6 +1320,37 @@ class Checker:
                 return (a if a == b else None), None
             return None, None
         return None, None
+
+    def duration_op(self, n, a, b, dur):
+        """Arithmetic and comparison with a Duration: `+` and `-` take two Durations, `*` a Duration and an Int, `/` a Duration and
+        an Int (a Duration divided by a Duration is a compile error: divide the counts, `nanos(a) / nanos(b)`).  NOANY: not decided."""
+        op = n.op
+        known = lambda t: t in self.SCAL or (t.__class__ is tuple and t[0] == "bounded")
+        asint = lambda t: "Int" if t.__class__ is tuple and t[0] == "bounded" else t
+        other = b if a == dur else a
+        if other is None or (other != dur and not known(other)):
+            return NOANY
+        other = asint(other)
+        if op in ("==", "!=", "<", ">", "<=", ">="):
+            if other != dur:
+                self.err(n.line, f"cannot compare `{tshow(dur)}` and `{tshow(other)}`: write the other side as a Duration such as `2s`, or compare `nanos(d)`")
+            return "Bool", None
+        if op in ("+", "-"):
+            if a == dur and b == dur:
+                return dur, None
+            self.err(n.line, f"cannot apply `{op}` to `{tshow(a)}` and `{tshow(b)}`: a Duration combines only with a Duration (`2s`, `500ms`), so the unit is never a guess")
+            return None, None
+        if op == "*":
+            if (a == dur and b == "Int") or (a == "Int" and b == dur):
+                return dur, None
+            self.err(n.line, f"cannot apply `*` to `{tshow(a)}` and `{tshow(b)}`: a Duration is multiplied by an Int")
+            return None, None
+        if op == "/":
+            if a == dur and b == "Int":
+                return dur, None
+            self.err(n.line, f"cannot apply `/` to `{tshow(a)}` and `{tshow(b)}`: a Duration is divided by an Int; for a ratio of two Durations, divide the counts, `nanos(a) / nanos(b)`")
+            return None, None
+        return NOANY
 
     def e_Q(self, n, sc):
         t = self.base(self.ev(n.e, sc)[0])

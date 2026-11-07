@@ -132,7 +132,7 @@ How S-space and T-space behave:
 **Types**
 - `Int` and `UInt` are native word width, `Int8` to `Int64` and `UInt8` to `UInt64` are fixed, `Byte` is `UInt8`, `Float` is 32-bit, `Double` is 64-bit, and `LongDouble` is native extended. `Bool` and `Unit` are built in. `Char` is a 4-byte Unicode scalar and not an integer.
 - **Widening** is implicit only when lossless. **Narrowing** needs a named conversion (below).
-- Keywords like `#pending` are interned, compared in one instruction, and print as `#pending`. Durations are `5s` and `500ms`; the suffixes are `ns`, `us`, `ms`, `s`, `m`, and `h` (there is no day suffix, since `d` marks a Decimal, so write `24h`). A Duration is one count of nanoseconds whatever unit it was written in, so `7s`, `5s + 2s`, and `7000ms` are equal and are the same key in a Dict or Set.
+- Keywords like `#pending` are interned, compared in one instruction, and print as `#pending`. Durations are `5s` and `500ms`; the suffixes are `ns`, `us`, `ms`, `s`, `m`, and `h` (there is no day suffix, since `d` marks a Decimal, so write `24h`). A Duration is one count of nanoseconds whatever unit it was written in, so `7s`, `5s + 2s`, and `7000ms` are equal and are the same key in a Dict or Set. Arithmetic is checked: `+` and `-` take two Durations, `*` and `/` take a Duration and an Int (`5s * 3`, `5s / 2`), and a comparison takes two Durations, so `5s + 1`, `5s < 2`, and `5s / 2s` are compile errors; for a ratio of two Durations divide the counts, `nanos(a) / nanos(b)`.
 
 **Numeric literals**
 - Digit separators: `1_000_000` and `0xFF_FF`. An underscore sits between digits only, never at the start or end or next to the point or exponent.
