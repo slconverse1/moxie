@@ -1407,6 +1407,18 @@ class Checker:
             return
         self.err(n.line, f"`{tname}` has no field `{nm}`" + (f"; its fields are {', '.join('`'+x+'`' for x in names)}" if names else ""))
 
+    def settle_mixed(self, node, expected):
+        """A collection literal whose elements disagree is an error unless the type expected where it is used names a union
+        (`List[Int | String]`), a type parameter, or anything else the elements might convert into.  `expected` None means
+        nothing is expected (a binding without an annotation, an argument of a library function)."""
+        m = self.mixed_lits.pop(id(node), None)
+        if m is None:
+            return
+        plain = lambda x: x is not None and (x.__class__ is str or (x[0] == "app" and not self.has_unsettled(x)))
+        if expected is None or (expected.__class__ is tuple and expected[0] == "app" and expected[2] and all(plain(a) for a in expected[2])):
+            hint = "d: Dict[String, Int | Bool] = ..." if "Dict(" in m[1] else "xs: List[Int | String] = ..."
+            self.err(m[0], m[1] + f"; to mix them, declare a union, as in `{hint}`")
+
     def arity_clash(self, ft, count):
         """True when a lambda of `count` parameters cannot be used where the function type `ft` is expected.  A lambda with
         several parameters may also take apart a single tuple argument (`(k, v): ...` over the entries of a Dict), so that
@@ -1516,6 +1528,8 @@ class Checker:
 
     def e_Return(self, n, sc):
         t, c = self.ev(n.e, sc)
+        if n.e is not None:
+            self.settle_mixed(n.e, self.fn_ret)
         if self.fn_ret is not None and n.e is not None:
             self.compat(self.fn_ret, t, c, n.line)
         return None, None
@@ -1603,15 +1617,8 @@ class Checker:
 
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
-        mixed = self.mixed_lits.pop(id(n.value), None)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
-        if mixed is not None:
-            # an annotation naming a union (`List[Int | String]`) lets the elements convert into it; anything else is an error
-            plain = lambda x: x is not None and (x.__class__ is str or (x[0] == "app" and not self.has_unsettled(x)))
-            if ann is None or (ann.__class__ is tuple and ann[0] == "app" and ann[2] and all(plain(a) for a in ann[2])):
-                dict_ = "Dict(" in mixed[1]
-                hint = "d: Dict[String, Int | Bool] = ..." if dict_ else "xs: List[Int | String] = ..."
-                self.err(mixed[0], mixed[1] + f"; to mix them, declare a union, as in `{hint}`")
+        self.settle_mixed(n.value, ann)
         if n.ann is not None:
             self.check_type_arity(n.ann, n.line)
         if n.ann is not None and n.op == "=":
@@ -2200,6 +2207,15 @@ class Checker:
                 self.lam_expect = tys.subst(plan[0][len(args)], binds)
             self.ev(n.trailing, sc)
             self.lam_expect = None
+        for i, a in enumerate(args):                      # a mixed literal given to a call: the parameter's type says if it may mix
+            x = getattr(a, "expr", None)
+            if x is not None and id(x) in self.mixed_lits:
+                if plan is not None and i < len(plan[0]):
+                    self.settle_mixed(x, plan[0][i])
+                elif ov is not None and ov[0]:
+                    self.settle_mixed(x, None)            # a library function takes no union
+        if fn.__class__ is Field and id(fn.obj) in self.mixed_lits:
+            self.settle_mixed(fn.obj, None)               # `List(1, "a").map(...)`
         if fn.__class__ is Name and sc.find(fn.name) is None:
             self.check_hand_over(n, sc, fn.name, args)
             if fn.name in self.tuples:
@@ -2987,6 +3003,7 @@ class Checker:
             return
         for e in self.tails(body):
             t, c = self.quiet(e, sc)
+            self.settle_mixed(e, self.fn_ret)
             self.compat(self.fn_ret, t, c, e.line)
 
     def tails(self, e):
