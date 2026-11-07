@@ -3213,7 +3213,7 @@ when process_batch(List(42, 9), 10):
   Err(e) -> println("$e")
 ```
 
-Output: `Ok(550000) Ok(550000)`, then `550000 330000`, then `PayError.NotFound(9)` (the first error in the batch wins). Guards are prelude functions: `ensure(cond, err)` for `Result`, `guard(cond)` for `Maybe`, and `or_else` to recover. An error that carries runtime text must be a typed payload such as `NotFound(id: id)`, since a static-string `Error` cannot. Two generators over `Result` need only `Applicative`:
+Output: `Ok(550000) Ok(550000)`, then `550000 330000`, then `PayError.NotFound(9)` (the first error in the batch wins). Guards are prelude functions: `ensure(cond, err)` for `Result`, `guard(cond)` for a plain condition (`Ok(())`, or `Err` with the code `MISSING`), and `or_else` to recover. An error that carries runtime text must be a typed payload such as `NotFound(id: id)`, since a static-string `Error` cannot. Two generators over `Result` need only `Applicative`:
 
 ```
 fn both(a: Result[Int, Error], b: Result[Int, Error]) Result[Int, Error]:

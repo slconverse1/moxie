@@ -249,6 +249,9 @@ fn flip[A, B, R](f: (A, B) -> R) (B, A) -> R: 0
 fn const[A, F](x: A) F: 0
 fn file_info[E](p: String) Result[FileInfo, E]: 0
 fn fail[T](code: Int) Result[T, Error]: 0
+fn guard[E](ok: Bool) Result[Unit, E]: 0
+fn traverse[T, U, E](f: (T) -> Result[U, E], xs: Seq[T]) Result[List[U], E]: 0
+fn sequence[T, E](rs: Seq[Result[T, E]]) Result[List[T], E]: 0
 fn resolve[T](w: FutureW[T], v: T) Unit: 0
 fn reject[T](w: FutureW[T], e: Error) Unit: 0
 fn read[T, R](f: FutureR[T]) R: 0

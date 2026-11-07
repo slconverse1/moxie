@@ -2063,7 +2063,7 @@ def b_traverse(I, a, kw, ta):
     out = []
     for x in items:
         r = yield from I.apply(f, [x])
-        if isinstance(r, EnumV) and (r.case in ("Err", "Nothing")):
+        if isinstance(r, EnumV) and r.case == "Err":
             return r
         out.append(r.vals[0] if isinstance(r, EnumV) else r)
     return Ok(ListV(out))
@@ -2074,7 +2074,7 @@ def b_sequence(I, a, kw, ta):
     items = yield from drain(I, a[0])
     out = []
     for r in items:
-        if isinstance(r, EnumV) and r.case in ("Err", "Nothing"):
+        if isinstance(r, EnumV) and r.case == "Err":
             return r
         out.append(r.vals[0])
     return Ok(ListV(out))
