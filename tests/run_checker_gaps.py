@@ -23,6 +23,7 @@ GOOD = [
  "d: Dict[Int, Int] = Dict(1: 2)\nx = d |> map((k, v): k) |> collect()\nprintln(x)\n",
  "x = List((1, 2)).map((a, b): a) |> collect()\nprintln(x)\n",
  "x = Ok((1, 2)).map((a, b): a)\nprintln(x)\n",
+ "xs: List[Int | String] = List(1, \"a\")\nd: Dict[String, Int | Bool] = Dict(\"n\": 1, \"on\": true)\nprintln(len(xs) + len(d))\n",
  "x = Dict(1: 2).map((k, v): k) |> collect()\ny = Dict(\"a\": 1, b: 2)\nz = Dict((5, 6), (7, 8))\nprintln(len(y) + len(z))\n",
  "x = Ok(1).map((a): a + 1)\nprintln(x)\n",
 ]

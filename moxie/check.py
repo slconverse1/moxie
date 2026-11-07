@@ -202,6 +202,7 @@ class Checker:
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
         self.callee_fields = set()
+        self.mixed_lits = {}             # collection literals whose elements disagree, by call node: (line, message)
         self.cases = {}            # bare case name -> [enum names]
         self.globals = set()
         self.moved = {}            # Var -> line
@@ -1602,7 +1603,15 @@ class Checker:
 
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
+        mixed = self.mixed_lits.pop(id(n.value), None)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
+        if mixed is not None:
+            # an annotation naming a union (`List[Int | String]`) lets the elements convert into it; anything else is an error
+            plain = lambda x: x is not None and (x.__class__ is str or (x[0] == "app" and not self.has_unsettled(x)))
+            if ann is None or (ann.__class__ is tuple and ann[0] == "app" and ann[2] and all(plain(a) for a in ann[2])):
+                dict_ = "Dict(" in mixed[1]
+                hint = "d: Dict[String, Int | Bool] = ..." if dict_ else "xs: List[Int | String] = ..."
+                self.err(mixed[0], mixed[1] + f"; to mix them, declare a union, as in `{hint}`")
         if n.ann is not None:
             self.check_type_arity(n.ann, n.line)
         if n.ann is not None and n.op == "=":
@@ -2255,7 +2264,7 @@ class Checker:
             if el == "conflict":
                 plain = lambda x: not self.has_unsettled(x) and (x.__class__ is str or x[0] == "app")
                 if n is not None and plain(prev) and plain(t):
-                    self.err(n.line, f"the elements of `{name}(...)` must share one type, but found `{tshow(prev)}` and `{tshow(t)}`")
+                    self.mixed_lits[id(n)] = (n.line, f"the elements of `{name}(...)` must share one type, but found `{tshow(prev)}` and `{tshow(t)}`")
                 return ("app", name, (None,))
         if name == "Array":
             return ("app", name, (el,), len(ats))
@@ -2285,7 +2294,7 @@ class Checker:
                 plain = lambda x: x is not None and not self.has_unsettled(x) and (x.__class__ is str or x[0] == "app")
                 for what, pr, cur, new in (("keys", pk, kt, k), ("values", pv, vt, v)):
                     if cur == "conflict" and n is not None and plain(pr) and plain(new):
-                        self.err(n.line, f"the {what} of `Dict(...)` must share one type, but found `{tshow(pr)}` and `{tshow(new)}`")
+                        self.mixed_lits[id(n)] = (n.line, f"the {what} of `Dict(...)` must share one type, but found `{tshow(pr)}` and `{tshow(new)}`")
                 return ("app", "Dict", (None, None))
         return ("app", "Dict", (kt, vt))
 
