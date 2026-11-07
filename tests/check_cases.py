@@ -31,7 +31,7 @@ CASES = [
 ("ok: a wrapped lambda called at once", 'double = ((x: Int): x * 2)(21)\nprintln("$double")\n', None),
 ("ok: a bare lambda bound to a function type", 'add: (Int, Int) -> Int = (a, b): a + b\nprintln(add(1, 2))\n', None),
 ("ok: a lambda with a return type", 'xs = List(1, 2)\nprintln(xs |> map((x) Int: x * 3) |> collect())\n', None),
-("ok: a lambda inside a call in a header", 'xs = List(1, 2, 3)\nif any(xs, (x): x > 2):\n  println("yes")\n', None),
+("ok: a lambda inside a call in a header", 'xs = List(1, 2, 3)\nif any((x): x > 2, xs):\n  println("yes")\n', None),
 ("a parameter needs a type", 'fn twice(f, x: Int) Int: f(f(x))\n', "parameter 'f' of function 'twice' has no type"),
 ("ok: later clauses inherit parameter types", 'fn f(0) Int: 1\nfn f(n): n * 2\nprintln(f(3))\n', None),
 ("ok: a lambda needs no parameter types", 'println(List(1, 2) |> map((x): x + 1) |> collect())\n', None),

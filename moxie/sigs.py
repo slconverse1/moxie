@@ -112,13 +112,18 @@ fn remove_file[E](p: String) Result[Unit, E]: 0
 fn random_int(lo: Int, hi: Int) Int: 0
 fn days_in_month(y: Int, m: Int) Int: 0
 fn assert(ok: Bool) Unit: 0
+fn assert(ok: Bool, message: String) Unit: 0
 fn assert_eq[T](a: T, b: T) Unit: 0
 fn println() Unit: 0
 fn println[T](x: T) Unit: 0
+fn println[W, T](out: W, x: T) Unit: 0
 fn print[T](x: T) Unit: 0
+fn print[W, T](out: W, x: T) Unit: 0
 fn eprintln() Unit: 0
 fn eprintln[T](x: T) Unit: 0
+fn eprintln[W, T](out: W, x: T) Unit: 0
 fn eprint[T](x: T) Unit: 0
+fn eprint[W, T](out: W, x: T) Unit: 0
 fn dbg[T](x: T) T: 0
 fn trace[T](x: T) Unit: 0
 fn random() Double: 0

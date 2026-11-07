@@ -2548,6 +2548,13 @@ class Checker:
                                                            for t in ft if t.__class__ is tuple):
                 return ats, "Int"                 # `len` of a tuple counts its fields
             known = [t if t is not None and t[0] != "fn" and not self.has_unsettled(t) else None for t in ft]
+            alone0 = lambda sg: all(tys.match(pt, self.base(t), {}) for pt, t in zip(sg[1], known) if t is not None)
+            if any(t is not None for t in known) and not any(self.sig_fit(sg, known) is not None for sg in over) \
+                    and not any(alone0(sg) for sg in over):
+                shown = [("a function" if (t is not None and t[0] == "fn") else tshow(t)) for t in ft]
+                self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take ({', '.join(shown)}); it takes "
+                         + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]))
+                return ats, None
             alone = lambda sg: all(tys.match(pt, self.base(t), {}) for pt, t in zip(sg[1], known) if t is not None)
             if any(t is not None for t in known) and not any(self.sig_fit(sg, known) is not None for sg in over) \
                     and any(alone(sg) for sg in over):         # each argument fits its own parameter; only the shared type parameter clashes
