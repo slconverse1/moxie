@@ -1208,7 +1208,7 @@ rx, tx = Chan[String][1]()
 println(read(rx).get_or("nobody home"))
 ```
 
-Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element type, then room for one waiting value) and returns the channel's read and write ends as its result. `run greeter(tx)` starts the fiber and moves the write end to it, and the `\` acknowledges the `Result` that `run` returns. Meanwhile, `read(rx)` parks the main fiber until the greeter has written.
+Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element type, then room for one waiting value) and returns the channel's read and write ends as its result. `run greeter(tx)` starts the fiber and moves the write end to it, and the `\` acknowledges the `Result` that `run` returns: a statement that starts with `\` evaluates the rest of the line and throws the value away, which is how you say a `Result` is deliberately ignored. Meanwhile, `read(rx)` parks the main fiber until the greeter has written.
 
 **Who runs when.** Starting a fiber doesn't pause the one that started it. The starter keeps going until it parks, and only then does another fiber get a turn:
 

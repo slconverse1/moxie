@@ -470,7 +470,23 @@ println(describe(42))
 println(describe("Node-04"))
 ```
 
-Output: `numeric id 42` then `text id Node-04`. A union may list another union, which is flattened: `type union Wide = Identifier | Bool` holds an `Int`, a `String`, or a `Bool`, and a member that appears twice after flattening is an error. A **data path** names a spot inside nested tuples. It is a plain function, so it can be stored, passed, and composed:
+Output: `numeric id 42` then `text id Node-04`. A union may list another union, which is flattened: `type union Wide = Identifier | Bool` holds an `Int`, a `String`, or a `Bool`, and a member that appears twice after flattening is an error.
+
+**Mixing types in a collection.** The elements of a `List`, `Set`, or `Array`, and the keys or values of a `Dict`, share one type, so `List(1, "a")` is a compile error: it is usually a typo, and moxie will not guess a type that fits both. To mix on purpose, name a union in the annotation. The elements convert into it, and a `when` takes them apart again. It works the same in both dialects, because a union has a fixed size.
+
+```
+xs: List[Int | String] = List(1, "a", 2)
+for x in xs:
+  when x:
+    Int -> println("number $x")
+    String -> println("text $x")
+settings: Dict[String, Int | Bool] = Dict("retries": 3, "verbose": true)
+println(len(settings))
+```
+
+Output: `number 1`, `text a`, `number 2`, then `2`. The union can also come from a parameter, a return type, or a tuple field (`fn take(xs: List[Int | String])`), and an unannotated `mixed = List(1, "a")` is the error.
+
+A **data path** names a spot inside nested tuples. It is a plain function, so it can be stored, passed, and composed:
 
 ```
 tuple Firm:
