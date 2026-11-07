@@ -2261,6 +2261,34 @@ class Checker:
             return ("app", name, (el,), len(ats))
         return ("app", name, (el,))
 
+    def dict_ctor(self, args, ats, n=None):
+        """`Dict(1: 2)` is `Dict[Int, Int]`: a number key is an Int, and a string or a bare name is a String key; `Dict((k, v), ...)`
+        takes both from the pairs.  Anything not known leaves that part unknown."""
+        if any(getattr(a, "mod", None) for a in args):
+            return None
+        kt = vt = None
+        for a, (t, _c) in zip(args, ats):
+            t = self.base(t)
+            if getattr(a, "label", None) is not None:
+                lb = a.label
+                k = "Int" if isinstance(lb, int) and not isinstance(lb, bool) else "String" if isinstance(lb, (str, tuple)) else None
+                v = t
+            elif t is not None and t.__class__ is tuple and t[0] == "tup" and len(t[1]) == 2:
+                k, v = t[1]
+            else:
+                return ("app", "Dict", (None, None))
+            if k is None or v is None:
+                return ("app", "Dict", (None, None))
+            pk, pv = kt, vt
+            kt, vt = tys.join(kt, k), tys.join(vt, v)
+            if "conflict" in (kt, vt):
+                plain = lambda x: x is not None and not self.has_unsettled(x) and (x.__class__ is str or x[0] == "app")
+                for what, pr, cur, new in (("keys", pk, kt, k), ("values", pv, vt, v)):
+                    if cur == "conflict" and n is not None and plain(pr) and plain(new):
+                        self.err(n.line, f"the {what} of `Dict(...)` must share one type, but found `{tshow(pr)}` and `{tshow(new)}`")
+                return ("app", "Dict", (None, None))
+        return ("app", "Dict", (kt, vt))
+
     def load_sigs(self):
         """name -> [(type-parameter names, parameter types, result type)] from sigs.SRC, read once for all checkers."""
         from .values import GC
@@ -2477,6 +2505,9 @@ class Checker:
         if name in ("List", "Array", "Set") and not extra and name not in self.fns and name not in self.tuples \
                 and name not in self.aliases and args and n.trailing is None:
             return self.collection_ctor(name, args, ats, n), None
+        if name == "Dict" and not extra and name not in self.fns and name not in self.tuples and name not in self.aliases \
+                and args and n.trailing is None:
+            return self.dict_ctor(args, ats, n), None
         if name == "secret" and name not in self.fns:
             return ("secret",), None
         if name in self.tuples:

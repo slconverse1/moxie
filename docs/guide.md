@@ -1681,9 +1681,9 @@ println("${grade(85.0)}")
 Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when:` with no value tests conditions in order:
 
 ```
-status = Dict("speed": 60, "active": true)
+status = Dict("speed": 60, "limit": 100)
 when status:
-  Dict("speed": current, "active": true) -> println("moving at $current")
+  Dict("speed": current, "limit": 100) -> println("moving at $current")
   _ -> println("idle")
 number = 25
 when:
