@@ -578,6 +578,9 @@ class Checker:
             return ("appv", n, tuple(self.ty_of_type(x, depth + 1, keep, False) for x in g0))
         if n in self.fn_tparams:
             return None if t.groups else ("rigid", n)
+        if n == "Seq" and not self.sig_mode and n not in self.tuples and n not in self.enums and n not in self.aliases \
+                and n not in self.iface_decls:
+            return None                                 # written in a program it is already an error, so leave it unknown
         app = self.app_type(t, n, depth, keep)
         if app is not None:
             return app
@@ -2417,6 +2420,7 @@ class Checker:
             from . import sigs as S
             from .prelude import REG
             tmp, out = Checker(()), {}
+            tmp.sig_mode = True
             tmp.collect_prelude_types()
             for st in parse_program(S.SRC + (S.SRC_GC if GC[0] else S.SRC_MOXIE), "<sigs>").stmts:
                 for fd in (st.clauses if st.__class__ is FnGroup else [st]):
@@ -2427,6 +2431,7 @@ class Checker:
             Checker._sigs[GC[0]] = out
         return Checker._sigs[GC[0]]
 
+    sig_mode = False                # True only in the checker that reads sigs.py, where `Seq` is a real type
     _sigs = {}                      # by dialect: GC[0] False (moxie) or True (moxie/gc)
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.

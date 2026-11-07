@@ -77,4 +77,9 @@ for flags in ((), ("--gc",)):
         r = chk(src, *flags)
         if r.returncode:
             fails += 1; print("FAIL good", flags, repr(src), r.stdout, r.stderr)
+for flags in ((), ("--gc",)):
+    r = chk("ys: Seq[Int] = List(1)\nfn f(x: Seq[Int]) Int:\n  1\n", *flags)
+    n = (r.stdout + r.stderr).count("error:")
+    if n != 2:                       # one `Seq` error per use, and no second "mismatched types" after it
+        fails += 1; print("FAIL seq cascade", flags, n, r.stdout, r.stderr)
 print("sig more: FAIL" if fails else "sig more: ok")
