@@ -2686,13 +2686,29 @@ class Checker:
                 continue
             for p, a, (t, _c) in zip(params, args, ats):
                 pt = p.type
-                if pt is None or _tn(pt) != tp.name or getattr(pt, "groups", None):
+                if pt is None:
                     continue
-                for b in tp.bounds:
-                    iface = _tn(b)
-                    if self.implements(t, iface) is False:
-                        tyname = t if isinstance(t, str) else t[1]
-                        self.err(n.line, f"`{tyname}` doesn't implement `{iface}`, which `{fd.name}` requires of `{tp.name}`")
+                found = []
+                self.tparam_types(pt, self.base(t), tp.name, found)     # `T` itself, or the T inside `List[T]`, `Seq[T]`, `Dict[K, T]`
+                for t in found:
+                    for b in tp.bounds:
+                        iface = _tn(b)
+                        if self.implements(t, iface) is False:
+                            tyname = t if isinstance(t, str) else (t[1] if isinstance(t[1], str) else tshow(t))
+                            self.err(n.line, f"`{tyname}` doesn't implement `{iface}`, which `{fd.name}` requires of `{tp.name}`")
+
+    def tparam_types(self, pt, t, name, out):
+        """The argument types that stand for the type parameter `name`, found by walking the declared parameter type `pt`
+        alongside the type `t` of the argument; filled into `out`."""
+        if pt is None or t is None or pt.__class__ is not TName:
+            return
+        if len(pt.path) == 1 and pt.path[0] == name and not pt.groups:
+            out.append(t)
+            return
+        if pt.groups and pt.groups[0] and t.__class__ is tuple and t[0] == "app" and len(pt.groups[0]) == len(t[2]) \
+                and (pt.path[-1] == t[1] or (pt.path[-1] == "Seq" and t[1] in tys.SEQ_HEADS)):
+            for sub, st in zip(pt.groups[0], t[2]):
+                self.tparam_types(sub, self.base(st) if st is not None else None, name, out)
 
     # ------------------------------------------------------------ generics (Spec section 8: bounds)
     def bare_tparam(self, fd, t):
