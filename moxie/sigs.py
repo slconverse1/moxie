@@ -198,6 +198,11 @@ fn map_all[A, B, C, R, E](f: (A, B, C) -> R, a: Result[A, E], b: Result[B, E], c
 fn map_all[A, B, C, D, R, E](f: (A, B, C, D) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E], d: Result[D, E]) Result[R, List[E]]: 0
 fn map_all[A, B, C, D, E, R, E](f: (A, B, C, D, E) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E], d: Result[D, E], e: Result[E, E]) Result[R, List[E]]: 0
 fn map_all[A, B, C, D, E, F, R, E](f: (A, B, C, D, E, F) -> R, a: Result[A, E], b: Result[B, E], c: Result[C, E], d: Result[D, E], e: Result[E, E], f: Result[F, E]) Result[R, List[E]]: 0
+fn map_all[A, B, R, X](rs: (Result[A, X], Result[B, X]), f: (A, B) -> R) Result[R, List[X]]: 0
+fn map_all[A, B, C, R, X](rs: (Result[A, X], Result[B, X], Result[C, X]), f: (A, B, C) -> R) Result[R, List[X]]: 0
+fn map_all[A, B, C, D, R, X](rs: (Result[A, X], Result[B, X], Result[C, X], Result[D, X]), f: (A, B, C, D) -> R) Result[R, List[X]]: 0
+fn map_all[A, B, C, D, E, R, X](rs: (Result[A, X], Result[B, X], Result[C, X], Result[D, X], Result[E, X]), f: (A, B, C, D, E) -> R) Result[R, List[X]]: 0
+fn map_all[A, B, C, D, E, F, R, X](rs: (Result[A, X], Result[B, X], Result[C, X], Result[D, X], Result[E, X], Result[F, X]), f: (A, B, C, D, E, F) -> R) Result[R, List[X]]: 0
 fn collect_errors[T, E](rs: Seq[Result[T, E]]) Result[List[T], List[E]]: 0
 fn validate[T, U, E](f: (T) -> Result[U, E], xs: Seq[T]) Result[List[U], List[E]]: 0
 fn recover[T, E](r: Result[T, E], f: (E) -> T) Result[T, E]: 0

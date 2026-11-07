@@ -30,6 +30,9 @@ println(create("", "nope", -1))
 println(create("bob", "nope", 4))
 println(map_all((a, b): a + b, Ok(1), Ok(2)))
 println(create("", "a@b", 1).is_err())
+println((check_name("ann"), check_email("a@b"), check_age(3)) |> map_all(User))
+println((check_name(""), check_email("nope")) |> map_all((a, b): a + b))
+println((Ok(1), Ok(2)).map_all((a, b): a * 10 + b))
 '''
 EXPECT = [
   'Ok(User(name: "ann", email: "a@b", age: 3))',
@@ -37,6 +40,9 @@ EXPECT = [
   'Err(List("bad email nope"))',
   'Ok(3)',
   'true',
+  'Ok(User(name: "ann", email: "a@b", age: 3))',
+  'Err(List("name is empty", "bad email nope"))',
+  'Ok(12)',
 ]
 BAD = [
   ("x = map_all((a, b, c): a, Ok(1), Ok(2))\n", "takes 3"),

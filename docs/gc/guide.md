@@ -3089,7 +3089,7 @@ println(create("ann", "ann@x.org"))
 println(create("", "nope"))
 ```
 
-Output: `Ok(User(name: "ann", email: "ann@x.org"))`, then `Err(List("name is empty", "bad email: nope"))`. A function with the wrong number of parameters is a compile error. Every argument must have the same error type; wrap one with `map_err` to line them up. The checks run one after another; use `par_traverse` when each is slow and the items have one type.
+Output: `Ok(User(name: "ann", email: "ann@x.org"))`, then `Err(List("name is empty", "bad email: nope"))`. The results can also come as a tuple, which suits a pipeline: `(check_name(name), check_email(email)) |> map_all(User)` means `map_all((check_name(name), check_email(email)), User)`. A function with the wrong number of parameters is a compile error. Every argument must have the same error type; wrap one with `map_err` to line them up. The checks run one after another; use `par_traverse` when each is slow and the items have one type.
 
 **24f. Functor, Applicative, and Monad**
 
