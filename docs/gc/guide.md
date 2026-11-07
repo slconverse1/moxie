@@ -4,7 +4,7 @@ title: "moxie/gc Mixer's Guide"
 ---
 # MOXIE/GC MIXER'S GUIDE
 
-These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie/gc, the garbage-collected dialect of moxie; no-GC moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from no-GC moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements no-GC moxie, so their outputs were worked out by hand. Outputs were recomputed by hand. Snippets continue from earlier ones: a name such as `add`, `half`, `Maybe`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
+These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie/gc, the garbage-collected dialect of moxie; no-GC moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from no-GC moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements no-GC moxie, so their outputs were worked out by hand. Outputs were recomputed by hand. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
 
 **Chapter 1: Bindings, blocks, `if`, loops**
 
@@ -1328,26 +1328,26 @@ Output: `bob`. A type has exactly one impl of each interface, so `C.Item` is nev
 
 **3. Constructor classes**
 
-A class over a type constructor takes `F[_]`, and an instance names the constructor itself. With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and `impl Monad[Maybe]` from chapter 24, you can write code that works for any monad:
+A class over a type constructor takes `F[_]`, and an instance names the constructor itself. With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and `impl Monad[Box]` from chapter 24, you can write code that works for any monad:
 
 ```
 fn double_in[F[_]: Monad](m: F[Int]) F[Int]:
   m.flat_map((x): F.pure(x * 2))
 r: Result[Int, Error] = Ok(21)
-println("${double_in(Maybe.Just(21))} ${double_in(r)}")
+println("${double_in(Box.Full(21))} ${double_in(r)}")
 ```
 
-Output: `Maybe.Just(42) Ok(42)`. And an applicative lift:
+Output: `Box.Full(42) Ok(42)`. And an applicative lift:
 
 ```
 fn lift2[F[_]: Applicative, A, B, C](f: (A, B) -> C, a: F[A], b: F[B]) F[C]:
   a.map(curry(f)).ap(b)
-none: Maybe[Int] = Maybe.Nothing
-print("${lift2(add, Maybe.Just(2), Maybe.Just(3))} ")
-println("${lift2(add, none, Maybe.Just(3))}")
+none: Box[Int] = Box.Empty
+print("${lift2(add, Box.Full(2), Box.Full(3))} ")
+println("${lift2(add, none, Box.Full(3))}")
 ```
 
-Output: `Maybe.Just(5) Maybe.Nothing`. Return-type polymorphism needs an explicit type, so write `F.pure(x)` or `Maybe.pure(x)`; a bare `pure(x)` is not dispatched from context.
+Output: `Box.Full(5) Box.Empty`. Return-type polymorphism needs an explicit type, so write `F.pure(x)` or `Box.pure(x)`; a bare `pure(x)` is not dispatched from context.
 
 **Type lambdas.** A hole fixes only the first argument of a type, so `Result[_, String]` cannot say "a `Result` whose error comes first". A **type lambda** can: `[A] -> Result[String, A]` is a function from a type to a type, written with the brackets, the arrow, and the result. Hand one to a constructor parameter and it becomes the constructor it names:
 
@@ -1405,15 +1405,15 @@ interface Describable:
 impl Describable for Int:
   fn describe() String:
     "int $self"
-tuple Box[A]:
+tuple Crate[A]:
   value: A
-impl[A: Describable] Describable for Box[A]:
+impl[A: Describable] Describable for Crate[A]:
   fn describe() String:
-    "box(${self.value.describe()})"
-println(Box(7).describe())
+    "crate(${self.value.describe()})"
+println(Crate(7).describe())
 ```
 
-Output: `box(int 7)`. `Box[A]` is `Describable` exactly when `A` is.
+Output: `crate(int 7)`. `Crate[A]` is `Describable` exactly when `A` is.
 
 **5. Interface values** *(approved: `any`)*
 
@@ -1466,7 +1466,7 @@ println("${Pal(id: "ada").greet()} / ${Boss(title: "Chief").greet()}")
 Output: `Hello, ada / Good day, Chief`. The default is specialized for each implementing type.
 
 **7. Haskell to moxie, at a glance**
-- `class` and `instance` become `interface` and `impl X for T`; `instance Monad Maybe` becomes `impl Monad[Maybe]`.
+- `class` and `instance` become `interface` and `impl X for T`; `instance Monad Box` becomes `impl Monad[Box]`.
 - Superclasses are embedded interfaces; constraints are bounds like `[T: Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
@@ -1548,22 +1548,22 @@ println("${larger(a, b).cents} ${larger(2, 5)}")
 Output: `250 5`. A type may define its own bind `|>>` in an `impl`, and `Result` has one in the prelude. (Once a type has a `Monad` impl, chapter 24, the prelude's `|>>` works for it without your own.)
 
 ```
-enum Maybe[A] deriving show:
-  Just(value: A),
-  Nothing
-impl[A] Maybe[A]:
-  fn |>>[B] (f: (A) -> Maybe[B]) Maybe[B]:
+enum Box[A] deriving show:
+  Full(value: A),
+  Empty
+impl[A] Box[A]:
+  fn |>>[B] (f: (A) -> Box[B]) Box[B]:
     when self:
-      Just(v) -> f(v)
-      Nothing -> Maybe.Nothing
-fn half(n: Int) Maybe[Int]:
-  if n % 2 == 0: Maybe.Just(n / 2) else: Maybe.Nothing
-x = Maybe.Just(20) |>> half |>> half
-y = Maybe.Just(10) |>> half |>> half
+      Full(v) -> f(v)
+      Empty -> Box.Empty
+fn half(n: Int) Box[Int]:
+  if n % 2 == 0: Box.Full(n / 2) else: Box.Empty
+x = Box.Full(20) |>> half |>> half
+y = Box.Full(10) |>> half |>> half
 println("$x $y")
 ```
 
-Output: `Maybe.Just(5) Maybe.Nothing`. (`10 → 5`, then `5` is odd.) Result helpers cover the same ground:
+Output: `Box.Full(5) Box.Empty`. (`10 → 5`, then `5` is odd.) Result helpers cover the same ground:
 
 ```
 fn parse_ok(n: Int) Result[Int, Error]:
@@ -2914,7 +2914,7 @@ formatted src/parse.mxi
 
 **Chapter 24: Functional programming**
 
-Moxie's support for functional programming is ordinary prelude code over a few language features: immutable values, higher-order functions, pipelines, `for:` comprehensions, and interfaces over type constructors. Outputs were computed by hand, and several snippets reuse names from earlier chapters (`add`, `Maybe`, `half`, `Tree`, `User`).
+Moxie's support for functional programming is ordinary prelude code over a few language features: immutable values, higher-order functions, pipelines, `for:` comprehensions, and interfaces over type constructors. Outputs were computed by hand, and several snippets reuse names from earlier chapters (`add`, `Box`, `half`, `Tree`, `User`).
 
 **24a. Values never change, and old versions stay valid**
 
@@ -3107,72 +3107,72 @@ interface Monad[F[_]]:
   fn flat_map[A, B](self: F[A], f: (A) -> F[B]) F[B]
 ```
 
-The prelude has instances for `Result[_, E]`, `Stream`, `List[_]` **[gc]**, and `Array[_][N]`. You write one for your own type with no `for`, naming the constructor (`Maybe` and `half` from chapter 10):
+The prelude has instances for `Result[_, E]`, `Stream`, `List[_]` **[gc]**, and `Array[_][N]`. You write one for your own type with no `for`, naming the constructor (`Box` and `half` from chapter 10):
 
 ```
-impl Monad[Maybe]:
-  fn map[A, B](self: Maybe[A], f: (A) -> B) Maybe[B]:
+impl Monad[Box]:
+  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:
     when self:
-      Just(v) -> Maybe.Just(f(v))
-      Nothing -> Maybe.Nothing
-  static fn pure[A](a: A) Maybe[A]:
-    Maybe.Just(a)
-  fn ap[A, B](self: Maybe[(A) -> B], x: Maybe[A]) Maybe[B]:
+      Full(v) -> Box.Full(f(v))
+      Empty -> Box.Empty
+  static fn pure[A](a: A) Box[A]:
+    Box.Full(a)
+  fn ap[A, B](self: Box[(A) -> B], x: Box[A]) Box[B]:
     when self:
-      Just(g) -> x.map(g)
-      Nothing -> Maybe.Nothing
-  fn flat_map[A, B](self: Maybe[A], f: (A) -> Maybe[B]) Maybe[B]:
+      Full(g) -> x.map(g)
+      Empty -> Box.Empty
+  fn flat_map[A, B](self: Box[A], f: (A) -> Box[B]) Box[B]:
     when self:
-      Just(v) -> f(v)
-      Nothing -> Maybe.Nothing
-print("${Maybe.Just(3).map((x): x + 1)} ")
-println("${Maybe.pure(20).flat_map(half).flat_map(half)}")
+      Full(v) -> f(v)
+      Empty -> Box.Empty
+print("${Box.Full(3).map((x): x + 1)} ")
+println("${Box.pure(20).flat_map(half).flat_map(half)}")
 ```
 
-Output: `Maybe.Just(4) Maybe.Just(5)`. The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `map`, `ap`, and `flat_map` for any such type. Code written once for every monad (`double_in`, `lift2`) is in chapter 8d. The compiler does not check the monad laws, evaluation is eager, and there is no return-type dispatch: write `Maybe.pure(42)`, never a bare `pure(42)`. A type that accumulates several errors should implement `Applicative` only.
+Output: `Box.Full(4) Box.Full(5)`. The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `map`, `ap`, and `flat_map` for any such type. Code written once for every monad (`double_in`, `lift2`) is in chapter 8d. The compiler does not check the monad laws, evaluation is eager, and there is no return-type dispatch: write `Box.pure(42)`, never a bare `pure(42)`. A type that accumulates several errors should implement `Applicative` only.
 
-**Sequences with the operators.** With `Maybe` and its `Monad` impl in scope (they are your code, not the prelude's), `|>>` chains steps that each return a `Maybe`, `<$>` maps a plain function over the value inside, and `<*>` combines independent values. `Result` and `List` work the same way with no impl of your own, because the prelude supplies them. `Maybe`, `Option`, `Either`, and similar types are never built in: you define the type and its impl.
+**Sequences with the operators.** With `Box` and its `Monad` impl in scope (they are your code, not the prelude's), `|>>` chains steps that each return a `Box`, `<$>` maps a plain function over the value inside, and `<*>` combines independent values. `Result` and `List` work the same way with no impl of your own, because the prelude supplies them. `Maybe`, `Option`, `Either`, and similar types are never built in: you define the type and its impl.
 
 ```
-fn dec(n: Int) Maybe[Int]:
-  if n > 0: Maybe.Just(n - 1) else: Maybe.Nothing
+fn dec(n: Int) Box[Int]:
+  if n > 0: Box.Full(n - 1) else: Box.Empty
 sq = (x: Int): x * x
 dup = (x: Int): List(x, x)
 fn pos(n: Int) Result[Int, Error]:
   if n > 0: Ok(n) else: fail(1, "not positive")
 fn under(n: Int) Result[Int, Error]:
   if n < 10: Ok(n) else: fail(2, "too big")
-println("${Maybe.Just(3) |>> dec |>> dec} ${Maybe.Just(1) |>> dec |>> dec}")
-println("${sq <$> Maybe.Just(7)} ${sq <$> Maybe.Nothing}")
-lifted = curry(add) <$> Maybe.Just(4)
-println("${lifted <*> Maybe.Just(5)} ${lifted <*> Maybe.Nothing}")
+println("${Box.Full(3) |>> dec |>> dec} ${Box.Full(1) |>> dec |>> dec}")
+println("${sq <$> Box.Full(7)} ${sq <$> Box.Empty}")
+lifted = curry(add) <$> Box.Full(4)
+println("${lifted <*> Box.Full(5)} ${lifted <*> Box.Empty}")
 good = Ok(4) |>> pos |>> under |>> ((v): Ok(v * 3))
 bad = Ok(40) |>> pos |>> under |>> ((v): Ok(v * 3))
 println("$good ${is_err(bad)}")
 println("${List(1, 2) |>> dup} ${sq <$> (List(1, 2, 3) |>> dup)}")
 ```
 
-Output, line by line: `Maybe.Just(1) Maybe.Nothing` (3 steps down to 2 and then 1, while 1 steps down to 0 and then fails); `Maybe.Just(49) Maybe.Nothing`; `Maybe.Just(9) Maybe.Nothing`; `Ok(12) true` (the chain stops at the first `Err`); and `List(1, 1, 2, 2) List(1, 1, 4, 4, 9, 9)`. For a `List`, `|>>` runs the function on each element and concatenates the results, which is the list monad. Use `|>>` when each step needs the previous result, `<$>` with `<*>` when the inputs are independent, and parenthesize `<$>` and `<*>` next to other operators.
+Output, line by line: `Box.Full(1) Box.Empty` (3 steps down to 2 and then 1, while 1 steps down to 0 and then fails); `Box.Full(49) Box.Empty`; `Box.Full(9) Box.Empty`; `Ok(12) true` (the chain stops at the first `Err`); and `List(1, 1, 2, 2) List(1, 1, 4, 4, 9, 9)`. For a `List`, `|>>` runs the function on each element and concatenates the results, which is the list monad. Use `|>>` when each step needs the previous result, `<$>` with `<*>` when the inputs are independent, and parenthesize `<$>` and `<*>` next to other operators.
 
 **24g. `for:` comprehensions**
 
-A `for:` block is a chain of generators ending in `yield`. It desugars to `flat_map` and `map` through the type's `Monad` impl, so a `Nothing` or an `Err` stops it:
+A `for:` block is a chain of generators ending in `yield`. It desugars to `flat_map` and `map` through the type's `Monad` impl, so a `Empty` or an `Err` stops it:
 
 ```
 good = for:
-  a in Maybe.Just(20)
+  a in Box.Full(20)
   b in half(a)
   c in half(b)
   yield a + c
 bad = for:
-  a in Maybe.Just(10)
+  a in Box.Full(10)
   b in half(a)
   c in half(b)
   yield a + c
 println("$good $bad")
 ```
 
-Output: `Maybe.Just(25) Maybe.Nothing` (20 halves to 10 and then 5; 10 halves to 5, and 5 is odd). A line `name = expr` binds a value, a **refutable** line uses let-else, and independent generators joined by a leading `and` compile through `ap`, so they need only an `Applicative`. Here is a payroll example in three forms, with `?`, with `for:`, and with a batch:
+Output: `Box.Full(25) Box.Empty` (20 halves to 10 and then 5; 10 halves to 5, and 5 is odd). A line `name = expr` binds a value, a **refutable** line uses let-else, and independent generators joined by a leading `and` compile through `ap`, so they need only an `Applicative`. Here is a payroll example in three forms, with `?`, with `for:`, and with a batch:
 
 ```
 enum Rank:

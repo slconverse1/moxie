@@ -946,13 +946,13 @@ Output: `3 4 Ok(3)`. The squares are 4, 9, and 16, and a Dict lookup returns a `
 
 ```
 good = for:
-  a in Maybe.Just(20)
+  a in Box.Full(20)
   b in half(a)
   c in half(b)
   yield a + c
 ```
 
-`Maybe` and `half` are defined by the mixer, as the functional programming section explains. Here, we use `Maybe.Just(25)`, but start from 10 and you get `Maybe.Nothing`, because 5 is odd. A `for:` comprehension works for `Maybe`, `Result`, streams, and anything else with the right interfaces (more in the interfaces section). A line `name = expr` binds a value, and a line that can fail to match uses a let-else (`Active(_, rank) = user else: Err(NotFound(id: id))`, explained in the "Everything is an expression" section). Independent generators joined with `and` run side by side and need less from the type *(the exact `and` parse rule is an assumption)*.
+`Box` and `half` are defined by the mixer, as the functional programming section explains. Here, we use `Box.Full(25)`, but start from 10 and you get `Box.Empty`, because 5 is odd. A `for:` comprehension works for `Box`, `Result`, streams, and anything else with the right interfaces (more in the interfaces section). A line `name = expr` binds a value, and a line that can fail to match uses a let-else (`Active(_, rank) = user else: Err(NotFound(id: id))`, explained in the "Everything is an expression" section). Independent generators joined with `and` run side by side and need less from the type *(the exact `and` parse rule is an assumption)*.
 
 ## 14. Laziness
 
@@ -1069,7 +1069,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
   ```
 
   Output: `7 hi! yo!!`. Other languages handle this with a family of types or overloads (Scala's function types come as `Function1` through `Function22`, with a catch-all for longer lists, and Scala 3 dropped the old 22-argument limit), or with a feature like C++'s variadic templates. In moxie it falls out of tuple and parameter-list unification. The limit is that a wrapper can pass an argument list along but can't add or remove an argument, because moxie has no way to take a tuple type apart.
-- **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Maybe` or `Result`, so `fn double_in[F[_]: Monad](m: F[Int])` works for any monad without being written twice.
+- **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `Result`, so `fn double_in[F[_]: Monad](m: F[Int])` works for any monad without being written twice.
 - **No cost at run time.** The compiler builds one specialized copy of the function for each set of types it's actually used with. There's no boxing, no run-time type information, and no call through a table. The price is code size, and that's the trade moxie makes on purpose, in keeping with FCFX.
 
 ## 16. Interfaces and impls (a.k.a. typeclasses)
@@ -1124,19 +1124,19 @@ fn quarter(n: Int) Result[Int, Error]:
   half(a)
 ```
 
-The operators work for any type with the right impls. With a `Maybe` a sequence, a map and an applicative combination look like this:
+The operators work for any type with the right impls. With a `Box` a sequence, a map and an applicative combination look like this:
 
 ```
-Maybe.Just(20) |>> half |>> half                       // Maybe.Just(5)
-Maybe.Just(10) |>> half |>> half                       // Maybe.Nothing
-inc <$> Maybe.Just(4)                                  // Maybe.Just(5)
-(curry(add) <$> Maybe.Just(2)) <*> Maybe.Just(3)      // Maybe.Just(5)
-(curry(add) <$> Maybe.Just(2)) <*> Maybe.Nothing      // Maybe.Nothing
+Box.Full(20) |>> half |>> half                       // Box.Full(5)
+Box.Full(10) |>> half |>> half                       // Box.Empty
+inc <$> Box.Full(4)                                  // Box.Full(5)
+(curry(add) <$> Box.Full(2)) <*> Box.Full(3)      // Box.Full(5)
+(curry(add) <$> Box.Full(2)) <*> Box.Empty      // Box.Empty
 ```
 
-Here `half` returns a `Maybe`, and `<$>` and `<*>` get parentheses when mixed with other operators. Use `|>>` when each step needs the previous result, and `<$>` with `<*>` when the inputs are independent and you just want them combined, with the first failure winning.
+Here `half` returns a `Box`, and `<$>` and `<*>` get parentheses when mixed with other operators. Use `|>>` when each step needs the previous result, and `<$>` with `<*>` when the inputs are independent and you just want them combined, with the first failure winning.
 
-**These types aren't part of moxie.** `Maybe`, `Option`, `Either`, `Validation`, `State`, a parser type, and so on, are not built into the language or its library. What the prelude gives you is the `Functor`, `Applicative`, and `Monad` interfaces, plus ready-made instances for `Result`, `Stream`, `List`, and `Array`. For any other type, the mixer defines the type and writes its `impl Monad[...]`, and then `|>>`, `<$>`, `<*>`, and `for:` work on it. Chapter 24 of the Mixer's Guide has the full `Maybe` definition and its impl, with working examples.
+**These types aren't part of moxie.** `Maybe`, `Option`, `Either`, `Validation`, `State`, a parser type, and so on, are not built into the language or its library. What the prelude gives you is the `Functor`, `Applicative`, and `Monad` interfaces, plus ready-made instances for `Result`, `Stream`, `List`, and `Array`. For any other type, the mixer defines the type and writes its `impl Monad[...]`, and then `|>>`, `<$>`, `<*>`, and `for:` work on it. Chapter 24 of the Mixer's Guide has the full `Box` definition and its impl, with working examples.
 
 **You can write code once for every monad:**
 
@@ -1145,7 +1145,7 @@ fn double_in[F[_]: Monad](m: F[Int]) F[Int]:
   m.flat_map((x): F.pure(x * 2))
 ```
 
-That works for `Maybe.Just(21)` and `Ok(21)` alike.
+That works for `Box.Full(21)` and `Ok(21)` alike.
 
 **The limitations:**
 

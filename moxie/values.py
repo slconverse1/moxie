@@ -536,7 +536,7 @@ class PathV:
 
 
 class TypeV:
-    """A type used as a value (for Planet.values(), Self, Maybe.Just ...)."""
+    """A type used as a value (for Planet.values(), Self, Box.Full ...)."""
     __slots__ = ("name", "info", "args")
 
     def __init__(self, name, info=None, args=None):

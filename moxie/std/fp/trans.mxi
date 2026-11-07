@@ -157,7 +157,7 @@ export fn run_writer_t[M[_]: Monad, W, A](m: WriterT[M, W, A]) M[(A, List[W])]:
 
 // ---------------------------------------------------------------- ExceptT
 
-/// Computations in the monad `M` that can fail with an `E`. A `Maybe`-style failure is `ExceptT[M, Unit, _]`.
+/// Computations in the monad `M` that can fail with an `E`. A failure with no detail is `ExceptT[M, Unit, _]`.
 export tuple ExceptT[M[_], E, A]:
   run: M[Result[A, E]]
 

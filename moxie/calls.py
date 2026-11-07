@@ -464,7 +464,7 @@ class CallsMixin:
         """Resolve obj.name used as a callee. Returns (callee, selfv, has_self)."""
         k = obj.__class__
         if k is GenV and obj.base.__class__ is TypeV:
-            obj = TypeV(obj.base.name, obj.base.info, obj.targs)      # `StateT[Maybe, Int, _].pure`: the arguments ride along
+            obj = TypeV(obj.base.name, obj.base.info, obj.targs)      # `StateT[Box, Int, _].pure`: the arguments ride along
             k = TypeV
         if k is TypeV:
             return self.type_member(obj, name, line), None, False
@@ -489,7 +489,7 @@ class CallsMixin:
             if isinstance(c.node, FnDecl) and c.node.params and c.node.params[0].name == "self":
                 return c, obj, True
             return self.bind_method(c, obj), None, False
-        # generic-target impls (e.g. impl[A] Maybe[A])
+        # generic-target impls (e.g. impl[A] Box[A])
         # UFCS: free function
         f = env.lookup(name, self)
         if f is MISSING or f.__class__ is LazyV:
