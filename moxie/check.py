@@ -2218,6 +2218,11 @@ class Checker:
                 ufcs = "skip"
         sargs, opt_ats = self.split_options(n, fn, args, sc, extra, asc)
         ov = self.sig_overloads(fn, sargs, sc, extra, ufcs=ufcs is True) if n.trailing is None and plan is None and ufcs != "skip" else None
+        if ov is not None and not ov[0] and n.trailing is None and all(hasattr(a, "expr") for a in sargs):
+            sg_all = self.load_sigs().get(fn.name) or []
+            top = max((len(sg[1]) for sg in sg_all), default=0)
+            if len(sargs) + extra > top > 0:                # more arguments than any form of the function takes
+                self.err(n.line, f"`{fn.name}` takes at most {top} argument{'s' if top != 1 else ''}, but {len(sargs) + extra} given")
         if ov is not None and ov[0] and all(hasattr(a, "expr") for a in sargs):
             ats, sigres = self.sig_args(n, ov[0], ov[1], sargs, asc, sc, extra)
             if sargs is not args:
@@ -2479,6 +2484,8 @@ class Checker:
 
     def sig_fit(self, sg, full, strict=False):
         """The type-parameter bindings if the argument types `full` (None for unknown) fit the signature `sg`, else None."""
+        if len(full) > len(sg[1]):
+            return None                          # more arguments than the function has parameters
         binds = {}
         for pt, t in zip(sg[1], full):
             if not tys.match(pt, self.base(t) if t is not None else None, binds, strict):
