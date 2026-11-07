@@ -151,6 +151,15 @@ def compatible(exp, act):
     return False
 
 
+
+def ctor_split(act, n):
+    """(the constructor an `F[...]` stands for, the arguments `F` is applied to) when `F` applied to `n` arguments is `act`.
+    The hole is the last arguments, as in `State[S, _]`; `Result` is the exception: its instance is `Result[_, E]`."""
+    if act[1] == "Result" and n == 1 and len(act[2]) == 2:
+        return ("ctor", "Result", (act[2][1],), "first"), act[2][:1]
+    keep = len(act[2]) - n
+    return ("ctor", act[1], tuple(act[2][:keep])), act[2][keep:]
+
 def subst(t, binds):
     """`t` with each ("param", n) replaced by `binds[n]`, or by None (unknown) when `n` has no binding."""
     if t.__class__ is not tuple:
@@ -179,6 +188,8 @@ def subst(t, binds):
         c = binds.get(t[1])
         args = tuple(subst(a, binds) for a in t[2])
         if c.__class__ is tuple and c[0] == "ctor":
+            if len(c) > 3 and c[3] == "first":          # `Result[_, E]`: the hole is the first argument
+                return ("app", c[1], args + tuple(c[2]))
             return ("app", c[1], tuple(c[2]) + args)
         return None
     if tag == "app":
@@ -319,13 +330,12 @@ def unify(pat, act, binds):
     if pat[0] == "appv":
         n = len(pat[2])
         if act[0] == "app" and len(act[2]) >= n:
-            keep = len(act[2]) - n
-            c = ("ctor", act[1], tuple(act[2][:keep]))
+            c, rest = ctor_split(act, n)
             cur = binds.get(pat[1])
             if cur is not None and cur != c:
                 return (cur, c)
             binds[pat[1]] = c
-            for x, y in zip(pat[2], act[2][keep:]):
+            for x, y in zip(pat[2], rest):
                 r = unify(x, y, binds)
                 if r:
                     return r
@@ -472,9 +482,9 @@ def tmatch(pat, act, binds):
         return _combine(rs)
     if pt == "appv":
         if act.__class__ is tuple and act[0] == "app" and len(act[2]) >= len(pat[2]):
-            keep = len(act[2]) - len(pat[2])
-            binds[pat[1]] = ("ctor", act[1], tuple(act[2][:keep]))
-            return _combine([tmatch(x, y, binds) for x, y in zip(pat[2], act[2][keep:])])
+            c, rest = ctor_split(act, len(pat[2]))
+            binds[pat[1]] = c
+            return _combine([tmatch(x, y, binds) for x, y in zip(pat[2], rest)])
         return "no"
     if pt == "fn":
         if act.__class__ is not tuple or act[0] != "fn" or len(act[1]) != len(pat[1]):

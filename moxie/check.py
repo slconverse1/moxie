@@ -2190,6 +2190,14 @@ class Checker:
         return r
 
     def _e_Call(self, n, sc, extra=0):
+        r = self._e_Call0(n, sc, extra)
+        f = n.fn
+        if f.__class__ is Name and f.name == "Error" and (r is None or r[0] is None) \
+                and not any(f.name in d for d in (self.fns, self.tuples, self.aliases, self.enums)) and sc.find("Error") is None:
+            return ("named", "Error"), None            # `Error(code, message)` is an Error
+        return r
+
+    def _e_Call0(self, n, sc, extra=0):
         fn = n.fn
         if fn.__class__ is Field:
             self.callee_fields.add(id(fn))
@@ -2422,7 +2430,7 @@ class Checker:
     _sigs = {}                      # by dialect: GC[0] False (moxie) or True (moxie/gc)
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
-    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal", "Duration"}        # built-in types that are exactly themselves
+    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal", "Duration", "Error"}        # built-in types that are exactly themselves
     OPTIONS = {"retry": {"when": None}, "par_map": {"limit": "Int"}, "par_traverse": {"limit": "Int"}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
                "run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
                "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
