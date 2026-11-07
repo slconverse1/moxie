@@ -2501,6 +2501,12 @@ class Checker:
                 return exact
         return cands
 
+    def sig_hint(self, n):
+        """Extra advice for a mistake people make often."""
+        if getattr(n.fn, "name", None) in ("print", "println", "eprint", "eprintln") and len(n.args or []) == 2:
+            return "; with two arguments the first is the stream to write to (`stdout`, a file, a socket), and to print several values build one string, as in `println(\"$a $b\")`"
+        return ""
+
     def sig_args(self, n, over, pos, args, asc, sc, extra):
         """Evaluate the arguments of a call of an overloaded builtin: the ones that are not lambdas first, so the lambdas
         can be given parameter types; returns the types in argument order and the call's result type (or None)."""
@@ -2553,7 +2559,7 @@ class Checker:
                     and not any(alone0(sg) for sg in over):
                 shown = [("a function" if (t is not None and t[0] == "fn") else tshow(t)) for t in ft]
                 self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take ({', '.join(shown)}); it takes "
-                         + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]))
+                         + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]) + self.sig_hint(n))
                 return ats, None
             alone = lambda sg: all(tys.match(pt, self.base(t), {}) for pt, t in zip(sg[1], known) if t is not None)
             if any(t is not None for t in known) and not any(self.sig_fit(sg, known) is not None for sg in over) \
@@ -2566,7 +2572,7 @@ class Checker:
                     t is not None and not self.has_unsettled(t) and pt is not None and t[0] != "fn" and (pt.__class__ is not tuple or pt[0] != "fn")
                     and not tys.match(pt, self.base(t), {}) for pt, t in zip(over[0][1], ft))):
                 self.err(n.line, f"`{getattr(n.fn, 'name', '?')}` can't take ({', '.join(tshow(t) for t in ft)}); it takes "
-                         + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]))
+                         + " or ".join("(" + ", ".join(tshow(p) for p in sg[1]) + ")" for sg in over[:3]) + self.sig_hint(n))
             return ats, None
         if len(cands) != 1:
             return ats, None

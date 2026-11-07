@@ -14,6 +14,8 @@ BAD = [
  ("xs = List(1, 2, 3)\nx = any(xs, (x): x > 2)\n", "`any` can't take (List[Int], a function)"),
  ("x = map(1, 2, 3)\n", "`map` takes at most 2 arguments, but 3 given"),
  ("x = List(1) |> map((a): a, 5)\n", "takes at most 2 arguments"),
+ ("println(1, 2)\n", "the first is the stream to write to"),
+ ("x = \"s\"\nprint(x, 3)\n", "`print` can't take (String, Int)"),
  ("println(1, 2, 3)\n", "`println` takes at most 2 arguments, but 3 given"),
  ("fn many[T](xs: Seq[T]) Int:\n  1\n", "`Seq` is not a type you can write"),
  ("x = map(5, 7)\n", "{List, Array, Set, Ring, Stream} of T"),

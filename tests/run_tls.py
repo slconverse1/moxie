@@ -38,7 +38,7 @@ run server(tx)
 port = read(rx)?
 '''
 chk("a client that trusts the certificate talks to a TLS server", run(SERVER + 'c = connect_tls("localhost", port, ca: "cert.pem")?\nprintln(read_line(c)?)\nclose(c)\n'), 0, "hello over tls")
-chk("an untrusted certificate is refused", run(SERVER.replace("c = accept(l)?", "c = accept(l)").replace("  println(c, ", "  println(1, ") .replace("  close(c)\n  close(l)\n", "  close(l)\n") + 'r = connect_tls("localhost", port)\nprintln(r)\n'), 0, "certificate not trusted")
+chk("an untrusted certificate is refused", run(SERVER.replace("c = accept(l)?", "c = accept(l)").replace("  println(c, ", "  println(") .replace("  close(c)\n  close(l)\n", "  close(l)\n") + 'r = connect_tls("localhost", port)\nprintln(r)\n'), 0, "certificate not trusted")
 chk("connect_tls checks net.connect", run('println(connect_tls("127.0.0.1", 1))\n', "--allow-connect=example.com:443"), 0, "code: 10")
 chk("a ca file needs fs.read", run('println(connect_tls("127.0.0.1", 1, ca: "cert.pem"))\n', "--allow-connect"), 0, "code: 10", "fs.read")
 chk("listen_tls checks the key and certificate paths", run('println(listen_tls(0, "cert.pem", "key.pem"))\n', "--allow-listen"), 0, "code: 10", "fs.read")
