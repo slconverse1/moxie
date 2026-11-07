@@ -2215,14 +2215,29 @@ class Checker:
                 if x is not None and id(x) in self.mixed_lits:
                     m = self.mixed_lits.pop(id(x))
                     self.mixed_lits.setdefault(id(n), m)
-        if fn.__class__ is Name and sc.find(fn.name) is None and fn.name in self.tuples and not self.tuples[fn.name].tparams:
-            flds = [f for f in self.tuples[fn.name].fields or [] if getattr(f, "name", None) not in (None, "...")]
-            for i, a in enumerate(args):                  # a mixed literal given to a tuple field: the field's type decides
+        decl = None                                       # the tuple or enum case a constructor call builds
+        if fn.__class__ is Name and sc.find(fn.name) is None and fn.name not in self.fns:
+            if fn.name in self.tuples:
+                decl = (self.tuples[fn.name], self.tuples[fn.name].fields)
+            elif fn.name in self.cases and len(self.cases[fn.name]) == 1:
+                ed = self.enums[self.cases[fn.name][0]]
+                decl = (ed, next((c.fields for c in ed.cases if c.name == fn.name), None))
+        elif fn.__class__ is Field and fn.obj.__class__ is Name and fn.obj.name in self.enums and sc.find(fn.obj.name) is None:
+            ed = self.enums[fn.obj.name]
+            decl = (ed, next((c.fields for c in ed.cases if c.name == fn.name), None))
+        if decl is not None and any(id(getattr(a, "expr", None)) in self.mixed_lits for a in args):
+            d, fields = decl
+            flds = [f for f in fields or [] if getattr(f, "name", None) not in (None, "...")]
+            for i, a in enumerate(args):
                 x = getattr(a, "expr", None)
-                if x is not None and id(x) in self.mixed_lits:
-                    f = next((f for f in flds if f.name == getattr(a, "label", None)), None) if getattr(a, "label", None) \
-                        else (flds[i] if i < len(flds) else None)
-                    self.settle_mixed(x, self.ty_of_type(f.type) if f is not None and getattr(f, "type", None) is not None else ("param", "?"))
+                if x is None or id(x) not in self.mixed_lits:
+                    continue
+                if getattr(d, "tparams", None):               # generic: the type arguments decide, so the holder of the whole value does
+                    self.mixed_lits.setdefault(id(n), self.mixed_lits.pop(id(x)))
+                    continue
+                f = next((f for f in flds if f.name == getattr(a, "label", None)), None) if getattr(a, "label", None) \
+                    else (flds[i] if i < len(flds) else None)
+                self.settle_mixed(x, self.ty_of_type(f.type) if f is not None and getattr(f, "type", None) is not None else ("param", "?"))
         for i, a in enumerate(args):                      # a mixed literal given to a call: the parameter's type says if it may mix
             x = getattr(a, "expr", None)
             if x is not None and id(x) in self.mixed_lits:
