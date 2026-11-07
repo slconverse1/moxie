@@ -1245,10 +1245,32 @@ class Checker:
             if v in self.moved:
                 self.err(n.line, f"use of moved value `{n.name}` (moved at line {self.moved[v]})")
             return v.ty, None
+        ft = self.fn_value_type(n.name)
+        if ft is not None:
+            return ft, None
         if n.name in self.globals or n.name in self.prelude or sc.open:
             return None, None
         self.err(n.line, f"undefined name `{n.name}`")
         return None, None
+
+    def fn_value_type(self, name):
+        """The function type of a declared function used as a value (`traverse(half, xs)`): only a plain one, with one declaration,
+        no type parameters, and ordinary parameters; anything else stays unknown."""
+        decls = self.fns.get(name)
+        if not decls or len(decls) != 1:
+            return None
+        d = decls[0]
+        if d.__class__ is not FnDecl or d.tparams or d.ret is None or name in self.tuples or name in self.enums:
+            return None
+        ps = d.params or []
+        if any(getattr(p, "mod", None) or getattr(p, "variadic", None) or getattr(p, "default", None) is not None
+               or getattr(p, "type", None) is None for p in ps):
+            return None
+        pts = tuple(self.ty_of_type(p.type, 0, None, False) for p in ps) or ("Unit",)      # `() -> T` is written with one Unit parameter, as in the signature table
+        ret = self.ty_of_type(d.ret, 0, None, False)
+        if ret is None:
+            return None
+        return ("fn", pts, ret)
 
     def e_Gimme(self, n, sc):
         return None, None
