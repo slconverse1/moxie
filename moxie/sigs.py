@@ -249,6 +249,10 @@ fn flip[A, B, R](f: (A, B) -> R) (B, A) -> R: 0
 fn const[A, F](x: A) F: 0
 fn file_info[E](p: String) Result[FileInfo, E]: 0
 fn fail[T](code: Int) Result[T, Error]: 0
+fn resolve[T](w: FutureW[T], v: T) Unit: 0
+fn reject[T](w: FutureW[T], e: Error) Unit: 0
+fn read[T, R](f: FutureR[T]) R: 0
+fn receive[E](u: Udp) Result[Packet, E]: 0
 fn fail[T](code: Int, message: String) Result[T, Error]: 0
 fn set[T](xs: List[T], i: Int, x: T) List[T]: 0
 fn set[T](xs: Array[T], i: Int, x: T) Array[T]: 0
@@ -270,6 +274,7 @@ fn modify[T, P, A](x: T, path: P, f: (A) -> A) T: 0
 
 # The two dialects differ here: in moxie a full collection refuses (`put` gives a Result), in moxie/gc `put` gives the collection.
 SRC_MOXIE = '''
+fn copy[T](x: T) T: 0
 fn union[T, E](a: Set[T], b: Set[T]) Result[Set[T], E]: 0
 fn merge[K, V, E](a: Dict[K, V], b: Dict[K, V]) Result[Dict[K, V], E]: 0
 fn merge_with[K, V, E](f: (V, V) -> V, a: Dict[K, V], b: Dict[K, V]) Result[Dict[K, V], E]: 0

@@ -534,7 +534,7 @@ class Checker:
             return a + b if e.op == "+" else a - b if e.op == "-" else a * b
         return None
 
-    BUILTIN_GENERICS = {"Seq": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1, "ChanR": 1, "ChanW": 1}
+    BUILTIN_GENERICS = {"Seq": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1, "ChanR": 1, "ChanW": 1, "FutureR": 1, "FutureW": 1}
 
     def ty_of_type(self, t, depth=0, keep=None, top=True):
         """The checker's type for a written type.  `keep` names type parameters to return as ("param", n) (a callee's own);
@@ -2341,12 +2341,14 @@ class Checker:
             el = self.ty_of_type(fn.groups[0][0], 0, None, False)
             self.compat(el, ats[0][0], ats[0][1], n.line)
             return ("app", "Atom", (el,)), None
-        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Chan" and not args and n.trailing is None \
-                and not any(x in self.fns or x in self.tuples or x in self.aliases or x in self.enums for x in ("Chan", "ChanR", "ChanW")) \
+        ends = {"Chan": ("ChanR", "ChanW"), "Future": ("FutureR", "FutureW")}
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name in ends and not args and n.trailing is None \
+                and not any(x in self.fns or x in self.tuples or x in self.aliases or x in self.enums for x in (fn.base.name,) + ends[fn.base.name]) \
                 and 1 <= len(fn.groups or []) <= 2 and len(fn.groups[0]) == 1:
-            self.ev(fn, sc)                             # `Chan[Int][4]()` is (ChanR[Int], ChanW[Int])
+            self.ev(fn, sc)                             # `Chan[Int][4]()` is (ChanR[Int], ChanW[Int]); `Future[Int]()` is (FutureR[Int], FutureW[Int])
             el = self.ty_of_type(fn.groups[0][0], 0, None, False)
-            return ("tup", (("app", "ChanR", (el,)), ("app", "ChanW", (el,)))), None
+            rd, wr = ends[fn.base.name]
+            return ("tup", (("app", rd, (el,)), ("app", wr, (el,)))), None
         self.ev(fn, sc)
         return None, None
 
