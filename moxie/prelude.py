@@ -1657,9 +1657,6 @@ def _curry(n):
     return curry
 
 
-for _n in range(2, 7):
-    REG[f"curry{_n}"] = (_curry(_n), "first", False)
-
 
 @bi("uncurry")
 def b_uncurry(I, a, kw, ta):

@@ -69,10 +69,6 @@ println("${curry(add)(1, 2)}")
 fn inc(a: Int) Int: a + 1
 f = curry(inc)
 ''', [], 2),
-("curry2 checks its arity", '''
-fn add3(a: Int, b: Int, c: Int) Int: a + b + c
-f = curry2(add3)
-''', [], 2),
 ("uncurry needs a constant count of two or more", '''
 fn add(a: Int, b: Int) Int: a + b
 f = uncurry[1](curry(add))

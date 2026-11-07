@@ -952,10 +952,10 @@ add_n = make_adder(10)
 println("${scale(6)} ${add_n(5)}")
 ```
 
-Output: `30 15`. The prelude has `curry(f)`, which works for a function of any number of parameters (`curry2` to `curry6` are older names for it), and pipelines and closures cover the rest. The compiler checks `curry` and `uncurry` when it can see the function: `curry` of a function with fewer than two parameters, or with a `ref`, `lazy`, `using`, or variadic parameter, `curry3` of a two-parameter function, `uncurry[1]`, and a call such as `curry(add)(1, 2)` (which should be `curry(add)(1)(2)`) are compile errors. These five all give 100:
+Output: `30 15`. The prelude has `curry(f)`, which works for a function of any number of parameters, and pipelines and closures cover the rest. The compiler checks `curry` and `uncurry` when it can see the function: `curry` of a function with fewer than two parameters, or with a `ref`, `lazy`, `using`, or variadic parameter, `uncurry[1]`, and a call such as `curry(add)(1, 2)` (which should be `curry(add)(1)(2)`) are compile errors. These five all give 100:
 
 ```
-curried = curry2(add)
+curried = curry(add)
 add40 = (y: Int): add(40, y)
 print("${add(40, 60)} ${curried(40)(60)} ${add40(60)} ${60 |> add(40, &)} ")
 println("${((x: Int, y: Int): x + y)(40, 60)}")
@@ -1341,7 +1341,7 @@ Output: `Maybe.Just(42) Ok(42)`. And an applicative lift:
 
 ```
 fn lift2[F[_]: Applicative, A, B, C](f: (A, B) -> C, a: F[A], b: F[B]) F[C]:
-  a.map(curry2(f)).ap(b)
+  a.map(curry(f)).ap(b)
 none: Maybe[Int] = Maybe.Nothing
 print("${lift2(add, Maybe.Just(2), Maybe.Just(3))} ")
 println("${lift2(add, none, Maybe.Just(3))}")
@@ -2964,7 +2964,7 @@ println("$result")
 Output: `4` (0 becomes 1, then 2, then 4). Currying is a library function, and closures carry data:
 
 ```
-add5 = curry2(add)(5)
+add5 = curry(add)(5)
 make_adder = (k: Int): (n: Int): n + k
 println("${add5(1)} ${make_adder(10)(1)}")
 ```
@@ -3028,7 +3028,7 @@ r1: Result[Int, Error] = Ok(1)
 r2: Result[Int, Error] = Ok(2)
 bad: Result[Int, Error] = fail(9, "bad")
 println(
-  "${(curry2(add) <$> r1) <*> r2} ${is_err((curry2(add) <$> bad) <*> r2)}"
+  "${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}"
 )
 ```
 
@@ -3144,7 +3144,7 @@ fn under(n: Int) Result[Int, Error]:
   if n < 10: Ok(n) else: fail(2, "too big")
 println("${Maybe.Just(3) |>> dec |>> dec} ${Maybe.Just(1) |>> dec |>> dec}")
 println("${sq <$> Maybe.Just(7)} ${sq <$> Maybe.Nothing}")
-lifted = curry2(add) <$> Maybe.Just(4)
+lifted = curry(add) <$> Maybe.Just(4)
 println("${lifted <*> Maybe.Just(5)} ${lifted <*> Maybe.Nothing}")
 good = Ok(4) |>> pos |>> under |>> ((v): Ok(v * 3))
 bad = Ok(40) |>> pos |>> under |>> ((v): Ok(v * 3))

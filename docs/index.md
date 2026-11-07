@@ -223,7 +223,7 @@ add5 = make_adder(5)
 println("${add5(10)} ${apply_curried(add_curried, 3, 4)}")
 ```
 
-Output: `15 7`. Read `make_adder(n: Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n: Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic currying, written out by hand, which is why the prelude's `curry2` through `curry6` exist.
+Output: `15 7`. Read `make_adder(n: Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n: Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic currying, written out by hand, which is what the prelude's `curry` does for you.
 
 ## Call by value, name, need, and reference
 
@@ -1130,8 +1130,8 @@ The operators work for any type with the right impls. With a `Maybe` a sequence,
 Maybe.Just(20) |>> half |>> half                       // Maybe.Just(5)
 Maybe.Just(10) |>> half |>> half                       // Maybe.Nothing
 inc <$> Maybe.Just(4)                                  // Maybe.Just(5)
-(curry2(add) <$> Maybe.Just(2)) <*> Maybe.Just(3)      // Maybe.Just(5)
-(curry2(add) <$> Maybe.Just(2)) <*> Maybe.Nothing      // Maybe.Nothing
+(curry(add) <$> Maybe.Just(2)) <*> Maybe.Just(3)      // Maybe.Just(5)
+(curry(add) <$> Maybe.Just(2)) <*> Maybe.Nothing      // Maybe.Nothing
 ```
 
 Here `half` returns a `Maybe`, and `<$>` and `<*>` get parentheses when mixed with other operators. Use `|>>` when each step needs the previous result, and `<$>` with `<*>` when the inputs are independent and you just want them combined, with the first failure winning.

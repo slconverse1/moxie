@@ -2106,7 +2106,7 @@ class Checker:
         return None
 
     def curry_name(self, fn, sc):
-        if fn.__class__ is Name and fn.name in ("curry", "curry2", "curry3", "curry4", "curry5", "curry6") \
+        if fn.__class__ is Name and fn.name == "curry" \
                 and sc.find(fn.name) is None and fn.name not in self.fns:
             return fn.name
         return None
