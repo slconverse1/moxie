@@ -59,6 +59,7 @@ GOOD = [
  "println()\nprintln(stdout, \"x\")\nassert(true, \"fine\")\nx = List(1, 2) |> map((a): a + 1) |> collect()\nprintln(max(1, 2) + len(x))\n",
  "tuple Seq[T]:\n  items: List[T]\nfn first_of(s: Seq[Int]) Int:\n  s.items |> reduce(0, (a, b): a + b)\nprintln(first_of(Seq(items: List(1, 2, 3))))\n",
  "xs = List(1, 2, 3)\nprintln(any((x): x > 2, xs))\n",
+ "println(parse_number(\"1,5\", Locale.de_de))\nprintln(parse_number(\"3\"))\n",
  "fn take(xs: List[Int | String]) Int:\n  len(xs)\nfn mk() List[Int | String]:\n  List(1, \"a\")\nprintln(take(List(1, \"a\")) + len(mk()))\n",
  "xs: List[Int | String] = List(1, \"a\")\nd: Dict[String, Int | Bool] = Dict(\"n\": 1, \"on\": true)\nprintln(len(xs) + len(d))\n",
  "x = Dict(1: 2).map((k, v): k) |> collect()\ny = Dict(\"a\": 1, b: 2)\nz = Dict((5, 6), (7, 8))\nprintln(len(y) + len(z))\n",

@@ -55,6 +55,7 @@ fn saturating_add[T](a: T, b: T) T: 0
 fn saturating_sub[T](a: T, b: T) T: 0
 fn saturating_mul[T](a: T, b: T) T: 0
 fn parse_number[N, E](s: String) Result[N, E]: 0
+fn parse_number[N, E](s: String, locale: Locale) Result[N, E]: 0
 fn chars(s: String) Stream[Char]: 0
 fn graphemes(s: String) Stream[String]: 0
 fn pad_left(s: String, n: Int) String: 0
