@@ -534,7 +534,7 @@ class Checker:
             return a + b if e.op == "+" else a - b if e.op == "-" else a * b
         return None
 
-    BUILTIN_GENERICS = {"Seq": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1}
+    BUILTIN_GENERICS = {"Seq": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1, "ChanR": 1, "ChanW": 1}
 
     def ty_of_type(self, t, depth=0, keep=None, top=True):
         """The checker's type for a written type.  `keep` names type parameters to return as ("param", n) (a callee's own);
@@ -1163,6 +1163,13 @@ class Checker:
         names = self.pat_names(p)
         for nm in names:
             sc.vars[nm] = Var(ty if p.__class__ is PBind else None, res, self.loop_depth)
+        # `rx, tx = Chan[Int][1]()`: each plain name gets the type of its place in a tuple whose shape is known
+        if p.__class__ is PTuple and ty.__class__ is tuple and ty and ty[0] == "tup" and len(ty[1]) == len(p.items or []) \
+                and not any(x.__class__ is tuple and x and x[0] == "spread" for x in ty[1]) \
+                and not any(q.__class__ is PRest for _, q in p.items):
+            for (_, q), et in zip(p.items, ty[1]):
+                if q.__class__ is PBind and et is not None:
+                    sc.vars[q.name] = Var(et, res, self.loop_depth)
 
     # ------------------------------------------------------------ walking
     def ev(self, n, sc):
@@ -1679,7 +1686,7 @@ class Checker:
             elif tgt.__class__ is PPlace:
                 self.ev(tgt.expr, sc)
             else:
-                self.bind_pat(tgt, sc, None, res)
+                self.bind_pat(tgt, sc, ann or t, res)
         return None, None
 
     def bind_any_local(self, n, sc, name):
@@ -2334,6 +2341,12 @@ class Checker:
             el = self.ty_of_type(fn.groups[0][0], 0, None, False)
             self.compat(el, ats[0][0], ats[0][1], n.line)
             return ("app", "Atom", (el,)), None
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Chan" and not args and n.trailing is None \
+                and not any(x in self.fns or x in self.tuples or x in self.aliases or x in self.enums for x in ("Chan", "ChanR", "ChanW")) \
+                and 1 <= len(fn.groups or []) <= 2 and len(fn.groups[0]) == 1:
+            self.ev(fn, sc)                             # `Chan[Int][4]()` is (ChanR[Int], ChanW[Int])
+            el = self.ty_of_type(fn.groups[0][0], 0, None, False)
+            return ("tup", (("app", "ChanR", (el,)), ("app", "ChanW", (el,)))), None
         self.ev(fn, sc)
         return None, None
 
