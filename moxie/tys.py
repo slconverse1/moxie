@@ -46,6 +46,8 @@ def show(t):
         return f"Int[{t[1]}..={t[2]}]"
     if tag == "secret":
         return "Secret"
+    if tag == "app" and t[1] == "Seq" and len(t[2]) == 1:      # the library's name for any collection; not a type a program writes
+        return "{List, Array, Set, Ring, Stream} of " + show(t[2][0])
     if tag == "app":
         return f"{t[1]}[{', '.join(show(a) for a in t[2])}]" + (f"[{show_size(t[3])}]" if len(t) > 3 and t[3] is not None else "")
     if tag == "fn":

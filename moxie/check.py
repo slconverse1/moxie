@@ -2774,6 +2774,10 @@ class Checker:
         for g in t.groups or []:
             for x in g if isinstance(g, list) else [g]:
                 self.check_type_arity(x, line, depth + 1)
+        if t.path == ["Seq"] and "Seq" not in self.tuples and "Seq" not in self.enums and "Seq" not in self.aliases \
+                and "Seq" not in self.iface_decls:
+            self.err(line, "`Seq` is not a type you can write: name the collection (`List[T]`, `Array[T]`, `Set[T]`, `Stream[T]`)")
+            return
         if len(t.path) != 1 or len(t.groups or []) != 1 or not t.groups[0]:
             return
         al = self.aliases.get(t.path[0])
