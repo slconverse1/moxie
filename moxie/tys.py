@@ -333,6 +333,8 @@ def unify(pat, act, binds):
                 if r:
                     return r
         return None
+    if pat[0] == "app" and pat[1] == "Seq" and act[0] == "app" and act[1] == "Dict" and len(act[2]) == 2:
+        return unify(pat[2][0], ("tup", (act[2][0], act[2][1])), binds)
     if pat[0] == act[0] == "app" and (pat[1] == act[1] or (pat[1] == "Seq" and act[1] in SEQ_HEADS)) and len(pat[2]) == len(act[2]):
         for x, y in zip(pat[2], act[2]):
             r = unify(x, y, binds)
@@ -376,6 +378,8 @@ def match(pat, act, binds, strict=False):
         if at != "app":
             return False
         if pat[1] == "Seq":
+            if act[1] == "Dict" and len(act[2]) == 2:       # a Dict is read as a sequence of (key, value) entries
+                return match(pat[2][0], ("tup", (act[2][0], act[2][1])), binds, strict)
             return act[1] in SEQ_HEADS and len(act[2]) == 1 and match(pat[2][0], act[2][0], binds, strict)
         return pat[1] == act[1] and len(pat[2]) == len(act[2]) and all(match(x, y, binds, strict) for x, y in zip(pat[2], act[2]))
     if pt == "fn":

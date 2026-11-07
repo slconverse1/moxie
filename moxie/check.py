@@ -1406,6 +1406,23 @@ class Checker:
             return
         self.err(n.line, f"`{tname}` has no field `{nm}`" + (f"; its fields are {', '.join('`'+x+'`' for x in names)}" if names else ""))
 
+    def arity_clash(self, ft, count):
+        """True when a lambda of `count` parameters cannot be used where the function type `ft` is expected.  A lambda with
+        several parameters may also take apart a single tuple argument (`(k, v): ...` over the entries of a Dict), so that
+        is allowed when the one parameter is a tuple of that many fields, or is not known well enough to say."""
+        if not self.arity_known(ft) or len(ft[1]) == count:
+            return False
+        if len(ft[1]) == 1 and count > 1:
+            p = self.base(ft[1][0])
+            if p is None or self.has_unsettled(p) and not (p.__class__ is tuple and p[0] == "tup"):
+                return False
+            if p.__class__ is tuple and p[0] == "tup":
+                return len(p[1]) != count
+            if p.__class__ is tuple and p[0] == "named" and p[1] in self.tuples:
+                return len(self.tuples[p[1]].fields or []) != count
+            return True
+        return True
+
     def arity_known(self, ft):
         """True when a function type states its parameter count (no parameter standing for a whole argument list)."""
         return all(not (p.__class__ is tuple and p[0] in ("param", "rigid", "appv", "ctor", "tapp")) for p in ft[1])
@@ -1413,7 +1430,7 @@ class Checker:
     def e_Lambda(self, n, sc):
         inner = Sc(sc, open_=not n.params)
         expect, self.lam_expect = self.lam_expect, None
-        if expect and expect[0] == "fn" and n.params and len(expect[1]) != len(n.params) and self.arity_known(expect):
+        if expect and expect[0] == "fn" and n.params and self.arity_clash(expect, len(n.params)):
             self.err(n.line, f"this function takes {len(n.params)} parameter{'s' if len(n.params) != 1 else ''}, but it is used where one with {len(expect[1])} is expected")
         eps = expect[1] if expect and len(expect[1]) == len(n.params or []) else ()
         ptypes = []
@@ -2386,8 +2403,10 @@ class Checker:
             if expect is None and len(cands) > 1:
                 slot = i + (1 if extra and pos == "first" else 0)
                 fts = [sg[1][slot] for sg in cands if slot < len(sg[1])]
+                binds0 = self.sig_fit(cands[0], full(None)) or {}
+                fts = [tys.subst(f, binds0) if f is not None else f for f in fts]
                 if fts and all(f is not None and f[0] == "fn" and self.arity_known(f) for f in fts) and len({len(f[1]) for f in fts}) == 1 \
-                        and args[i].expr.params and len(args[i].expr.params) != len(fts[0][1]):
+                        and args[i].expr.params and self.arity_clash(fts[0], len(args[i].expr.params)):
                     self.err(n.line, f"this function takes {len(args[i].expr.params)} parameter{'s' if len(args[i].expr.params) != 1 else ''}, "
                              f"but it is used where one with {len(fts[0][1])} is expected")
             self.lam_expect = expect
