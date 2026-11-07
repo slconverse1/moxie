@@ -220,6 +220,44 @@ fn raw_terminal[E]() Result[Terminal, E]: 0
 fn read_key[E](t: Terminal) Result[Key, E]: 0
 fn run_command[E](program: String) Result[Output, E]: 0
 fn run_command[E](program: String, args: List[String]) Result[Output, E]: 0
+fn flush() Unit: 0
+fn flush(out: Io) Unit: 0
+fn read_line[E]() Result[String, E]: 0
+fn read_line[E](src: Io) Result[String, E]: 0
+fn read_all[E]() Result[String, E]: 0
+fn read_all[E](src: Io) Result[String, E]: 0
+fn stdin_lines() Stream[String]: 0
+fn lines(src: Io) Stream[String]: 0
+fn read_bytes[E](src: Io, n: Int) Result[Array[Byte], E]: 0
+fn write_bytes[E](out: Io, data: Array[Byte]) Result[Unit, E]: 0
+fn connect_tls[E](host: String, port: Int) Result[Io, E]: 0
+fn listen_tls[E](port: Int, cert: String, key: String) Result[Listener, E]: 0
+fn port_of(l: Listener) Int: 0
+fn port_of(u: Udp) Int: 0
+fn bind_udp[E](port: Int) Result[Udp, E]: 0
+fn send_to[E](u: Udp, host: String, port: Int, data: String) Result[Unit, E]: 0
+fn send_to[E](u: Udp, host: String, port: Int, data: Array[Byte]) Result[Unit, E]: 0
+fn with_stdin[T](text: String, f: () -> T) T: 0
+fn show[T](x: T) String: 0
+fn hash[T](x: T) Int: 0
+fn index[T](x: T) Int: 0
+fn remove_at[T](xs: List[T], i: Int) List[T]: 0
+fn remove_at[T](xs: Array[T], i: Int) Array[T]: 0
+fn debug_assert(ok: Bool) Unit: 0
+fn assert_ne[T](a: T, b: T) Unit: 0
+fn flip[A, B, R](f: (A, B) -> R) (B, A) -> R: 0
+fn const[A, F](x: A) F: 0
+fn file_info[E](p: String) Result[FileInfo, E]: 0
+fn gen_int[T](g: Gen, lo: T, hi: T) T: 0
+fn gen_bool(g: Gen) Bool: 0
+fn gen_pick[T](g: Gen, xs: List[T]) T: 0
+fn cancel(c: Cancel) Unit: 0
+fn arm(t: Timer, d: Duration) Unit: 0
+fn arm_every(t: Timer, d: Duration) Unit: 0
+fn disarm(t: Timer) Unit: 0
+fn after(d: Duration) Timer: 0
+fn replace[T, P, V](x: T, path: P, v: V) T: 0
+fn modify[T, P, A](x: T, path: P, f: (A) -> A) T: 0
 '''
 
 

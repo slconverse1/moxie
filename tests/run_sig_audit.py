@@ -7,7 +7,7 @@ from moxie.check import Checker
 
 sg = Checker(()).load_sigs()
 maxar = {k: max(len(x[1]) for x in v) for k, v in sg.items()}
-USER_EXAMPLES = {"first"}          # the Spec's example of a user function
+USER_EXAMPLES = {"first", "show"}   # examples of user functions that reuse a library name
 
 
 def top_args(s):
