@@ -18,6 +18,11 @@ BAD = [
  ("x = listen_tls(1, \"c\", 3)\n", "can't take"),
  ("x = hash(1, 2)\n", "takes at most 1"),
  ("flush(1)\n", "can't take"),
+ ("x = set(List(1, 2), 0, \"a\")\n", "repeated type parameter"),
+ ("x = set(List(1, 2), \"i\", 3)\n", "can't take"),
+ ("x = fail(\"a\")\n", "can't take"),
+ ("x = fail(1, 2)\n", "can't take"),
+ ("x = fail(1, \"a\", 3)\n", "takes at most 2"),
 ]
 GOOD = [
  "println(show(3))\nprintln(hash(\"a\"))\nflush()\nflush(stdout)\n",
@@ -27,6 +32,9 @@ GOOD = [
  "assert_ne(1, 2)\ndebug_assert(true)\n",
  "t = after(1s)\narm(t, 5s)\n",
  "r = bind_udp(0)\nprintln(is_ok(r))\n",
+ "fn f(x: Int) Result[Int, Error]:\n  if x > 1:\n    return fail(3, \"big\")\n  Ok(x)\nprintln(f(1))\n",
+ "xs = set(List(1, 2), 0, 5)\nd = set(Dict(1: 2), 3, 4)\nprintln(xs)\n",
+ "rx, tx = Chan[Int][1]()\n\\write(tx, 1)\nprintln(read(rx))\n",
  "x = gen_int(seeded(1), 1, 5)\ny = gen_bool(seeded(1))\nz = gen_pick(seeded(1), List(1, 2))\nprintln(x)\n",
 ]
 fails = 0
