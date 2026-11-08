@@ -146,11 +146,12 @@ SCALARS_FOR_PAT = INTS | {"String", "Bool", "Char", "Float", "Double", "Decimal"
 
 
 class Var:
-    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore")
+    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore", "inttype")
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
         self.size = None                 # the element count of a fixed-size Array known from the text
+        self.inttype = None              # the written integer type (`UInt8`) of an annotated binding or parameter: its width for shift checks
         self.fnstore = False             # a List, Array, or Dict whose elements are written functions (`Dict[String, (Int) -> Int][4]()`)
         self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
 
@@ -161,6 +162,7 @@ class Sc:
         self.vars = {}
         self.fnb = False                 # the top scope of a function or lambda body
         self.open = open_ or (parent.open if parent else False)
+        self.loopbody = False            # the block that is a loop's body
 
     def find(self, name):
         s = self
@@ -231,6 +233,7 @@ class Checker:
         self.in_daemon = 0
         self.in_fiber = False
         self.fiber_lams = set()
+        self.loop_bodies = set()
         self.cur_sc = None
         self.pipe_rest = {}
         self.trail_ty = {}
@@ -1422,8 +1425,6 @@ class Checker:
                 return None                             # a module-level name is an outer binding too
             self.err(n.line, f"`gimme.{n.n}.{n.name}`: no enclosing block binds `{n.name}`" + (" that far out" if count else ""))
             return None
-        if write and found.depth < self.loop_depth:
-            self.err(n.line, f"can't assign `{n.name}` outside the loop; return it with `break(...)` or `else:`")
         return found
 
     def e_Gimme(self, n, sc):
@@ -1489,7 +1490,8 @@ class Checker:
             if self.implements(a, iface) is False:
                 self.err(n.line, f"`{n.op}` on `{a[1]}` needs `{word}`: write `deriving {word}` on its declaration (or an `impl {iface}`)")
         if n.op in ("<<", ">>") and n.r.__class__ is IntLit and not n.r.suffix:
-            wt = a if a in self.FIT else ("Int" if n.l.__class__ is IntLit else None)
+            lv = sc.find(n.l.name) if n.l.__class__ is Name else None
+            wt = lv.inttype if lv is not None and lv.inttype else (a if a in self.FIT else ("Int" if n.l.__class__ is IntLit else None))
             width = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(wt, 64 if wt in self.FIT else None)
             if width is not None and n.r.v >= width:
                 self.err(n.line, f"a shift by {n.r.v} is at or above the {width}-bit width of `{wt}`")
@@ -1826,6 +1828,8 @@ class Checker:
 
     def e_Block(self, n, sc, new_scope=True):
         inner = Sc(sc) if new_scope else sc
+        if new_scope and id(n) in self.loop_bodies:
+            inner.loopbody = True
         stmts = n.stmts or []
         saved = self.exit_ctx
         self.exit_ctx = saved or self.diverges(stmts)
@@ -2037,11 +2041,20 @@ class Checker:
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
                 self.warn_shadow(tgt.name, sc, n)
+                if n.op == "=" and sc.loopbody and tgt.name not in sc.vars and not isinstance(n.targets, list):
+                    ov = sc.parent.find(tgt.name) if sc.parent is not None else None      # a name that was bound when the loop began
+                    nt = ann or t
+                    if ov is not None and ov.depth < self.loop_depth and ov.ty in self.SCAL and nt in self.SCAL and ov.ty != nt \
+                            and ov.ty != "Unit" and nt != "Unit":
+                        self.err(n.line, f"`{tgt.name}` is {'an' if str(tshow(ov.ty))[0] in 'AEIOU' else 'a'} `{tshow(ov.ty)}` when the loop begins, so the loop body can't make it {'an' if str(tshow(nt))[0] in 'AEIOU' else 'a'} `{tshow(nt)}`: a name that enters a loop keeps its type")
         if n.op != "=":
             return None, None
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
+                if n.ann.__class__ is TName and len(n.ann.path) == 1 and n.ann.path[0] in self.FIT and n.ann.path[0] not in self.tuples \
+                        and n.ann.path[0] not in self.aliases:
+                    sc.vars[tgt.name].inttype = n.ann.path[0]
                 if not isinstance(n.targets, list):
                     gv = n.value.fn if n.value.__class__ is Call else None
                     if gv.__class__ is GenApp and gv.base.__class__ is Name and gv.base.name in ("Dict", "List", "Array", "Ring") and gv.groups \
@@ -2051,6 +2064,10 @@ class Checker:
                     if n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name in ("Set", "Dict") \
                             and n.value.fn.name not in self.fns and n.value.fn.name not in self.tuples:
                         sc.vars[tgt.name].kind = n.value.fn.name
+                    elif n.value.__class__ is Call and n.value.fn.__class__ is GenApp and n.value.fn.base.__class__ is Name \
+                            and n.value.fn.base.name in ("Set", "Dict") and n.value.fn.base.name not in self.fns \
+                            and n.value.fn.base.name not in self.tuples:
+                        sc.vars[tgt.name].kind = n.value.fn.base.name
                 self.bind_any_local(n, sc, tgt.name)
             elif tgt.__class__ is PPlace:
                 if tgt.expr.__class__ is Gimme:
@@ -2230,6 +2247,8 @@ class Checker:
             self.err(getattr(body_nodes[0], "line", 0) if body_nodes else self.cur_line, f"the label `#{label}` is already used by an enclosing construct")
         self.labels.append(label)
         for b in body_nodes:
+            if b.__class__ is Block:
+                self.loop_bodies.add(id(b))
             self.ev(b, sc)
         self.labels.pop()
         self.loop_depth, self.exit_ctx = saved
@@ -2359,6 +2378,7 @@ class Checker:
         base = dict(self.moved)
         arm_ts = []
         tail = id(n) in self.tail_whens and self.fn_ret is not None
+        self.warn_unreachable_arms(n)
         for a in n.arms:
             inner = Sc(sc)
             self.moved = dict(base)
@@ -2383,6 +2403,31 @@ class Checker:
         if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
             return arm_ts[0], None              # every arm gives one type, so the `when` does
         return None, None
+
+    def warn_unreachable_arms(self, n):
+        """An arm after an arm that matches everything, or one that repeats an earlier literal, can never run (a warning)."""
+        full = None
+        seen = {}
+        for a in n.arms:
+            line = getattr(a, "line", 0) or n.line
+            if full is not None:
+                self.diags.append(Diag(line, f"this arm can never run: the arm at line {full} already matches every value", "warning"))
+                continue
+            if a.guard is not None and n.scrut is None:
+                if a.guard.__class__ is PH:
+                    full = line
+                continue
+            if a.guard is not None:
+                continue
+            for p in a.pats or []:
+                if p.__class__ in (PWild, PBind) and n.scrut is not None:
+                    full = line
+                elif p.__class__ is PLit and p.expr.__class__ in (StrLit, IntLit, CharLit, BoolLit) and not getattr(p.expr, "parts", None) \
+                        or p.__class__ is PLit and p.expr.__class__ is StrLit:
+                    key = (p.expr.__class__.__name__, getattr(p.expr, "v", None) if hasattr(p.expr, "v") else repr(getattr(p.expr, "parts", None)))
+                    if key in seen:
+                        self.diags.append(Diag(line, f"this pattern repeats the one at line {seen[key]}, so it can never match", "warning"))
+                    seen.setdefault(key, line)
 
     def check_pat_fit(self, p, st, line):
         """A literal or `Ok`/`Err` pattern against a value of a plain scalar type it can never match."""
@@ -4030,6 +4075,9 @@ class Checker:
                     from .values import GC
                     pty = ("app", "List" if GC[0] else "Array", (pty,))       # inside the body, `...T` is an Array of T (a List in moxie/gc)
                 inner.vars[p.name] = Var(pty, res, 0)
+                if p.type.__class__ is TName and len(p.type.path) == 1 and p.type.path[0] in self.FIT and p.type.path[0] not in self.tuples \
+                        and p.type.path[0] not in self.aliases:
+                    inner.vars[p.name].inttype = p.type.path[0]
                 if self.any_params.get(p.name, (None,))[0] == "any":
                     self.any_vars[inner.vars[p.name]] = self.any_params[p.name]
                 tp = self.bare_tparam(n, p.type)
@@ -4417,6 +4465,11 @@ class Checker:
             cap = n.groups[1][0].path[0]
             if sc.find(cap) is not None and cap not in self.consts and cap not in self.tp_decl:
                 self.err(n.line, f"a channel's capacity must be a constant, and `{cap}` is a variable")
+        if n.base.__class__ is Name and n.base.name in ("Set", "Dict") and n.groups and n.groups[0] \
+                and not any(n.base.name in d for d in (self.fns, self.tuples, self.enums, self.aliases)):
+            k = n.groups[0][0]                      # `Set[P]()`, `Dict[P, Int][8]()`: the element or key type must be Hashable
+            if k.__class__ is TName and len(k.path) == 1 and not k.groups and (k.path[0] in self.tuples or k.path[0] in self.enums):
+                self.need_hash(k.path[0], n.line, "a Dict key" if n.base.name == "Dict" else "a Set element")
         if n.base.__class__ is Name and n.groups and n.groups[0]:
             fds = self.fns.get(n.base.name)
             if fds and len(fds) == 1 and fds[0].tparams:

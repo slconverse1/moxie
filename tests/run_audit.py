@@ -16,9 +16,15 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('a local changes type in a loop body', 'counter = 1\nfor i in 1..=2:\n  counter = "a"\nprintln(counter)\n'),
+ ('a parameter changes type in a loop body', 'fn f(n: Int) Int:\n  for i in 1..=2:\n    n = "a"\n  n\nprintln(f(1))\n'),
+ ('shift of a UInt8 variable past its width', 'x: UInt8 = 1\nz = x << 9\nprintln(z)\n'),
+ ('shift of an Int32 parameter past its width', 'fn f(n: Int32) Int32:\n  n << 32\nprintln(1)\n'),
+ ('Set[P]() with an element that is not hashable', 'tuple P:\n  a: Int\ns = Set[P]()\nprintln(1)\n'),
+ ('put into a sized Set[P] of a non-hashable P', 'tuple P:\n  a: Int\ns = Set[P][4]()\nr = put(s, P(1))\nprintln(1)\n'),
+ ('Dict[P, Int][4]() with a key that is not hashable', 'tuple P:\n  a: Int\nm = Dict[P, Int][4]()\nprintln(1)\n'),
  ('let-else in a daemon body', 'r: Result[Int, Error] = Ok(1)\ndaemon:\n  Ok(x) = r else: ()\n  println(x)\n'),
  ('let-else in an inline fiber', 'r: Result[Int, Error] = Ok(1)\nrun fn():\n  Ok(x) = r else: ()\n  println(x)\n'),
- ('gimme writes a name bound before the loop', 'x = 0\nfor i in 1..=3:\n  gimme.1.x = x + 1\nprintln(x)\n'),
  ('gimme with no enclosing binding', 'fn f() Int:\n  gimme.1.x = 5\n  1\nprintln(f())\n'),
  ('numeric format type on a String', 'fn f(name: String) String:\n  "${name:.2f}"\nprintln(f("a"))\n'),
  ('union that repeats a member after flattening', 'type union A = Int | String\ntype union B = A | Int\nprintln(1)\n'),
@@ -188,6 +194,8 @@ BAD = [
 ]
 
 GOOD = [
+ 'fn f(n: Int) Int:\n  for i in 1..=2:\n    if true:\n      m = "a"\n      println(m)\n  n\nprintln(f(1))\n',
+ 'x: UInt8 = 1\nz = x << 7\nprintln(z)\nfn f(n: Int32) Int32:\n  n << 31\nprintln(f(1))\ntuple Q deriving eq, hash:\n  a: Int\ns = Set[Q][4]()\nr = put(s, Q(1))\nm = Dict[Q, Int][4]()\nprintln(1)\n',
  'fn f(r: Result[Int, Error]) Int:\n  Ok(x) = r else: 0\n  x\nprintln(f(Ok(1)))\n',
  'fn g() Int:\n  y = 1\n  if true:\n    gimme.1.y = 5\n  y\nprintln(g())\nx: UInt8 = 1 << 7\nprintln(x)\ns = "h\u00e9llo"\nprintln(s(0..3))\nprintln("${3.5:.2f} ${"ab":>4}")\nfn h() Int: 1\nprintln(h() + 1)\n#a for i in 1..=2:\n  #b for j in 1..=2:\n    break #a\n#a for k in 1..=2:\n  continue\nfn f2(factor: Int) Int:\n  ops = Dict[String, (Int) -> Int][4]()\n  ops("y") = (n): n * 2\n  1\nprintln(f2(2))\ntype union A2 = Int | String\ntype union B2 = A2 | Bool\n',
  'fn r() Result[Int, Error]: Ok(1)\nrun fn():\n  x = when r():\n    Ok(v) -> v\n    Err(_) -> 0\n  println(x)\nfn w() Result[Unit, Error]:\n  x = r()?\n  Ok(())\nrun w()\nprintln(1)\n',

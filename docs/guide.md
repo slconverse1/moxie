@@ -125,7 +125,7 @@ found = #search do:
   -1
 ```
 
-With `xs` as above, `found` is `15`. `break(outer)` is always a variable, and `break #outer` is always a label. A loop carries its bindings forward like a tail call, so a rebinding inside the body is seen by the next iteration but does not leave the loop (use `break(value)`, `else:`, or a stream terminal such as `reduce`). **Mistakes:** `break outer` without the `#`, a label used across a function or lambda boundary, and `break(value)` with no `else:`.
+With `xs` as above, `found` is `15`. `break(outer)` is always a variable, and `break #outer` is always a label. A loop carries its bindings forward like a tail call, so a rebinding inside the body is seen by the next iteration but does not leave the loop (use `break(value)`, `else:`, a stream terminal such as `reduce`, or `gimme.1.name` to write the outer name). A name that is in scope when the loop begins, a parameter or a local, keeps its type: rebinding `n` as a String in the body when it was an Int is an error. **Mistakes:** `break outer` without the `#`, a label used across a function or lambda boundary, and `break(value)` with no `else:`.
 
 To skip the rest of the current item use `continue`; to skip to the next item of an outer loop use `continue #outer`:
 
@@ -199,7 +199,25 @@ if true:
 println("$n")
 ```
 
-Output: `2 10`, then `10`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do:` the outer name has the value from whichever path ran; **loops, functions, and closures are boundaries**, so you can't write a name bound before a loop ("can't assign `total` outside the loop; return it with `break(...)` or `else:`"); there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `gimme.1.x = ...` when no enclosing block binds `x`, and writing across a loop.
+Output: `2 10`, then `10`. A loop is a place where plain rebinding does not leave: `total += score` in a loop body makes a new `total` for the next iteration, and the name outside the loop keeps its old value. `gimme` is how a loop body updates a name bound before the loop:
+
+```
+total = 0
+count = 0
+for score in List(70, 85, 90):
+  gimme.1.total += score
+  gimme.1.count += 1
+println("$total $count")
+```
+
+Output: `245 3`. This is the direct way when a loop updates two or three names at once. When the loop computes one value, the more functional way is to let the value carry the state, with `reduce` (or `break(value)` with `else:`), and no outer name is written at all:
+
+```
+total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s): acc + s)
+println(total)
+```
+
+Output: `245`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do:` the outer name has the value from whichever path ran; **functions and closures are boundaries** (a closure copies what it captures), but a loop is not one for `gimme`; there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `gimme.1.x = ...` when no enclosing block binds `x`, and `gimme` inside a function or closure for a name bound outside it.
 
 **1d. Comments**
 
@@ -1696,7 +1714,7 @@ println("${grade(85.0)}")
 
 Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when:` with no value tests conditions in order:
 
-**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq:` can be written `else:` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows the colon on the same line or indented below it. In a `seq:` every arm whose test passes runs in turn, so `else:` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`, and in a `select` it is written without `case`.
+**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq:` can be written `else:` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows the colon on the same line or indented below it. In a `seq:` every arm whose test passes runs in turn, so `else:` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`, and in a `select` it is written without `case`. An arm after one that matches everything (`else:`, `_`, or a bare name) never runs, and neither does a repeated literal: the compiler warns about both.
 
 ```
 status = Dict("speed": 60, "limit": 100)
@@ -2951,7 +2969,7 @@ formatted src/parse.mxi
 - **Shadowing (a warning).** A name bound or changed with `=` or `+=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, so `total += i` in a loop leaves the outer `total` alone; the warning points to `gimme.1.total`.
 - **Effects and permissions.** What a function prints, parks on, or reaches, checked against its declaration and the manifest's grants, through calls and imported packages.
 
-What it leaves alone: anything that depends on a value at run time (a Dict key that is present, an index that is only known when the program runs), a function used as a value is checked by its types but not by its arity, a `break` outside a loop, a shift of a narrow integer by a variable amount (the checker sees every bounded integer as an `Int`), a two-argument `put` on a container whose kind it can't tell, a lambda with untyped parameters that is bound to a name and used later as a Dict key or Set element, and a type name of one or two letters or all capitals is taken to be a type parameter. Those are caught when the code runs, with the same message the checker would have given.
+What it leaves alone: anything that depends on a value at run time (a Dict key that is present, an index that is only known when the program runs), a function used as a value is checked by its types but not by its arity, a `break` outside a loop, a shift of a value whose width the text doesn't state (such as the result of arithmetic on narrow integers; a shift of an annotated variable or parameter by a constant is checked), a two-argument `put` on a container whose kind the text doesn't state (a lambda argument with no type, say), a lambda with untyped parameters that is bound to a name and used later as a Dict key or Set element, and a type name of one or two letters or all capitals is taken to be a type parameter. Those are caught when the code runs, with the same message the checker would have given.
 
 **Chapter 24: Functional programming**
 
