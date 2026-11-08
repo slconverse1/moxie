@@ -167,6 +167,7 @@ BAD = [
 ]
 
 GOOD = [
+ 'fn kind(n: Int) String:\n  when n:\n    0 -> "zero"\n    1, 2 -> "small"\n    else -> "big"\nx = 5\nr = when:\n  x < 3 -> "lt3"\n  else -> "huge"\nrx, tx = Chan[Int][1]()\nselect:\n  case v = read(rx) -> println("got")\n  case else -> println("nothing")\nfn is_big(n: Int) Bool:\n  n > 100\nfn halve(n: Int) Int:\n  n / 2\nfn neg(n: Int) Int:\n  0 - n\na = 500\n  |> seq:\n    is_big -> halve()\n    else -> neg()\nprintln("${kind(9)} $r $a")\n',
  'tuple P:\n  a: Int\n  b: Int\np = P(a: 1, b: 2)\nq = P(...p, b: 5)\nprintln(q)\n',
  'tuple H:\n  f: (Int) -> Int\nfn mk(k: Int) H:\n  H(f: (x): x * 2)\nfn mk2(k: Int) H:\n  H(f: (k): k * 2)\ntuple S[A]:\n  f: (A) -> A\nfn mk3(k: Int) S[Int]:\n  S(f: (x): x + k)\nfn mk4(k: Int) Int:\n  g = (x): x * k\n  g(2)\nprintln(mk4(1))\n',
  'enum Color deriving eq, hash:\n  Red\ns = List(Color.Red) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nxs = List(1, 2) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nprintln(1)\n',

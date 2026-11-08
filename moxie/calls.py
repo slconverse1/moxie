@@ -224,10 +224,15 @@ class CallsMixin:
         st = n.stage
         c = st.__class__
         if c is SeqE:
+            fired = False
             for pred, stage in st.arms:
-                pf = yield from self.ev(pred, env)
-                ok = yield from self.apply(pf, [v])
+                if pred is None:                      # `else ->`: only when no earlier arm applied
+                    ok = not fired
+                else:
+                    pf = yield from self.ev(pred, env)
+                    ok = yield from self.apply(pf, [v])
                 if ok:
+                    fired = True
                     if stage.__class__ is Call:
                         v = yield from self.ev_Call(stage, env, piped=v)
                     else:

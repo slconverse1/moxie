@@ -117,10 +117,14 @@ class ExprParser(PBase):
                 self.skip_nl()
                 if self.peek().kind == "DEDENT":
                     break
-                save = self.no_trailing
-                self.no_trailing = True
-                pred = self.parse_expr()
-                self.no_trailing = save
+                if self.at_name("else") and self.at_op("->", 1):             # runs only when no earlier arm applied
+                    self.next()
+                    pred = None
+                else:
+                    save = self.no_trailing
+                    self.no_trailing = True
+                    pred = self.parse_expr()
+                    self.no_trailing = save
                 self.expect_op("->")
                 save = self.stop_bol
                 self.stop_bol += 1
@@ -128,6 +132,8 @@ class ExprParser(PBase):
                 self.stop_bol = save
                 arms.append((pred, stage))
                 self.end_line()
+                if pred is None:
+                    self.after_else_arm()
             self.expect_dedent()
             return SeqE(arms, line=line)
         return self.parse_pipe_stage_inner()
@@ -932,6 +938,12 @@ class ExprParser(PBase):
             break
         return IfE(branches, else_, line=line)
 
+    def after_else_arm(self):
+        """`else ->` is the last arm: another arm after it is an error."""
+        self.skip_nl()
+        if self.peek().kind not in ("DEDENT", "EOF"):
+            self.err("`else ->` must be the last arm")
+
     def parse_when(self):
         line = self.next().line
         scrut = None
@@ -945,6 +957,17 @@ class ExprParser(PBase):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             aline = self.peek().line
+            if self.at_name("else") and self.at_op("->", 1):          # `else ->` is `_ ->`
+                self.next()
+                self.next()
+                body = self.parse_block_or_inline()
+                if scrut is None:
+                    arms.append(Arm(None, PH(1, line=aline), body, line=aline))
+                else:
+                    arms.append(Arm([PWild()], None, body, line=aline))
+                self.end_line()
+                self.after_else_arm()
+                continue
             if scrut is None:
                 save = self.no_trailing
                 self.no_trailing = True
@@ -1059,7 +1082,8 @@ class ExprParser(PBase):
             kind = "read"
             bind = None
             ex = None
-            if self.at_name("_") and self.at_op("->", 1):
+            used_else = self.at_name("else")
+            if (self.at_name("_") or self.at_name("else")) and self.at_op("->", 1):      # `case else ->` is `case _ ->`
                 self.next()
                 kind = "default"
             elif self.at_name("cancelled") and self.at_op("(", 1):
@@ -1087,6 +1111,8 @@ class ExprParser(PBase):
             body = self.parse_block_or_inline()
             arms.append(SelArm(kind, bind, ex, body, line=aline))
             self.end_line()
+            if used_else:
+                self.after_else_arm()
         self.expect_dedent()
         return SelectE(arms, line=line)
 
