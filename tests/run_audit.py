@@ -16,6 +16,25 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('let-else in a daemon body', 'r: Result[Int, Error] = Ok(1)\ndaemon:\n  Ok(x) = r else: ()\n  println(x)\n'),
+ ('let-else in an inline fiber', 'r: Result[Int, Error] = Ok(1)\nrun fn():\n  Ok(x) = r else: ()\n  println(x)\n'),
+ ('gimme writes a name bound before the loop', 'x = 0\nfor i in 1..=3:\n  gimme.1.x = x + 1\nprintln(x)\n'),
+ ('gimme with no enclosing binding', 'fn f() Int:\n  gimme.1.x = 5\n  1\nprintln(f())\n'),
+ ('numeric format type on a String', 'fn f(name: String) String:\n  "${name:.2f}"\nprintln(f("a"))\n'),
+ ('union that repeats a member after flattening', 'type union A = Int | String\ntype union B = A | Int\nprintln(1)\n'),
+ ('capturing closure put into a Dict of functions', 'fn f(factor: Int) Int:\n  ops = Dict[String, (Int) -> Int][4]()\n  ops("x") = (n): n * factor\n  1\nprintln(f(2))\n'),
+ ('label reused inside its own loop', '#outer for i in 1..=3:\n  #outer for j in 1..=3:\n    break #outer\n'),
+ ('constant shift past a narrow annotated type', 'x: UInt8 = 1 << 9\nprintln(x)\n'),
+ ('a function used as a number', 'fn f() Int: 1\nx = f + 1\n'),
+ ('constant string cut inside a character', 'x = "h\u00e9llo"\nprintln(x(0..2))\n'),
+ ('injecting a resource type', 'fn f(c: ChanW[Int], using d: ChanR[Int]) Unit:\n  println(1)\nrx, tx = Chan[Int][1]()\nusing d = rx\nf(tx)\n'),
+ ('? in an inline fiber', 'fn r() Result[Int, Error]: Ok(1)\nrun fn():\n  x = r()?\n  println(x)\n'),
+ ('constant overflow in a binding', 'x = 9223372036854775807 + 1\nprintln(x)\n'),
+ ('constant overflow when printed', 'println(9223372036854775807 + 1)\n'),
+ ('constant too big for any integer', 'x = 9223372036854775807 * 40\nprintln(x)\n'),
+ ('literal too big for any integer', 'x = 18446744073709551616\nprintln(x)\n'),
+ ('constant overflow as an Int argument', 'fn f(n: Int) Int: n\nprintln(f(9223372036854775807 + 1))\n'),
+ ('constant too big for a UInt8 parameter', 'fn f(n: UInt8) Int: 1\nprintln(f(300))\n'),
  ('? in a function returning Unit', 'fn f() Unit:\n  x = read_file("a")?\n  println(1)\nf()\n'),
  ('? in a daemon body', 'r: Result[Int, Error] = Ok(1)\ndaemon:\n  x = r?\n  println(x)\n'),
  ('define > in an impl', 'tuple P deriving eq:\n  a: Int\nimpl Ordered for P:\n  fn < (other: P) Bool:\n    a < other.a\n  fn > (other: P) Bool:\n    a > other.a\nprintln(1)\n'),
@@ -169,6 +188,10 @@ BAD = [
 ]
 
 GOOD = [
+ 'fn f(r: Result[Int, Error]) Int:\n  Ok(x) = r else: 0\n  x\nprintln(f(Ok(1)))\n',
+ 'fn g() Int:\n  y = 1\n  if true:\n    gimme.1.y = 5\n  y\nprintln(g())\nx: UInt8 = 1 << 7\nprintln(x)\ns = "h\u00e9llo"\nprintln(s(0..3))\nprintln("${3.5:.2f} ${"ab":>4}")\nfn h() Int: 1\nprintln(h() + 1)\n#a for i in 1..=2:\n  #b for j in 1..=2:\n    break #a\n#a for k in 1..=2:\n  continue\nfn f2(factor: Int) Int:\n  ops = Dict[String, (Int) -> Int][4]()\n  ops("y") = (n): n * 2\n  1\nprintln(f2(2))\ntype union A2 = Int | String\ntype union B2 = A2 | Bool\n',
+ 'fn r() Result[Int, Error]: Ok(1)\nrun fn():\n  x = when r():\n    Ok(v) -> v\n    Err(_) -> 0\n  println(x)\nfn w() Result[Unit, Error]:\n  x = r()?\n  Ok(())\nrun w()\nprintln(1)\n',
+ 'x: UInt64 = 18446744073709551615\nprintln(x)\nfn g(n: UInt64) UInt64: n\nprintln(g(18446744073709551615))\nfn h(n: UInt8) Int: 1\nprintln(h(255))\ny = 9223372036854775807\nprintln(y - 1)\nprintln(5 + 1)\n',
  'fn g() Result[Unit, Error]:\n  x = read_file("zzz")?\n  Ok(())\nr = g()\nprintln(1)\n',
  'fn kind(n: Int) String:\n  when n:\n    0 -> "zero"\n    1, 2 -> "small"\n    else: "big"\nx = 5\nr = when:\n  x < 3 -> "lt3"\n  else: "huge"\nrx, tx = Chan[Int][1]()\nselect:\n  case v = read(rx) -> println("got")\n  else: println("nothing")\nfn is_big(n: Int) Bool:\n  n > 100\nfn halve(n: Int) Int:\n  n / 2\nfn neg(n: Int) Int:\n  0 - n\na = 500\n  |> seq:\n    is_big -> halve()\n    else: neg()\nprintln("${kind(9)} $r $a")\n',
  'tuple P:\n  a: Int\n  b: Int\np = P(a: 1, b: 2)\nq = P(...p, b: 5)\nprintln(q)\n',

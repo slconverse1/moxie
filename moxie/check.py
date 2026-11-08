@@ -5,6 +5,7 @@ Reports, never guessing: mismatched types, undefined names, wrong argument count
 Anything the checker cannot type is "unknown" and never produces an error.
 """
 import os
+import re
 from .ast import *   # noqa
 from . import tys
 
@@ -145,11 +146,12 @@ SCALARS_FOR_PAT = INTS | {"String", "Bool", "Char", "Float", "Double", "Decimal"
 
 
 class Var:
-    __slots__ = ("ty", "resource", "depth", "size", "kind")
+    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore")
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
         self.size = None                 # the element count of a fixed-size Array known from the text
+        self.fnstore = False             # a List, Array, or Dict whose elements are written functions (`Dict[String, (Int) -> Int][4]()`)
         self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
 
 
@@ -227,6 +229,8 @@ class Checker:
         self.node_ty = {}
         self.labels = []
         self.in_daemon = 0
+        self.in_fiber = False
+        self.fiber_lams = set()
         self.cur_sc = None
         self.pipe_rest = {}
         self.trail_ty = {}
@@ -1295,6 +1299,8 @@ class Checker:
             lo, hi = self.FIT[tn]
             if not (n.v <= hi + (1 if lo < 0 else 0)):          # `-128i8` is the literal 128 negated
                 self.err(getattr(n, "line", 0) or self.cur_line, f"literal {n.v} does not fit `{tn}`")
+        if not n.suffix and n.v > 2**64 - 1:
+            self.err(getattr(n, "line", 0) or self.cur_line, f"literal {n.v} does not fit any integer type")
         return ("Float", None) if n.suffix == "f" else ("Int", n.v)
 
     def e_DurLit(self, n, sc):
@@ -1320,6 +1326,9 @@ class Checker:
 
     def e_Interp(self, n, sc):
         t = self.ev(n.expr, sc)[0]
+        mt = re.search(r"([dxXobfeE%n])$", n.spec or "") if isinstance(n.spec, str) else None
+        if mt and t in ("String", "Bool", "Char"):
+            self.err(n.line if getattr(n, "line", 0) else self.cur_line, f"the format type `{mt.group(1)}` needs a number, but this is a `{t}`")
         if t.__class__ is tuple and t[0] in ("fn", "overloads"):
             self.err(n.line if getattr(n, "line", 0) else self.cur_line, "a function has no text form: call it, or print its result")
         elif t.__class__ is tuple and t[0] == "app" and t[1] == "Stream":
@@ -1390,7 +1399,35 @@ class Checker:
             return None
         return ("fn", pts, ret)
 
+    def gimme_var(self, n, sc, write):
+        """`gimme.N.name`: the N-th enclosing block that binds `name`, counting from the current block and skipping its own binding."""
+        s_ = sc
+        first = True
+        count = 0
+        found = None
+        while s_ is not None:
+            v = s_.vars.get(n.name)
+            if v is not None:
+                if first and s_ is sc:
+                    pass                                # the current block's own binding is skipped
+                else:
+                    count += 1
+                    if count == n.n:
+                        found = v
+                        break
+            first = False
+            s_ = s_.parent
+        if found is None:
+            if n.name in self.globals or n.name in self.consts:
+                return None                             # a module-level name is an outer binding too
+            self.err(n.line, f"`gimme.{n.n}.{n.name}`: no enclosing block binds `{n.name}`" + (" that far out" if count else ""))
+            return None
+        if write and found.depth < self.loop_depth:
+            self.err(n.line, f"can't assign `{n.name}` outside the loop; return it with `break(...)` or `else:`")
+        return found
+
     def e_Gimme(self, n, sc):
+        self.gimme_var(n, sc, False)
         return None, None
 
     def e_Unary(self, n, sc):
@@ -1480,11 +1517,18 @@ class Checker:
                     c = None
                     if lc is not None and rc is not None and op in ("+", "-", "*"):
                         c = lc + rc if op == "+" else lc - rc if op == "-" else lc * rc
+                        if not -2**63 <= c <= 2**64 - 1:
+                            self.err(n.line, f"the constant `{c}` overflows: it does not fit any integer type")
                     return "Int", c
                 if "Float" in (a, b):
                     return "Float", None
                 return (a if a == b else None), None
             for u, v in ((a, b), (b, a)):
+                un = n.l if u is a else n.r
+                if u.__class__ is tuple and u[0] in ("fn", "overloads") and not sc.open and un.__class__ is Name and sc.find(un.name) is None \
+                        and un.name in self.fns and (v in self.SCAL or v.__class__ is tuple and v[0] in ("fn", "overloads")):
+                    self.err(n.line, f"cannot apply `{op}` to a function: call it first")
+                    return None, None
                 if u.__class__ is tuple and u[0] == "app" and u[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
                         and u[1] not in self.tuples and u[1] not in self.enums and u[1] not in self.aliases:
                     self.err(n.line, f"cannot apply `{op}` to `{tshow(u)}`" + (" and a number" if v in ("Int", "Float", "Decimal") else "")
@@ -1538,6 +1582,9 @@ class Checker:
                                                                      and not (u[0] == "app" and u[1] == "Result")))
         if t is not None and plain(t) and t not in ("Unit",) or t == "Unit":
             self.err(n.line, f"`?` follows a `Result`, found `{tshow(t)}`")
+            return
+        if self.in_fiber and self.fn_ret is None and not self.in_daemon:
+            self.err(n.line, "`?` cannot be used in an inline fiber (`run fn`): it has nowhere to return the error; handle it with `when`, or make the work a named function that returns a `Result`")
             return
         if self.in_daemon and self.fn_ret is None:
             self.err(n.line, "`?` cannot be used in a `daemon:` body: handle the error with `when`, so a failure is a decision and not a silent exit")
@@ -1711,8 +1758,9 @@ class Checker:
                 self.bind_pat(p.pat, inner)
         for nm in n.locals or []:
             inner.vars[nm] = Var(None, False, self.loop_depth)
-        saved = (self.fn_ret, self.loop_depth, self.exit_ctx)
+        saved = (self.fn_ret, self.loop_depth, self.exit_ctx, self.in_fiber)
         self.fn_ret = None
+        self.in_fiber = id(n) in self.fiber_lams
         self.exit_ctx = False
         body = n.body
         if body.__class__ is Block and len(body.stmts or []) == 1 and body.stmts[0].__class__ is ExprStmt:
@@ -1720,7 +1768,7 @@ class Checker:
         elif body.__class__ is ExprStmt:
             body = body.e
         bt = self.ev(body, inner)[0]
-        self.fn_ret, self.loop_depth, self.exit_ctx = saved
+        self.fn_ret, self.loop_depth, self.exit_ctx, self.in_fiber = saved
         if n.partial or (body.__class__ is Block and self.leaves_early(body)):
             bt = None                     # a block that returns or uses `?` has more than one way out
         return ("fn", tuple(ptypes) or ("Unit",), self.base(bt)), None       # `() -> T` is written with one Unit parameter, as in sigs.py
@@ -1961,6 +2009,11 @@ class Checker:
             self.check_literal_capacity(n, ann)
             self.check_marr(n)
             self.check_lambda_slots(n, ann, sc)
+        if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is Binary \
+                and n.value.op in ("<<", ">>") and n.value.r.__class__ is IntLit and not n.value.r.suffix:
+            w = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(n.ann.path[-1], 64)
+            if n.value.r.v >= w:
+                self.err(n.line, f"a shift by {n.value.r.v} is at or above the {w}-bit width of `{n.ann.path[-1]}`")
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is IntLit:
             self.check_fit(n.ann.path[-1], n.value.v, n.line)
         elif n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ in (Binary, Unary):
@@ -1968,6 +2021,12 @@ class Checker:
             r = self.FIT.get(n.ann.path[-1])
             if cv is not None and r and not r[0] <= cv <= r[1]:
                 self.err(n.line, f"the constant {cv} does not fit `{n.ann.path[-1]}`")
+        elif n.ann is None and n.op == "=" and not isinstance(n.targets, list) and n.targets.__class__ is PBind \
+                and n.value.__class__ in (IntLit, Binary, Unary):
+            cv = self.const_int(n.value)                  # an unannotated binding is an `Int`
+            sfx = n.value.__class__ is IntLit and n.value.suffix
+            if cv is not None and not sfx and not -2**63 <= cv <= 2**63 - 1 and -2**63 <= cv <= 2**64 - 1:
+                self.err(n.line, f"the constant {cv} does not fit `Int`; give the binding a type such as `UInt64`")
         res = self.is_resource_expr(n.value)
         if n.value.__class__ is Name:
             v = sc.find(n.value.name)
@@ -1984,13 +2043,25 @@ class Checker:
             if tgt.__class__ is PBind:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
                 if not isinstance(n.targets, list):
+                    gv = n.value.fn if n.value.__class__ is Call else None
+                    if gv.__class__ is GenApp and gv.base.__class__ is Name and gv.base.name in ("Dict", "List", "Array", "Ring") and gv.groups \
+                            and any(x.__class__ is TFn and not self.type_mentions_param(x) for x in gv.groups[0]):
+                        sc.vars[tgt.name].fnstore = True
                     sc.vars[tgt.name].size = self.array_size(n)
                     if n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name in ("Set", "Dict") \
                             and n.value.fn.name not in self.fns and n.value.fn.name not in self.tuples:
                         sc.vars[tgt.name].kind = n.value.fn.name
                 self.bind_any_local(n, sc, tgt.name)
             elif tgt.__class__ is PPlace:
-                self.ev(tgt.expr, sc)
+                if tgt.expr.__class__ is Gimme:
+                    self.gimme_var(tgt.expr, sc, True)
+                else:
+                    self.ev(tgt.expr, sc)
+                    pc = tgt.expr                  # `ops(key) = (n): ...` into a collection of functions
+                    pv = sc.find(pc.fn.name) if pc.__class__ is Call and pc.fn.__class__ is Name else None
+                    if n.value.__class__ is Lambda and pv is not None and (pv.fnstore or pv.ty.__class__ is tuple and pv.ty[0] == "app"
+                            and any(a.__class__ is tuple and a[0] == "fn" and not tys.params_in(a) for a in pv.ty[2])):
+                        self.check_stored_closure(n.value, sc, n.line)
             else:
                 vt = ann or t
                 if tgt.__class__ is PTuple and vt.__class__ is tuple and vt[0] == "tup" and not any(q.__class__ is PRest for _, q in tgt.items or []) \
@@ -2023,6 +2094,9 @@ class Checker:
             self.err(line, f"literal {v} does not fit `{tn}`")
 
     def e_ElseLet(self, n, sc):
+        if self.fn_ret is None and (self.in_daemon or self.in_fiber):
+            self.err(n.line, "a let-else leaves the whole function, and " + ("a `daemon:` body" if self.in_daemon else "an inline fiber (`run fn`)")
+                     + " has no function to leave: handle the other shape with `when`")
         self.ev(n.value, sc)
         self.ev(n.else_, sc)
         self.bind_pat(n.pat, sc)
@@ -2152,6 +2226,8 @@ class Checker:
         saved = (self.loop_depth, self.exit_ctx)
         self.loop_depth += 1
         self.exit_ctx = False
+        if label is not None and label in self.labels:
+            self.err(getattr(body_nodes[0], "line", 0) if body_nodes else self.cur_line, f"the label `#{label}` is already used by an enclosing construct")
         self.labels.append(label)
         for b in body_nodes:
             self.ev(b, sc)
@@ -2260,6 +2336,8 @@ class Checker:
         return None, None
 
     def e_RunE(self, n, sc):
+        if n.target.__class__ is Lambda:
+            self.fiber_lams.add(id(n.target))
         self.ev(n.target, sc)
         self.ev(n.limit, sc)
         # a resource handed to `run f(x)` belongs to the new fiber, which closes it when it ends
@@ -2579,6 +2657,10 @@ class Checker:
                 at = None
             if at.__class__ is tuple and at[0] == "app" and at[1] == "Stream":
                 self.err(n.line, "a Stream has no text form: `collect()` it first")
+            if len(n.args or []) == 1 and not extra and n.args[0].expr.__class__ in (Binary, Unary):
+                cv = self.const_int(n.args[0].expr)          # printing a constant: it is an `Int`
+                if cv is not None and not -2**63 <= cv <= 2**63 - 1 and -2**63 <= cv <= 2**64 - 1:
+                    self.err(n.line, f"the constant {cv} does not fit `Int`")
         if f.__class__ is Name and f.name in ("Set", "Dict") and not n.args and n.trailing is None and (r is None or r[0] is None) \
                 and f.name not in self.fns and f.name not in self.tuples and f.name not in self.enums and f.name not in self.aliases \
                 and sc.find(f.name) is None and not extra:
@@ -2692,6 +2774,12 @@ class Checker:
             v = sc.find(f.name)
             ct = v.ty if v is not None else None
             ex0 = args[0].expr
+            cs = self.consts.get(f.name) if v is None or f.name in self.consts else None
+            if isinstance(cs, str) and ex0.__class__ is RangeE:
+                bs = cs.encode("utf-8")                    # a constant cut must fall between characters
+                for b_ in (ex0.lo, ex0.hi):
+                    if b_.__class__ is IntLit and 0 < b_.v < len(bs) and (bs[b_.v] & 0xC0) == 0x80:
+                        self.err(getattr(b_, "line", 0) or self.cur_line, f"the cut at byte {b_.v} falls inside a multi-byte character of `{f.name}`")
             if v is not None and v.size is not None and ex0.__class__ is IntLit and ex0.v >= v.size:
                 self.err(getattr(ex0, "line", 0) or self.cur_line, f"index {ex0.v} is past the end of `{f.name}`, which has {v.size} element{'' if v.size == 1 else 's'} (the last index is {v.size - 1})")
         elif f.__class__ is Field and f.name not in self.fns and f.name not in self.load_sigs() and self.pure_path(f):
@@ -3871,6 +3959,11 @@ class Checker:
                 self.err(n.line, f"parameter `{p.name}` is kept by the library; write `move {self.arg_name(a)}`")
             if p.type is not None:
                 self.compat(self.ty_of_type(p.type), t, c, n.line)
+                if p.type.__class__ is TName and p.type.path[-1] in self.FIT and isinstance(c, int) and not isinstance(c, bool) \
+                        and p.type.path[-1] not in self.tuples and p.type.path[-1] not in self.aliases:
+                    r = self.FIT[p.type.path[-1]]
+                    if not r[0] <= c <= r[1]:
+                        self.err(n.line, f"the constant {c} does not fit `{p.type.path[-1]}`, the type of parameter `{p.name}`")
         tr = self.trail_ty.get(id(n)) if n.trailing is not None else None
         if tr is not None and tr[0] is not None:
             rest = self.pipe_rest.get(id(n)) if extra else (params if len(params) == len(args) + 1 else None)
@@ -3914,6 +4007,9 @@ class Checker:
             self.err(n.line, f"`forward fn {n.name}` is never defined: write the function with its body later in the file")
         inner = Sc(sc)
         inner.fnb = True
+        for p_ in n.params or []:
+            if p_.mod == "using" and p_.type is not None and self.is_res_type(p_.type):
+                self.err(n.line, f"parameter `{p_.name}` of `{n.name}` is a resource type, and a resource can't be injected with `using` (it has one owner: pass it, or `move` it)")
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
         self.tp_vars = {}
         saved_any, self.any_params = self.any_params, {}
@@ -3946,6 +4042,7 @@ class Checker:
         for nm in n.locals or []:
             inner.vars[nm] = Var(None, False, 0)
         self.fn_ret = self.ty_of_type(n.ret) if n.ret is not None else None
+        self.in_fiber = False
         self.check_type_arity(n.ret, n.line)
         if n.ret is None and not later and n.body is not None and n.alias is None and id(n) not in self.foreign_ids:
             self.err(n.line, f"function '{n.name}' has no return type: write it after the parameters, and write Unit if it returns nothing")
@@ -4290,11 +4387,17 @@ class Checker:
     def e_AliasDecl(self, n, sc):
         if n.type.__class__ is TUnion:
             seen = []
+            def flat(m, depth=0):                 # a member that is itself a union contributes its members
+                a = self.aliases.get(m.path[-1]) if m.__class__ is TName and len(m.path) == 1 and depth < 8 else None
+                if a is not None and a.type.__class__ is TUnion and a is not n:
+                    return [x for mm in a.type.members for x in flat(mm, depth + 1)]
+                return [repr(m)]
             for m in n.type.members:
-                if repr(m) in seen:
-                    self.err(n.line, f"the union `{n.name}` lists the same member twice")
+                items = flat(m)
+                if any(i in seen for i in items) or len(set(items)) != len(items):
+                    self.err(n.line, f"the union `{n.name}` lists the same member twice" + (" (after flattening the unions it lists)" if m.__class__ is TName and items != [repr(m)] else ""))
                     break
-                seen.append(repr(m))
+                seen.extend(items)
         self.check_type_arity(n.type, n.line)
         self.check_tfun_decl(n)
         return None, None
@@ -4457,6 +4560,67 @@ def hidden_msg(pkg, name, v):
     return f"'{name}' in package {pkg} is not exported (add `export` to its declaration to use it from another package)"
 
 
+def check_package_structure(prog, search_dir):
+    """Import cycles, an import that clashes with a name in the file, and a module-level name bound twice in a library file (Spec section 4)."""
+    from .packages import package_files, parse_package
+    diags = []
+    def load(parts):
+        try:
+            found = package_files(search_dir, parts)
+            return parse_package(found[0])[1] if found is not None else None
+        except Exception:
+            return None
+    def imports_of(p):
+        return [st for st in p.stmts if st.__class__ is ImportDecl]
+    def own_names(p):
+        out = {}
+        for st in p.stmts:
+            c = st.__class__
+            if c in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, AliasDecl):
+                out.setdefault(st.name, st.line)
+            elif c is Assign:
+                for t in st.targets if isinstance(st.targets, (list, tuple)) else [st.targets]:
+                    if t.__class__ in (Name, PBind):
+                        out.setdefault(t.name, st.line)
+        return out
+    mine = own_names(prog)
+    for st in imports_of(prog):
+        key = ".".join(st.pkg)
+        bound = [nm if isinstance(nm, str) else getattr(nm, "name", None) for nm in (st.names or [])] or [st.alias or st.pkg[-1]]
+        for nm in bound:
+            if nm in mine and mine[nm] != st.line:
+                diags.append(Diag(st.line, f"the import of `{nm}` clashes with a name already in this file (line {mine[nm]}); rename one, or import the package under another name with `as`"))
+        # a cycle: walk the packages this one reaches
+        stack = [(st.pkg, [key])]
+        seen = set()
+        while stack:
+            parts, path = stack.pop()
+            sub = load(parts)
+            if sub is None:
+                continue
+            for imp in imports_of(sub):
+                k2 = ".".join(imp.pkg)
+                if k2 in path:
+                    diags.append(Diag(st.line, "import cycle: " + " -> ".join(path + [k2])))
+                    stack = []
+                    break
+                if k2 not in seen:
+                    seen.add(k2)
+                    stack.append((imp.pkg, path + [k2]))
+        # a library file may not bind a module-level name twice
+        sub = load(st.pkg)
+        if sub is not None:
+            first = {}
+            for s2 in sub.stmts:
+                if s2.__class__ is Assign:
+                    for t in s2.targets if isinstance(s2.targets, (list, tuple)) else [s2.targets]:
+                        if t.__class__ in (Name, PBind):
+                            if t.name in first:
+                                diags.append(Diag(st.line, f"package '{key}' (line {s2.line}): `{t.name}` is bound at the top level twice (line {first[t.name]}); a library file may not rebind a module-level name"))
+                            first.setdefault(t.name, s2.line)
+    return diags
+
+
 def check_package_access_diags(prog, search_dir):
     return check_package_access(prog, search_dir) if search_dir is not None else []
 
@@ -4502,6 +4666,8 @@ def _check_program(prog, prelude_names, search_dir, key_warn, type_fuel):
     ck.search_dir = search_dir
     diags = ck.check(prog)
     diags.extend(check_package_access_diags(prog, search_dir))
+    if search_dir is not None:
+        diags.extend(check_package_structure(prog, search_dir))
     if key_warn:
         diags.extend(check_key_sizes(prog, key_warn))
     from .effects import check_effects

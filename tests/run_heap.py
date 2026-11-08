@@ -3,32 +3,23 @@ import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fails = []
 GROW = '''fn main() Unit:
-  xs = List[Int]()
-  for i in 0..40000:
-    gimme.1.xs = xs + i
+  xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i): acc + i)
   println(len(xs))
 main()
 '''
 GARBAGE = '''fn main() Unit:
-  n = 0
-  for i in 0..400:
-    s = List(1, 2, 3) * 1000
-    gimme.1.n = len(s)
+  n = 0..400 |> to_stream() |> reduce(0, (acc, i): len(List(1, 2, 3) * 1000))
   println(n)
 main()
 '''
 FIBER = '''fn hold(done: ChanW[Int]) Unit:
-  xs = List[Int]()
-  for i in 0..40000:
-    gimme.1.xs = xs + i
+  xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i): acc + i)
   \\write(done, len(xs))
 rx, tx = Chan[Int][1]()
 run hold(tx)
 println(read(rx)?)
 '''
-SMALL = '''xs = List[Int]()
-for i in 0..100:
-  gimme.1.xs = xs + i
+SMALL = '''xs = 0..100 |> to_stream() |> reduce(List[Int](), (acc, i): acc + i)
 println(len(xs))
 '''
 

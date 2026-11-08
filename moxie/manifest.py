@@ -49,6 +49,12 @@ def load(path):
             data = tomllib.load(f)
     except tomllib.TOMLDecodeError as e:
         raise ManifestError(f"{m}: {e}")
+    import difflib
+    known_tables = ("name", "entry", "files", "version", "fibers", "pools", "program", "memory", "native", "permissions", "database")
+    for k in data:
+        if k not in known_tables:
+            near = difflib.get_close_matches(k, known_tables, n=1)
+            raise ManifestError(f"{m}: unknown key or table '{k}'" + (f" (did you mean '{near[0]}'?)" if near else f" (known: {', '.join(known_tables)})"))
     out = {"path": m, "fibers": {}, "pools": {}, "program": {}, "memory": {}}
     if "native" in data:
         out["native"] = native_table(m, data["native"])
@@ -58,7 +64,8 @@ def load(path):
             raise ManifestError(f"{m}: [{table}] must be a table")
         for k in t:
             if k not in keys:
-                raise ManifestError(f"{m}: unknown key '{k}' in [{table}] (known: {', '.join(sorted(keys))})")
+                near = difflib.get_close_matches(k, sorted(keys), n=1)
+                raise ManifestError(f"{m}: unknown key '{k}' in [{table}]" + (f" (did you mean '{near[0]}'?)" if near else "") + f" (known: {', '.join(sorted(keys))})")
         out[table] = dict(t)
     for table, key in (("fibers", "memory"), ("fibers", "strings"), ("fibers", "temps"), ("fibers", "stack"), ("program", "memory"), ("program", "key_warning"), ("memory", "heap")):
         if key in out[table] and parse_size(out[table][key]) is None:

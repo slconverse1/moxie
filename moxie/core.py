@@ -514,6 +514,8 @@ def apply_spec(v, spec, interp=None, locale=None):
     width = int(width) if width else 0
     prec = int(prec) if prec is not None else None
     is_str = isinstance(v, str) and not isinstance(v, (Char, Kw))
+    if typ in ("d", "x", "X", "o", "b", "f", "e", "E", "%", "n") and not isinstance(v, (int, float, Dec)):
+        raise Abort(f"the format type `{typ}` needs a number, not {show(v)!r}")
     if typ in ("d", "x", "X", "o", "b"):
         n = int(v)
         if typ == "d":
