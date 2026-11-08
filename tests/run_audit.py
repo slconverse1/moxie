@@ -16,9 +16,16 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('MultiArray literal of the wrong shape', 'g: MultiArray[Int][2, 3] = (\n  1, 2 ;\n  3, 4\n)\nprintln(g(0, 0))\n'),
+ ('MultiArray literal with ragged rows', 'g: MultiArray[Int][2, 2] = (\n  1, 2 ;\n  3\n)\nprintln(g(0, 0))\n'),
+ ('unknown enum case as a value', 'enum E:\n  A\n  B\nx = E.C\nprintln(x)\n'),
+ ('string pattern on an Int', 'fn f(n: Int) Int:\n  when n:\n    "a" -> 1\n    _ -> 2\n'),
+ ('Ok pattern on an Int', 'fn f(n: Int) Int:\n  when n:\n    Ok(x) -> 1\n    _ -> 2\n'),
+ ('constant index past an annotated Array', 'a: Array[Int][3] = Array(1, 2, 3)\nx = a(5)\n'),
+ ('constant index past an Array literal', 'a = Array(1, 2, 3)\nx = a(3)\n'),
  ('interpolate a stream', 'xs = List(1, 2)\ns = xs |> filter(_ > 1)\nprintln("${s}")\n'),
- ('println a stream', 'xs = List(1, 2)\nprintln(xs |> map(_ + 1))\n'),
- ('pipe a stream to println', 'xs = List(1, 2)\nxs |> map(_ + 1) |> println()\n'),
+ ('println a stream', 'xs = List(1, 2)\nprintln(xs |> filter(_ > 1))\n'),
+ ('pipe a stream to println', 'xs = List(1, 2)\nxs |> filter(_ > 1) |> println()\n'),
     ("bare field in self method", "tuple A:\n  owner: String\nimpl A:\n  fn name(self) String:\n    owner\n"),
  ('wrong arg type to user fn', 'fn f(n: Int) Int:\n  n\nx = f("a")\n'),
  ('too many args', 'fn f(n: Int) Int:\n  n\nx = f(1, 2)\n'),

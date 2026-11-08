@@ -141,11 +141,15 @@ class Diag:
         return f"line {self.line}: {self.kind}: {self.msg}"
 
 
+SCALARS_FOR_PAT = INTS | {"String", "Bool", "Char", "Float", "Double", "Decimal", "Byte"}
+
+
 class Var:
-    __slots__ = ("ty", "resource", "depth")
+    __slots__ = ("ty", "resource", "depth", "size")
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
+        self.size = None                 # the element count of a fixed-size Array known from the text
 
 
 class Sc:
@@ -1590,6 +1594,13 @@ class Checker:
             self.err(n.line, f"`{n.name}` is not provided by the bound{'s' if len(names) > 1 else ''} of `{t[1]}` ({', '.join(names)})")
 
     def e_Field(self, n, sc):
+        o = n.obj
+        if o.__class__ is Name and o.name in self.enums and sc.find(o.name) is None and o.name not in self.fns \
+                and o.name not in self.tuples and o.name not in self.aliases:
+            ed = self.enums[o.name]
+            if not any(c.name == n.name for c in ed.cases) and not any(k[0] == ed.name for k in self.methods) \
+                    and not self.impls.get(ed.name) and n.name not in self.fns and n.name not in ("values", "value_of", "from_index"):
+                self.err(n.line, f"`{ed.name}` has no case `{n.name}`; its cases are " + ", ".join(f"`{c.name}`" for c in ed.cases))
         t = self.t(n.obj, sc)
         if t.__class__ is tuple and t[0] == "rigid":
             self.check_tparam_member(n, t)
@@ -1846,18 +1857,59 @@ class Checker:
                 self.err(n.line, what + f"write the size you mean on the constructor to give it room (`{head}[{args}][{size}](...)`), "
                          f"or write {k}, or leave the size out")
 
+    def check_marr(self, n):
+        """`g: MultiArray[Int][2, 3] = (1, 2 ; 3, 4)`: the literal's shape must be the declared one, and its rows equally long."""
+        a, v = n.ann, n.value
+        if v.__class__ is not MArr or a.__class__ is not TName or a.path != ["MultiArray"] or len(a.groups or []) != 2:
+            return
+        dims = []
+        for g in a.groups[1]:
+            d = self.const_int(g.expr) if g.__class__ is TExpr else None
+            if not isinstance(d, int):
+                return
+            dims.append(d)
+        cols = {len(cells) for cells, _lv in v.rows}
+        if len(cols) != 1:
+            self.err(n.line, "the rows of this MultiArray literal have different lengths (" + ", ".join(str(c) for c in sorted(cols)) + " cells)")
+            return
+        per_layer, cnt = [], 0
+        for _cells, level in v.rows:
+            cnt += 1
+            if level >= 2:
+                per_layer.append(cnt)
+                cnt = 0
+        if cnt:
+            per_layer.append(cnt)
+        shape = ([len(per_layer)] if len(per_layer) > 1 else []) + [per_layer[0], cols.pop()]
+        if shape != dims:
+            fmt = lambda xs: "[" + ", ".join(str(x) for x in xs) + "]"
+            self.err(n.line, f"the declared shape {fmt(dims)} does not match this literal, whose shape is {fmt(shape)}")
+
+    def array_size(self, n):
+        """The element count of the Array that the binding `n` creates, when the text gives it: `Array(1, 2, 3)` or `a: Array[T][3] = ...`."""
+        a = n.ann
+        if a.__class__ is TName and a.path == ["Array"] and "Array" not in self.tuples and len(a.groups or []) == 2:
+            g = a.groups[1]
+            g = g[0] if isinstance(g, list) and g else g
+            sz = self.const_int(g.expr) if g.__class__ is TExpr else None
+            return sz if isinstance(sz, int) else None
+        if a is None and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == "Array" \
+                and "Array" not in self.tuples and "Array" not in self.fns:
+            return self.literal_count("Array", n.value)
+        return None
+
     def warn_shadow(self, nm, sc, n):
         """Binding a name in a deeper block (or `+=` on an outer name there) hides the outer one until the block ends (Spec section 1)."""
-        s, first = sc, True
+        s, d = sc, 0
         while s is not None:
             if nm in s.vars:
-                if not first and not nm.startswith("_"):
+                if d > 0 and not (d == 1 and s.fnb) and not nm.startswith("_"):      # a function's parameters share its body block
                     self.diags.append(Diag(n.line, f"`{nm}` here is a new `{nm}` that hides the outer one until this block ends; "
                                                    f"write `gimme.1.{nm}` to change the outer one", "warning"))
                 return
             if s.fnb:
                 return
-            s, first = s.parent, False
+            s, d = s.parent, d + 1
 
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
@@ -1869,6 +1921,7 @@ class Checker:
         if n.ann is not None and n.op == "=":
             self.compat(ann, t, c, n.line)
             self.check_literal_capacity(n, ann)
+            self.check_marr(n)
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is IntLit:
             self.check_fit(n.ann.path[-1], n.value.v, n.line)
         res = self.is_resource_expr(n.value)
@@ -1886,6 +1939,8 @@ class Checker:
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
+                if not isinstance(n.targets, list):
+                    sc.vars[tgt.name].size = self.array_size(n)
                 self.bind_any_local(n, sc, tgt.name)
             elif tgt.__class__ is PPlace:
                 self.ev(tgt.expr, sc)
@@ -2181,6 +2236,8 @@ class Checker:
             for p in a.pats or []:
                 self.bind_pat(p, inner, st if n.scrut is not None else None)
                 self.check_pat_names(p, inner)
+                if n.scrut is not None:
+                    self.check_pat_fit(p, st, getattr(p, "line", 0) or n.line)
             if a.guard is not None:
                 self.ev(a.guard, inner)
             at, ac = self.ev(a.body, inner)
@@ -2197,6 +2254,18 @@ class Checker:
         if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
             return arm_ts[0], None              # every arm gives one type, so the `when` does
         return None, None
+
+    def check_pat_fit(self, p, st, line):
+        """A literal or `Ok`/`Err` pattern against a value of a plain scalar type it can never match."""
+        if st.__class__ is not str or st not in SCALARS_FOR_PAT:
+            return
+        if p.__class__ is PLit:
+            lit = {StrLit: ("String", {"String"}), IntLit: ("Int", INTS | {"Float", "Double", "Decimal", "Byte"}),
+                   CharLit: ("Char", {"Char"}), BoolLit: ("Bool", {"Bool"})}.get(p.expr.__class__)
+            if lit and st not in lit[1] and not (p.expr.__class__ is IntLit and getattr(p.expr, "suffix", None)):
+                self.err(line, f"this pattern is a `{lit[0]}` literal, but the value is a `{tshow(st)}`, so it can never match")
+        elif p.__class__ is PCon and p.path in (["Ok"], ["Err"]) and not any(x in self.enums or x in self.tuples for x in ("Ok", "Err")):
+            self.err(line, f"`{p.path[0]}(...)` matches a `Result`, but the value is a `{tshow(st)}`")
 
     def check_pat_names(self, p, sc):
         c = p.__class__
@@ -2533,6 +2602,9 @@ class Checker:
         if f.__class__ is Name:
             v = sc.find(f.name)
             ct = v.ty if v is not None else None
+            ex0 = args[0].expr
+            if v is not None and v.size is not None and ex0.__class__ is IntLit and ex0.v >= v.size:
+                self.err(getattr(ex0, "line", 0) or self.cur_line, f"index {ex0.v} is past the end of `{f.name}`, which has {v.size} element{'' if v.size == 1 else 's'} (the last index is {v.size - 1})")
         elif f.__class__ is Field and f.name not in self.fns and f.name not in self.load_sigs() and self.pure_path(f):
             k = len(self.diags)
             ct = self.ev(f, sc)[0]                       # `h.outs(0)`: a field holding a collection
