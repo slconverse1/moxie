@@ -16,6 +16,19 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('positional and named for the same parameter', 'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(1, a: 2))\n'),
+ ('positional after named', 'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(a: 1, 2))\n'),
+ ('same variable by ref twice', 'fn g(ref a: Int, ref b: Int) Unit:\n  a = 1\nn = 5\ng(ref n, ref n)\nprintln(n)\n'),
+ ('ref of an expression', 'fn by_ref(ref n: Int) Unit:\n  n = 1\nby_ref(ref 5)\n'),
+ ('break to an unknown label', 'for i in List(1):\n  break #outer\nprintln(1)\n'),
+ ('continue to an unknown label', 'for i in List(1):\n  continue #nope\n'),
+ ('forward never defined', 'forward fn is_odd(n: Int) Bool\nprintln(1)\n'),
+ ('union lists a member twice', 'type union B = Int | Int\nprintln(1)\n'),
+ ('suffix literal too big', 'x = 256u8\nprintln(x)\n'),
+ ('constant shift past the width', 'x = 1 << 70\nprintln(x)\n'),
+ ('calling an Int field', 'tuple P:\n  a: Int\np = P(a: 1)\nprintln(p.a(3))\n'),
+ ('channel capacity from a parameter', 'fn f(n: Int) Unit:\n  rx, tx = Chan[Int][n]()\nprintln(1)\n'),
+ ('close stdout', 'close(stdout)\nprintln(1)\n'),
  ('constant sum overflows Int8', 'x: Int8 = 100 + 100\nprintln(x)\n'),
  ('constant difference below UInt8', 'x: UInt8 = 0 - 1\nprintln(x)\n'),
  ('constant product overflows Int16', 'x: Int16 = 200 * 200\nprintln(x)\n'),
@@ -129,6 +142,12 @@ BAD = [
 ]
 
 GOOD = [
+ 'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(1, b: 2))\nprintln(f(b: 2, a: 1))\nfn g(ref a: Int, ref b: Int) Unit:\n  a = 1\nn = 1\nm = 2\ng(ref n, ref m)\n',
+ '#outer for i in List(1):\n  for j in List(2):\n    break #outer\nprintln(1)\n',
+ 'forward fn is_odd(n: Int) Bool\nfn is_even(n: Int) Bool:\n  if n == 0: true else: is_odd(n - 1)\nfn is_odd(n: Int) Bool:\n  if n == 0: false else: is_even(n - 1)\nprintln(is_even(4))\n',
+ 'x = 255u8\ny = 1 << 3\nprintln(x)\nprintln(y)\n',
+ 'tuple P:\n  f: (Int) -> Int\np = P(f: (x): x + 1)\nprintln(p.f(3))\n',
+ 'n = 3\nrx, tx = Chan[Int][n]()\nprintln(1)\n',
  'x: Int8 = 100 + 20\ny: Int32 = -5 * 3\nprintln(x + 1)\nprintln(y)\n',
  '// stats and matrices\ntuple Summary deriving show:\n  count: Int\n  mean: Float\n  top: Int\n\nreadings: MultiArray[Int][3, 4] = (\n  4, 8, 15, 16 ;\n  23, 42, 7, 9 ;\n  1, 2, 3, 5\n)\n\nfn row_total[R, C](g: MultiArray[Int][R, C], r: Int) Int:\n  g(r, ..) |> to_stream() |> reduce(0, _1 + _2)\n\nfn col_max[R, C](g: MultiArray[Int][R, C], c: Int) Int:\n  g(.., c) |> to_stream() |> reduce(0, max(_1, _2))\n\nfn summarize(xs: List[Int]) Result[Summary, Error]:\n  m = avg(xs)?\n  Ok(Summary(count: len(xs), mean: m, top: xs |> reduce(0, max(_1, _2))))\n\ntotals = List(row_total(readings, 0), row_total(readings, 1), row_total(readings, 2))\nprintln("${totals} ${sum(totals)}")\nprintln("${col_max(readings, 1)} ${readings(1, 1)}")\nwhen summarize(totals):\n  Ok(s) -> println("${s}")\n  Err(e) -> println("err ${e.message}")\nwhen summarize(List()):\n  Ok(s) -> println("${s}")\n  Err(e) -> println("empty")\nevens = totals |> filter(_ % 2 == 0) |> map(_ * 2) |> collect()\nprintln("${evens} ${product(List(1, 2, 3, 4))} ${avg(List(1.5, 2.5))}")\nsquares = (1..=5) |> to_stream() |> map(_ * _) |> collect()\nprintln("${squares}")\n',
  '// accounts: tuples, impl, interface, generics, typed errors with From\nenum BankError deriving show:\n  NoFunds(needed: Int),\n  Frozen,\n  Parse(msg: String)\n\ntuple Account deriving show:\n  id: Int\n  owner: String\n  balance: Int = 0\n  frozen: Bool = false\n\ninterface Describe:\n  fn describe(self) String\n\nimpl Describe for Account:\n  fn describe(self) String:\n    "#${self.id} ${self.owner}: ${self.balance}"\n\nimpl Account:\n  fn deposit(self, amount: Int) Account:\n    Account(id: self.id, owner: self.owner, balance: self.balance + amount, frozen: self.frozen)\n  fn withdraw(self, amount: Int) Result[Account, BankError]:\n    if self.frozen:\n      return Err(BankError.Frozen)\n    if amount > self.balance:\n      return Err(BankError.NoFunds(needed: amount - self.balance))\n    Ok(Account(id: self.id, owner: self.owner, balance: self.balance - amount, frozen: self.frozen))\n\nfn parse_amount(text: String) Result[Int, BankError]:\n  when read[Int](text):\n    Ok(n) -> Ok(n)\n    Err(e) -> Err(BankError.Parse(msg: "bad amount: ${text}"))\n\nfn transfer(from: Account, to: Account, text: String) Result[(Account, Account), BankError]:\n  amount = parse_amount(text)?\n  a = from.withdraw(amount)?\n  Ok((a, to.deposit(amount)))\n\nfn show_all[T: Describe](xs: List[T]) Unit:\n  for x in xs:\n    println(x.describe())\n\nalice = Account(id: 1, owner: "alice", balance: 100)\nbob = Account(id: 2, owner: "bob")\nshow_all(List(alice, bob))\nwhen transfer(alice, bob, "30"):\n  Ok((a, b)) -> show_all(List(a, b))\n  Err(e) -> println("failed: ${e}")\nwhen transfer(alice, bob, "300"):\n  Ok(_) -> println("?")\n  Err(e) -> println("failed: ${e}")\nwhen transfer(alice, bob, "x"):\n  Ok(_) -> println("?")\n  Err(e) -> println("failed: ${e}")\n',

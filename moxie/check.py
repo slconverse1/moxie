@@ -224,6 +224,7 @@ class Checker:
         self.lam_expect = None
         self.pipe_ty = None
         self.node_ty = {}
+        self.labels = []
         self.pipe_rest = {}
         self.trail_ty = {}
         self.sigs = None
@@ -1283,7 +1284,14 @@ class Checker:
         return self.ev(n, sc)[0]
 
     # literals
+    SUFFIX_TYPE = {"u8": "UInt8", "u16": "UInt16", "u32": "UInt32", "u64": "UInt64", "i8": "Int8", "i16": "Int16", "i32": "Int32", "i64": "Int64"}
+
     def e_IntLit(self, n, sc):
+        tn = self.SUFFIX_TYPE.get(n.suffix)
+        if tn is not None:
+            lo, hi = self.FIT[tn]
+            if not (n.v <= hi + (1 if lo < 0 else 0)):          # `-128i8` is the literal 128 negated
+                self.err(getattr(n, "line", 0) or self.cur_line, f"literal {n.v} does not fit `{tn}`")
         return ("Float", None) if n.suffix == "f" else ("Int", n.v)
 
     def e_DurLit(self, n, sc):
@@ -1434,6 +1442,14 @@ class Checker:
         a, b = self.base(lt), self.base(rt)
         op = n.op
         self.check_op_bound(n, sc)
+        if n.op in ("==", "~=") and a is not None and a == b and a.__class__ is tuple and a[0] == "named" \
+                and a[1] in self.tuples and self.implements(a, "Equatable") is False:      # enums: the Spec leaves case-only equality open
+            self.err(n.line, f"`{n.op}` on `{a[1]}` needs `eq`: write `deriving eq` on its declaration (or an `impl Equatable`)")
+        if n.op in ("<<", ">>") and n.r.__class__ is IntLit and not n.r.suffix:
+            wt = a if a in self.FIT else ("Int" if n.l.__class__ is IntLit else None)
+            width = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(wt, 64 if wt in self.FIT else None)
+            if width is not None and n.r.v >= width:
+                self.err(n.line, f"a shift by {n.r.v} is at or above the {width}-bit width of `{wt}`")
         dur = ("named", "Duration")
         if (a == dur or b == dur) and "Duration" not in self.tuples and "Duration" not in self.aliases:
             r = self.duration_op(n, a, b, dur)
@@ -1778,7 +1794,16 @@ class Checker:
 
     def e_Break(self, n, sc):
         self.ev(n.e, sc)
+        self.check_label(n)
         return None, None
+
+    def e_Continue(self, n, sc):
+        self.check_label(n)
+        return None, None
+
+    def check_label(self, n):
+        if n.label is not None and n.label not in self.labels:
+            self.err(n.line, f"no loop labeled `#{n.label}`")
 
     def handle_ret(self, t):
         """The handle type named by `t` (H or Result[H, E]), or None."""
@@ -2106,12 +2131,14 @@ class Checker:
             for f in n._fields:
                 yield from self.iter_nodes(getattr(n, f))
 
-    def loop(self, body_nodes, sc):
+    def loop(self, body_nodes, sc, label=None):
         saved = (self.loop_depth, self.exit_ctx)
         self.loop_depth += 1
         self.exit_ctx = False
+        self.labels.append(label)
         for b in body_nodes:
             self.ev(b, sc)
+        self.labels.pop()
         self.loop_depth, self.exit_ctx = saved
 
     def e_ForE(self, n, sc):
@@ -2127,7 +2154,7 @@ class Checker:
         elif it is not None and (it in INTS or it in ("Bool", "Float", "Decimal", "Char")):
             self.err(n.line, f"`for` needs a collection, a range, or a stream, found `{tshow(it)}`")
         self.bind_pat(n.pat, inner, el)
-        self.loop([n.body], inner)
+        self.loop([n.body], inner, n.label)
         self.ev(n.else_, sc)
         return None, None
 
@@ -2135,7 +2162,7 @@ class Checker:
         ct = self.t(n.cond, sc)
         if ct is not None and ct != "Bool":
             self.err(n.line, f"`while` condition must be `Bool`, found `{tshow(ct)}`")
-        self.loop([n.body], sc)
+        self.loop([n.body], sc, n.label)
         self.ev(n.else_, sc)
         return None, None
 
@@ -2158,7 +2185,7 @@ class Checker:
         return None, None
 
     def e_DoE(self, n, sc):
-        self.loop([n.body], sc)
+        self.loop([n.body], sc, n.label)
         return None, None
 
     def e_RangeE(self, n, sc):
@@ -2532,6 +2559,9 @@ class Checker:
                 at = None
             if at.__class__ is tuple and at[0] == "app" and at[1] == "Stream":
                 self.err(n.line, "a Stream has no text form: `collect()` it first")
+        if f.__class__ is Name and f.name == "close" and len(n.args or []) == 1 and n.args[0].expr.__class__ is Name \
+                and n.args[0].expr.name in ("stdin", "stdout", "stderr") and sc.find(n.args[0].expr.name) is None and "close" not in self.fns:
+            self.err(n.line, f"`{n.args[0].expr.name}` belongs to the runtime and cannot be closed")
         if f.__class__ is Name and f.name == "Error" and (r is None or r[0] is None) \
                 and not any(f.name in d for d in (self.fns, self.tuples, self.aliases, self.enums)) and sc.find("Error") is None:
             return ("named", "Error"), None            # `Error(code, message)` is an Error
@@ -2553,6 +2583,15 @@ class Checker:
             elif fv is not None and fv.ty.__class__ is tuple and fv.ty[0] == "app" and fv.ty[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
                     and fv.ty[1] not in self.tuples and fv.ty[1] not in self.enums and fv.ty[1] not in self.aliases:
                 self.err(n.line, f"`{f.name}` is a `{tshow(fv.ty)}`, not a function" + ("; take the value out of the Result first" if fv.ty[1] == "Result" else ""))
+        if f.__class__ is Field and f.obj.__class__ is Name and not extra and f.name not in self.fns and f.name not in self.prelude \
+                and not any(k[1] == f.name for k in self.methods):
+            ov = sc.find(f.obj.name)
+            ot = ov.ty if ov is not None else None
+            if ot.__class__ is tuple and ot[0] == "named" and ot[1] in self.tuples and not self.tuples[ot[1]].tparams:
+                fld = next((x for x in self.tuples[ot[1]].fields or [] if x.name == f.name), None)
+                fty = self.ty_of_type(fld.type) if fld is not None and fld.type is not None else None
+                if fty is not None and (fty in INTS or fty in ("String", "Bool", "Float", "Char", "Decimal")):
+                    self.err(n.line, f"`{f.obj.name}.{f.name}` is {tshow(fty)}, not a function")
         if (r is None or r[0] is None) and n.trailing is None and n.args and not extra:
             it = self.index_type(f, n.args, sc, n)
             if it is not None:
@@ -3631,6 +3670,23 @@ class Checker:
             self.err(n.line, f"`{fd.name}` takes {len(params)} argument{'s' if len(params) != 1 else ''}, but {given} given")
             return self.ret_of(fd), None
         byname = {p.name: p for p in params}
+        seen_label = False
+        refs = []
+        for i, a in enumerate(args):
+            if a.label:
+                seen_label = True
+                k = next((j for j, q in enumerate(params) if q.name == a.label), None)
+                if k is not None and k < sum(1 for b in args[:i] if not b.label) and not extra:
+                    self.err(n.line, f"parameter `{a.label}` of `{fd.name}` is given twice: once by position and once by name")
+            elif seen_label:
+                self.err(n.line, "a positional argument cannot follow a named one")
+            if a.mod == "ref":
+                if a.expr.__class__ is not Name:
+                    self.err(n.line, "the argument after `ref` must be a bare name, not an expression")
+                elif a.expr.name in refs:
+                    self.err(n.line, f"`{a.expr.name}` is passed by `ref` twice in one call")
+                else:
+                    refs.append(a.expr.name)
         for i, (a, (t, c)) in enumerate(zip(args, ats)):
             rest = self.pipe_rest.get(id(n)) if extra else None
             p = byname.get(a.label) if a.label else (params[i + (0)] if i < len(params) and not extra else (rest[i] if rest and i < len(rest) else None))
@@ -3684,6 +3740,8 @@ class Checker:
     # ------------------------------------------------------------ declarations
     def e_FnDecl(self, n, sc):
         later, self._later = self._later, False         # a later clause of a function takes the first clause's return type
+        if n.body is None and "forward" in (n.flags or ()) and self.fns.get(n.name) and self.fns[n.name][0] is n:
+            self.err(n.line, f"`forward fn {n.name}` is never defined: write the function with its body later in the file")
         inner = Sc(sc)
         inner.fnb = True
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
@@ -4058,6 +4116,13 @@ class Checker:
             seen.add(nm)
 
     def e_AliasDecl(self, n, sc):
+        if n.type.__class__ is TUnion:
+            seen = []
+            for m in n.type.members:
+                if repr(m) in seen:
+                    self.err(n.line, f"the union `{n.name}` lists the same member twice")
+                    break
+                seen.append(repr(m))
         self.check_type_arity(n.type, n.line)
         self.check_tfun_decl(n)
         return None, None
@@ -4072,6 +4137,11 @@ class Checker:
 
     def e_GenApp(self, n, sc):
         self.ev(n.base, sc)
+        if n.base.__class__ is Name and n.base.name == "Chan" and "Chan" not in self.fns and "Chan" not in self.tuples \
+                and len(n.groups or []) == 2 and len(n.groups[1]) == 1 and n.groups[1][0].__class__ is TName and len(n.groups[1][0].path) == 1:
+            cap = n.groups[1][0].path[0]
+            if sc.find(cap) is not None and cap not in self.consts and cap not in self.tp_decl:
+                self.err(n.line, f"a channel's capacity must be a constant, and `{cap}` is a variable")
         if n.base.__class__ is Name and n.groups and n.groups[0]:
             fds = self.fns.get(n.base.name)
             if fds and len(fds) == 1 and fds[0].tparams:

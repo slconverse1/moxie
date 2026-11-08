@@ -11,7 +11,7 @@ CASES = [
  ("bad UTF-8 is BAD_ENCODING", 'println(read_line())\n', b"\xff\n", "run", 0, "code: 8", ""),
  ("stdout and stderr are values", 'println(stdout, "o")\nprintln(stderr, "e")\neprintln("f")\n', b"", "run", 0, "o\n", "e\nf\n"),
  ("stdout may be passed to a function", 'fn say(out: Io, s: String) Unit:\n  println(out, s)\nsay(stdout, "hi")\nsay(stdout, "again")\n', b"", "run", 0, "hi\nagain\n", ""),
- ("a stream cannot be closed", 'close(stdout)\n', b"", "run", 1, "", "cannot be closed"),
+ ("a stream cannot be closed", 'close(stdout)\n', b"", "run", 2, "", "cannot be closed"),
  ("pure fn may not read", 'pure fn f() String: read_all()?\n', b"", "check", 2, "", "parks"),
  ("with_stdin feeds a test", 'test "t":\n  assert_eq(with_stdin("Bob\\n", read_line), Ok("Bob"))\n', b"", "test", 0, "1 passed, 0 failed", ""),
 ]
