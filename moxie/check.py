@@ -202,6 +202,7 @@ class Checker:
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
         self.callee_fields = set()
+        self.callee_ty = {}
         self.mixed_lits = {}             # collection literals whose elements disagree, by call node: (line, message)
         self.cases = {}            # bare case name -> [enum names]
         self.globals = set()
@@ -2254,7 +2255,7 @@ class Checker:
                     and (rt.__class__ is str or rt[0] in ("app", "tup")):
                 return ft[2], None                         # `s.size()` is `size(s)`: the result of a plain declared function
         if (r is None or r[0] is None) and n.trailing is None and len(n.args or []) == 1 and not extra:
-            it = self.index_type(f, n.args[0], sc)
+            it = self.index_type(f, n.args[0], sc, n)
             if it is not None:
                 return it, None                        # `xs(0)` is an element of the List, Array, or Ring `xs`
         if r is None or r[0] is None:
@@ -2270,8 +2271,8 @@ class Checker:
             e = e.obj
         return e.__class__ is Name
 
-    def index_type(self, f, arg, sc):
-        """The element type of `xs(i)` when `xs` is a List, Array, or Ring of a known element type and `i` is an Int; else None."""
+    def index_type(self, f, arg, sc, call=None):
+        """The type of `xs(i)` (or a slice, a Dict lookup, a Set test) when the indexed value's type is known; else None."""
         if not hasattr(arg, "expr") or getattr(arg, "label", None) or getattr(arg, "mod", None):
             return None
         if f.__class__ is Name:
@@ -2281,15 +2282,53 @@ class Checker:
             k = len(self.diags)
             ct = self.ev(f, sc)[0]                       # `h.outs(0)`: a field holding a collection
             del self.diags[k:]
+        elif f.__class__ is Call and call is not None:
+            ct = self.callee_ty.get(id(call))
         else:
             return None
-        if not (ct.__class__ is tuple and ct[0] == "app" and ct[1] in ("List", "Array", "Ring") and len(ct[2]) == 1):
+        ex = arg.expr
+        if ct is None:
             return None
-        at = self.quiet(arg.expr, sc)[0]
-        if at != "Int":
+        if ct == "String":
+            if ex.__class__ is RangeE:
+                return "String"
+            return "Byte" if self.quiet(ex, sc)[0] == "Int" else None
+        if ct.__class__ is not tuple:
             return None
-        el = ct[2][0]
-        return el if el is not None and not self.has_unsettled(el) else None
+        if ct[0] == "app" and ct[1] in ("List", "Array", "Ring") and len(ct[2]) == 1:
+            el = ct[2][0]
+            if el is None or self.has_unsettled(el):
+                return None
+            if ex.__class__ is RangeE:
+                return ("app", "List" if ct[1] == "List" else "Array", (el,))        # a slice of a List is a List, of anything else an Array
+            return el if self.quiet(ex, sc)[0] == "Int" else None
+        if ct[0] == "app" and ct[1] == "Dict" and len(ct[2]) == 2:
+            kt, vt = ct[2]
+            if vt is None or self.has_unsettled(vt):
+                return None
+            key = ex.expr if ex.__class__ is Dollar else ex
+            if (ex.__class__ is Dollar or key.__class__ in (IntLit, StrLit, CharLit, BoolLit)) and kt is not None and not self.has_unsettled(kt):
+                at = self.quiet(key, sc)[0]
+                if at is not None and not self.has_unsettled(at):
+                    self.compat(kt, at, None, ex.line if getattr(ex, "line", 0) else self.cur_line)
+            return ("app", "Result", (vt, ("named", "Error")))                       # a lookup gives a Result (MISSING)
+        if ct[0] == "app" and ct[1] == "Set" and len(ct[2]) == 1:
+            return "Bool"
+        if ct[0] == "tup" and ex.__class__ is IntLit and not any(x.__class__ is tuple and x and x[0] == "spread" for x in ct[1]):
+            i = ex.v
+            if isinstance(i, int) and 0 <= i < len(ct[1]) and ct[1][i] is not None:
+                return ct[1][i]
+        if ct[0] == "named" and ct[1] in self.tuples and not self.tuples[ct[1]].tparams and not getattr(self.tuples[ct[1]], "spread", None):
+            fs = self.tuples[ct[1]].fields or []
+            if any(getattr(x, "name", None) in (None, "...") for x in fs):
+                return None
+            if ex.__class__ is IntLit and isinstance(ex.v, int) and 0 <= ex.v < len(fs):
+                return self.ty_of_type(fs[ex.v].type)                # `p(0)` is the first field
+            if ex.__class__ is Name:
+                for x in fs:
+                    if x.name == ex.name:
+                        return self.ty_of_type(x.type)               # `p(name)` is the field called `name`
+        return None
 
     def enum_case_type(self, f, sc, call=None):
         """The type of a call of an enum case (`Shape.Circle(1)`, or `Circle(1)` when the name is unambiguous) for a plain enum;
@@ -2495,7 +2534,9 @@ class Checker:
             if el is not None and not self.has_unsettled(el):
                 return ("app", fn.base.name, (el,)), None
             return None, None
-        self.ev(fn, sc)
+        ft = self.ev(fn, sc)[0]
+        if fn.__class__ is Call:
+            self.callee_ty[id(n)] = ft                   # `mk()(0)`: what the indexed call gave
         return None, None
 
     def collection_ctor(self, name, args, ats, n=None):
