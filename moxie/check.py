@@ -2220,6 +2220,14 @@ class Checker:
         if f.__class__ is Name and f.name == "Error" and (r is None or r[0] is None) \
                 and not any(f.name in d for d in (self.fns, self.tuples, self.aliases, self.enums)) and sc.find("Error") is None:
             return ("named", "Error"), None            # `Error(code, message)` is an Error
+        if (r is None or r[0] is None) and f.__class__ is Field and f.name in self.fns and n.trailing is None and not extra \
+                and not any(getattr(a, "label", None) or getattr(a, "mod", None) for a in n.args or []) \
+                and not any(k[1] == f.name for k in self.methods) and f.name not in self.tuples and f.name not in self.cases:
+            ft = self.fn_value_type(f.name)
+            rt = self.quiet(f.obj, sc)[0] if f.obj.__class__ is not Name or sc.find(f.obj.name) is not None else None
+            if ft is not None and rt is not None and len(ft[1]) == len(n.args or []) + 1 and ft[1][0] is not None \
+                    and (rt.__class__ is str or rt[0] in ("app", "tup")):
+                return ft[2], None                         # `s.size()` is `size(s)`: the result of a plain declared function
         if r is None or r[0] is None:
             et = self.enum_case_type(f, sc, n)
             if et is not None:
@@ -3088,6 +3096,13 @@ class Checker:
             r = self.e_Call(st, sc, extra=1)
             self.pipe_ty = None
             return r
+        if st.__class__ is Name and sc.find(st.name) is None and st.name not in self.tuples and st.name not in self.cases \
+                and not any(k[1] == st.name for k in self.methods):
+            ft = self.fn_value_type(st.name)             # `s |> size`: a plain declared function called with the piped value
+            if ft is not None and len(ft[1]) == 1:
+                if lt is not None and ft[1][0] is not None:
+                    self.compat(ft[1][0], lt, None, n.line)
+                return ft[2], None
         self.ev(st, sc)
         return None, None
 
