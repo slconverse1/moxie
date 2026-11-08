@@ -1956,6 +1956,8 @@ for n in fibonacci() |> take(6):
 Output: `0`, `1`, `1`, `2`, `3`, `5`. **[gc]** A stream holds its source, so a helper can build a stream over data you already have and return it like any other value. Only a stream that borrows a resource (a channel end or a database connection) still needs `inline fn`:
 
 ```
+tuple NetworkBuffer:
+  packets: List[Packet]
 fn stream_packets(buffer: NetworkBuffer) Stream[Packet]:
   Stream(buffer.packets, 0..)
 ```

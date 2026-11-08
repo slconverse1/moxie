@@ -1945,6 +1945,8 @@ for n in fibonacci() |> take(6):
 Output: `0`, `1`, `1`, `2`, `3`, `5`. A custom iterator over data you already have must be `inline fn`, so the stream views the caller's data:
 
 ```
+tuple NetworkBuffer:
+  packets: List[Packet]
 inline fn stream_packets(buffer: NetworkBuffer) Stream[Packet]:
   Stream(buffer.packets, 0..)
 ```

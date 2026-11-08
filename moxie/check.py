@@ -1372,7 +1372,12 @@ class Checker:
 
     def e_Unary(self, n, sc):
         t, c = self.ev(n.e, sc)
-        if n.op == "-" and c is not None:
+        if n.op == "-" and t is not None and t not in INTS and t not in ("Float", "Decimal") \
+                and not (t.__class__ is tuple and t[0] in ("bounded", "lit", "param", "rigid", "named", "pvar", "bound", "app", "tup")) \
+                and t.__class__ is str:
+            self.err(n.line, f"`-` needs a number, found `{tshow(t)}`")
+            return None, None
+        if n.op == "-" and c is not None and isinstance(c, (int, float)) and not isinstance(c, bool):
             return t, -c
         if n.op == "not" or n.op == "!":
             if t is not None and t != "Bool":
@@ -1445,6 +1450,12 @@ class Checker:
                 if "Float" in (a, b):
                     return "Float", None
                 return (a if a == b else None), None
+            for u, v in ((a, b), (b, a)):
+                if u.__class__ is tuple and u[0] == "app" and u[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
+                        and u[1] not in self.tuples and u[1] not in self.enums and u[1] not in self.aliases:
+                    self.err(n.line, f"cannot apply `{op}` to `{tshow(u)}`" + (" and a number" if v in ("Int", "Float", "Decimal") else "")
+                             + ("; take the value out first (`?`, `get_or`, `when`)" if u[1] == "Result" else ""))
+                    return None, None
             return None, None
         return None, None
 
@@ -1481,10 +1492,41 @@ class Checker:
 
     def e_Q(self, n, sc):
         t = self.base(self.ev(n.e, sc)[0])
+        self.check_question(n, t)
         if t.__class__ is tuple and t[0] == "app" and t[1] == "Result" and len(t[2]) == 2 and t[2][0] is not None \
                 and not tys.params_in(t[2][0]):
             return t[2][0], None                  # `spawn("cat")?` is the Child
         return None, None
+
+    def check_question(self, n, t):
+        """`x?` follows a Result, and the enclosing function returns a Result whose error is the same or has a `From` impl."""
+        plain = lambda u: u is not None and (u.__class__ is str or (u.__class__ is tuple and u[0] in ("app", "tup")
+                                                                     and not (u[0] == "app" and u[1] == "Result")))
+        if t is not None and plain(t) and t not in ("Unit",) or t == "Unit":
+            self.err(n.line, f"`?` follows a `Result`, found `{tshow(t)}`")
+            return
+        fr = self.base(self.fn_ret) if self.fn_ret is not None else None
+        if fr is None or not (t.__class__ is tuple and t[0] == "app" and t[1] == "Result" and len(t[2]) == 2):
+            if fr is not None and plain(fr) and fr != "Unit" and not self.has_unsettled(fr):
+                self.err(n.line, f"`?` returns the error early, but this function returns `{tshow(fr)}`, not a `Result`")
+            return
+        if not (fr.__class__ is tuple and fr[0] == "app" and fr[1] == "Result" and len(fr[2]) == 2):
+            if plain(fr) and fr != "Unit" and not self.has_unsettled(fr):
+                self.err(n.line, f"`?` returns the error early, but this function returns `{tshow(fr)}`, not a `Result`")
+            return
+        e, f = t[2][1], fr[2][1]
+        if e is None or f is None or self.has_unsettled(e) or self.has_unsettled(f) or e == f:
+            return
+        fname = f[1] if f.__class__ is tuple and f[0] == "named" else None
+        if fname is not None and "From" in self.impls.get(fname, ()):
+            return                                                  # a `From` impl converts the error
+        if f.__class__ is tuple and f[0] == "named" and f[1] == "Error" or e.__class__ is tuple and e[0] == "named" and e[1] == "Error":
+            if e != f:
+                self.err(n.line, f"`?` would return an error of type `{tshow(e)}`, but this function's error type is `{tshow(f)}`; add a `From` impl or use `map_err`")
+            return
+        if e.__class__ is str and f.__class__ is str and e in INTS and f in INTS:
+            return
+        self.err(n.line, f"`?` would return an error of type `{tshow(e)}`, but this function's error type is `{tshow(f)}`; add a `From` impl or use `map_err`")
 
     def e_Move(self, n, sc):
         e = n.e
@@ -1823,7 +1865,11 @@ class Checker:
             elif tgt.__class__ is PPlace:
                 self.ev(tgt.expr, sc)
             else:
-                self.bind_pat(tgt, sc, ann or t, res)
+                vt = ann or t
+                if tgt.__class__ is PTuple and vt.__class__ is tuple and vt[0] == "tup" and not any(q.__class__ is PRest for _, q in tgt.items or []) \
+                        and not any(x.__class__ is tuple and x and x[0] == "spread" for x in vt[1]) and len(vt[1]) != len(tgt.items or []):
+                    self.err(n.line, f"this pattern has {len(tgt.items or [])} names, but the value has {len(vt[1])} fields")
+                self.bind_pat(tgt, sc, vt, res)
         return None, None
 
     def bind_any_local(self, n, sc, name):
@@ -1896,9 +1942,23 @@ class Checker:
         self.moved = base
         self.branches_moves(bodies, sc, n.else_ is not None)
         ts = [t for t, _ in types]
+        if n.else_ is not None:
+            self.check_branch_types(ts, n.line, "`if`")
         if n.else_ is not None and ts and all(t == ts[0] for t in ts) and ts[0] is not None:
             return ts[0], None
         return None, None
+
+    def check_branch_types(self, ts, line, what):
+        """The branches of an `if` or `when` have one type: two plain, different types (`Int` and `String`) are an error."""
+        plain = [t for t in ts if t is not None and t.__class__ is str and (t in INTS or t in ("Float", "Decimal", "String", "Bool", "Char", "Unit"))]
+        if len(plain) != len([t for t in ts if t is not None]) or len(plain) < 2:
+            return
+        num = {"Int", "Float", "Decimal"}
+        first = plain[0]
+        for t in plain[1:]:
+            if t != first and not ({t, first} <= num or (t in INTS and first in INTS)):
+                self.err(line, f"the branches of this {what} have different types: `{tshow(first)}` and `{tshow(t)}`")
+                return
 
     def branches_moves(self, bodies, sc, with_else):
         """Merge move state after a branching construct (bodies were already walked)."""
@@ -1972,6 +2032,11 @@ class Checker:
         if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream") and len(it[2]) == 1 \
                 and it[2][0] is not None and not self.has_unsettled(it[2][0]):
             el = it[2][0]                                   # the loop variable has the collection's element type
+        elif it.__class__ is tuple and it[0] == "app" and it[1] == "Dict" and len(it[2]) == 2 and None not in it[2] \
+                and not any(self.has_unsettled(x) for x in it[2]):
+            el = ("tup", (it[2][0], it[2][1]))               # a Dict gives (key, value) pairs
+        elif it is not None and (it in INTS or it in ("Bool", "Float", "Decimal", "Char")):
+            self.err(n.line, f"`for` needs a collection, a range, or a stream, found `{tshow(it)}`")
         self.bind_pat(n.pat, inner, el)
         self.loop([n.body], inner)
         self.ev(n.else_, sc)
@@ -2007,10 +2072,20 @@ class Checker:
         self.loop([n.body], sc)
         return None, None
 
+    def e_RangeE(self, n, sc):
+        for x in (n.lo, n.hi):
+            t = self.ev(x, sc)[0] if x is not None else None
+            if t is not None and (t in ("String", "Bool") or (t.__class__ is tuple and t[0] in ("app", "tup", "fn"))):
+                self.err(n.line, f"a range runs over numbers, found `{tshow(t)}`")
+        return None, None
+
     def e_SelectE(self, n, sc):
         for a in n.arms or []:
             inner = Sc(sc)
-            self.ev(a.expr, sc)
+            et = self.ev(a.expr, sc)[0]
+            if a.kind == "read" and et is not None and (et in INTS or et in ("String", "Bool", "Float", "Char", "Decimal", "Unit")
+                                                          or (et.__class__ is tuple and et[0] == "app" and et[1] in ("ChanW", "FutureW", "List", "Array", "Dict", "Set"))):
+                self.err(n.line, f"`select` waits on a channel or future to read, found `{tshow(et)}`")
             if a.bind:
                 if isinstance(a.bind, str):
                     inner.vars[a.bind] = Var(None, False, self.loop_depth)
@@ -2088,6 +2163,8 @@ class Checker:
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
             self.exhaustive(n, st)
+        if n.scrut is not None:
+            self.check_branch_types(arm_ts, n.line, "`when`")
         if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
             return arm_ts[0], None              # every arm gives one type, so the `when` does
         return None, None
@@ -2351,16 +2428,52 @@ class Checker:
             rt = self.quiet(f.obj, sc)[0] if f.obj.__class__ is not Name or sc.find(f.obj.name) is not None else None
             if ft is not None and rt is not None and len(ft[1]) == len(n.args or []) + 1 and ft[1][0] is not None \
                     and (rt.__class__ is str or rt[0] in ("app", "tup")):
+                if len(ft[1]) == 1 and not self.has_unsettled(ft[1][0]) and not self.has_unsettled(rt):
+                    self.compat(ft[1][0], self.base(rt), None, n.line)       # `5.size()` where `size` takes a String
                 return ft[2], None                         # `s.size()` is `size(s)`: the result of a plain declared function
+        if f.__class__ is Name and not extra:
+            fv = sc.find(f.name)
+            if fv is not None and fv.ty is not None and (fv.ty in INTS or fv.ty in ("String", "Bool", "Float", "Char", "Decimal")) \
+                    and not (fv.ty == "String" and n.args):
+                self.err(n.line, f"`{f.name}` is {tshow(fv.ty)}, not a function")
         if (r is None or r[0] is None) and n.trailing is None and n.args and not extra:
             it = self.index_type(f, n.args, sc, n)
             if it is not None:
                 return it, None                        # `xs(0)` is an element of the List, Array, or Ring `xs`
         if r is None or r[0] is None:
+            self.check_enum_call(f, n, sc)
             et = self.enum_case_type(f, sc, n)
             if et is not None:
                 return et, None                        # `Shape.Circle(1)` and `Circle(1)` are a Shape
         return r
+
+    def check_enum_call(self, f, n, sc):
+        """`Shape.Tri(1)` when Shape has no such case, and a payload of the wrong type or the wrong count."""
+        cs = ed = None
+        if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name in self.enums and sc.find(f.obj.name) is None \
+                and f.obj.name not in self.fns and f.obj.name not in self.tuples and f.obj.name not in self.aliases:
+            ed = self.enums[f.obj.name]
+            cs = next((c for c in ed.cases if c.name == f.name), None)
+            if cs is None:
+                if not any(k[0] == ed.name for k in self.methods) and not self.impls.get(ed.name) and f.name not in self.fns \
+                        and f.name not in ("values", "value_of", "from_index"):
+                    self.err(n.line, f"`{ed.name}` has no case `{f.name}`; its cases are " + ", ".join(f"`{c.name}`" for c in ed.cases))
+                return
+        elif f.__class__ is Name and sc.find(f.name) is None and f.name not in self.fns and f.name not in self.tuples \
+                and f.name in self.cases and len(self.cases[f.name]) == 1:
+            ed = self.enums[self.cases[f.name][0]]
+            cs = next((c for c in ed.cases if c.name == f.name), None)
+        if cs is None or getattr(ed, "tparams", None) or n.trailing is not None:
+            return
+        args = n.args or []
+        if not all(hasattr(a, "expr") for a in args):
+            return
+        ats = [self.quiet(a.expr, sc) for a in args]
+        shim = type("CaseShim", (), {"name": cs.name, "fields": cs.fields or [], "spread": None})()
+        self.check_tuple_args(shim, args, ats, n.line)
+
+    def _unused_enum(self):
+        return None
 
     @staticmethod
     def pure_path(e):
@@ -2410,7 +2523,11 @@ class Checker:
                 return None
             if ex.__class__ is RangeE:
                 return ("app", "List" if ct[1] == "List" else "Array", (el,))        # a slice of a List is a List, of anything else an Array
-            return el if self.quiet(ex, sc)[0] == "Int" else None
+            ixt = self.quiet(ex, sc)[0]
+            if ixt is not None and (ixt in ("String", "Bool", "Float", "Char") or (ixt.__class__ is tuple and ixt[0] in ("app", "tup"))):
+                self.err(getattr(ex, "line", 0) or self.cur_line, f"an index must be an `Int`, found `{tshow(ixt)}`")
+                return None
+            return el if ixt == "Int" else None
         if ct[0] == "app" and ct[1] == "Dict" and len(ct[2]) == 2:
             kt, vt = ct[2]
             if vt is None or self.has_unsettled(vt):
@@ -2425,6 +2542,9 @@ class Checker:
             return "Bool"
         if ct[0] == "tup" and ex.__class__ is IntLit and not any(x.__class__ is tuple and x and x[0] == "spread" for x in ct[1]):
             i = ex.v
+            if isinstance(i, int) and i >= len(ct[1]):
+                self.err(getattr(ex, "line", 0) or self.cur_line, f"tuple index {i} is out of range: the tuple has {len(ct[1])} fields")
+                return None
             if isinstance(i, int) and 0 <= i < len(ct[1]) and ct[1][i] is not None:
                 return ct[1][i]
         if ct[0] == "app" and ct[1] in self.tuples and len(self.tuples[ct[1]].tparams or []) == len(ct[2]) \
@@ -2840,6 +2960,9 @@ class Checker:
         t = self.base(ts[0]) if ts and ts[0] is not None else None
         if t.__class__ is tuple and t[0] == "app" and len(t[2]) == 1:
             t = self.base(t[2][0])
+            if t in ("Bool", "Char", "Unit") and getattr(n.fn, "name", None) in ("sum", "product"):
+                self.err(n.line, f"`{n.fn.name}` needs numbers (or values with `+`), found a stream of `{tshow(t)}`")
+                return
             if t.__class__ is str:
                 SUM_ELEM[id(n)] = t
             elif t.__class__ is tuple and t[0] == "named" and (t[1] in self.tuples or t[1] in self.enums):
@@ -2955,6 +3078,12 @@ class Checker:
         Returns (types aligned with the explicit arguments, no type parameters, those parameters)."""
         lt = self.pipe_ty
         ps = list(fd.params or [])
+        if len(ps) == 1 and not fd.tparams and lt is not None and not self.has_unsettled(lt) and ps[0].type is not None \
+                and not args and not trailing:
+            pt = self.ty_of_type(ps[0].type)
+            if pt is not None and not self.has_unsettled(pt):
+                self.compat(pt, self.base(lt), None, line)             # `5 |> f()` where `f` takes a String
+            return None
         if fd.tparams or lt is None or self.has_unsettled(lt) or len(ps) < 2 or any(p.type is None for p in ps):
             return None
         if len(ps) != len(args) + (1 if trailing else 0) + 1 or any(a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")):
@@ -3143,6 +3272,20 @@ class Checker:
                 self.err(n.line, f"`{n.op}` on a `{tp.name}` needs a `{need[1]}` bound: write `{tp.name}: {need[1]}`")
                 return
 
+    SCALAR_TYPES = {"Int", "Float", "Double", "LongDouble", "Decimal", "String", "Bool", "Char", "Unit", "Self", "Secret", "Never", "Any", "BigInt",
+                    "Duration", "Instant", "Time", "Date", "Error", "Range", "Timer", "Cancel", "Io", "Listener", "Udp", "Child", "Terminal",
+                    "Connection", "Packet", "Stream", "Ring", "MultiArray", "Atom", "Future", "Chan", "Byte", "UInt", "Locale", "Gen"}
+
+    def unknown_type_name(self, nm):
+        """A type name nothing declares: not a type of this program, a built-in, a type parameter in scope, or a name from a package."""
+        if nm in self.SCALAR_TYPES or nm in INTS or nm in self.BUILTIN_GENERICS or nm in self.tuples or nm in self.enums \
+                or nm in self.aliases or nm in self.iface_decls or nm in self.ifaces or nm in self.fn_tparams or nm in self.tp_decl \
+                or nm in self.pv or nm in self.handle_types.values() or nm in self.handle_types or nm in self.prelude or nm in self.globals:
+            return False
+        if len(nm) <= 2 or nm.isupper():
+            return False                                   # a type parameter of an enclosing declaration (`T`, `M`, `E`, `S`)
+        return True
+
     def check_type_arity(self, t, line, depth=0):
         """A declared generic type is written with as many type arguments as it has parameters: `Pair[Int]` for a two-parameter `Pair` is an error."""
         if t is None or depth > 8:
@@ -3177,6 +3320,17 @@ class Checker:
                 and "Seq" not in self.iface_decls:
             self.err(line, "`Seq` is not a type you can write: name the collection (`List[T]`, `Array[T]`, `Set[T]`, `Stream[T]`)")
             return
+        if len(t.path) == 1 and not self.sig_mode:
+            nm = t.path[0]
+            if self.unknown_type_name(nm):
+                self.err(line, f"unknown type `{nm}`")
+                return
+        if len(t.path) == 1 and t.path[0] in self.BUILTIN_GENERICS and t.path[0] != "Seq" and t.groups and t.groups[0] \
+                and not any(t.path[0] in d for d in (self.tuples, self.enums, self.aliases, self.iface_decls)):
+            want, got = self.BUILTIN_GENERICS[t.path[0]], len(t.groups[0])
+            if want != got:
+                self.err(line, f"`{t.path[0]}` takes {want} type argument{'s' if want != 1 else ''}, but {got} given")
+                return
         if len(t.path) != 1 or len(t.groups or []) != 1 or not t.groups[0]:
             return
         al = self.aliases.get(t.path[0])
@@ -3299,6 +3453,16 @@ class Checker:
     def check_tuple_args(self, td, args, ats, line):
         fields = {f.name: f for f in td.fields or []}
         pos = [f for f in td.fields or []]
+        if not getattr(td, "spread", None) and not any(getattr(f, "name", None) in (None, "...") for f in pos) \
+                and not any(getattr(a, "mod", None) for a in args) and not any(x.__class__ in (PH, Slot) for x in (getattr(a, "expr", None) for a in args)) \
+                and not (len(args) == 1 and args[0].label is None):                    # one bare argument may be a tuple to unpack
+            unlabeled = [a for a in args if a.label is None]
+            covered = {a.label for a in args if a.label is not None} | {f.name for f in pos[:len(unlabeled)]}
+            need = [f.name for f in pos if getattr(f, "default", None) is None and f.name not in covered]
+            if need:
+                self.err(line, f"`{td.name}` needs a value for " + ", ".join(f"`{x}`" for x in need))
+            elif len(unlabeled) > len(pos):
+                self.err(line, f"`{td.name}` has {len(pos)} field{'s' if len(pos) != 1 else ''}, but {len(unlabeled)} values are given")
         i = 0
         for a, (t, c) in zip(args, ats):
             if getattr(a, "mod", None) == "spread":
@@ -3728,10 +3892,35 @@ class Checker:
         return None, None
 
     def e_TupleDecl(self, n, sc):
+        self.check_dup_fields(n.name, n.fields, n.line, "field")
+        saved, self.tp_decl = self.tp_decl, {**self.tp_decl, **{t.name: t for t in (getattr(n, "tparams", None) or [])}}
+        for f in n.fields or []:
+            self.check_type_arity(getattr(f, "type", None), n.line)
+        self.tp_decl = saved
         return None, None
 
     def e_EnumDecl(self, n, sc):
+        names = [c.name for c in n.cases or []]
+        for i, nm in enumerate(names):
+            if nm in names[:i]:
+                self.err(n.line, f"`{n.name}` has the case `{nm}` twice")
+        saved, self.tp_decl = self.tp_decl, {**self.tp_decl, **{t.name: t for t in (getattr(n, "tparams", None) or [])}}
+        for c in n.cases or []:
+            self.check_dup_fields(f"{n.name}.{c.name}", c.fields, n.line, "field")
+            for f in c.fields or []:
+                self.check_type_arity(getattr(f, "type", None), n.line)
+        self.tp_decl = saved
         return None, None
+
+    def check_dup_fields(self, owner, fields, line, what):
+        seen = set()
+        for f in fields or []:
+            nm = getattr(f, "name", None)
+            if nm in (None, "...") or not isinstance(nm, str):
+                continue
+            if nm in seen:
+                self.err(line, f"`{owner}` has the {what} `{nm}` twice")
+            seen.add(nm)
 
     def e_AliasDecl(self, n, sc):
         self.check_type_arity(n.type, n.line)
