@@ -1971,6 +1971,7 @@ class Checker:
         if n.scrut is not None:
             st = self.t(n.scrut, sc)
         base = dict(self.moved)
+        arm_ts = []
         for a in n.arms:
             inner = Sc(sc)
             self.moved = dict(base)
@@ -1979,11 +1980,13 @@ class Checker:
                 self.check_pat_names(p, inner)
             if a.guard is not None:
                 self.ev(a.guard, inner)
-            self.ev(a.body, inner)
+            arm_ts.append(self.ev(a.body, inner)[0])
         self.moved = base
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
             self.exhaustive(n, st)
+        if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
+            return arm_ts[0], None              # every arm gives one type, so the `when` does
         return None, None
 
     def check_pat_names(self, p, sc):
