@@ -2935,6 +2935,19 @@ formatted src/parse.mxi
 
 `--check` changes nothing and exits 1 when a file would change, so it fits a build script; `--stdout` prints the result instead of writing. Before a file is written, the formatter checks that the tokens match the original, that every comment is kept with its text unchanged and in order, that the spacing changes left the parsed program the same (otherwise only the layout rules are applied), and that a second run changes nothing; if a check fails it reports the file and leaves it alone. A file with a tab in its indentation or an unterminated string is reported and not touched. **Mistakes:** expecting it to join or split lines (it never does, so a long argument list stays as written), or to rewrap long lines (the line width is not settled).
 
+**23b. What `moxie check` proves**
+
+`moxie check FILE` reads the whole program and reports mistakes without running anything, and `moxie run` stops on the same errors before the first line executes. It follows one rule: it reports only what it can prove, so a value whose type it cannot work out is never an error. What it proves:
+
+- **Types.** Every call, operator, index, slice, range, `if` and `when` arm, `?`, return, and annotation agrees with the declared types, including through lambdas, pipes (`x |> f(a)` fills the slot the runtime picks, and a call that fits two slots is an error), generic functions, and the prelude (`avg`, `sum`, `map`, `get`, channel ends, collections). A bare `x(i)` on something that is not a function, a `Result` used as a number, and a `Stream` interpolated into text are errors.
+- **Names and shapes.** Undefined names, unknown types and enum cases, wrong argument counts, missing or extra fields in a constructor, duplicate fields and cases, a `when` that misses a case or has a clause that can never match, a pattern that does not fit the value's type, and a destructuring of the wrong arity.
+- **Errors as values.** `?` needs a `Result` operand in a function that returns a `Result` with the same error (or a `From` impl that converts it), and a `Result` is never used as if it were the value inside.
+- **Ownership.** Use after move, `ref` and `move` mismatches, and a resource that outlives what it may.
+- **Sizes and numbers.** Array and MultiArray shapes, bounded integers, constant arithmetic and indexing that cannot work out, and the empty `sum` and `product` (which give the element type's zero and one).
+- **Effects and permissions.** What a function prints, parks on, or reaches, checked against its declaration and the manifest's grants, through calls and imported packages.
+
+What it leaves alone: anything that depends on a value at run time (a Dict key that is present, an index that is only known when the program runs), a function used as a value is checked by its types but not by its arity, a `break` outside a loop, and a type name of one or two letters or all capitals is taken to be a type parameter. Those are caught when the code runs, with the same message the checker would have given.
+
 **Chapter 24: Functional programming**
 
 Moxie's support for functional programming is ordinary prelude code over a few language features: immutable values, higher-order functions, pipelines, `for:` comprehensions, and interfaces over type constructors. Outputs were computed by hand, and several snippets reuse names from earlier chapters (`add`, `Box`, `half`, `Tree`, `User`).
