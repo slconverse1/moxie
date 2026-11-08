@@ -1943,11 +1943,23 @@ def _num_fold(I, s, op, init):
     return acc
 
 
+def _unit_of(I, kw, member, default):
+    """The `zero` (or `one`) of the element type the checker saw, for an empty stream; `default` when it is not known."""
+    name = (kw or {}).get("_elem")
+    if name is None:
+        return default
+    try:
+        f = I.type_member(TypeV(name, I.type_info_for(name)), member, 0)
+    except Abort:
+        return default
+    return (yield from I.apply(f, []))
+
+
 @bi("sum", "first", True)
 def b_sum(I, a, kw, ta):
     items = yield from drain(I, a[0])
     if not items:
-        return 0
+        return (yield from _unit_of(I, kw, "zero", 0))
     acc = items[0]
     for x in items[1:]:
         acc = yield from I.binop("+", acc, x)          # numbers, strings, and a type with its own `+`
@@ -1958,7 +1970,7 @@ def b_sum(I, a, kw, ta):
 def b_product(I, a, kw, ta):
     items = yield from drain(I, a[0])
     if not items:
-        return 1
+        return (yield from _unit_of(I, kw, "one", 1))
     acc = items[0]
     for x in items[1:]:
         acc = yield from I.binop("*", acc, x)

@@ -501,6 +501,9 @@ class Closure:
         self.iface_contracts = None
 
 
+SUM_ELEM = {}      # id of a `sum`/`product` call node -> the element type's name, filled in by the checker
+
+
 class Builtin:
     __slots__ = ("fn", "name", "gen", "pre")
 

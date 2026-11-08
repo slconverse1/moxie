@@ -398,6 +398,9 @@ class CallsMixin:
         # pipe insertion
         if piped is not NOPIPE:
             pos = self.insert_piped(callee, pos, piped, n.trailing is not None)
+        if k is Builtin and callee.name in ("sum", "product") and id(n) in SUM_ELEM:
+            named = dict(named or {})
+            named["_elem"] = SUM_ELEM[id(n)]
         if spreads:
             if k is TypeV or k is CaseV:
                 pass

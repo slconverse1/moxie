@@ -2451,6 +2451,14 @@ class Checker:
             el = self.ty_of_type(fn.groups[0][0], 0, None, False)
             rd, wr = ends[fn.base.name]
             return ("tup", (("app", rd, (el,)), ("app", wr, (el,)))), None
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name in ("List", "Array", "Set") and not args \
+                and n.trailing is None and len(fn.groups or []) == 1 and len(fn.groups[0]) == 1 \
+                and not any(fn.base.name in d for d in (self.fns, self.tuples, self.aliases, self.enums)) and sc.find(fn.base.name) is None:
+            self.ev(fn, sc)                             # `List[Int]()` is an empty `List[Int]`
+            el = self.ty_of_type(fn.groups[0][0], 0, None, False)
+            if el is not None and not self.has_unsettled(el):
+                return ("app", fn.base.name, (el,)), None
+            return None, None
         self.ev(fn, sc)
         return None, None
 
@@ -2624,6 +2632,17 @@ class Checker:
                 return exact
         return cands
 
+    def note_elem(self, n, ts):
+        """Record the element type of a `sum`/`product` call, so an empty stream can give that type's own zero or one."""
+        from .values import SUM_ELEM
+        t = self.base(ts[0]) if ts and ts[0] is not None else None
+        if t.__class__ is tuple and t[0] == "app" and len(t[2]) == 1:
+            t = self.base(t[2][0])
+            if t.__class__ is str:
+                SUM_ELEM[id(n)] = t
+            elif t.__class__ is tuple and t[0] == "named" and (t[1] in self.tuples or t[1] in self.enums):
+                SUM_ELEM[id(n)] = t[1]
+
     def sig_hint(self, n):
         """Extra advice for a mistake people make often."""
         if getattr(n.fn, "name", None) in ("print", "println", "eprint", "eprintln") and len(n.args or []) == 2:
@@ -2646,6 +2665,8 @@ class Checker:
                 ts = ts + [piped] if pos == "last" else [piped] + ts
             return ts
         cands = self.sig_pick(over, full(None))
+        if getattr(n.fn, "name", None) in ("sum", "product") and n.fn.__class__ in (Name, Field):
+            self.note_elem(n, full(None))
         lam_at = [i for i, a in enumerate(args) if a.expr.__class__ is Lambda]
         for i in lam_at:
             expect = None
