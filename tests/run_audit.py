@@ -16,6 +16,10 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('put an enum key into an empty Dict', 'enum Color:\n  Red\nd = Dict()\nd2 = put(d, Color.Red, 1)\nprintln(1)\n'),
+ ('put an enum into an empty Set', 'enum Color:\n  Red\ns = Set()\ns2 = put(s, Color.Red)\nprintln(1)\n'),
+ ('Set of an enum variable', 'enum Color:\n  Red\nc = Color.Red\ns = Set(c)\nprintln(1)\n'),
+ ('unbounded type parameter as a Dict key', 'fn f[T](x: T) Int:\n  d: Dict[T, Int] = Dict()\n  1\nprintln(1)\n'),
  ('enum as a Dict key without hash', 'enum Color:\n  Red\n  Green\nd: Dict[Color, Int] = Dict()\nprintln(1)\n'),
  ('enum in a Set without hash', 'enum Color:\n  Red\nprintln(len(Set(Color.Red)))\n'),
  ('payload enum as a Dict key without hash', 'enum Shape:\n  Circle(r: Int)\nd: Dict[Shape, Int] = Dict()\nprintln(1)\n'),
@@ -155,6 +159,8 @@ BAD = [
 ]
 
 GOOD = [
+ 'enum Color deriving eq, hash:\n  Red\ns = Set()\ns2 = put(s, Color.Red)\nd = Dict()\nd2 = put(d, Color.Red, 1)\nxs = put(List(Color.Red), Color.Red)\nprintln(1)\n',
+ 'fn f[T: Hashable](x: T) Int:\n  d: Dict[T, Int] = Dict()\n  1\nprintln(f(1))\n',
  'enum Color deriving eq, ord, hash:\n  Red\n  Green\ns = Set(Color.Red)\nd: Dict[Color, Int] = Dict()\nxs = List(Color.Green, Color.Red) |> to_stream() |> sort() |> collect()\nprintln(len(s) + len(xs))\nprintln(contains(xs, Color.Red))\n',
  'tuple P deriving eq, hash, ord:\n  a: Int\ns = Set(P(a: 1))\nd: Dict[P, Int] = Dict()\nprintln(len(s))\nprintln(max(P(a: 1), P(a: 2)))\n',
  'enum Color deriving eq, ord:\n  Red\n  Green\nprintln(Color.Red == Color.Green)\nprintln(Color.Red < Color.Green)\n',

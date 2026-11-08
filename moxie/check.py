@@ -145,11 +145,12 @@ SCALARS_FOR_PAT = INTS | {"String", "Bool", "Char", "Float", "Double", "Decimal"
 
 
 class Var:
-    __slots__ = ("ty", "resource", "depth", "size")
+    __slots__ = ("ty", "resource", "depth", "size", "kind")
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
         self.size = None                 # the element count of a fixed-size Array known from the text
+        self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
 
 
 class Sc:
@@ -1978,6 +1979,9 @@ class Checker:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
                 if not isinstance(n.targets, list):
                     sc.vars[tgt.name].size = self.array_size(n)
+                    if n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name in ("Set", "Dict") \
+                            and n.value.fn.name not in self.fns and n.value.fn.name not in self.tuples:
+                        sc.vars[tgt.name].kind = n.value.fn.name
                 self.bind_any_local(n, sc, tgt.name)
             elif tgt.__class__ is PPlace:
                 self.ev(tgt.expr, sc)
@@ -2568,17 +2572,24 @@ class Checker:
                 self.err(n.line, "a Stream has no text form: `collect()` it first")
         if f.__class__ is Name and f.name in self.BOUND_FNS and f.name not in self.fns and sc.find(f.name) is None:
             self.check_value_bound(n, f, sc, pipe0)
-        if f.__class__ is Name and f.name == "Set" and "Set" not in self.fns and "Set" not in self.tuples and n.args:
-            for a in n.args:
-                e = getattr(a, "expr", None)
-                if e.__class__ is Field:
-                    k0 = len(self.diags)
-                    et = self.ev(e, sc)[0]
-                    del self.diags[k0:]
-                else:
-                    et = self.node_ty.get(id(e)) if e.__class__ in (Call, Pipe) else None
+        if f.__class__ is Name and f.name in ("Set", "put") and f.name not in self.fns and f.name not in self.tuples and sc.find(f.name) is None and n.args:
+            keyargs, what = (n.args, "a Set element") if f.name == "Set" else ([], "")
+            if f.name == "put" and len(n.args) >= 2:
+                ct = self.quick_ty(getattr(n.args[0], "expr", None), sc)
+                head = ct[1] if ct.__class__ is tuple and ct[0] == "app" else None
+                a0 = getattr(n.args[0], "expr", None)
+                if head is None and a0.__class__ is Name and sc.find(a0.name) is not None:
+                    head = sc.find(a0.name).kind
+                if head is None and len(n.args) == 3:
+                    head = "Dict"
+                if head == "Set" or (head is None and len(n.args) == 2 and ct is None and False):
+                    keyargs, what = n.args[1:2], "a Set element"
+                elif head == "Dict":
+                    keyargs, what = n.args[1:2], "a Dict key"
+            for a in keyargs:
+                et = self.quick_ty(getattr(a, "expr", None), sc)
                 if et.__class__ is tuple and et[0] == "named" and (et[1] in self.tuples or et[1] in self.enums):
-                    self.need_hash(et[1], n.line, "a Set element")
+                    self.need_hash(et[1], n.line, what)
                     break
         if f.__class__ is Name and f.name == "close" and len(n.args or []) == 1 and n.args[0].expr.__class__ is Name \
                 and n.args[0].expr.name in ("stdin", "stdout", "stderr") and sc.find(n.args[0].expr.name) is None and "close" not in self.fns:
@@ -3471,6 +3482,20 @@ class Checker:
             return False                                   # a type parameter of an enclosing declaration (`T`, `M`, `E`, `S`)
         return True
 
+    def quick_ty(self, e, sc):
+        """The type of a simple argument expression (a variable, an enum case, a call or pipe already checked), or None."""
+        if e.__class__ is Name:
+            v = sc.find(e.name)
+            return v.ty if v is not None else None
+        if e.__class__ in (Call, Pipe):
+            return self.node_ty.get(id(e))
+        if e.__class__ is Field:
+            k = len(self.diags)
+            t = self.ev(e, sc)[0]
+            del self.diags[k:]
+            return t
+        return None
+
     def need_hash(self, name, line, what):
         if self.implements(("named", name), "Hashable") is False:
             self.err(line, f"`{name}` is used as {what}, so it needs `deriving eq, hash`")
@@ -3534,6 +3559,11 @@ class Checker:
                 self.check_type_arity(x, line, depth + 1)
         if t.path in (["Dict"], ["Set"]) and t.path[0] not in self.tuples and t.path[0] not in self.enums and t.groups:
             k = t.groups[0][0] if isinstance(t.groups[0], list) and t.groups[0] else None
+            tp = self.tp_decl.get(k.path[0]) if k.__class__ is TName and len(k.path) == 1 and not k.groups else None
+            if tp is not None and not getattr(tp, "where", None):
+                bn = [_tn(x) for x in getattr(tp, "bounds", None) or []]
+                if "Hashable" not in bn and all(x in VALUE_IFACES for x in bn):
+                    self.err(line, f"`{tp.name}` is used as {'a Dict key' if t.path == ['Dict'] else 'a Set element'}, so it needs a `Hashable` bound: write `{tp.name}: Hashable`")
             if k.__class__ is TName and len(k.path) == 1 and (k.path[0] in self.tuples or k.path[0] in self.enums) and not k.groups:
                 self.need_hash(k.path[0], line, "a Dict key" if t.path == ["Dict"] else "a Set element")
         if t.path == ["Seq"] and "Seq" not in self.tuples and "Seq" not in self.enums and "Seq" not in self.aliases \
