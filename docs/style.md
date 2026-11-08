@@ -58,6 +58,10 @@ A lambda is a function with no name, written `(params): body`. It is meant to be
 - Name the stage when it has a meaning of its own: `filter(is_pass)` reads better than a lambda that spells out `s >= 60`, if `is_pass` is used more than once or the rule deserves a name.
 - A same-line lambda body runs to the end of the line, so a `|>` after it joins the body. Put each stage on its own line, as above.
 
+## Choices
+
+- **Write `else:` for the catch-all arm, not `_ ->`.** It is the last arm of a `when`, of a `select`, and of a `seq:`, and it never takes `->`: `else: "big"`, and in a `select` just `else: println("nothing")`, with no `case`. Keep `_` for what it is a pattern for, such as `(_, v)` or `Some(_)`. A catch-all that is the whole `when` (nothing else to match) is usually an `if`.
+
 ## Errors
 
 - Handle a `Result` with `?` when the caller can't do anything useful, and with `when` when it can.
