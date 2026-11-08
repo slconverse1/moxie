@@ -202,6 +202,7 @@ class Checker:
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
         self.callee_fields = set()
+        self.tail_whens = set()
         self.callee_ty = {}
         self.mixed_lits = {}             # collection literals whose elements disagree, by call node: (line, message)
         self.cases = {}            # bare case name -> [enum names]
@@ -1181,13 +1182,73 @@ class Checker:
         names = self.pat_names(p)
         for nm in names:
             sc.vars[nm] = Var(ty if p.__class__ is PBind else None, res, self.loop_depth)
-        # `rx, tx = Chan[Int][1]()`: each plain name gets the type of its place in a tuple whose shape is known
-        if p.__class__ is PTuple and ty.__class__ is tuple and ty and ty[0] == "tup" and len(ty[1]) == len(p.items or []) \
-                and not any(x.__class__ is tuple and x and x[0] == "spread" for x in ty[1]) \
-                and not any(q.__class__ is PRest for _, q in p.items):
-            for (_, q), et in zip(p.items, ty[1]):
-                if q.__class__ is PBind and et is not None:
-                    sc.vars[q.name] = Var(et, res, self.loop_depth)
+        # `rx, tx = Chan[Int][1]()`, `Ok(x)` against a `Result`, `Circle(r)` against a `Shape`: each name gets the type of its place
+        # in a value whose shape is known
+        self.type_pat(p, sc, ty, res)
+
+    def type_pat(self, p, sc, ty, res=False):
+        c = p.__class__
+        if ty is None or self.has_unsettled(ty) and not (ty.__class__ is tuple and ty[0] in ("app", "tup", "named")):
+            return
+        if c is PBind:
+            sc.vars[p.name] = Var(ty, res, self.loop_depth)
+        elif c is PAs:
+            sc.vars[p.name] = Var(ty, res, self.loop_depth)
+            self.type_pat(p.pat, sc, ty, res)
+        elif c is PTyped:
+            self.type_pat(p.pat, sc, self.ty_of_type(p.type), res)
+        elif c is PTuple:
+            items = p.items or []
+            if any(q.__class__ is PRest for _, q in items):
+                return
+            comps = None
+            if ty.__class__ is tuple and ty[0] == "tup" and len(ty[1]) == len(items) \
+                    and not any(x.__class__ is tuple and x and x[0] == "spread" for x in ty[1]):
+                comps = list(ty[1])
+            elif ty.__class__ is tuple and ty[0] == "named" and ty[1] in self.tuples and not self.tuples[ty[1]].tparams:
+                fs = self.tuples[ty[1]].fields or []
+                if len(fs) == len(items) and not any(getattr(x, "name", None) in (None, "...") for x in fs):
+                    comps = [self.ty_of_type(x.type) for x in fs]
+            for (_, q), et in zip(items, comps or []):
+                self.type_pat(q, sc, et, res)
+        elif c is PCon and ty.__class__ is tuple:
+            fields = self.con_payload(p, ty)
+            for i, (lab, q) in enumerate(p.args or []):
+                if lab:
+                    ft = fields.get(lab) if fields else None
+                else:
+                    ft = list(fields.values())[i] if fields and i < len(fields) else None
+                self.type_pat(q, sc, ft, res)
+
+    def con_payload(self, p, ty):
+        """The payload field types (name -> type) of the constructor pattern `p` against a value of type `ty`, or None when unknown."""
+        case = p.path[-1] if p.path else None
+        if ty[0] == "app" and ty[1] == "Result" and len(ty[2]) == 2 and case in ("Ok", "Err"):
+            return {"_": ty[2][0] if case == "Ok" else ty[2][1]}
+        ename = ty[1] if ty[0] in ("named", "app") else None
+        ed = self.enums.get(ename) if ename else None
+        if ed is None or ename in self.tuples or ename in self.aliases:
+            return None
+        cs = next((x for x in ed.cases if x.name == case), None)
+        if cs is None:
+            return None
+        flds = [x for x in cs.fields or [] if getattr(x, "name", None) not in (None, "...")]
+        if len(flds) != len(cs.fields or []):
+            return None
+        tps = list(getattr(ed, "tparams", None) or [])
+        if ty[0] == "app":
+            if len(tps) != len(ty[2]) or any(tp.holes for tp in tps):
+                return None
+            keep = {tp.name for tp in tps}
+            bind = {tp.name: a for tp, a in zip(tps, ty[2])}
+            out = {}
+            for x in flds:
+                ft = self.ty_of_type(x.type, 0, keep)
+                out[x.name] = tys.subst(ft, bind) if ft is not None else None
+            return out
+        if tps:
+            return None
+        return {x.name: self.ty_of_type(x.type) for x in flds}
 
     # ------------------------------------------------------------ walking
     def ev(self, n, sc):
@@ -1737,6 +1798,7 @@ class Checker:
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
+        self.note_expected(n.value, ann)
         self.settle_mixed(n.value, ann)
         if n.ann is not None:
             self.check_type_arity(n.ann, n.line)
@@ -2008,15 +2070,20 @@ class Checker:
             st = self.t(n.scrut, sc)
         base = dict(self.moved)
         arm_ts = []
+        tail = id(n) in self.tail_whens and self.fn_ret is not None
         for a in n.arms:
             inner = Sc(sc)
             self.moved = dict(base)
             for p in a.pats or []:
-                self.bind_pat(p, inner)
+                self.bind_pat(p, inner, st if n.scrut is not None else None)
                 self.check_pat_names(p, inner)
             if a.guard is not None:
                 self.ev(a.guard, inner)
-            arm_ts.append(self.ev(a.body, inner)[0])
+            at, ac = self.ev(a.body, inner)
+            arm_ts.append(at)
+            if tail and at is not None and not self.has_unsettled(at) and not (a.body.__class__ is WhenE or a.body.__class__ is IfE):
+                self.settle_mixed(a.body, self.fn_ret)
+                self.compat(self.fn_ret, at, ac, getattr(a.body, "line", 0) or n.line)       # an arm's value is the function's result
         self.moved = base
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
@@ -3373,6 +3440,9 @@ class Checker:
         elif n.body is not None:
             if n.guard is not None:
                 self.ev(n.guard, inner)
+            self.tail_whens = self.when_tails(n.body)
+            for te in self.value_tails(n.body):
+                self.note_expected(te, self.fn_ret)
             t, c = self.ev(n.body, inner)
             self.check_tail(n.body, inner)
             if "tailrec" in (n.flags or ()):
@@ -3381,6 +3451,62 @@ class Checker:
         self.any_params = saved_any
         self.tp_decl = saved_decl
         return None, None
+
+    def note_expected(self, e, ty):
+        """`xs |> sum()` where the result is wanted as `Float`: if the element type was not seen, an empty stream still sums to
+        that type's zero."""
+        from .values import SUM_ELEM
+        t = self.base(ty) if ty is not None else None
+        name = t if t.__class__ is str and t in ("Int", "Float", "Decimal", "String") else \
+            (t[1] if t.__class__ is tuple and t[0] == "named" and (t[1] in self.tuples or t[1] in self.enums) else None)
+        if name is None:
+            return
+        if e.__class__ is Pipe:
+            e = e.stage
+        if e.__class__ is Call and (e.fn.__class__ is Name or e.fn.__class__ is Field) and e.fn.name in ("sum", "product") \
+                and id(e) not in SUM_ELEM:
+            SUM_ELEM[id(e)] = name
+
+    def value_tails(self, e, out=None):
+        """The expressions whose value is the value of `e`: the last expression of a block, every branch of an `if` or `when`."""
+        out = [] if out is None else out
+        c = e.__class__
+        if c is ExprStmt:
+            self.value_tails(e.e, out)
+        elif c is Block:
+            s = e.stmts or []
+            if s and s[-1].__class__ is ExprStmt:
+                self.value_tails(s[-1].e, out)
+        elif c is IfE and e.else_ is not None:
+            for _, b in e.branches:
+                self.value_tails(b, out)
+            self.value_tails(e.else_, out)
+        elif c is WhenE:
+            for a in e.arms or []:
+                self.value_tails(a.body, out)
+        else:
+            out.append(e)
+        return out
+
+    def when_tails(self, e, out=None):
+        """The ids of the `when` expressions in tail position of a function body: their arms' values are the function's result."""
+        out = set() if out is None else out
+        c = e.__class__
+        if c is ExprStmt:
+            self.when_tails(e.e, out)
+        elif c is Block:
+            s = e.stmts or []
+            if s and s[-1].__class__ is ExprStmt:
+                self.when_tails(s[-1].e, out)
+        elif c is IfE and e.else_ is not None:
+            for _, b in e.branches:
+                self.when_tails(b, out)
+            self.when_tails(e.else_, out)
+        elif c is WhenE and e.scrut is not None:
+            out.add(id(e))
+            for a in e.arms or []:
+                self.when_tails(a.body, out)
+        return out
 
     def check_tailrec(self, n):
         """`tailrec fn`: every call to the function itself must be in tail position."""
@@ -3453,11 +3579,6 @@ class Checker:
             for _, b in e.branches:
                 out += self.tails(b)
             return out + self.tails(e.else_)
-        if c is WhenE:
-            out = []                                  # only a literal arm value: a name could be bound by the arm's pattern
-            for a in e.arms or []:
-                out += [t for t in self.tails(a.body) if t.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit)]
-            return out
         if c in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e):
             return [e]
         return []

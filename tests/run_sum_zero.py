@@ -31,6 +31,9 @@ CASES = [
  ("empty Money sum is Money's zero", MONEY + "fn t(xs: List[Money]) Money:\n  xs.sum()\nprintln(t(List()))\n", "Money(cents: 0)"),
  ("empty Money product is Money's one", MONEY + "fn t(xs: List[Money]) Money:\n  xs |> product()\nprintln(t(List()))\n", "Money(cents: 1)"),
  ("an empty list written with its type", MONEY + "println(List[Money]() |> sum())\nprintln(List[Float]() |> sum())\n", "Money(cents: 0)\n0.0"),
+ ("a Dict mapped to values sums to 0.0", "fn t(d: Dict[String, Float]) Float:\n  d |> map((k, v): v) |> sum()\nprintln(t(Dict()))\n", "0.0"),
+ ("a generic function mapped over an empty list", "fn ident[T](x: T) T:\n  x\nfn u(xs: List[Float]) Float:\n  xs |> map(ident) |> product()\nprintln(u(List()))\n", "1.0"),
+ ("a range filtered to nothing", "fn t(n: Int) Float:\n  (1..n) |> filter(_ > n) |> map(_ * 1.5) |> sum()\nprintln(t(3))\n", "0.0"),
  ("a full list still adds", MONEY + "println(List(Money(cents: 1), Money(cents: 2)) |> sum())\nprintln(List(1.5, 2.0) |> sum())\n", "Money(cents: 3)\n3.5"),
 ]
 fails = []
