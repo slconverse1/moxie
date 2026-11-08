@@ -1924,6 +1924,11 @@ class Checker:
             self.check_marr(n)
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is IntLit:
             self.check_fit(n.ann.path[-1], n.value.v, n.line)
+        elif n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ in (Binary, Unary):
+            cv = self.const_int(n.value)                  # `x: Int8 = 100 + 100`: the constant is worked out and must fit
+            r = self.FIT.get(n.ann.path[-1])
+            if cv is not None and r and not r[0] <= cv <= r[1]:
+                self.err(n.line, f"the constant {cv} does not fit `{n.ann.path[-1]}`")
         res = self.is_resource_expr(n.value)
         if n.value.__class__ is Name:
             v = sc.find(n.value.name)
