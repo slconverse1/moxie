@@ -16,6 +16,8 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('reduce an enum into an empty Set', 'enum Color:\n  Red\ns = List(Color.Red) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nprintln(1)\n'),
+ ('reduce an enum key into an empty Dict', 'enum Color:\n  Red\nd = List(Color.Red) |> to_stream() |> reduce(Dict(), (acc, c): put(acc, c, 1))\nprintln(1)\n'),
  ('put an enum key into an empty Dict', 'enum Color:\n  Red\nd = Dict()\nd2 = put(d, Color.Red, 1)\nprintln(1)\n'),
  ('put an enum into an empty Set', 'enum Color:\n  Red\ns = Set()\ns2 = put(s, Color.Red)\nprintln(1)\n'),
  ('Set of an enum variable', 'enum Color:\n  Red\nc = Color.Red\ns = Set(c)\nprintln(1)\n'),
@@ -159,6 +161,7 @@ BAD = [
 ]
 
 GOOD = [
+ 'enum Color deriving eq, hash:\n  Red\ns = List(Color.Red) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nxs = List(1, 2) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nprintln(1)\n',
  'enum Color deriving eq, hash:\n  Red\ns = Set()\ns2 = put(s, Color.Red)\nd = Dict()\nd2 = put(d, Color.Red, 1)\nxs = put(List(Color.Red), Color.Red)\nprintln(1)\n',
  'fn f[T: Hashable](x: T) Int:\n  d: Dict[T, Int] = Dict()\n  1\nprintln(f(1))\n',
  'enum Color deriving eq, ord, hash:\n  Red\n  Green\ns = Set(Color.Red)\nd: Dict[Color, Int] = Dict()\nxs = List(Color.Green, Color.Red) |> to_stream() |> sort() |> collect()\nprintln(len(s) + len(xs))\nprintln(contains(xs, Color.Red))\n',

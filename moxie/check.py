@@ -2570,6 +2570,10 @@ class Checker:
                 at = None
             if at.__class__ is tuple and at[0] == "app" and at[1] == "Stream":
                 self.err(n.line, "a Stream has no text form: `collect()` it first")
+        if f.__class__ is Name and f.name in ("Set", "Dict") and not n.args and n.trailing is None and (r is None or r[0] is None) \
+                and f.name not in self.fns and f.name not in self.tuples and f.name not in self.enums and f.name not in self.aliases \
+                and sc.find(f.name) is None and not extra:
+            r = (("app", f.name, (None,) * (1 if f.name == "Set" else 2)), None)         # an empty collection: its kind is known, its elements are not yet
         if f.__class__ is Name and f.name in self.BOUND_FNS and f.name not in self.fns and sc.find(f.name) is None:
             self.check_value_bound(n, f, sc, pipe0)
         if f.__class__ is Name and f.name in ("Set", "put") and f.name not in self.fns and f.name not in self.tuples and sc.find(f.name) is None and n.args:
