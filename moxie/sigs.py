@@ -203,6 +203,11 @@ fn map_all[A, B, C, R, X](rs: (Result[A, X], Result[B, X], Result[C, X]), f: (A,
 fn map_all[A, B, C, D, R, X](rs: (Result[A, X], Result[B, X], Result[C, X], Result[D, X]), f: (A, B, C, D) -> R) Result[R, List[X]]: 0
 fn map_all[A, B, C, D, E, R, X](rs: (Result[A, X], Result[B, X], Result[C, X], Result[D, X], Result[E, X]), f: (A, B, C, D, E) -> R) Result[R, List[X]]: 0
 fn map_all[A, B, C, D, E, F, R, X](rs: (Result[A, X], Result[B, X], Result[C, X], Result[D, X], Result[E, X], Result[F, X]), f: (A, B, C, D, E, F) -> R) Result[R, List[X]]: 0
+fn par_map_all[A, B, R, X](f: (A, B) -> R, c1: () -> Result[A, X], c2: () -> Result[B, X]) Result[R, List[X]]: 0
+fn par_map_all[A, B, C, R, X](f: (A, B, C) -> R, c1: () -> Result[A, X], c2: () -> Result[B, X], c3: () -> Result[C, X]) Result[R, List[X]]: 0
+fn par_map_all[A, B, C, D, R, X](f: (A, B, C, D) -> R, c1: () -> Result[A, X], c2: () -> Result[B, X], c3: () -> Result[C, X], c4: () -> Result[D, X]) Result[R, List[X]]: 0
+fn par_map_all[A, B, C, D, E, R, X](f: (A, B, C, D, E) -> R, c1: () -> Result[A, X], c2: () -> Result[B, X], c3: () -> Result[C, X], c4: () -> Result[D, X], c5: () -> Result[E, X]) Result[R, List[X]]: 0
+fn par_map_all[A, B, C, D, E, F, R, X](f: (A, B, C, D, E, F) -> R, c1: () -> Result[A, X], c2: () -> Result[B, X], c3: () -> Result[C, X], c4: () -> Result[D, X], c5: () -> Result[E, X], c6: () -> Result[F, X]) Result[R, List[X]]: 0
 fn collect_errors[T, E](rs: Seq[Result[T, E]]) Result[List[T], List[E]]: 0
 fn validate[T, U, E](f: (T) -> Result[U, E], xs: Seq[T]) Result[List[U], List[E]]: 0
 fn recover[T, E](r: Result[T, E], f: (E) -> T) Result[T, E]: 0

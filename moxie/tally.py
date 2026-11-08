@@ -32,7 +32,7 @@ LOOPS = (ForE, WhileE, CompE, ForM)
 
 
 class LibFibers:
-    """The fibers that library calls start (race, with_timeout, par_map, par_traverse): one entry per call site, as if each
+    """The fibers that library calls start (race, with_timeout, par_map, par_traverse, par_map_all): one entry per call site, as if each
     site were a fiber function with that many slots."""
     label = ""
 
@@ -46,7 +46,7 @@ class LibFibers:
         return self.lim.get(name)
 
 
-LIB_FIBERS = {"race": 2, "with_timeout": 1, "par_map": "limit", "par_traverse": "limit"}
+LIB_FIBERS = {"race": 2, "with_timeout": 1, "par_map": "limit", "par_traverse": "limit", "par_map_all": "limit"}
 
 
 CLOSABLE = ("Io file", "Io socket", "Listener", "Connection")

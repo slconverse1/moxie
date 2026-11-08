@@ -1535,9 +1535,9 @@ class Checker:
             body = body.e
         bt = self.ev(body, inner)[0]
         self.fn_ret, self.loop_depth, self.exit_ctx = saved
-        if body.__class__ is Block or n.partial or n.fiber:
+        if body.__class__ is Block or n.partial:
             bt = None                     # a longer block's value is not worked out here
-        return ("fn", tuple(ptypes), self.base(bt)), None
+        return ("fn", tuple(ptypes) or ("Unit",), self.base(bt)), None       # `() -> T` is written with one Unit parameter, as in sigs.py
 
     @staticmethod
     def base_free(t):
@@ -2504,7 +2504,7 @@ class Checker:
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
     RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal", "Duration", "Error"}        # built-in types that are exactly themselves
-    OPTIONS = {"retry": {"when": None}, "par_map": {"limit": "Int"}, "par_traverse": {"limit": "Int"}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
+    OPTIONS = {"retry": {"when": None}, "par_map": {"limit": "Int"}, "par_traverse": {"limit": "Int"}, "par_map_all": {"limit": "Int"}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
                "run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
                "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
 
@@ -2513,7 +2513,7 @@ class Checker:
         label is one the function takes and its value fits.  Calls with any other labels are returned unchanged."""
         opts = self.OPTIONS.get(fn.name) if fn.__class__ is Name else None
         labeled = [a for a in args if getattr(a, "label", None)]
-        if fn.__class__ is Name and fn.name in ("par_map", "par_traverse") and not extra and sc.find(fn.name) is None \
+        if fn.__class__ is Name and fn.name in ("par_map", "par_traverse", "par_map_all") and not extra and sc.find(fn.name) is None \
                 and fn.name not in self.fns and fn.name not in self.tuples and all(hasattr(a, "expr") for a in args):
             lim = next((a for a in labeled if a.label == "limit"), None)
             v = self.const_int(lim.expr) if lim is not None else None

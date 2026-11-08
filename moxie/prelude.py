@@ -2594,6 +2594,20 @@ def b_par_traverse(I, a, kw, ta):
     return Ok(ListV([r.vals[0] for r in results]))
 
 
+@bi("par_map_all", "first", True)
+def b_par_map_all(I, a, kw, ta):
+    """par_map_all(f, c1, ..., cN, limit: n): each ci is a function with no parameters that gives a Result; they run in fibers, at most n
+    at once, and the answer is map_all's: Ok(f(values)) or the Err of every error, in argument order (no check is cut short)."""
+    limit = _par_limit(kw, "par_map_all")
+    checks = list(a[1:])
+    call = Builtin(lambda I2, a2, kw2, ta2: I2.apply(a2[0], []), "call", gen=True)
+    results = yield from _par_run(I, call, checks, limit, False)
+    errs = [r.vals[0] for r in results if is_err(r)]
+    if errs:
+        return Err(ListV(errs))
+    return Ok((yield from I.apply(a[0], [r.vals[0] for r in results])))
+
+
 @bi("zip_with", "last", True)
 def b_zip_with(I, a, kw, ta):
     f = a[0]

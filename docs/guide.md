@@ -3110,7 +3110,7 @@ println(create("ann", "ann@x.org"))
 println(create("", "nope"))
 ```
 
-Output: `Ok(User(name: "ann", email: "ann@x.org"))`, then `Err(List("name is empty", "bad email: nope"))`. The results can also come as a tuple, which suits a pipeline: `(check_name(name), check_email(email)) |> map_all(User)` means `map_all((check_name(name), check_email(email)), User)`. A function with the wrong number of parameters is a compile error. Every argument must have the same error type; wrap one with `map_err` to line them up. The checks run one after another; use `par_traverse` when each is slow and the items have one type.
+Output: `Ok(User(name: "ann", email: "ann@x.org"))`, then `Err(List("name is empty", "bad email: nope"))`. The results can also come as a tuple, which suits a pipeline: `(check_name(name), check_email(email)) |> map_all(User)` means `map_all((check_name(name), check_email(email)), User)`. A function with the wrong number of parameters is a compile error. Every argument must have the same error type; wrap one with `map_err` to line them up. The checks run one after another. When each is slow, `par_map_all(f, c1, c2, ..., limit: n)` takes the same function and, in place of the results, a zero-parameter function for each check, such as `fn (): check_name(name)`; it runs them in parallel, at most `n` at a time, and gives the same answer, including every error in argument order. Use `par_traverse` when the items have one type.
 
 **24f. Functor, Applicative, and Monad**
 
