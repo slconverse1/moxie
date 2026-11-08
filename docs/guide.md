@@ -1819,7 +1819,7 @@ print("$total $count_big ${lowest.get_or(0)} ${s |> any(_ == 8)} ")
 println("${s |> all(_ > 0)}")
 ```
 
-Output: `17 2 1 true true`. (Each terminal reruns the recipe, so one `s` feeding five terminals is a lint warning; here it is deliberate.) `scan` emits a running value after each element, and `enumerate` pairs each element with its index:
+Output: `17 2 1 true true`. `avg()` gives the mean of numbers as a `Result[Float, Error]` (MISSING when the stream is empty), and `sum()` and `product()` use `+` and `*`, so `sum()` also joins strings and adds your own types that implement `Addable`; the sum of an empty stream is `0`. (Each terminal reruns the recipe, so one `s` feeding five terminals is a lint warning; here it is deliberate.) `scan` emits a running value after each element, and `enumerate` pairs each element with its index:
 
 ```
 running: List[Int][4] = List(1, 2, 3, 4)

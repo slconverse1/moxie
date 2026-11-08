@@ -1950,7 +1950,7 @@ def b_sum(I, a, kw, ta):
         return 0
     acc = items[0]
     for x in items[1:]:
-        acc = arith("+", acc, x)
+        acc = yield from I.binop("+", acc, x)          # numbers, strings, and a type with its own `+`
     return acc
 
 
@@ -1961,7 +1961,7 @@ def b_product(I, a, kw, ta):
         return 1
     acc = items[0]
     for x in items[1:]:
-        acc = arith("*", acc, x)
+        acc = yield from I.binop("*", acc, x)
     return acc
 
 
@@ -1974,7 +1974,9 @@ def b_count(I, a, kw, ta):
 @bi("avg", "first", True)
 def b_avg(I, a, kw, ta):
     items = yield from drain(I, a[0])
-    return sum(items) / len(items)
+    if not items:
+        return err_reserved("MISSING", "empty")
+    return Ok(sum(items) / len(items))
 
 
 @bi("any", "last", True)

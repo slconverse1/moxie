@@ -22,6 +22,9 @@ fn collect[T](xs: Seq[T]) List[T]: 0
 fn sum[T](xs: Seq[T]) T: 0
 fn product[T](xs: Seq[T]) T: 0
 fn count[T](xs: Seq[T]) Int: 0
+fn avg(xs: Seq[Int]) Result[Float, Error]: 0
+fn avg(xs: Seq[Float]) Result[Float, Error]: 0
+fn avg(xs: Seq[Decimal]) Result[Float, Error]: 0
 fn any[T](f: (T) -> Bool, xs: Seq[T]) Bool: 0
 fn all[T](f: (T) -> Bool, xs: Seq[T]) Bool: 0
 fn find[T, E](f: (T) -> Bool, xs: Seq[T]) Result[T, E]: 0
