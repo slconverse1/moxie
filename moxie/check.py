@@ -2737,6 +2737,10 @@ class Checker:
         lt = self.base(lt)
         m_first = tys.match(tys_[0], lt, {})
         m_last = tys.match(tys_[-1], lt, {})
+        if m_first and m_last and len(ps) >= 2:
+            self.err(line, f"`{fd.name}` is ambiguous here: the piped value fits both the first and the last parameter. "
+                     f"Write `&` where it goes, as in `{fd.name}(&, ...)` or `{fd.name}(..., &)`")
+            return None
         if not m_first and m_last:
             rest, slot = ps[:-1], len(ps) - 1
         else:
