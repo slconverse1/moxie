@@ -2044,8 +2044,11 @@ class Checker:
                 if n.op == "=" and sc.loopbody and tgt.name not in sc.vars and not isinstance(n.targets, list):
                     ov = sc.parent.find(tgt.name) if sc.parent is not None else None      # a name that was bound when the loop began
                     nt = ann or t
-                    if ov is not None and ov.depth < self.loop_depth and ov.ty in self.SCAL and nt in self.SCAL and ov.ty != nt \
-                            and ov.ty != "Unit" and nt != "Unit":
+                    shape = lambda x: x.__class__ is tuple and x[0] in ("named", "app") and not self.has_unsettled(x)
+                    if ov is not None and ov.depth < self.loop_depth and ov.ty != "Unit" and nt != "Unit" and (
+                            (ov.ty in self.SCAL and nt in self.SCAL and ov.ty != nt)
+                            or (shape(ov.ty) and shape(nt) and ov.ty[1] != nt[1])        # another tuple, enum, or kind of collection
+                            or (shape(ov.ty) and nt in self.SCAL) or (ov.ty in self.SCAL and shape(nt))):
                         self.err(n.line, f"`{tgt.name}` is {'an' if str(tshow(ov.ty))[0] in 'AEIOU' else 'a'} `{tshow(ov.ty)}` when the loop begins, so the loop body can't make it {'an' if str(tshow(nt))[0] in 'AEIOU' else 'a'} `{tshow(nt)}`: a name that enters a loop keeps its type")
         if n.op != "=":
             return None, None
@@ -2425,6 +2428,11 @@ class Checker:
             if a.guard is not None:
                 continue
             for p in a.pats or []:
+                if p.__class__ is PCon and all(q.__class__ in (PWild, PBind) for _, q in p.args or []):
+                    key = ("case", tuple(p.path), len(p.args or []))          # `Circle(r)` twice: the second can never match
+                    if key in seen:
+                        self.diags.append(Diag(line, f"this pattern repeats the one at line {seen[key]}, so it can never match", "warning"))
+                    seen.setdefault(key, line)
                 if p.__class__ in (PWild, PBind) and n.scrut is not None:
                     full = line
                 elif p.__class__ is PLit and p.expr.__class__ in (StrLit, IntLit, CharLit, BoolLit) and not getattr(p.expr, "parts", None) \

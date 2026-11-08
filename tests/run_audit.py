@@ -16,6 +16,8 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('a List changes to a Set in a loop body', 'xs = List(1, 2)\nfor i in 1..=2:\n  xs = Set(1)\nprintln(1)\n'),
+ ('a tuple changes to another tuple in a loop body', 'tuple A:\n  a: Int\ntuple B:\n  b: Int\nv = A(1)\nfor i in 1..=2:\n  v = B(2)\nprintln(1)\n'),
  ('run on a function not declared fiber', 'fn w() Unit:\n  println(1)\nrun w()\n'),
  ('a local changes type in a loop body', 'counter = 1\nfor i in 1..=2:\n  counter = "a"\nprintln(counter)\n'),
  ('a parameter changes type in a loop body', 'fn f(n: Int) Int:\n  for i in 1..=2:\n    n = "a"\n  n\nprintln(f(1))\n'),

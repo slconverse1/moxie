@@ -256,6 +256,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         if pm.restricted:
             for line, name, want in self.unmet_needs(pm, prog):
                 diags.append(Diag(line, f"'{name}' needs {want}, which is not granted ({pm.source})"))
+        from .sqlcheck import sql_diags
+        for line, msg in sql_diags(prog, getattr(self, "manifest", None)):
+            diags.append(Diag(line, msg))
         diags.extend(self.package_syntax_diags(prog, Diag))
         if self.pkg_ceilings:
             diags.extend(self.package_diags(prog, Diag))

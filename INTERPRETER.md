@@ -19,6 +19,7 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 * Fibers, channels, timers, futures, atoms, `select:`, `daemon:` and `run` on a generator-based cooperative scheduler
   with a virtual clock (`sleep` and timers advance instantly and deterministically).
 * `sql(conn):` and `transaction(conn)(tx):` on sqlite3. `Connection.open(path)` and `Connection.memory()` create connections.
+* The `[database]` manifest table (`schema`, `driver`) names a `CREATE TABLE` schema file; `sql` blocks are checked against it: the accepted SQL subset, and that every table and column exists. Column types and row types are not worked out yet. Tests: `tests/run_sqlcheck.py`.
 * Core static checks (see `moxie/check.py`): mismatched types, undefined names, argument counts, `ref` mismatches,
   non-exhaustive `when` (enums, Result, Bool, bounded ranges, literals without `_`), use-after-move and moves inside
   loops, resource copies, and bounded-integer misuse. It also checks interface bounds at call sites (`best[T: Ordered]`
