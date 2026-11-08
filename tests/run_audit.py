@@ -16,6 +16,12 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('tuple as a Dict key without hash', 'tuple P:\n  a: Int\nd: Dict[P, Int] = Dict()\nprintln(1)\n'),
+ ('tuple in a Set without hash', 'tuple P:\n  a: Int\ns = Set(P(a: 1))\nprintln(len(s))\n'),
+ ('sort an enum without ord', 'enum Color:\n  Red\n  Green\nxs = List(Color.Green, Color.Red) |> to_stream() |> sort() |> collect()\nprintln(len(xs))\n'),
+ ('max of tuples without ord', 'tuple P deriving eq:\n  a: Int\nprintln(max(P(a: 1), P(a: 2)))\n'),
+ ('contains on enums without eq', 'enum Color:\n  Red\n  Green\nprintln(contains(List(Color.Red), Color.Green))\n'),
+ ('distinct on enums without eq', 'enum Color:\n  Red\n  Green\nxs = List(Color.Red, Color.Red) |> to_stream() |> distinct() |> collect()\nprintln(len(xs))\n'),
  ('== on an enum without eq', 'enum Color:\n  Red\n  Green\nprintln(Color.Red == Color.Green)\n'),
  ('== on a payload enum without eq', 'enum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\nprintln(Shape.Circle(1) == Shape.Circle(1))\n'),
  ('< on an enum without ord', 'enum Color:\n  Red\n  Green\nprintln(Color.Red < Color.Green)\n'),
@@ -146,6 +152,8 @@ BAD = [
 ]
 
 GOOD = [
+ 'enum Color deriving eq, ord, hash:\n  Red\n  Green\ns = Set(Color.Red)\nd: Dict[Color, Int] = Dict()\nxs = List(Color.Green, Color.Red) |> to_stream() |> sort() |> collect()\nprintln(len(s) + len(xs))\nprintln(contains(xs, Color.Red))\n',
+ 'tuple P deriving eq, hash, ord:\n  a: Int\ns = Set(P(a: 1))\nd: Dict[P, Int] = Dict()\nprintln(len(s))\nprintln(max(P(a: 1), P(a: 2)))\n',
  'enum Color deriving eq, ord:\n  Red\n  Green\nprintln(Color.Red == Color.Green)\nprintln(Color.Red < Color.Green)\n',
  'tuple P deriving eq, ord:\n  a: Int\nprintln(P(a: 1) == P(a: 1))\nprintln(P(a: 1) < P(a: 2))\n',
  'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(1, b: 2))\nprintln(f(b: 2, a: 1))\nfn g(ref a: Int, ref b: Int) Unit:\n  a = 1\nn = 1\nm = 2\ng(ref n, ref m)\n',

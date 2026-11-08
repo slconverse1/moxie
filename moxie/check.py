@@ -2566,6 +2566,15 @@ class Checker:
                 at = None
             if at.__class__ is tuple and at[0] == "app" and at[1] == "Stream":
                 self.err(n.line, "a Stream has no text form: `collect()` it first")
+        if f.__class__ is Name and f.name in self.BOUND_FNS and f.name not in self.fns and sc.find(f.name) is None:
+            self.check_value_bound(n, f, sc, pipe0)
+        if f.__class__ is Name and f.name == "Set" and "Set" not in self.fns and "Set" not in self.tuples and n.args:
+            for a in n.args:
+                e = getattr(a, "expr", None)
+                et = self.node_ty.get(id(e)) if e.__class__ in (Call, Pipe) else None
+                if et.__class__ is tuple and et[0] == "named" and et[1] in self.tuples:
+                    self.need_hash(et[1], n.line, "a Set element")
+                    break
         if f.__class__ is Name and f.name == "close" and len(n.args or []) == 1 and n.args[0].expr.__class__ is Name \
                 and n.args[0].expr.name in ("stdin", "stdout", "stderr") and sc.find(n.args[0].expr.name) is None and "close" not in self.fns:
             self.err(n.line, f"`{n.args[0].expr.name}` belongs to the runtime and cannot be closed")
@@ -3457,6 +3466,37 @@ class Checker:
             return False                                   # a type parameter of an enclosing declaration (`T`, `M`, `E`, `S`)
         return True
 
+    def need_hash(self, name, line, what):
+        if self.implements(("named", name), "Hashable") is False:
+            self.err(line, f"`{name}` is used as {what}, so it needs `deriving eq, hash`")
+
+    BOUND_FNS = {"sort": ("Ordered", "ord"), "max": ("Ordered", "ord"), "min": ("Ordered", "ord"),
+                 "contains": ("Equatable", "eq"), "distinct": ("Equatable", "eq")}
+
+    def check_value_bound(self, n, f, sc, pipe0):
+        """`sort`, `max`, `min` need `ord`, and `contains`, `distinct` need `eq`, on a declared tuple or enum (the same rule as `<` and `==`)."""
+        need = self.BOUND_FNS[f.name]
+        cands = [pipe0] if pipe0 is not None else []
+        for a in n.args or []:
+            e = getattr(a, "expr", None)
+            if e.__class__ is Name:
+                v = sc.find(e.name)
+                cands.append(v.ty if v is not None else None)
+            elif e.__class__ in (Call, Pipe):
+                cands.append(self.node_ty.get(id(e)))
+            elif e.__class__ is Field:
+                k = len(self.diags)
+                cands.append(self.ev(e, sc)[0])
+                del self.diags[k:]
+        for t in cands:
+            t = self.base(t) if t is not None else None
+            if t.__class__ is tuple and t[0] == "app" and t[1] in ("Stream", "List", "Array", "Set", "Ring") and len(t[2]) == 1:
+                t = t[2][0]
+            if t.__class__ is tuple and t[0] == "named" and (t[1] in self.tuples or t[1] in self.enums) \
+                    and self.implements(t, need[0]) is False:
+                self.err(n.line, f"`{f.name}` on `{t[1]}` needs `{need[1]}`: write `deriving {need[1]}` on its declaration (or an `impl {need[0]}`)")
+                return
+
     def check_type_arity(self, t, line, depth=0):
         """A declared generic type is written with as many type arguments as it has parameters: `Pair[Int]` for a two-parameter `Pair` is an error."""
         if t is None or depth > 8:
@@ -3487,6 +3527,10 @@ class Checker:
         for g in t.groups or []:
             for x in g if isinstance(g, list) else [g]:
                 self.check_type_arity(x, line, depth + 1)
+        if t.path in (["Dict"], ["Set"]) and t.path[0] not in self.tuples and t.path[0] not in self.enums and t.groups:
+            k = t.groups[0][0] if isinstance(t.groups[0], list) and t.groups[0] else None
+            if k.__class__ is TName and len(k.path) == 1 and k.path[0] in self.tuples and not k.groups:
+                self.need_hash(k.path[0], line, "a Dict key" if t.path == ["Dict"] else "a Set element")
         if t.path == ["Seq"] and "Seq" not in self.tuples and "Seq" not in self.enums and "Seq" not in self.aliases \
                 and "Seq" not in self.iface_decls:
             self.err(line, "`Seq` is not a type you can write: name the collection (`List[T]`, `Array[T]`, `Set[T]`, `Stream[T]`)")
