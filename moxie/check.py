@@ -1872,9 +1872,13 @@ class Checker:
         self.loop_depth, self.exit_ctx = saved
 
     def e_ForE(self, n, sc):
-        self.ev(n.iter, sc)
+        it = self.ev(n.iter, sc)[0]
         inner = Sc(sc)
-        self.bind_pat(n.pat, inner)
+        el = None
+        if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream") and len(it[2]) == 1 \
+                and it[2][0] is not None and not self.has_unsettled(it[2][0]):
+            el = it[2][0]                                   # the loop variable has the collection's element type
+        self.bind_pat(n.pat, inner, el)
         self.loop([n.body], inner)
         self.ev(n.else_, sc)
         return None, None
@@ -2249,11 +2253,43 @@ class Checker:
             if ft is not None and rt is not None and len(ft[1]) == len(n.args or []) + 1 and ft[1][0] is not None \
                     and (rt.__class__ is str or rt[0] in ("app", "tup")):
                 return ft[2], None                         # `s.size()` is `size(s)`: the result of a plain declared function
+        if (r is None or r[0] is None) and n.trailing is None and len(n.args or []) == 1 and not extra:
+            it = self.index_type(f, n.args[0], sc)
+            if it is not None:
+                return it, None                        # `xs(0)` is an element of the List, Array, or Ring `xs`
         if r is None or r[0] is None:
             et = self.enum_case_type(f, sc, n)
             if et is not None:
                 return et, None                        # `Shape.Circle(1)` and `Circle(1)` are a Shape
         return r
+
+    @staticmethod
+    def pure_path(e):
+        """A name, or fields of fields of a name: evaluating it again has no effect."""
+        while e.__class__ is Field:
+            e = e.obj
+        return e.__class__ is Name
+
+    def index_type(self, f, arg, sc):
+        """The element type of `xs(i)` when `xs` is a List, Array, or Ring of a known element type and `i` is an Int; else None."""
+        if not hasattr(arg, "expr") or getattr(arg, "label", None) or getattr(arg, "mod", None):
+            return None
+        if f.__class__ is Name:
+            v = sc.find(f.name)
+            ct = v.ty if v is not None else None
+        elif f.__class__ is Field and f.name not in self.fns and f.name not in self.load_sigs() and self.pure_path(f):
+            k = len(self.diags)
+            ct = self.ev(f, sc)[0]                       # `h.outs(0)`: a field holding a collection
+            del self.diags[k:]
+        else:
+            return None
+        if not (ct.__class__ is tuple and ct[0] == "app" and ct[1] in ("List", "Array", "Ring") and len(ct[2]) == 1):
+            return None
+        at = self.quiet(arg.expr, sc)[0]
+        if at != "Int":
+            return None
+        el = ct[2][0]
+        return el if el is not None and not self.has_unsettled(el) else None
 
     def enum_case_type(self, f, sc, call=None):
         """The type of a call of an enum case (`Shape.Circle(1)`, or `Circle(1)` when the name is unambiguous) for a plain enum;
