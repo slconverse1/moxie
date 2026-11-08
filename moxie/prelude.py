@@ -1771,7 +1771,16 @@ def _map_dispatch(I, a, kw, ta):
             return _res_map(I, f, s)
     if isinstance(s, (ListV, ArrayV)) and I.find_method_for(s, "map"):
         return I.apply_method(I.find_method_for(s, "map"), s, [f])
+    if isinstance(s, (ListV, ArrayV)):
+        return _seq_map(I, f, s)                   # Functor for List[_][N] and Array[_][N]: the same container comes back
     return Done(StreamV(lambda: MapIter(I, src_of(I, s), f)))
+
+
+def _seq_map(I, f, s):
+    out = []
+    for x in s.items:
+        out.append((yield from I.apply(f, [x])))
+    return type(s)(out, s.cap)
 
 
 def _res_map(I, f, r):

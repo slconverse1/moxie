@@ -7,7 +7,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PRE = 'xs = List(3, 1, 2)\nws = List("b", "a")\nd: Dict[String, Int] = Dict("a": 1)\nr: Result[Int, String] = Ok(4)\nat = Atom[Int](0)\n'
 SAMPLES = [
  ("List[Int]", "xs |> map((x): x + 1) |> collect()"),
- ("Stream[Int]", "map((x): x + 1, xs)"),
+ ("List[Int]", "map((x): x + 1, xs)"),
+ ("Stream[Int]", "map((x): x + 1, to_stream(xs))"),
  ("Result[Int, String]", "map((x): x + 1, r)"),
  ("List[Int]", "xs |> filter((x): x > 1) |> collect()"),
  ("List[Int]", "xs |> take(2) |> collect()"),

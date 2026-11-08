@@ -1268,7 +1268,7 @@ class Checker:
         if m is not None:
             r = m(n, sc)
             if n.__class__ is Pipe or n.__class__ is Call:
-                self.node_ty[id(n)] = None if (n.__class__ is Call and n.fn.__class__ is Field) else (r[0] if r else None)
+                self.node_ty[id(n)] = r[0] if r else None
             return r if r is not None else (None, None)
         for f in n._fields:
             self.ev(getattr(n, f), sc)
@@ -2427,8 +2427,7 @@ class Checker:
         return r
 
     def _e_Call(self, n, sc, extra=0):
-        pipe0 = None if getattr(self, 'pipe_unsure', False) else self.pipe_ty
-        self.pipe_unsure = False
+        pipe0 = self.pipe_ty
         r = self._e_Call0(n, sc, extra)
         f = n.fn
         if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
@@ -3079,6 +3078,11 @@ class Checker:
             if t is not None:
                 tys.unify(pt, self.base(t), binds)
         ret = tys.subst(sg[2], binds)
+        if getattr(n.fn, "name", None) == "map" and ret.__class__ is tuple and ret[0] == "app" and ret[1] == "Stream" and len(ret[2]) == 1:
+            for t in full(None):                            # Functor for List and Array: the same container comes back
+                b = self.base(t) if t is not None else None
+                if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Array") and b[2]:
+                    return ats, ("app", b[1], (ret[2][0],) + tuple(b[2][1:]) if ret[2].__class__ is tuple else [ret[2][0]] + list(b[2][1:]))
         return ats, ret
 
     def arg_plan(self, fn, args, sc, extra, trailing=None, line=None):
@@ -3569,7 +3573,6 @@ class Checker:
         st = n.stage
         if st.__class__ is Call:
             self.pipe_ty = lt
-            self.pipe_unsure = n.l.__class__ is Call and n.l.fn.__class__ is Field
             r = self.e_Call(st, sc, extra=1)
             self.pipe_ty = None
             return r
