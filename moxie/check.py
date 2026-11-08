@@ -152,6 +152,7 @@ class Sc:
     def __init__(self, parent=None, open_=False):
         self.parent = parent
         self.vars = {}
+        self.fnb = False                 # the top scope of a function or lambda body
         self.open = open_ or (parent.open if parent else False)
 
     def find(self, name):
@@ -1655,6 +1656,7 @@ class Checker:
 
     def e_Lambda(self, n, sc):
         inner = Sc(sc, open_=not n.params)
+        inner.fnb = True
         expect, self.lam_expect = self.lam_expect, None
         if expect and expect[0] == "fn" and n.params and self.arity_clash(expect, len(n.params)):
             self.err(n.line, f"this function takes {len(n.params)} parameter{'s' if len(n.params) != 1 else ''}, but it is used where one with {len(expect[1])} is expected")
@@ -1844,6 +1846,19 @@ class Checker:
                 self.err(n.line, what + f"write the size you mean on the constructor to give it room (`{head}[{args}][{size}](...)`), "
                          f"or write {k}, or leave the size out")
 
+    def warn_shadow(self, nm, sc, n):
+        """Binding a name in a deeper block (or `+=` on an outer name there) hides the outer one until the block ends (Spec section 1)."""
+        s, first = sc, True
+        while s is not None:
+            if nm in s.vars:
+                if not first and not nm.startswith("_"):
+                    self.diags.append(Diag(n.line, f"`{nm}` here is a new `{nm}` that hides the outer one until this block ends; "
+                                                   f"write `gimme.1.{nm}` to change the outer one", "warning"))
+                return
+            if s.fnb:
+                return
+            s, first = s.parent, False
+
     def e_Assign(self, n, sc):
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
@@ -1863,6 +1878,9 @@ class Checker:
                 self.err(n.line, f"`{n.value.name}` is a resource; write `move {n.value.name}` to move it")
         if n.value.__class__ is Move:
             res = True
+        for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
+            if tgt.__class__ is PBind:
+                self.warn_shadow(tgt.name, sc, n)
         if n.op != "=":
             return None, None
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
@@ -3590,6 +3608,7 @@ class Checker:
     def e_FnDecl(self, n, sc):
         later, self._later = self._later, False         # a later clause of a function takes the first clause's return type
         inner = Sc(sc)
+        inner.fnb = True
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
         self.tp_vars = {}
         saved_any, self.any_params = self.any_params, {}

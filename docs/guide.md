@@ -2944,6 +2944,7 @@ formatted src/parse.mxi
 - **Errors as values.** `?` needs a `Result` operand in a function that returns a `Result` with the same error (or a `From` impl that converts it), and a `Result` is never used as if it were the value inside.
 - **Ownership.** Use after move, `ref` and `move` mismatches, and a resource that outlives what it may.
 - **Sizes and numbers.** Array and MultiArray shapes, bounded integers, constant arithmetic and indexing that cannot work out, and the empty `sum` and `product` (which give the element type's zero and one).
+- **Shadowing (a warning).** A name bound or changed with `=` or `+=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, so `total += i` in a loop leaves the outer `total` alone; the warning points to `gimme.1.total`.
 - **Effects and permissions.** What a function prints, parks on, or reaches, checked against its declaration and the manifest's grants, through calls and imported packages.
 
 What it leaves alone: anything that depends on a value at run time (a Dict key that is present, an index that is only known when the program runs), a function used as a value is checked by its types but not by its arity, a `break` outside a loop, and a type name of one or two letters or all capitals is taken to be a type parameter. Those are caught when the code runs, with the same message the checker would have given.
