@@ -3295,6 +3295,11 @@ class Checker:
             for _, b in e.branches:
                 out += self.tails(b)
             return out + self.tails(e.else_)
+        if c is WhenE:
+            out = []                                  # only a literal arm value: a name could be bound by the arm's pattern
+            for a in e.arms or []:
+                out += [t for t in self.tails(a.body) if t.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit)]
+            return out
         if c in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e):
             return [e]
         return []
