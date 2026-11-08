@@ -117,7 +117,7 @@ class ExprParser(PBase):
                 self.skip_nl()
                 if self.peek().kind == "DEDENT":
                     break
-                if self.at_name("else") and self.at_op("->", 1):             # runs only when no earlier arm applied
+                if self.at_name("else") and self.at_op(":", 1):              # `else: stage` runs only when no earlier arm applied
                     self.next()
                     pred = None
                 else:
@@ -125,7 +125,7 @@ class ExprParser(PBase):
                     self.no_trailing = True
                     pred = self.parse_expr()
                     self.no_trailing = save
-                self.expect_op("->")
+                self.expect_op(":" if pred is None else "->")
                 save = self.stop_bol
                 self.stop_bol += 1
                 stage = self.parse_pipe_stage_inner()
@@ -939,10 +939,10 @@ class ExprParser(PBase):
         return IfE(branches, else_, line=line)
 
     def after_else_arm(self):
-        """`else ->` is the last arm: another arm after it is an error."""
+        """`else:` is the last arm: another arm after it is an error."""
         self.skip_nl()
         if self.peek().kind not in ("DEDENT", "EOF"):
-            self.err("`else ->` must be the last arm")
+            self.err("`else:` must be the last arm")
 
     def parse_when(self):
         line = self.next().line
@@ -957,7 +957,7 @@ class ExprParser(PBase):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             aline = self.peek().line
-            if self.at_name("else") and self.at_op("->", 1):          # `else ->` is `_ ->`
+            if self.at_name("else") and self.at_op(":", 1):           # `else: body` is `_ -> body`
                 self.next()
                 self.next()
                 body = self.parse_block_or_inline()
@@ -1082,8 +1082,8 @@ class ExprParser(PBase):
             kind = "read"
             bind = None
             ex = None
-            used_else = self.at_name("else")
-            if (self.at_name("_") or self.at_name("else")) and self.at_op("->", 1):      # `case else ->` is `case _ ->`
+            used_else = self.at_name("else") and self.at_op(":", 1)
+            if (self.at_name("_") and self.at_op("->", 1)) or used_else:                  # `case else:` is `case _ ->`
                 self.next()
                 kind = "default"
             elif self.at_name("cancelled") and self.at_op("(", 1):
@@ -1107,7 +1107,7 @@ class ExprParser(PBase):
                     bind = self.parse_pattern()
                     self.expect_op("=")
                 ex = self.parse_expr()
-            self.expect_op("->")
+            self.expect_op(":" if used_else else "->")
             body = self.parse_block_or_inline()
             arms.append(SelArm(kind, bind, ex, body, line=aline))
             self.end_line()

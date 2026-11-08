@@ -26,13 +26,14 @@ def chk(name, got, rc, *words):
         fails.append(name)
 
 
-SERVER = '''fn server(tx: ChanW[Int]) Unit:
+SERVER = '''fn server(tx: ChanW[Int]) Result[Unit, Error]:
   l = listen_tls(0, "cert.pem", "key.pem")?
   \\write(tx, port_of(l))
   c = accept(l)?
   println(c, "hello over tls")
   close(c)
   close(l)
+  Ok(())
 rx, tx = Chan[Int][1]()
 run server(tx)
 port = read(rx)?

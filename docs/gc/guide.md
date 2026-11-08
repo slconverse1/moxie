@@ -1707,7 +1707,7 @@ println("${grade(85.0)}")
 
 Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when:` with no value tests conditions in order:
 
-**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select` (`case else ->`), and of a `seq:` can be written `else ->` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means. In a `seq:` every arm whose test passes runs in turn, so `else ->` is the stage that runs only when none of the earlier arms did. It must come last, and a `case else ->` in a `select` is the arm that runs when no channel is ready.
+**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select` (`case else:`), and of a `seq:` can be written `else:` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows the colon on the same line or indented below it. In a `seq:` every arm whose test passes runs in turn, so `else:` is the stage that runs only when none of the earlier arms did. It must come last, and a `case else:` in a `select` is the arm that runs when no channel is ready.
 
 ```
 status = Dict("speed": 60, "limit": 100)
@@ -2344,13 +2344,14 @@ when read_file("missing.txt"):
 Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` gives a `Listener` (port 0 picks a free one, and `port_of` says which), `accept` waits for a client, and `connect(host, port)` is the client side. A server and a client can run as two fibers of one program, because `accept` and `read_line` park only their own fiber:
 
 ```
-fn server(tx: ChanW[Int]) Unit:
+fn server(tx: ChanW[Int]) Result[Unit, Error]:
   l = listen(0)?
   \write(tx, port_of(l))
   c = accept(l)?
   println(c, "hello from server")
   close(c)
   close(l)
+  Ok(())
 rx, tx = Chan[Int][1]()
 run server(tx)
 c = connect("127.0.0.1", read(rx)?)?
@@ -2923,7 +2924,7 @@ formatted src/parse.mxi
 - **Types.** Every call, operator, index, slice, range, `if` and `when` arm, `?`, return, and annotation agrees with the declared types, including through lambdas, pipes (`x |> f(a)` fills the slot the runtime picks, and a call that fits two slots is an error), generic functions, and the prelude (`avg`, `sum`, `map`, `get`, channel ends, collections). A bare `x(i)` on something that is not a function, a `Result` used as a number, and a `Stream` interpolated into text are errors.
 - **Names and shapes.** Undefined names, unknown types and enum cases, wrong argument counts, missing or extra fields in a constructor, duplicate fields and cases, a `when` that misses a case, a function clause that can never be reached, a pattern that cannot match the value's type (a `String` literal against an `Int`, `Ok(...)` against a number, a payload of the wrong type), and a destructuring of the wrong arity.
 - **What a type can do.** `==` and `~=` on a declared tuple or enum need `deriving eq` (or an `impl Equatable`), and `<`, `>`, `<=`, `>=` need `deriving ord` (or an `impl Ordered`). The same bounds apply to the prelude: `sort`, `max`, and `min` need `ord`, `contains` and `distinct` need `eq`, and a declared tuple or enum used as a Dict key or Set element needs `deriving eq, hash`. Nothing is compared by accident, and a plain `enum Color` is not ordered by its declaration order unless you ask.
-- **Errors as values.** `?` needs a `Result` operand in a function that returns a `Result` with the same error (or a `From` impl that converts it), and a `Result` is never used as if it were the value inside.
+- **Errors as values.** `?` needs a `Result` operand in a function that returns a `Result` with the same error (or a `From` impl that converts it), so it is an error in a function that returns `Unit` and inside a `daemon:` body (use `when` there), and a `Result` is never used as if it were the value inside.
 - **Ownership.** Use after move, `ref` and `move` mismatches, and a resource that outlives what it may.
 - **Sizes and numbers.** Array and MultiArray shapes (a literal with the wrong size or ragged rows; a List has no size to check), a constant index past the end of an Array whose size the text gives, a literal that does not fit a bounded integer, and division by a constant zero. The `sum` or `product` of nothing is the element type's zero or one, which the checker supplies.
 - **Shadowing (a warning).** A name bound or changed with `=` or `+=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, so `total += i` in a loop leaves the outer `total` alone; the warning points to `gimme.1.total`.

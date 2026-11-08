@@ -226,6 +226,7 @@ class Checker:
         self.pipe_ty = None
         self.node_ty = {}
         self.labels = []
+        self.in_daemon = 0
         self.cur_sc = None
         self.pipe_rest = {}
         self.trail_ty = {}
@@ -1538,13 +1539,16 @@ class Checker:
         if t is not None and plain(t) and t not in ("Unit",) or t == "Unit":
             self.err(n.line, f"`?` follows a `Result`, found `{tshow(t)}`")
             return
+        if self.in_daemon and self.fn_ret is None:
+            self.err(n.line, "`?` cannot be used in a `daemon:` body: handle the error with `when`, so a failure is a decision and not a silent exit")
+            return
         fr = self.base(self.fn_ret) if self.fn_ret is not None else None
         if fr is None or not (t.__class__ is tuple and t[0] == "app" and t[1] == "Result" and len(t[2]) == 2):
-            if fr is not None and plain(fr) and fr != "Unit" and not self.has_unsettled(fr):
+            if fr is not None and plain(fr) and not self.has_unsettled(fr):
                 self.err(n.line, f"`?` returns the error early, but this function returns `{tshow(fr)}`, not a `Result`")
             return
         if not (fr.__class__ is tuple and fr[0] == "app" and fr[1] == "Result" and len(fr[2]) == 2):
-            if plain(fr) and fr != "Unit" and not self.has_unsettled(fr):
+            if plain(fr) and not self.has_unsettled(fr):
                 self.err(n.line, f"`?` returns the error early, but this function returns `{tshow(fr)}`, not a `Result`")
             return
         e, f = t[2][1], fr[2][1]
@@ -2187,7 +2191,9 @@ class Checker:
         return None, None
 
     def e_DaemonE(self, n, sc):
+        self.in_daemon += 1
         self.loop([n.body], sc)
+        self.in_daemon -= 1
         return None, None
 
     def e_ScopeE(self, n, sc):

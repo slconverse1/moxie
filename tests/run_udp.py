@@ -2,10 +2,11 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-ECHO = '''fn server(sock: Udp, done: ChanW[Int]) Unit:
+ECHO = '''fn server(sock: Udp, done: ChanW[Int]) Result[Unit, Error]:
   p = receive(sock, timeout: 3s)?
   _ = send_to(sock, p.host, p.port, p.data)
   _ = write(done, 1)
+  Ok(())
 
 a = bind_udp(0)?
 c = bind_udp(0)?
