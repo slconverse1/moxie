@@ -537,7 +537,7 @@ class Checker:
             return a + b if e.op == "+" else a - b if e.op == "-" else a * b
         return None
 
-    BUILTIN_GENERICS = {"Seq": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1, "ChanR": 1, "ChanW": 1, "FutureR": 1, "FutureW": 1}
+    BUILTIN_GENERICS = {"Seq": 1, "MultiArray": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1, "ChanR": 1, "ChanW": 1, "FutureR": 1, "FutureW": 1}
 
     def ty_of_type(self, t, depth=0, keep=None, top=True):
         """The checker's type for a written type.  `keep` names type parameters to return as ("param", n) (a callee's own);
@@ -1134,6 +1134,18 @@ class Checker:
             return
         if exp.__class__ is tuple and act.__class__ is tuple and exp[0] == "coll" and act[0] == "coll":
             return
+        if act.__class__ is tuple and act[0] == "overloads":
+            if exp.__class__ is tuple and exp[0] == "fn" and not tys.params_in(exp) \
+                    and not any(len(f[1]) == len(exp[1]) and (tys.match(f, exp, {}) if tys.params_in(f) else tys.compatible(exp, f)) for f in act[2]) \
+                    and all(len(f[1]) == len(exp[1]) for f in act[2]):
+                self.err(line, f"mismatched types: expected `{tshow(exp)}`, but no form of `{act[1]}` has that type")
+            return
+        if exp.__class__ is tuple and act.__class__ is tuple and exp[0] == "fn" and act[0] == "fn" and tys.params_in(act) \
+                and len(exp[1]) == len(act[1]) and not tys.params_in(exp):
+            if tys.match(act, exp, {}):               # a generic function: its type parameters must stand for one type each
+                return
+            self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`")
+            return
         if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param", "rigid") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param", "rigid"):
             if tys.compatible(exp, act):
                 return
@@ -1251,10 +1263,27 @@ class Checker:
         ft = self.fn_value_type(n.name)
         if ft is not None:
             return ft, None
+        bt = self.builtin_value_type(n.name)
+        if bt is not None:
+            return bt, None
         if n.name in self.globals or n.name in self.prelude or sc.open:
             return None, None
         self.err(n.line, f"undefined name `{n.name}`")
         return None, None
+
+    def builtin_value_type(self, name):
+        """A builtin used as a value (`apply(abs, 3)`): its function type, or ("overloads", types) when it has several forms; else None."""
+        if name in self.fns or name in self.tuples or name in self.enums or name in self.aliases or name in self.globals \
+                or name not in self.load_sigs() or self.sig_mode:
+            return None
+        forms = []
+        for keep, ps, ret in ((sg[0], sg[1], sg[2]) for sg in self.load_sigs()[name]):
+            if ret is None or any(p is None for p in ps):
+                return None
+            forms.append(("fn", tuple(ps) or ("Unit",), ret))
+        if not forms:
+            return None
+        return forms[0] if len(forms) == 1 else ("overloads", name, tuple(forms))
 
     def fn_value_type(self, name):
         """The function type of a declared function used as a value (`traverse(half, xs)`): only a plain one, with one declaration,
@@ -1263,14 +1292,16 @@ class Checker:
         if not decls or len(decls) != 1:
             return None
         d = decls[0]
-        if d.__class__ is not FnDecl or d.tparams or d.ret is None or name in self.tuples or name in self.enums:
+        if d.__class__ is not FnDecl or d.ret is None or name in self.tuples or name in self.enums \
+                or any(tp.holes for tp in d.tparams or []):
             return None
         ps = d.params or []
         if any(getattr(p, "mod", None) or getattr(p, "variadic", None) or getattr(p, "default", None) is not None
                or getattr(p, "type", None) is None for p in ps):
             return None
-        pts = tuple(self.ty_of_type(p.type, 0, None, False) for p in ps) or ("Unit",)      # `() -> T` is written with one Unit parameter, as in the signature table
-        ret = self.ty_of_type(d.ret, 0, None, False)
+        keep = {tp.name for tp in d.tparams or []} or None          # a generic function's own type parameters stay parameters
+        pts = tuple(self.ty_of_type(p.type, 0, keep, False) for p in ps) or ("Unit",)      # `() -> T` is written with one Unit parameter, as in the signature table
+        ret = self.ty_of_type(d.ret, 0, keep, False)
         if ret is None:
             return None
         return ("fn", pts, ret)
@@ -2254,8 +2285,8 @@ class Checker:
             if ft is not None and rt is not None and len(ft[1]) == len(n.args or []) + 1 and ft[1][0] is not None \
                     and (rt.__class__ is str or rt[0] in ("app", "tup")):
                 return ft[2], None                         # `s.size()` is `size(s)`: the result of a plain declared function
-        if (r is None or r[0] is None) and n.trailing is None and len(n.args or []) == 1 and not extra:
-            it = self.index_type(f, n.args[0], sc, n)
+        if (r is None or r[0] is None) and n.trailing is None and n.args and not extra:
+            it = self.index_type(f, n.args, sc, n)
             if it is not None:
                 return it, None                        # `xs(0)` is an element of the List, Array, or Ring `xs`
         if r is None or r[0] is None:
@@ -2271,10 +2302,11 @@ class Checker:
             e = e.obj
         return e.__class__ is Name
 
-    def index_type(self, f, arg, sc, call=None):
+    def index_type(self, f, args, sc, call=None):
         """The type of `xs(i)` (or a slice, a Dict lookup, a Set test) when the indexed value's type is known; else None."""
-        if not hasattr(arg, "expr") or getattr(arg, "label", None) or getattr(arg, "mod", None):
+        if any(not hasattr(a, "expr") or getattr(a, "label", None) or getattr(a, "mod", None) for a in args):
             return None
+        arg = args[0]
         if f.__class__ is Name:
             v = sc.find(f.name)
             ct = v.ty if v is not None else None
@@ -2288,6 +2320,16 @@ class Checker:
             return None
         ex = arg.expr
         if ct is None:
+            return None
+        if ct.__class__ is tuple and ct[0] == "app" and ct[1] == "MultiArray" and len(ct[2]) == 1:
+            el = ct[2][0]
+            if el is None or self.has_unsettled(el):
+                return None
+            whole = lambda e: e.__class__ is RangeE or (e.__class__ is Name and e.name == "..")
+            if all(whole(a.expr) or self.quiet(a.expr, sc)[0] == "Int" for a in args):
+                return el if not any(whole(a.expr) for a in args) else ("app", "MultiArray", (el,))   # a number drops a dimension, a range keeps it
+            return None
+        if len(args) != 1:
             return None
         if ct == "String":
             if ex.__class__ is RangeE:
@@ -2318,6 +2360,22 @@ class Checker:
             i = ex.v
             if isinstance(i, int) and 0 <= i < len(ct[1]) and ct[1][i] is not None:
                 return ct[1][i]
+        if ct[0] == "app" and ct[1] in self.tuples and len(self.tuples[ct[1]].tparams or []) == len(ct[2]) \
+                and not any(tp.holes for tp in self.tuples[ct[1]].tparams) and not getattr(self.tuples[ct[1]], "spread", None):
+            td = self.tuples[ct[1]]
+            fs = td.fields or []
+            if any(getattr(x, "name", None) in (None, "...") for x in fs):
+                return None
+            keep = {tp.name for tp in td.tparams}
+            bind = {tp.name: a for tp, a in zip(td.tparams, ct[2])}
+            pick = None
+            if ex.__class__ is IntLit and isinstance(ex.v, int) and 0 <= ex.v < len(fs):
+                pick = fs[ex.v]
+            elif ex.__class__ is Name:
+                pick = next((x for x in fs if x.name == ex.name), None)
+            if pick is not None:
+                ft = self.ty_of_type(pick.type, 0, keep)
+                return tys.subst(ft, bind) if ft is not None else None      # `b(0)` on a `Box[Int]` is an Int
         if ct[0] == "named" and ct[1] in self.tuples and not self.tuples[ct[1]].tparams and not getattr(self.tuples[ct[1]], "spread", None):
             fs = self.tuples[ct[1]].fields or []
             if any(getattr(x, "name", None) in (None, "...") for x in fs):
@@ -2680,7 +2738,7 @@ class Checker:
                                 or (t[1] in self.enums and not self.enums[t[1]].tparams and t[1] not in self.tuples)) \
                 and t[1] not in self.aliases:
             return False                      # so is a declared plain tuple or enum
-        if t[0] in ("param", "rigid", "appv", "ctor", "named"):
+        if t[0] in ("param", "rigid", "appv", "ctor", "named", "overloads"):
             return True
         if t[0] == "app":
             return any(self.has_unsettled(a) for a in t[2])
@@ -2735,6 +2793,8 @@ class Checker:
             if a.expr.__class__ is not Lambda:
                 ats[i] = self.ev(a.expr, asc) if getattr(a, "mod", None) != "move" or a.expr.__class__ is not Name \
                     else self._move_name(a, a.expr, asc)
+                if ats[i] and ats[i][0].__class__ is tuple and (ats[i][0][0] == "overloads" or (ats[i][0][0] == "fn" and tys.params_in(ats[i][0]))):
+                    ats[i] = (None, None)             # a generic or overloaded function used as a value: left to its own check
 
         def full(lams):
             ts = [(r[0] if r else None) for r in ats]

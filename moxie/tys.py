@@ -114,7 +114,7 @@ def size_subst(s, binds):
 
 
 def is_wild(t):
-    return t is None or (t.__class__ is tuple and t[0] in ("param", "appv", "ctor"))
+    return t is None or (t.__class__ is tuple and t[0] in ("param", "appv", "ctor", "overloads"))
 
 
 def compatible(exp, act):
@@ -366,7 +366,7 @@ def unify(pat, act, binds):
     return None
 
 
-SEQ_HEADS = {"List", "Array", "Set", "Ring", "Stream"}
+SEQ_HEADS = {"List", "Array", "Set", "Ring", "Stream", "MultiArray"}
 
 
 def match(pat, act, binds, strict=False):
@@ -384,7 +384,7 @@ def match(pat, act, binds, strict=False):
             return False
         binds[pat[1]] = j
         return True
-    if at in ("param", "appv", "ctor", "tapp") or pt in ("appv", "ctor", "tapp"):
+    if at in ("param", "appv", "ctor", "tapp", "overloads") or pt in ("appv", "ctor", "tapp"):
         return True
     if pt == "app":
         if at != "app":

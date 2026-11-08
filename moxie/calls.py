@@ -439,9 +439,10 @@ class CallsMixin:
                 m_last = last.type is not None and self.type_matches(piped, last.type, callee.env)
                 if not m_first and m_last and len(pos) == len(ps) - 1:
                     return pos + [piped]
-                if m_first and m_last and has_trailing and len(pos) == len(ps) - 1:
-                    # trailing lambda took the last slot; first gets the piped value
-                    pass
+                if m_first and m_last and len(pos) == len(ps) - 1 and not has_trailing:
+                    nm = callee.node.name
+                    raise Abort(f"`{nm}` is ambiguous here: the piped value fits both the first and the last parameter. "
+                                f"Write `&` where it goes, as in `{nm}(&, ...)` or `{nm}(..., &)`")
         return [piped] + pos
 
     def expand_spreads(self, pos, named, spreads):

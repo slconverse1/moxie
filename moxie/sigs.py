@@ -272,6 +272,7 @@ fn receive[E](u: Udp) Result[Packet, E]: 0
 fn fail[T](code: Int, message: String) Result[T, Error]: 0
 fn set[T](xs: List[T], i: Int, x: T) List[T]: 0
 fn set[T](xs: Array[T], i: Int, x: T) Array[T]: 0
+fn set[T](xs: MultiArray[T], i: Int, x: T) MultiArray[T]: 0
 fn set[K, V](d: Dict[K, V], k: K, v: V) Dict[K, V]: 0
 fn write[T, E](w: ChanW[T], x: T) Result[Unit, E]: 0
 fn read[T, E](r: ChanR[T]) Result[T, E]: 0
