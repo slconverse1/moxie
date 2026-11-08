@@ -216,6 +216,8 @@ class Checker:
         self.fn_tparams = ()
         self.lam_expect = None
         self.pipe_ty = None
+        self.pipe_rest = {}
+        self.trail_ty = {}
         self.sigs = None
         self.tp_vars = {}          # Var of a parameter typed exactly `T` -> its TParam, inside a generic function
         self.impls = {}            # type name -> {interface names}
@@ -2305,10 +2307,12 @@ class Checker:
         ats = []
         indexing = fn.__class__ is not Name or sc.find(fn.name) is not None
         asc = Sc(sc, open_=True) if indexing else sc
-        plan = self.arg_plan(fn, args, sc, extra)       # (parameter types, type parameters) when the callee's signature is known
+        plan = self.arg_plan(fn, args, sc, extra, n.trailing, n.line)       # (parameter types, type parameters) when the callee's signature is known
         binds = {}
         sigres = None
         ufcs = False
+        if plan and len(plan) > 2:
+            self.pipe_rest[id(n)] = plan[2]
         if fn.__class__ is Field and n.trailing is None and not extra and fn.name in self.load_sigs() \
                 and not any(getattr(a, "label", None) for a in args):
             rt = self.ev(fn.obj, sc)[0]                 # `xs.map(f)` is `xs |> map(f)`; the receiver is evaluated here, once
@@ -2349,7 +2353,7 @@ class Checker:
             if plan and n.trailing.__class__ is Lambda and len(args) < len(plan[0]) and plan[0][len(args)] is not None \
                     and plan[0][len(args)][0] == "fn":
                 self.lam_expect = tys.subst(plan[0][len(args)], binds)
-            self.ev(n.trailing, sc)
+            self.trail_ty[id(n)] = self.ev(n.trailing, sc)
             self.lam_expect = None
         if fn.__class__ is Name and sc.find(fn.name) is None and fn.name not in self.fns and fn.name not in self.tuples \
                 and (fn.name in ("Ok", "Err", "List", "Set", "Array", "Dict")):
@@ -2700,9 +2704,9 @@ class Checker:
         ret = tys.subst(sg[2], binds)
         return ats, ret
 
-    def arg_plan(self, fn, args, sc, extra):
+    def arg_plan(self, fn, args, sc, extra, trailing=None, line=None):
         """The parameter types of a call to one known declared function, as (types, type-parameter names), or None."""
-        if extra or fn.__class__ is not Name or sc.find(fn.name) is not None:
+        if extra > 1 or fn.__class__ is not Name or sc.find(fn.name) is not None:
             return None
         fds = self.fns.get(fn.name)
         if not fds or len(fds) != 1:
@@ -2713,7 +2717,34 @@ class Checker:
         if any(getattr(a, "label", None) or getattr(a, "mod", None) for a in args):
             return None
         keep = {tp.name for tp in fd.tparams or []}
+        if extra:
+            return self.pipe_plan(fd, args, trailing, line)
         return [self.ty_of_type(p.type, 0, keep) for p in fd.params or []], keep
+
+    def pipe_plan(self, fd, args, trailing, line):
+        """`x |> f(a)` for a plain declared function: the parameter each explicit argument fills once the piped value has taken
+        its slot (the runtime's rule: the first parameter, or the last when only the last takes the value's type).
+        Returns (types aligned with the explicit arguments, no type parameters, those parameters)."""
+        lt = self.pipe_ty
+        ps = list(fd.params or [])
+        if fd.tparams or lt is None or self.has_unsettled(lt) or len(ps) < 2 or any(p.type is None for p in ps):
+            return None
+        if len(ps) != len(args) + (1 if trailing else 0) + 1 or any(a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")):
+            return None
+        tys_ = [self.ty_of_type(p.type) for p in ps]
+        if any(t is None or self.has_unsettled(t) for t in tys_):
+            return None
+        lt = self.base(lt)
+        m_first = tys.match(tys_[0], lt, {})
+        m_last = tys.match(tys_[-1], lt, {})
+        if not m_first and m_last:
+            rest, slot = ps[:-1], len(ps) - 1
+        else:
+            rest, slot = ps[1:], 0
+        if not m_first and not m_last:
+            self.compat(tys_[0], lt, None, line)            # no placement fits: the piped value is a type mismatch
+            return None
+        return [tys_[i] for i in range(len(ps)) if i != slot], set(), rest
 
     # Builtins whose result type does not depend on what they are given.  A builtin that works on several kinds of value
     # (`upper` on a String or a Char, `floor` giving an Int or a Double) is left out: the checker has no overloads yet.
@@ -3080,7 +3111,8 @@ class Checker:
             return self.ret_of(fd), None
         byname = {p.name: p for p in params}
         for i, (a, (t, c)) in enumerate(zip(args, ats)):
-            p = byname.get(a.label) if a.label else (params[i + (0)] if i < len(params) and not extra else None)
+            rest = self.pipe_rest.get(id(n)) if extra else None
+            p = byname.get(a.label) if a.label else (params[i + (0)] if i < len(params) and not extra else (rest[i] if rest and i < len(rest) else None))
             if p is None:
                 continue
             if p.mod == "ref" and a.mod != "ref":
@@ -3092,6 +3124,12 @@ class Checker:
                 self.err(n.line, f"parameter `{p.name}` is kept by the library; write `move {self.arg_name(a)}`")
             if p.type is not None:
                 self.compat(self.ty_of_type(p.type), t, c, n.line)
+        tr = self.trail_ty.get(id(n)) if n.trailing is not None else None
+        if tr is not None and tr[0] is not None:
+            rest = self.pipe_rest.get(id(n)) if extra else (params if len(params) == len(args) + 1 else None)
+            k = len(args)
+            if rest and k < len(rest) and rest[k].type is not None and not any(a.label for a in args):
+                self.compat(self.ty_of_type(rest[k].type), tr[0], tr[1], n.line)       # a trailing lambda fills the last parameter left
         return self.ret_of(fd), None
 
     def arg_name(self, a):
