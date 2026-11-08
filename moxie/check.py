@@ -1442,9 +1442,12 @@ class Checker:
         a, b = self.base(lt), self.base(rt)
         op = n.op
         self.check_op_bound(n, sc)
-        if n.op in ("==", "~=") and a is not None and a == b and a.__class__ is tuple and a[0] == "named" \
-                and a[1] in self.tuples and self.implements(a, "Equatable") is False:      # enums: the Spec leaves case-only equality open
-            self.err(n.line, f"`{n.op}` on `{a[1]}` needs `eq`: write `deriving eq` on its declaration (or an `impl Equatable`)")
+        if n.op in ("==", "~=", "<", ">", "<=", ">=") and a is not None and a == b and a.__class__ is tuple and a[0] == "named" \
+                and (a[1] in self.tuples or a[1] in self.enums):
+            ordering = n.op in ("<", ">", "<=", ">=")
+            iface, word = ("Ordered", "ord") if ordering else ("Equatable", "eq")
+            if self.implements(a, iface) is False:
+                self.err(n.line, f"`{n.op}` on `{a[1]}` needs `{word}`: write `deriving {word}` on its declaration (or an `impl {iface}`)")
         if n.op in ("<<", ">>") and n.r.__class__ is IntLit and not n.r.suffix:
             wt = a if a in self.FIT else ("Int" if n.l.__class__ is IntLit else None)
             width = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(wt, 64 if wt in self.FIT else None)
@@ -1617,6 +1620,10 @@ class Checker:
             if not any(c.name == n.name for c in ed.cases) and not any(k[0] == ed.name for k in self.methods) \
                     and not self.impls.get(ed.name) and n.name not in self.fns and n.name not in ("values", "value_of", "from_index"):
                 self.err(n.line, f"`{ed.name}` has no case `{n.name}`; its cases are " + ", ".join(f"`{c.name}`" for c in ed.cases))
+            cs0 = next((c for c in ed.cases if c.name == n.name), None)
+            if cs0 is not None and not (cs0.fields or []) and not getattr(ed, "tparams", None) and not getattr(ed, "fields", None) \
+                    and id(n) not in self.callee_fields:
+                return ("named", ed.name), None              # `Color.Red` is a Color
         t = self.t(n.obj, sc)
         if t.__class__ is tuple and t[0] == "rigid":
             self.check_tparam_member(n, t)

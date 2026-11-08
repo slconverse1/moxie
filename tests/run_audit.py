@@ -16,6 +16,10 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('== on an enum without eq', 'enum Color:\n  Red\n  Green\nprintln(Color.Red == Color.Green)\n'),
+ ('== on a payload enum without eq', 'enum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\nprintln(Shape.Circle(1) == Shape.Circle(1))\n'),
+ ('< on an enum without ord', 'enum Color:\n  Red\n  Green\nprintln(Color.Red < Color.Green)\n'),
+ ('< on a tuple without ord', 'tuple P deriving eq:\n  a: Int\nprintln(P(a: 1) < P(a: 2))\n'),
  ('positional and named for the same parameter', 'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(1, a: 2))\n'),
  ('positional after named', 'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(a: 1, 2))\n'),
  ('same variable by ref twice', 'fn g(ref a: Int, ref b: Int) Unit:\n  a = 1\nn = 5\ng(ref n, ref n)\nprintln(n)\n'),
@@ -142,6 +146,8 @@ BAD = [
 ]
 
 GOOD = [
+ 'enum Color deriving eq, ord:\n  Red\n  Green\nprintln(Color.Red == Color.Green)\nprintln(Color.Red < Color.Green)\n',
+ 'tuple P deriving eq, ord:\n  a: Int\nprintln(P(a: 1) == P(a: 1))\nprintln(P(a: 1) < P(a: 2))\n',
  'fn f(a: Int, b: Int) Int:\n  a + b\nprintln(f(1, b: 2))\nprintln(f(b: 2, a: 1))\nfn g(ref a: Int, ref b: Int) Unit:\n  a = 1\nn = 1\nm = 2\ng(ref n, ref m)\n',
  '#outer for i in List(1):\n  for j in List(2):\n    break #outer\nprintln(1)\n',
  'forward fn is_odd(n: Int) Bool\nfn is_even(n: Int) Bool:\n  if n == 0: true else: is_odd(n - 1)\nfn is_odd(n: Int) Bool:\n  if n == 0: false else: is_even(n - 1)\nprintln(is_even(4))\n',
