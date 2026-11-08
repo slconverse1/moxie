@@ -1300,7 +1300,9 @@ class Checker:
         return "String", ("".join(text) if text is not None else None)
 
     def e_Interp(self, n, sc):
-        self.ev(n.expr, sc)
+        t = self.ev(n.expr, sc)[0]
+        if t.__class__ is tuple and t[0] in ("fn", "overloads"):
+            self.err(n.line if getattr(n, "line", 0) else self.cur_line, "a function has no text form: call it, or print its result")
         return None, None
 
     def e_CharLit(self, n, sc):
@@ -1942,6 +1944,10 @@ class Checker:
         self.moved = base
         self.branches_moves(bodies, sc, n.else_ is not None)
         ts = [t for t, _ in types]
+        if n.else_ is None:
+            odd = next((t for t in ts if t is not None and t != "Unit" and not (t.__class__ is tuple and t[0] in ("param", "rigid", "pvar", "appv", "ctor", "overloads"))), None)
+            if odd is not None and (odd.__class__ is str or odd[0] in ("app", "tup", "named")):
+                self.err(n.line, f"an `if` without `else` must give `Unit`, but a branch gives `{tshow(odd)}`")
         if n.else_ is not None:
             self.check_branch_types(ts, n.line, "`if`")
         if n.else_ is not None and ts and all(t == ts[0] for t in ts) and ts[0] is not None:
@@ -3779,9 +3785,17 @@ class Checker:
     def e_FnGroup(self, n, sc):
         for k, c in enumerate(n.clauses or []):
             self._later = k > 0
+            if k > 0 and any(self.takes_everything(e, c) for e in n.clauses[:k]):
+                self.err(c.line, f"this clause of `{c.name}` is never reached: an earlier clause already takes every call")
             self.e_FnDecl(c, sc)
         self.group_cover(n)
         return None, None
+
+    @staticmethod
+    def takes_everything(a, b):
+        """Clause `a` has no guard and only plain parameters, with as many as clause `b`: it matches whatever `b` would."""
+        return a.guard is None and len(a.params or []) == len(b.params or []) \
+            and all(p.pat is None or p.pat.__class__ in (PBind, PWild) for p in a.params or [])
 
     def group_cover(self, n):
         """A multi-clause function ends with a catch-all clause or covers every enum case."""

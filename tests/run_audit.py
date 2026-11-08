@@ -109,9 +109,13 @@ BAD = [
  ('select on non-chan', 'select:\n  case 5 -> println(1)\n'),
  ('atom swap wrong type', 'a = Atom[Int](0)\nswap(a, "x")\n'),
  ('atom init wrong', 'a: Atom[Int] = Atom[Int]("a")\n'),
+ ("if without else gives a value", "x = if true:\n  1\n"),
+ ("interpolating a function", "fn g() Int:\n  1\nprintln(\"${g}\")\n"),
+ ("unreachable second clause", "fn f() Int:\n  1\nfn f() Int:\n  2\n"),
 ]
 
 GOOD = [
+ "fn fib(0) Int:\n  0\nfn fib(1) Int:\n  1\nfn fib(n: Int) Int:\n  fib(n - 1) + fib(n - 2)\nprintln(fib(10))\nif true:\n  println(1)\nx = if true: 1 else: 2\n",
  "fn server(tx: ChanW[Int]) Unit:\n  l = listen(0)?\n  \\write(tx, port_of(l))\n",
  "enum Planet:\n  EARTH\n  MARS\nx = Planet.values()\ny = Planet.value_of(\"EARTH\")\n",
  "x = if true: 1 else: 2.5\ny = if true: 1 else: 2\nz = when 3:\n  1 -> \"a\"\n  _ -> \"b\"\n",
