@@ -1696,7 +1696,7 @@ println("${grade(85.0)}")
 
 Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when:` with no value tests conditions in order:
 
-**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select` (`case else:`), and of a `seq:` can be written `else:` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows the colon on the same line or indented below it. In a `seq:` every arm whose test passes runs in turn, so `else:` is the stage that runs only when none of the earlier arms did. It must come last, and a `case else:` in a `select` is the arm that runs when no channel is ready.
+**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq:` can be written `else:` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows the colon on the same line or indented below it. In a `seq:` every arm whose test passes runs in turn, so `else:` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`, and in a `select` it is written without `case`.
 
 ```
 status = Dict("speed": 60, "limit": 100)

@@ -1078,12 +1078,13 @@ class ExprParser(PBase):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             aline = self.peek().line
-            self.expect_name("case")
+            used_else = self.at_name("else") and self.at_op(":", 1)    # `else: body` is `case _ -> body`
+            if not used_else:
+                self.expect_name("case")
             kind = "read"
             bind = None
             ex = None
-            used_else = self.at_name("else") and self.at_op(":", 1)
-            if (self.at_name("_") and self.at_op("->", 1)) or used_else:                  # `case else:` is `case _ ->`
+            if used_else or (self.at_name("_") and self.at_op("->", 1)):
                 self.next()
                 kind = "default"
             elif self.at_name("cancelled") and self.at_op("(", 1):
