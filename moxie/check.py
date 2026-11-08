@@ -218,6 +218,7 @@ class Checker:
         self.fn_tparams = ()
         self.lam_expect = None
         self.pipe_ty = None
+        self.node_ty = {}
         self.pipe_rest = {}
         self.trail_ty = {}
         self.sigs = None
@@ -1266,6 +1267,8 @@ class Checker:
             self.cur_line = n.line
         if m is not None:
             r = m(n, sc)
+            if n.__class__ is Pipe or n.__class__ is Call:
+                self.node_ty[id(n)] = None if (n.__class__ is Call and n.fn.__class__ is Field) else (r[0] if r else None)
             return r if r is not None else (None, None)
         for f in n._fields:
             self.ev(getattr(n, f), sc)
@@ -1303,6 +1306,8 @@ class Checker:
         t = self.ev(n.expr, sc)[0]
         if t.__class__ is tuple and t[0] in ("fn", "overloads"):
             self.err(n.line if getattr(n, "line", 0) else self.cur_line, "a function has no text form: call it, or print its result")
+        elif t.__class__ is tuple and t[0] == "app" and t[1] == "Stream":
+            self.err(n.line if getattr(n, "line", 0) else self.cur_line, "a Stream has no text form: `collect()` it first")
         return None, None
 
     def e_CharLit(self, n, sc):
@@ -2422,8 +2427,20 @@ class Checker:
         return r
 
     def _e_Call(self, n, sc, extra=0):
+        pipe0 = None if getattr(self, 'pipe_unsure', False) else self.pipe_ty
+        self.pipe_unsure = False
         r = self._e_Call0(n, sc, extra)
         f = n.fn
+        if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
+                and f.name not in self.fns and sc.find(f.name) is None:
+            if len(n.args or []) == 1 and not extra:
+                at = self.node_ty.get(id(n.args[0].expr))
+            elif not n.args and extra:
+                at = pipe0
+            else:
+                at = None
+            if at.__class__ is tuple and at[0] == "app" and at[1] == "Stream":
+                self.err(n.line, "a Stream has no text form: `collect()` it first")
         if f.__class__ is Name and f.name == "Error" and (r is None or r[0] is None) \
                 and not any(f.name in d for d in (self.fns, self.tuples, self.aliases, self.enums)) and sc.find("Error") is None:
             return ("named", "Error"), None            # `Error(code, message)` is an Error
@@ -3552,6 +3569,7 @@ class Checker:
         st = n.stage
         if st.__class__ is Call:
             self.pipe_ty = lt
+            self.pipe_unsure = n.l.__class__ is Call and n.l.fn.__class__ is Field
             r = self.e_Call(st, sc, extra=1)
             self.pipe_ty = None
             return r

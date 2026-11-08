@@ -16,6 +16,9 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('interpolate a stream', 'xs = List(1, 2)\ns = xs |> filter(_ > 1)\nprintln("${s}")\n'),
+ ('println a stream', 'xs = List(1, 2)\nprintln(xs |> map(_ + 1))\n'),
+ ('pipe a stream to println', 'xs = List(1, 2)\nxs |> map(_ + 1) |> println()\n'),
     ("bare field in self method", "tuple A:\n  owner: String\nimpl A:\n  fn name(self) String:\n    owner\n"),
  ('wrong arg type to user fn', 'fn f(n: Int) Int:\n  n\nx = f("a")\n'),
  ('too many args', 'fn f(n: Int) Int:\n  n\nx = f(1, 2)\n'),
