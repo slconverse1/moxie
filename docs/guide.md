@@ -3154,6 +3154,8 @@ println("${Box.pure(20).flat_map(half).flat_map(half)}")
 
 Output: `Box.Full(4) Box.Full(5)`. The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `map`, `ap`, and `flat_map` for any such type. Code written once for every monad (`double_in`, `lift2`) is in chapter 8d. The compiler does not check the monad laws, evaluation is eager, and there is no return-type dispatch: write `Box.pure(42)`, never a bare `pure(42)`. A type that accumulates several errors should implement `Applicative` only.
 
+**`map` and `filter` on a List or an Array.** `List` and `Array` have a `Functor` impl, so `xs.map(f)`, `xs |> map(f)`, and `map(f, xs)` are the same call (section 12) and give the same kind of container back, with its size: `List[Int][3]` becomes `List[String][3]`. A `Stream` gives a `Stream`. `filter` is a stream stage with no `Functor` behind it, and its result has no fixed size, so `xs.filter(p)` is a stream: write `xs |> filter(p) |> collect()`. Printing or interpolating a stream is a compile error that says to `collect()` it first. `map` on a List runs `f` on every element at once; when a chain should stay lazy (a `take` that stops early, an `f` with effects), start it with `to_stream()`.
+
 **Sequences with the operators.** With `Box` and its `Monad` impl in scope (they are your code, not the prelude's), `|>>` chains steps that each return a `Box`, `<$>` maps a plain function over the value inside, and `<*>` combines independent values. `Result` and `List` work the same way with no impl of your own, because the prelude supplies them. `Maybe`, `Option`, `Either`, and similar types are never built in: you define the type and its impl.
 
 ```
