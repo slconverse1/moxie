@@ -16,6 +16,9 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('enum as a Dict key without hash', 'enum Color:\n  Red\n  Green\nd: Dict[Color, Int] = Dict()\nprintln(1)\n'),
+ ('enum in a Set without hash', 'enum Color:\n  Red\nprintln(len(Set(Color.Red)))\n'),
+ ('payload enum as a Dict key without hash', 'enum Shape:\n  Circle(r: Int)\nd: Dict[Shape, Int] = Dict()\nprintln(1)\n'),
  ('tuple as a Dict key without hash', 'tuple P:\n  a: Int\nd: Dict[P, Int] = Dict()\nprintln(1)\n'),
  ('tuple in a Set without hash', 'tuple P:\n  a: Int\ns = Set(P(a: 1))\nprintln(len(s))\n'),
  ('sort an enum without ord', 'enum Color:\n  Red\n  Green\nxs = List(Color.Green, Color.Red) |> to_stream() |> sort() |> collect()\nprintln(len(xs))\n'),

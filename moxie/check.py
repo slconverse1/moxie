@@ -2571,8 +2571,13 @@ class Checker:
         if f.__class__ is Name and f.name == "Set" and "Set" not in self.fns and "Set" not in self.tuples and n.args:
             for a in n.args:
                 e = getattr(a, "expr", None)
-                et = self.node_ty.get(id(e)) if e.__class__ in (Call, Pipe) else None
-                if et.__class__ is tuple and et[0] == "named" and et[1] in self.tuples:
+                if e.__class__ is Field:
+                    k0 = len(self.diags)
+                    et = self.ev(e, sc)[0]
+                    del self.diags[k0:]
+                else:
+                    et = self.node_ty.get(id(e)) if e.__class__ in (Call, Pipe) else None
+                if et.__class__ is tuple and et[0] == "named" and (et[1] in self.tuples or et[1] in self.enums):
                     self.need_hash(et[1], n.line, "a Set element")
                     break
         if f.__class__ is Name and f.name == "close" and len(n.args or []) == 1 and n.args[0].expr.__class__ is Name \
@@ -3529,7 +3534,7 @@ class Checker:
                 self.check_type_arity(x, line, depth + 1)
         if t.path in (["Dict"], ["Set"]) and t.path[0] not in self.tuples and t.path[0] not in self.enums and t.groups:
             k = t.groups[0][0] if isinstance(t.groups[0], list) and t.groups[0] else None
-            if k.__class__ is TName and len(k.path) == 1 and k.path[0] in self.tuples and not k.groups:
+            if k.__class__ is TName and len(k.path) == 1 and (k.path[0] in self.tuples or k.path[0] in self.enums) and not k.groups:
                 self.need_hash(k.path[0], line, "a Dict key" if t.path == ["Dict"] else "a Set element")
         if t.path == ["Seq"] and "Seq" not in self.tuples and "Seq" not in self.enums and "Seq" not in self.aliases \
                 and "Seq" not in self.iface_decls:
