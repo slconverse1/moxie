@@ -83,7 +83,7 @@ chk("closing the reader ends the wait, so a real deadlock is still found", run('
 ''', t=20), 1, "deadlock", under=15)
 
 fresh()
-chk("sleepers keep time while a fiber waits for a change", run('''fn ticker() Unit:
+chk("sleepers keep time while a fiber waits for a change", run('''fiber fn ticker() Unit:
   for i in 1..=3:
     sleep(50ms)
     println("tick $i")

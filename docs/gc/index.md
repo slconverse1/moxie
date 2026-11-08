@@ -1437,7 +1437,7 @@ None of this costs anything at run time. It's all decided by the compiler, so th
 Haskell tracks effects by putting them in the type: an `IO` function can't hide inside a pure one. Koka and Scala's effect libraries do something similar with more machinery. Moxie tracks them too, but you don't write them, and nothing threads through your types. The compiler works out what each function does: it prints, it waits (parks) on a channel or a timer, it uses a resource, or it uses the system (`cwd()`, `hostname()`). A caller inherits what its callees do, all the way up:
 
 ```
-fn square(n: Int) Int:
+fiber fn square(n: Int) Int:
   n * n
 
 fn log_square(n: Int) Int:

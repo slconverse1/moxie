@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-ECHO = '''fn server(sock: Udp, done: ChanW[Int]) Result[Unit, Error]:
+ECHO = '''fiber fn server(sock: Udp, done: ChanW[Int]) Result[Unit, Error]:
   p = receive(sock, timeout: 3s)?
   _ = send_to(sock, p.host, p.port, p.data)
   _ = write(done, 1)
@@ -58,27 +58,27 @@ if not good: fails.append("pools")
 import time
 TIMED = [
  ("a timeout and a sleeping ticker run side by side",
-  'fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  r = receive(sock, timeout: 300ms)\n  _ = write(out, "receive: ${is_err(r)}")\n\n'
-  'fn ticker(out: ChanW[String]) Unit:\n  sleep(100ms)\n  _ = write(out, "tick 1")\n  sleep(100ms)\n  _ = write(out, "tick 2")\n\n'
+  'fiber fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  r = receive(sock, timeout: 300ms)\n  _ = write(out, "receive: ${is_err(r)}")\n\n'
+  'fiber fn ticker(out: ChanW[String]) Unit:\n  sleep(100ms)\n  _ = write(out, "tick 1")\n  sleep(100ms)\n  _ = write(out, "tick 2")\n\n'
   'a = bind_udp(0)?\nrx, tx = Chan[String][4]()\n_ = run ticker(clone(tx))\n_ = run waiter(a, tx)\n'
   'println(read(rx)?)\nprintln(read(rx)?)\nprintln(read(rx)?)\n',
   "tick 1\ntick 2\nreceive: true", 3.0),
  ("a sleeping sender wakes a waiting receive early",
-  'fn sender(sock: Udp, port: Int) Unit:\n  sleep(200ms)\n  _ = send_to(sock, "127.0.0.1", port, "late")\n\n'
+  'fiber fn sender(sock: Udp, port: Int) Unit:\n  sleep(200ms)\n  _ = send_to(sock, "127.0.0.1", port, "late")\n\n'
   'a = bind_udp(0)?\nb = bind_udp(0)?\n_ = run sender(b, port_of(a))\nr = receive(a, timeout: 20s)?\nprintln("got ${len(r.data)}")\n',
   "got 4", 3.0),
  ("several receives time out together, in about the time of one",
-  'fn waiter(sock: Udp, n: Int, out: ChanW[Int]) Unit:\n  _ = receive(sock, timeout: 400ms)\n  _ = write(out, n)\n\n'
+  'fiber fn waiter(sock: Udp, n: Int, out: ChanW[Int]) Unit:\n  _ = receive(sock, timeout: 400ms)\n  _ = write(out, n)\n\n'
   'a = bind_udp(0)?\nb = bind_udp(0)?\nc = bind_udp(0)?\nrx, tx = Chan[Int][3]()\n'
   '_ = run waiter(a, 1, clone(tx))\n_ = run waiter(b, 2, clone(tx))\n_ = run waiter(c, 3, tx)\n'
   'x = read(rx)?\ny = read(rx)?\nz = read(rx)?\nprintln(x + y + z)\n',
   "6", 1.6),
  ("main sleeps longer than a receive timeout in another fiber",
-  'fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  _ = receive(sock, timeout: 100ms)\n  _ = write(out, "timed out first")\n\n'
+  'fiber fn waiter(sock: Udp, out: ChanW[String]) Unit:\n  _ = receive(sock, timeout: 100ms)\n  _ = write(out, "timed out first")\n\n'
   'a = bind_udp(0)?\nrx, tx = Chan[String][1]()\n_ = run waiter(a, tx)\nsleep(500ms)\nprintln(read(rx)?)\n',
   "timed out first", 3.0),
  ("a receive with no timeout waits for a sleeping sender",
-  'fn sender(sock: Udp, port: Int) Unit:\n  sleep(150ms)\n  _ = send_to(sock, "127.0.0.1", port, "x")\n\n'
+  'fiber fn sender(sock: Udp, port: Int) Unit:\n  sleep(150ms)\n  _ = send_to(sock, "127.0.0.1", port, "x")\n\n'
   'a = bind_udp(0)?\nb = bind_udp(0)?\n_ = run sender(b, port_of(a))\nr = receive(a)?\nprintln(len(r.data))\n',
   "1", 3.0),
 ]

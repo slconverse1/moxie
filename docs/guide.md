@@ -2080,7 +2080,7 @@ b = swap(hits, add(_, 5))
 println("$a $b ${@hits}")
 ```
 
-Output: `1 6 6`. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `run` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `run worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If `run` returns NO_SLOT, no fiber starts, and the resources you passed are released for you. The channel closes for readers when the last write handle is dropped:
+Output: `1 6 6`. **A function that `run` starts is declared `fiber fn`** (or `fiber[n] fn` to limit how many can be alive at once); `run` on a plain `fn` is a compile error that says so. A fiber function may use `?`, which ends it at the first failure, but the `Result` it returns goes nowhere, since nothing waits for it. An inline `run fn` has no return type, so `?` is an error there. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `run` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `run worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If `run` returns NO_SLOT, no fiber starts, and the resources you passed are released for you. The channel closes for readers when the last write handle is dropped:
 
 ```
 fiber fn worker(id: Int, out: ChanW[Int]) Unit:
@@ -2157,7 +2157,7 @@ A fiber that loops forever, such as a worker or a ticker, needs a way to be told
 A `scope:` block waits for every fiber started inside it (and every fiber those start) before the block ends. `scope name:` also binds `name` to the block's own `Cancel`:
 
 ```
-fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
+fiber fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
   while true:
     select:
       case cancelled(stop) ->
@@ -2383,7 +2383,7 @@ when read_file("missing.txt"):
 Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` gives a `Listener` (port 0 picks a free one, and `port_of` says which), `accept` waits for a client, and `connect(host, port)` is the client side. A server and a client can run as two fibers of one program, because `accept` and `read_line` park only their own fiber:
 
 ```
-fn server(tx: ChanW[Int]) Result[Unit, Error]:
+fiber fn server(tx: ChanW[Int]) Result[Unit, Error]:
   l = listen(0)?
   \write(tx, port_of(l))
   c = accept(l)?
@@ -2511,7 +2511,7 @@ Output: `List(2, 4, 6, 8, 10)`, `Ok(List(1, 3, 5))`, then `Err("even 2")`, thoug
 **Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
 
 ```
-fn serve(l: Listener) Unit:
+fiber fn serve(l: Listener) Unit:
   c = accept(l)?
   for line in lines(c):
     println(c, "echo $line")
@@ -2701,7 +2701,7 @@ println(secret_eq(token, secret("none")))
 Output: `using Secret(***)`, then `true` when the variable is unset. Printing, interpolating, and `show` all give `Secret(***)`. `reveal(token)` is the one way to the real value, so each place it is used shows in the source, and `==` on secrets is an error: compare with `secret_eq`, which takes the same time however many characters match. A `Secret[String]` is not a `String`, so a function that takes one can't be handed plain text by mistake. `exit(code)` ends the program with a code from 0 to 255, from any fiber, and `signals()` gives a channel of `#interrupt`, `#terminate`, and `#hangup` so a program can shut down cleanly when someone presses Ctrl-C:
 
 ```
-fn work(done: ChanW[Int]) Unit:
+fiber fn work(done: ChanW[Int]) Unit:
   sleep(1s)
   \write(done, 1)
 

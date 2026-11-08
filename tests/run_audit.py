@@ -16,6 +16,7 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('run on a function not declared fiber', 'fn w() Unit:\n  println(1)\nrun w()\n'),
  ('a local changes type in a loop body', 'counter = 1\nfor i in 1..=2:\n  counter = "a"\nprintln(counter)\n'),
  ('a parameter changes type in a loop body', 'fn f(n: Int) Int:\n  for i in 1..=2:\n    n = "a"\n  n\nprintln(f(1))\n'),
  ('shift of a UInt8 variable past its width', 'x: UInt8 = 1\nz = x << 9\nprintln(z)\n'),
@@ -194,11 +195,12 @@ BAD = [
 ]
 
 GOOD = [
+ 'fiber fn w() Result[Unit, Error]:\n  x = read_file("a")?\n  Ok(())\nfiber[2] fn v() Unit:\n  println(1)\nrun w()\nrun v()\nv()\nprintln(1)\n',
  'fn f(n: Int) Int:\n  for i in 1..=2:\n    if true:\n      m = "a"\n      println(m)\n  n\nprintln(f(1))\n',
  'x: UInt8 = 1\nz = x << 7\nprintln(z)\nfn f(n: Int32) Int32:\n  n << 31\nprintln(f(1))\ntuple Q deriving eq, hash:\n  a: Int\ns = Set[Q][4]()\nr = put(s, Q(1))\nm = Dict[Q, Int][4]()\nprintln(1)\n',
  'fn f(r: Result[Int, Error]) Int:\n  Ok(x) = r else: 0\n  x\nprintln(f(Ok(1)))\n',
  'fn g() Int:\n  y = 1\n  if true:\n    gimme.1.y = 5\n  y\nprintln(g())\nx: UInt8 = 1 << 7\nprintln(x)\ns = "h\u00e9llo"\nprintln(s(0..3))\nprintln("${3.5:.2f} ${"ab":>4}")\nfn h() Int: 1\nprintln(h() + 1)\n#a for i in 1..=2:\n  #b for j in 1..=2:\n    break #a\n#a for k in 1..=2:\n  continue\nfn f2(factor: Int) Int:\n  ops = Dict[String, (Int) -> Int][4]()\n  ops("y") = (n): n * 2\n  1\nprintln(f2(2))\ntype union A2 = Int | String\ntype union B2 = A2 | Bool\n',
- 'fn r() Result[Int, Error]: Ok(1)\nrun fn():\n  x = when r():\n    Ok(v) -> v\n    Err(_) -> 0\n  println(x)\nfn w() Result[Unit, Error]:\n  x = r()?\n  Ok(())\nrun w()\nprintln(1)\n',
+ 'fn r() Result[Int, Error]: Ok(1)\nrun fn():\n  x = when r():\n    Ok(v) -> v\n    Err(_) -> 0\n  println(x)\nfiber fn w() Result[Unit, Error]:\n  x = r()?\n  Ok(())\nrun w()\nprintln(1)\n',
  'x: UInt64 = 18446744073709551615\nprintln(x)\nfn g(n: UInt64) UInt64: n\nprintln(g(18446744073709551615))\nfn h(n: UInt8) Int: 1\nprintln(h(255))\ny = 9223372036854775807\nprintln(y - 1)\nprintln(5 + 1)\n',
  'fn g() Result[Unit, Error]:\n  x = read_file("zzz")?\n  Ok(())\nr = g()\nprintln(1)\n',
  'fn kind(n: Int) String:\n  when n:\n    0 -> "zero"\n    1, 2 -> "small"\n    else: "big"\nx = 5\nr = when:\n  x < 3 -> "lt3"\n  else: "huge"\nrx, tx = Chan[Int][1]()\nselect:\n  case v = read(rx) -> println("got")\n  else: println("nothing")\nfn is_big(n: Int) Bool:\n  n > 100\nfn halve(n: Int) Int:\n  n / 2\nfn neg(n: Int) Int:\n  0 - n\na = 500\n  |> seq:\n    is_big -> halve()\n    else: neg()\nprintln("${kind(9)} $r $a")\n',

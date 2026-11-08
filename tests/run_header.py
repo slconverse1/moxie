@@ -8,7 +8,7 @@ rx, tx = Chan[Int][1]()
 run w(tx)
 println(read(rx)?)
 '''
-NOLIMIT = '''fn w(tx: ChanW[Int]) Unit:
+NOLIMIT = '''fiber fn w(tx: ChanW[Int]) Unit:
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
