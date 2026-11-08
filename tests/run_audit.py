@@ -197,6 +197,7 @@ BAD = [
 ]
 
 GOOD = [
+ 'fn bump(using hits: Atom[Int]) Unit:\n  \\swap(hits, (n): n + 1)\nusing hits = Atom(0)\nbump()\nbump()\nprintln(@hits)\n',
  'fiber fn w() Result[Unit, Error]:\n  x = read_file("a")?\n  Ok(())\nfiber[2] fn v() Unit:\n  println(1)\nrun w()\nrun v()\nv()\nprintln(1)\n',
  'fn f(n: Int) Int:\n  for i in 1..=2:\n    if true:\n      m = "a"\n      println(m)\n  n\nprintln(f(1))\n',
  'x: UInt8 = 1\nz = x << 7\nprintln(z)\nfn f(n: Int32) Int32:\n  n << 31\nprintln(f(1))\ntuple Q deriving eq, hash:\n  a: Int\ns = Set[Q][4]()\nr = put(s, Q(1))\nm = Dict[Q, Int][4]()\nprintln(1)\n',

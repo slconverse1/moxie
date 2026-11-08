@@ -791,7 +791,7 @@ greet("hello", using)
 greet("hi", "bob")
 ```
 
-Output: `ada: hello`, then `bob: hi`. A `todo` stands in for any expression you haven't written yet. The compiler warns and lists it, and running it aborts the fiber:
+Output: `ada: hello`, then `bob: hi`. A `using` value can't be a channel end, a timer, or a file, because a callee could read or close it out of sight; an `Atom` is fine, so a shared counter can be injected the same way (`fn bump(using hits: Atom[Int])`). A `todo` stands in for any expression you haven't written yet. The compiler warns and lists it, and running it aborts the fiber:
 
 ```
 fn later(x: Int) Int:
