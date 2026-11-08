@@ -16,6 +16,7 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+    ("bare field in self method", "tuple A:\n  owner: String\nimpl A:\n  fn name(self) String:\n    owner\n"),
  ('wrong arg type to user fn', 'fn f(n: Int) Int:\n  n\nx = f("a")\n'),
  ('too many args', 'fn f(n: Int) Int:\n  n\nx = f(1, 2)\n'),
  ('too few args', 'fn f(n: Int, m: Int) Int:\n  n\nx = f(1)\n'),
@@ -115,6 +116,7 @@ BAD = [
 ]
 
 GOOD = [
+ '// accounts: tuples, impl, interface, generics, typed errors with From\nenum BankError deriving show:\n  NoFunds(needed: Int),\n  Frozen,\n  Parse(msg: String)\n\ntuple Account deriving show:\n  id: Int\n  owner: String\n  balance: Int = 0\n  frozen: Bool = false\n\ninterface Describe:\n  fn describe(self) String\n\nimpl Describe for Account:\n  fn describe(self) String:\n    "#${self.id} ${self.owner}: ${self.balance}"\n\nimpl Account:\n  fn deposit(self, amount: Int) Account:\n    Account(id: self.id, owner: self.owner, balance: self.balance + amount, frozen: self.frozen)\n  fn withdraw(self, amount: Int) Result[Account, BankError]:\n    if self.frozen:\n      return Err(BankError.Frozen)\n    if amount > self.balance:\n      return Err(BankError.NoFunds(needed: amount - self.balance))\n    Ok(Account(id: self.id, owner: self.owner, balance: self.balance - amount, frozen: self.frozen))\n\nfn parse_amount(text: String) Result[Int, BankError]:\n  when read[Int](text):\n    Ok(n) -> Ok(n)\n    Err(e) -> Err(BankError.Parse(msg: "bad amount: ${text}"))\n\nfn transfer(from: Account, to: Account, text: String) Result[(Account, Account), BankError]:\n  amount = parse_amount(text)?\n  a = from.withdraw(amount)?\n  Ok((a, to.deposit(amount)))\n\nfn show_all[T: Describe](xs: List[T]) Unit:\n  for x in xs:\n    println(x.describe())\n\nalice = Account(id: 1, owner: "alice", balance: 100)\nbob = Account(id: 2, owner: "bob")\nshow_all(List(alice, bob))\nwhen transfer(alice, bob, "30"):\n  Ok((a, b)) -> show_all(List(a, b))\n  Err(e) -> println("failed: ${e}")\nwhen transfer(alice, bob, "300"):\n  Ok(_) -> println("?")\n  Err(e) -> println("failed: ${e}")\nwhen transfer(alice, bob, "x"):\n  Ok(_) -> println("?")\n  Err(e) -> println("failed: ${e}")\n',
  "fn fib(0) Int:\n  0\nfn fib(1) Int:\n  1\nfn fib(n: Int) Int:\n  fib(n - 1) + fib(n - 2)\nprintln(fib(10))\nif true:\n  println(1)\nx = if true: 1 else: 2\n",
  "fn server(tx: ChanW[Int]) Unit:\n  l = listen(0)?\n  \\write(tx, port_of(l))\n",
  "enum Planet:\n  EARTH\n  MARS\nx = Planet.values()\ny = Planet.value_of(\"EARTH\")\n",

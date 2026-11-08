@@ -2442,6 +2442,9 @@ class Checker:
             if fv is not None and fv.ty is not None and (fv.ty in INTS or fv.ty in ("String", "Bool", "Float", "Char", "Decimal")) \
                     and not (fv.ty == "String" and n.args):
                 self.err(n.line, f"`{f.name}` is {tshow(fv.ty)}, not a function")
+            elif fv is not None and fv.ty.__class__ is tuple and fv.ty[0] == "app" and fv.ty[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
+                    and fv.ty[1] not in self.tuples and fv.ty[1] not in self.enums and fv.ty[1] not in self.aliases:
+                self.err(n.line, f"`{f.name}` is a `{tshow(fv.ty)}`, not a function" + ("; take the value out of the Result first" if fv.ty[1] == "Result" else ""))
         if (r is None or r[0] is None) and n.trailing is None and n.args and not extra:
             it = self.index_type(f, n.args, sc, n)
             if it is not None:
@@ -3885,7 +3888,8 @@ class Checker:
             if n.iface is not None and m.__class__ is FnDecl and m.contracts:
                 self.err(m.line, f"an impl of an interface may not add contracts to '{m.name}'; "
                                  "the contract belongs to the interface")
-            inner = Sc(sc, open_=True)
+            has_self = m.__class__ is FnDecl and any(getattr(q, 'name', None) == 'self' for q in (m.params or []))
+            inner = Sc(sc, open_=not has_self)
             self.ev(m, inner)
         return None, None
 
