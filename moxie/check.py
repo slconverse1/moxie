@@ -1535,9 +1535,25 @@ class Checker:
             body = body.e
         bt = self.ev(body, inner)[0]
         self.fn_ret, self.loop_depth, self.exit_ctx = saved
-        if body.__class__ is Block or n.partial:
-            bt = None                     # a longer block's value is not worked out here
+        if n.partial or (body.__class__ is Block and self.leaves_early(body)):
+            bt = None                     # a block that returns or uses `?` has more than one way out
         return ("fn", tuple(ptypes) or ("Unit",), self.base(bt)), None       # `() -> T` is written with one Unit parameter, as in sigs.py
+
+    @staticmethod
+    def leaves_early(e):
+        """True when `e` holds a `return` or `?` outside any nested lambda or function."""
+        stack = [e]
+        while stack:
+            x = stack.pop()
+            if isinstance(x, N):
+                if x.__class__ in (Return, Q):
+                    return True
+                if x.__class__ is Lambda:
+                    continue
+                stack.extend(getattr(x, f, None) for f in x._fields)
+            elif isinstance(x, (list, tuple)):
+                stack.extend(x)
+        return False
 
     @staticmethod
     def base_free(t):
