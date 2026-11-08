@@ -16,6 +16,9 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('define > in an impl', 'tuple P deriving eq:\n  a: Int\nimpl Ordered for P:\n  fn < (other: P) Bool:\n    a < other.a\n  fn > (other: P) Bool:\n    a > other.a\nprintln(1)\n'),
+ ('define ~= in an impl', 'tuple P deriving eq:\n  a: Int\nimpl Equatable for P:\n  fn == (other: P) Bool:\n    a == other.a\n  fn ~= (other: P) Bool:\n    a ~= other.a\nprintln(1)\n'),
+ ('define >= in a plain impl', 'tuple P deriving eq:\n  a: Int\nimpl P:\n  fn >= (other: P) Bool:\n    a >= other.a\nprintln(1)\n'),
  ('spread with an unknown field', 'tuple P:\n  a: Int\np = P(a: 1)\nq = P(...p, b: 2)\nprintln(q)\n'),
  ('capturing closure in a tuple field', 'tuple H:\n  f: (Int) -> Int\nfn mk(k: Int) H:\n  H(f: (x): x * k)\nprintln(1)\n'),
  ('capturing closure in a Dict value', 'fn mk(k: Int) Int:\n  m: Dict[String, (Int) -> Int] = Dict("a": (x): x * k)\n  1\nprintln(mk(1))\n'),

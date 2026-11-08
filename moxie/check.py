@@ -4228,6 +4228,8 @@ class Checker:
                 self.err(m.line, f"an impl of an interface may not add contracts to '{m.name}'; "
                                  "the contract belongs to the interface")
             has_self = m.__class__ is FnDecl and any(getattr(q, 'name', None) == 'self' for q in (m.params or []))
+            if m.__class__ is FnDecl and m.name in (">", "<=", ">=", "~="):
+                self.err(m.line, f"`{m.name}` is derived, not defined: write only `==` and `<` in an impl, and the compiler gives `~=`, `>`, `<=`, and `>=`")
             inner = Sc(sc, open_=not has_self)
             self.ev(m, inner)
         return None, None
