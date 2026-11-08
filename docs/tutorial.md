@@ -37,7 +37,7 @@ fn letter(score: Int) String:
     >= 90 -> "A"
     >= 80 -> "B"
     >= 70 -> "C"
-    _ -> "F"
+    else: "F"
 
 println("${letter(95)} ${letter(83)} ${letter(41)}")
 ```

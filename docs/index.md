@@ -76,7 +76,7 @@ fn handle_light(light: TrafficLight) Unit:
     "red" ->    println("Stop")
     "yellow" -> println("Caution")
     "green" ->  println("Go")
-    _ ->        println("Unknown state")
+    else: println("Unknown state")
 
 colors = Array("red", "yellow", "green")
 for color in colors:
@@ -374,7 +374,7 @@ Because every construct in an expression-based language produces a value, you ca
 user_role = when user.clearance:
   1 -> "Admin"
   2 -> "Manager"
-  _ -> "Guest"
+  else: "Guest"
 ```
 
 **Elimination of temporary mutable state**
@@ -588,7 +588,7 @@ println("${area(Shape.Dot)}")
 
 Output: `12.0 6.0 0.0`. Each arm names its case and binds its fields in the same step, so there's no cast and no null check. That is also how moxie handles "absent": a missing value is just another case, such as a `Missing` case of your own enum, that you match.
 
-**The compiler checks that you covered everything.** Every `when` must cover every case, and `_ ->` is the fallback. If an enum has three cases and the `when` handles two, the program won't compile (the message is approximate):
+**The compiler checks that you covered everything.** Every `when` must cover every case, and `else:` is the fallback. If an enum has three cases and the `when` handles two, the program won't compile (the message is approximate):
 
 ```
 fn area(s: Shape) Double:
@@ -684,14 +684,14 @@ fn describe(status: Int) String:
     200 -> "Success"
     400..=499 -> "Client Error"
     >= 500 -> "Server Error"
-    _ -> "Unknown"
+    else: "Unknown"
 
 println("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)}")
 ```
 
 Output: `Success Client Error Server Error Unknown`. The subject is named once, on the `when` line, and each arm only says which values it takes. Use `..=` for a closed band such as `400..=499`, and `>=`, `>`, `<=` or `<` when one end is open. A comparison works on any ordered type, so `>= 90.0` is fine for a `Double`, and its operand is a literal or a pin like `^limit`. The compiler can't tell whether comparisons alone cover every value, so a `when` like this one keeps its `_ ->` arm.
 
-**Conditions, not just shapes.** A plain `when` is a chain of Boolean tests: the first arm that is true wins, and the chain must end with a `_ ->` arm. It's the right tool when the tests involve different things:
+**Conditions, not just shapes.** A plain `when` is a chain of Boolean tests: the first arm that is true wins, and the chain must end with an `else:` arm. It's the right tool when the tests involve different things:
 
 ```
 fn advice(temp: Int, raining: Bool) String:
@@ -699,7 +699,7 @@ fn advice(temp: Int, raining: Bool) String:
     raining and temp < 5 -> "Bring a coat and an umbrella"
     raining -> "Bring an umbrella"
     temp < 5 -> "Bring a coat"
-    _ -> "Enjoy the day"
+    else: "Enjoy the day"
 
 println(advice(3, true))
 println(advice(10, true))
@@ -721,7 +721,7 @@ fn access(user: User) String:
     when:
       is_admin -> "Full Access"
       is_manager -> "Limited Access"
-      _ -> "No Access"
+      else: "No Access"
 
 print("${access(User(is_admin: false, is_manager: true))} ")
 print("${access(User(is_admin: true, is_manager: false))} ")
@@ -745,7 +745,7 @@ tuple Rectangle:
 fn message(r: Rectangle) String:
   when r:
     Rectangle(Point(0, 0), 10, 10) -> "Standard square at origin"
-    _ -> "Unknown"
+    else: "Unknown"
 
 println(message(Rectangle(origin: Point(x: 0, y: 0), w: 10, h: 10)))
 println(message(Rectangle(origin: Point(x: 1, y: 0), w: 10, h: 10)))
@@ -1272,7 +1272,7 @@ daemon:
     case read(timeout) ->
       println("timed out")
       break daemon
-    case _ ->
+    else:
       sleep(100ms)
       counter + 1
 ```

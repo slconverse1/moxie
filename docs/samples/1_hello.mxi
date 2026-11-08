@@ -4,7 +4,7 @@ fn describe(status: Int) String:
     200 -> "Success"
     400..=499 -> "Client Error"
     >= 500 -> "Server Error"
-    _ -> "Unknown"
+    else: "Unknown"
 
 for code in List(200, 404, 503, 302):
   println("$code is ${describe(code)}")

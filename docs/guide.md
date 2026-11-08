@@ -1375,7 +1375,7 @@ println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
 
 **Field names at the type level.** Tuple types keep their field names, and an arm can look a field up by name: with `type alias Get[R, K] = when R:` and the arms `(K: T, ...Rest) -> T` and `(_: _, ...Rest) -> Get[Rest, K]`, a function `fn get[R, K](row: R, key: K) Get[R, K]` called as `get(user, "name")` returns `String` and as `get(user, "zip")` returns `Int`, and `get(user, "nope")` is an error because no arm matches. A literal argument keeps its own type (`"name"`, `3`) when its parameter is used inside a type function; otherwise it is widened to `String` or `Int` as before.
 
-**Asking what a type can do.** An arm may use a bound as its pattern: `X: Named -> String` matches any type that implements `Named` and binds it to `X`, so `type alias Label[T] = when T:` with the arms `X: Named -> String` and `_ -> Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T: Named]`, and it reuses the `impl` and `deriving` you already wrote.
+**Asking what a type can do.** An arm may use a bound as its pattern: `X: Named -> String` matches any type that implements `Named` and binds it to `X`, so `type alias Label[T] = when T:` with the arms `X: Named -> String` and `else: Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T: Named]`, and it reuses the `impl` and `deriving` you already wrote.
 
 **Intersections.** `any Named + Aged` is a value that implements both interfaces, written with the `+` that joins bounds (`[T: Equatable + Show]`). `describe(Dog(...))` is a compile error when `Dog` has no `impl Aged`, and a type-function arm can ask the same, `X: Named + Aged -> String`.
 
@@ -1649,7 +1649,7 @@ when my_list:
     println("head $head")
     for cell in tail:
       println("tail $cell")
-  _ -> println("empty")
+  else: println("empty")
 ```
 
 Output: `head 105`, then `tail 210`, `tail 315`, `tail 420`. A guard adds a condition, and `@` names the whole value:
@@ -1662,7 +1662,7 @@ player = Account(name: "Bob", score: 150)
 when player:
   p@Account(name, score) if score > 200 -> println("top tier: $name")
   p@Account(name, score) if score > 100 -> println("elite: ${p.name}")
-  _ -> println("standard")
+  else: println("standard")
 ```
 
 Output: `elite: Bob`. A pin compares against a variable:
@@ -1684,12 +1684,12 @@ fn describe(status: Int) String:
     200 -> "Success"
     400..=499 -> "Client Error"
     >= 500 -> "Server Error"
-    _ -> "Unknown"
+    else: "Unknown"
 fn grade(score: Double) String:
   when score:
     >= 90.0 -> "A"
     >= 80.0 -> "B"
-    _ -> "C"
+    else: "C"
 print("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} ")
 println("${grade(85.0)}")
 ```
@@ -1702,12 +1702,12 @@ Output: `Success Client Error Server Error Unknown B`. On an unbounded type the 
 status = Dict("speed": 60, "limit": 100)
 when status:
   Dict("speed": current, "limit": 100) -> println("moving at $current")
-  _ -> println("idle")
+  else: println("idle")
 number = 25
 when:
   number < 0 -> println("negative")
   number % 2 == 0 -> println("even")
-  _ -> println("odd and positive")
+  else: println("odd and positive")
 ```
 
 Output: `moving at 60`, then `odd and positive`. A function can be defined by several clauses, and tail-recursive ones run in constant stack:
@@ -1778,7 +1778,7 @@ fn describe(packet: Array[Byte]) String:
       rest: bytes
     ) -> "v$version k$kind size $size body ${len(body)} rest ${len(rest)}"
     Bin(a: u8, b: i16le) -> "short $a $b"
-    _ -> "no match"
+    else: "no match"
 println(describe(b"\xCA\x21\x00\x02hiXYZ"))
 println(describe(b"\xCA\x21\x00\x09hi"))
 println(describe(b"\x07\xFE\xFF"))
@@ -2101,7 +2101,7 @@ daemon:
     case read(timeout) ->
       println("timed out")
       break daemon
-    case _ ->
+    else:
       sleep(100ms)
       counter + 1
 ```
@@ -2145,7 +2145,7 @@ fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit:
       case cancelled(stop) ->
         \write(out, "worker ${id} stopping")
         return
-      case _ ->
+      else:
         sleep(10ms)
 rx, tx = Chan[String][4]()
 scope s:
@@ -2459,7 +2459,7 @@ fn polite(c: Cancel) Result[Int, Error]:
     select:
       case cancelled(c) ->
         return Err(Error(CLOSED, "cancelled"))
-      case _ ->
+      else:
         sleep(5ms)
   Ok(0)
 fn quick(c: Cancel) Result[Int, Error]:
@@ -2776,7 +2776,7 @@ init:
       Down -> println("down")
       Fn(n) -> println("F\$n")
       Escape -> break
-      _ -> ()
+      else: ()
   close(t)
 ```
 
@@ -2920,7 +2920,7 @@ impl Generatable for Pct:
   fn shrink() List[Pct]:
     when n:
       0 -> List()
-      _ -> List(Pct(0), Pct(n - 1))
+      else: List(Pct(0), Pct(n - 1))
 ```
 
 `gen_int(g, lo, hi)`, `gen_bool(g)`, and `gen_pick(g, list)` draw values, and `sample[T](g)` draws a `T` the usual way, so a sorted list is `xs = sample[List[Int]](g)` followed by sorting it. A type with an `invariant` does not need an impl for a loose rule: `forall` builds it through its constructor and draws again when the invariant rejects the value, so `invariant len(name) > 0` works as it is. A tight rule, such as sorted order, would reject nearly every draw, so give the type an impl. moxie checks the shape of the impl when it checks the file: `generate` must be `static`, take one `Gen`, and return `Self`, and `shrink` must take nothing and return `List[Self]`, so a slip is an error at check time and not a surprise in the middle of a test run. Once `Pct` has an impl, `forall p: Pct` and even `forall xs: List[Pct]` use it. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
@@ -3231,7 +3231,7 @@ fn find_user(id: Int) Result[User, PayError]:
     42 -> Ok(User.Active(name: "Ada", rank: Manager))
     7 -> Ok(User.Active(name: "Bo", rank: Staff))
     9 -> Ok(User.Retired(name: "Cy"))
-    _ -> Err(NotFound(id: id))
+    else: Err(NotFound(id: id))
 fn base_pay(rank: Rank) Int:
   when rank:
     Manager -> 500000
