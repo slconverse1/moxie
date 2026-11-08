@@ -16,6 +16,9 @@ def check(src, flags=()):
 P = '\ntuple User deriving show:\n  name: String\n  age: Int\nenum Shape:\n  Circle(r: Int)\n  Sq(s: Int)\n'
 
 BAD = [
+ ('spread with an unknown field', 'tuple P:\n  a: Int\np = P(a: 1)\nq = P(...p, b: 2)\nprintln(q)\n'),
+ ('capturing closure in a tuple field', 'tuple H:\n  f: (Int) -> Int\nfn mk(k: Int) H:\n  H(f: (x): x * k)\nprintln(1)\n'),
+ ('capturing closure in a Dict value', 'fn mk(k: Int) Int:\n  m: Dict[String, (Int) -> Int] = Dict("a": (x): x * k)\n  1\nprintln(mk(1))\n'),
  ('reduce an enum into an empty Set', 'enum Color:\n  Red\ns = List(Color.Red) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nprintln(1)\n'),
  ('reduce an enum key into an empty Dict', 'enum Color:\n  Red\nd = List(Color.Red) |> to_stream() |> reduce(Dict(), (acc, c): put(acc, c, 1))\nprintln(1)\n'),
  ('put an enum key into an empty Dict', 'enum Color:\n  Red\nd = Dict()\nd2 = put(d, Color.Red, 1)\nprintln(1)\n'),
@@ -161,6 +164,8 @@ BAD = [
 ]
 
 GOOD = [
+ 'tuple P:\n  a: Int\n  b: Int\np = P(a: 1, b: 2)\nq = P(...p, b: 5)\nprintln(q)\n',
+ 'tuple H:\n  f: (Int) -> Int\nfn mk(k: Int) H:\n  H(f: (x): x * 2)\nfn mk2(k: Int) H:\n  H(f: (k): k * 2)\ntuple S[A]:\n  f: (A) -> A\nfn mk3(k: Int) S[Int]:\n  S(f: (x): x + k)\nfn mk4(k: Int) Int:\n  g = (x): x * k\n  g(2)\nprintln(mk4(1))\n',
  'enum Color deriving eq, hash:\n  Red\ns = List(Color.Red) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nxs = List(1, 2) |> to_stream() |> reduce(Set(), (acc, c): put(acc, c))\nprintln(1)\n',
  'enum Color deriving eq, hash:\n  Red\ns = Set()\ns2 = put(s, Color.Red)\nd = Dict()\nd2 = put(d, Color.Red, 1)\nxs = put(List(Color.Red), Color.Red)\nprintln(1)\n',
  'fn f[T: Hashable](x: T) Int:\n  d: Dict[T, Int] = Dict()\n  1\nprintln(f(1))\n',

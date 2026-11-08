@@ -226,6 +226,7 @@ class Checker:
         self.pipe_ty = None
         self.node_ty = {}
         self.labels = []
+        self.cur_sc = None
         self.pipe_rest = {}
         self.trail_ty = {}
         self.sigs = None
@@ -1955,6 +1956,7 @@ class Checker:
             self.compat(ann, t, c, n.line)
             self.check_literal_capacity(n, ann)
             self.check_marr(n)
+            self.check_lambda_slots(n, ann, sc)
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is IntLit:
             self.check_fit(n.ann.path[-1], n.value.v, n.line)
         elif n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ in (Binary, Unary):
@@ -2558,6 +2560,7 @@ class Checker:
 
     def _e_Call(self, n, sc, extra=0):
         pipe0 = self.pipe_ty
+        self.cur_sc = sc
         r = self._e_Call0(n, sc, extra)
         f = n.fn
         if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
@@ -3500,6 +3503,72 @@ class Checker:
             return t
         return None
 
+    def lambda_captures(self, lam, sc):
+        """The local variables a lambda uses from the scope around it (module-level constants and functions are not captures)."""
+        own = {q.name for q in lam.params or []}
+        assigned, used = set(), []
+        def walk(x):
+            if isinstance(x, (list, tuple)):
+                for y in x:
+                    walk(y)
+            elif hasattr(x, "_fields"):
+                if x.__class__ is Assign:
+                    for tg in (x.targets if isinstance(x.targets, list) else [x.targets]):
+                        if tg.__class__ is PBind:
+                            assigned.add(tg.name)
+                if x.__class__ is Lambda:
+                    own.update(q.name for q in x.params or [])
+                if x.__class__ is Name:
+                    used.append(x.name)
+                for f in x._fields:
+                    walk(getattr(x, f))
+        walk(lam.body)
+        out = []
+        for nm in used:
+            if nm in own or nm in assigned or nm in out or nm in self.consts or nm in self.fns or nm in self.globals_nonvar():
+                continue
+            if sc.find(nm) is not None:
+                out.append(nm)
+        return out
+
+    def globals_nonvar(self):
+        return set(self.tuples) | set(self.enums) | set(self.aliases) | set(self.cases)
+
+    def check_stored_closure(self, lam, sc, line):
+        names = self.lambda_captures(lam, sc)
+        if names:
+            self.err(line, f"closure captures `{names[0]}`, and only plain functions can be stored here (a tuple field, collection element, Dict value, or channel element of a function type)")
+
+    def check_lambda_slots(self, n, ann, sc):
+        """`m: Dict[String, (Int) -> Int] = Dict("a": (x): x * k)`: a capturing closure in a concrete function-typed slot."""
+        a = n.ann
+        if a.__class__ is not TName or not a.groups or n.value.__class__ is not Call:
+            return
+        slots = [x for g in a.groups for x in (g if isinstance(g, list) else [g]) if x.__class__ is TFn]
+        if not slots or any(self.type_mentions_param(x) for x in slots):
+            return
+        for arg in n.value.args or []:
+            if getattr(arg, "expr", None).__class__ is Lambda:
+                self.check_stored_closure(arg.expr, sc, n.line)
+
+    def type_mentions_param(self, t):
+        return any(nm in self.tp_decl for nm in self.type_names(t))
+
+    def type_names(self, t):
+        out = []
+        def walk(x):
+            if x.__class__ is TName:
+                out.append(x.path[0])
+                for g in x.groups or []:
+                    for y in g if isinstance(g, list) else [g]:
+                        walk(y)
+            elif x.__class__ is TFn:
+                for _l, y in x.params or []:
+                    walk(y)
+                walk(x.ret)
+        walk(t)
+        return out
+
     def need_hash(self, name, line, what):
         if self.implements(("named", name), "Hashable") is False:
             self.err(line, f"`{name}` is used as {what}, so it needs `deriving eq, hash`")
@@ -3718,20 +3787,25 @@ class Checker:
             elif len(unlabeled) > len(pos):
                 self.err(line, f"`{td.name}` has {len(pos)} field{'s' if len(pos) != 1 else ''}, but {len(unlabeled)} values are given")
         i = 0
+        spread = False
         for a, (t, c) in zip(args, ats):
             if getattr(a, "mod", None) == "spread":
-                return
+                spread = True                      # `P(...p, age: 31)`: the names after the spread must still be fields
+                continue
             if a.label is not None:
                 f = fields.get(a.label)
                 if f is None:
                     self.err(line, f"`{td.name}` has no field `{a.label}`")
                     continue
             else:
-                if i >= len(pos):
+                if spread or i >= len(pos):
                     return
                 f = pos[i]
                 i += 1
             self.compat(self.ty_of_type(f.type), t, c, line)
+            if getattr(a, "expr", None).__class__ is Lambda and f.type.__class__ is TFn and not getattr(td, "tparams", None) \
+                    and self.cur_sc is not None and not self.type_mentions_param(f.type):
+                self.check_stored_closure(a.expr, self.cur_sc, line)
 
     def hidden_foreign_param(self, p):
         """A foreign parameter the caller does not supply: a length filled in by the call, or an out-handle."""
