@@ -38,6 +38,8 @@ CASES = [
   CTX + 'fn outer(using Context) Unit:\n  send("u", using)\nouter(using)\n', "fail", "no `using` value of type `Context`"),
  ("an unnamed using parameter takes part in ambiguity",
   CTX + 'fn outer(using Context) Unit:\n  send("u", using)\nusing a = Context(user: "ann")\nusing b = Context(user: "bob")\nouter(using)\n', "fail", "ambiguous"),
+ ("a function may have several unnamed using parameters, and each is passed along",
+  'tuple Config:\n  url: String\ntuple Logger:\n  tag: String\nfn work(using cfg: Config, using log: Logger) Unit:\n  println("${log.tag} ${cfg.url}")\nfn outer(n: Int, using Config, using Logger) Unit:\n  work(using, using)\nfn go() Unit:\n  using c = Config(url: "example.com")\n  using l = Logger(tag: "main")\n  outer(1, using, using)\ngo()\n', "run", "main example.com"),
 ]
 
 fails = []

@@ -984,7 +984,7 @@ class CallsMixin:
                     env.vars[pname] = v
                     if env.usings is None:
                         env.usings = {}
-                    env.usings[pname] = v         # a `using` parameter is a candidate for the calls in the body
+                    env.usings[pname if pname != "_" else f"_{pi}"] = v     # a `using` parameter is a candidate for the calls in the body
                 continue
             remaining_nonusing -= 1
             if p.variadic:
