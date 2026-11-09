@@ -866,6 +866,9 @@ class ExprParser(PBase):
             mod = t.val
             self.next()
             t = self.peek()
+            if mod == "using" and t.kind == "NAME" and not self.at_op(":", 1):
+                # `using Context`: a contextual parameter that has no name (the same as `using _: Context`)
+                return Param(None, "_", self.parse_type(), None, "using", False, line=line)
         pat = None
         name = None
         if t.kind == "NAME" and (t.val not in HARD or t.val == "self") and (self.at_op(":", 1) or self.at_op(",", 1) or self.at_op(")", 1)) :
