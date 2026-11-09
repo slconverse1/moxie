@@ -352,6 +352,14 @@ def unify(pat, act, binds):
             r = unify(x, y, binds)
             if r:
                 return r
+        ps = pat[3] if len(pat) > 3 else None
+        if ps.__class__ is tuple and ps[0] in ("param", "pvar") and len(act) > 3 and act[3].__class__ is int:
+            key = "#" + str(ps[1])         # a size parameter used twice (`Array[T][N]` and `Array[U][N]`) stands for one size
+            cur = binds.get(key)
+            if cur is None:
+                binds[key] = act[3]
+            elif cur != act[3]:
+                return (act[:3] + (cur,), act)
     elif pat[0] == act[0] == "fn" and len(pat[1]) == len(act[1]):
         for x, y in zip(pat[1], act[1]):
             r = unify(x, y, binds)

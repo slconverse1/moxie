@@ -2051,9 +2051,12 @@ class Checker:
             g = g[0] if isinstance(g, list) and g else g
             sz = self.const_int(g.expr) if g.__class__ is TExpr else None
             return sz if isinstance(sz, int) else None
-        if a is None and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == "Array" \
+        unsized = a.__class__ is TName and a.path == ["Array"] and "Array" not in self.tuples and len(a.groups or []) == 1
+        if (a is None or unsized) and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == "Array" \
                 and "Array" not in self.tuples and "Array" not in self.fns:
             return self.literal_count("Array", n.value)
+        if unsized and n.value.__class__ is TupleE and n.value.items and all(i[0] is None and not i[2] for i in n.value.items):
+            return len(n.value.items)          # `x: Array[Int] = (1, 2, 3)`: the value gives the size
         return None
 
     def warn_shadow(self, nm, sc, n):
@@ -2143,6 +2146,9 @@ class Checker:
                             and any(x.__class__ is TFn and not self.type_mentions_param(x) for x in gv.groups[0]):
                         sc.vars[tgt.name].fnstore = True
                     sc.vars[tgt.name].size = self.array_size(n)
+                    vv = sc.vars[tgt.name]
+                    if vv.size.__class__ is int and vv.ty.__class__ is tuple and len(vv.ty) == 3 and vv.ty[0] == "app" and vv.ty[1] == "Array":
+                        vv.ty = vv.ty + (vv.size,)           # `x: Array[Int] = (1, 2, 3)` has the size its value gives, so two arguments can be compared
                     if n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name in ("Set", "Dict") \
                             and n.value.fn.name not in self.fns and n.value.fn.name not in self.tuples:
                         sc.vars[tgt.name].kind = n.value.fn.name
