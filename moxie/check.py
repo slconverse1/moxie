@@ -212,6 +212,8 @@ class Checker:
         self.diags = []
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
+        self.pkg_methods = {}            # (`pkg.T`, method name) -> the method's signature
+        self.pkg_types = set()           # a package's types, registered as `pkg.T`
         self.pkg_calls = set()           # the functions known from an imported package's signatures
         self.callee_fields = set()
         self.tail_whens = set()
@@ -283,6 +285,22 @@ class Checker:
             return None
         return None
 
+    def renamed(self, t, mp):
+        """A copy of the AST node (or list) `t` in which every type name in `mp` is replaced by its mapped name."""
+        import copy
+        if isinstance(t, list):
+            return [self.renamed(x, mp) for x in t]
+        if isinstance(t, tuple):
+            return tuple(self.renamed(x, mp) for x in t)
+        if not hasattr(t, "_fields"):
+            return t
+        c = copy.copy(t)
+        for f in t._fields:
+            setattr(c, f, self.renamed(getattr(t, f, None), mp))
+        if c.__class__ is TName and c.path and c.path[0] in mp:
+            c.path = [mp[c.path[0]]] + list(c.path[1:]) if isinstance(c.path, list) else (mp[c.path[0]],) + tuple(c.path[1:])
+        return c
+
     def mentions_type(self, t, names):
         """True when the type tree `t` names one of `names` (types the package declares)."""
         if t is None:
@@ -301,9 +319,42 @@ class Checker:
         stmts = self.package_program(st.pkg)
         if stmts is None:
             return
-        own = {x.name for x in stmts if x.__class__ in (TupleDecl, EnumDecl, AliasDecl, IfaceDecl)}
+        own = {x.name for x in stmts if x.__class__ in (TupleDecl, EnumDecl, AliasDecl)}
         alias = st.alias or st.pkg[-1]
+        mp = {nm: f"{alias}.{nm}" for nm in own}              # the package's own types, under names that cannot clash with this file's
+        if st.names is None:
+            for x in stmts:
+                if x.__class__ in (TupleDecl, EnumDecl, AliasDecl) and mp[x.name] not in self.tuples and mp[x.name] not in self.enums \
+                        and mp[x.name] not in self.aliases:
+                    d = self.renamed(x, mp)
+                    d.name = mp[x.name]
+                    if x.__class__ is TupleDecl:
+                        d.props = None
+                        d.invariants = None
+                        self.tuples[d.name] = d
+                    elif x.__class__ is EnumDecl:
+                        self.enums[d.name] = d
+                    else:
+                        self.aliases[d.name] = d
+                    self.pkg_types.add(d.name)
+                    self.globals.add(d.name)
+            for x in stmts:
+                if x.__class__ is ImplDecl and x.iface is not None and x.target.__class__ is TName and x.target.path[-1] in mp:
+                    self.impls.setdefault(mp[x.target.path[-1]], set()).add(_tn(x.iface))
+                elif x.__class__ is ImplDecl and x.target.__class__ is TName and x.target.path[-1] in mp:
+                    for m in x.members or []:
+                        if getattr(m, "name", None) in ("<", "=="):
+                            self.impls.setdefault(mp[x.target.path[-1]], set()).add("Ordered" if m.name == "<" else "Equatable")
+        if st.names is not None:
+            mp = {}
         wanted = None
+        for x in stmts:
+            if x.__class__ is ImplDecl and x.target.__class__ is TName and x.target.path:
+                for m in x.members or []:
+                    if m.__class__ is FnDecl:
+                        c = self.renamed(m, mp)
+                        c.body = None
+                        self.pkg_methods[(mp.get(x.target.path[-1], x.target.path[-1]), m.name)] = c
         if st.names:
             wanted = {nm if isinstance(nm, str) else getattr(nm, "name", None) for nm in st.names}
         for x in stmts:
@@ -319,11 +370,11 @@ class Checker:
             c.params = []
             for p in fd.params or []:
                 q = copy.copy(p)
-                if self.mentions_type(p.type, own - tps):
-                    q.type = None
+                if self.mentions_type(p.type, own):
+                    q.type = self.renamed(p.type, {k: v for k, v in mp.items() if k not in tps}) if mp else None
                 c.params.append(q)
-            if self.mentions_type(fd.ret, own - tps):
-                c.ret = None
+            if self.mentions_type(fd.ret, own):
+                c.ret = self.renamed(fd.ret, {k: v for k, v in mp.items() if k not in tps}) if mp else None
             if wanted is None:
                 key = f"{alias}.{fd.name}"
             elif fd.name in wanted and fd.name not in self.fns:
@@ -494,6 +545,11 @@ class Checker:
                     ps = m.params or []
                     if ps and ps[0].name == "self" and ps[0].type is None and self.is_res_type(st.target) and keeps(m, "self"):
                         self.method_consumes.add((tn, m.name))
+        self.add_pkg_methods()
+
+    def add_pkg_methods(self):
+        for k, m in self.pkg_methods.items():
+            self.methods.setdefault(k, m)
 
     def mark_gone(self, n, sc, x, what):
         """The name `x` no longer owns its resource (it was closed or handed to a function that keeps it)."""
@@ -676,6 +732,8 @@ class Checker:
                 return self.ty_of_type(reduce_app(t), depth + 1, keep, top)
             except TypeLambdaError:
                 return None
+        if c is TName and len(t.path) == 2 and ".".join(t.path) in self.pkg_types:
+            return self.ty_of_type(TName([".".join(t.path)], t.groups, line=getattr(t, "line", 0)), depth, keep, top)
         if c is TName and len(t.path) == 2 and not t.groups:
             return self.assoc_type(t.path[0], t.path[1], keep)
         if c is not TName or len(t.path) != 1:
@@ -1235,6 +1293,9 @@ class Checker:
                 return
         if exp == "Int" and act.__class__ is tuple and act[0] == "bounded":
             return
+        if exp == "Float" and act == "Int" and const is None:
+            self.err(line, "`Int` does not convert to `Double` without loss (above 2^53 it rounds); write `cast[Double](x)`, or use a literal")
+            return
         if exp == "Float" and act in ("Int", "Decimal"):
             return
         if exp == "Decimal" and act in ("Int", "Float"):
@@ -1760,6 +1821,8 @@ class Checker:
 
     def e_Field(self, n, sc):
         o = n.obj
+        if o.__class__ is Name and sc.find(o.name) is None and f"{o.name}.{n.name}" in self.pkg_calls:
+            return self.fn_value_type(f"{o.name}.{n.name}"), None       # `map(stats.mean)`: a package function used as a value
         if o.__class__ is Name and o.name in self.enums and sc.find(o.name) is None and o.name not in self.fns \
                 and o.name not in self.tuples and o.name not in self.aliases:
             ed = self.enums[o.name]
@@ -2892,6 +2955,9 @@ class Checker:
         if f.__class__ is Name and f.name in ("replace", "modify") and f.name not in self.fns and sc.find(f.name) is None \
                 and len(n.args or []) == 3 and not extra:
             self.check_path_update(n, f.name, sc)
+        if f.__class__ is Name and f.name == "on_change" and f.name not in self.fns and sc.find(f.name) is None \
+                and len(n.args or []) == 3 and not extra:
+            self.check_observer(n)
         if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
                 and f.name not in self.fns and sc.find(f.name) is None:
             if len(n.args or []) == 1 and not extra:
@@ -3681,6 +3747,9 @@ class Checker:
         if name == "Dict" and not extra and name not in self.fns and name not in self.tuples and name not in self.aliases \
                 and args and n.trailing is None:
             return self.dict_ctor(args, ats, n), None
+        if name == "Atom" and not extra and len(args) == 1 and n.trailing is None and name not in self.fns and name not in self.tuples \
+                and name not in self.aliases and not extra_bad(args) and ats[0][0] is not None:
+            return ("app", "Atom", (self.base(ats[0][0]),)), None        # `Atom(Meter())` holds a Meter
         if name == "secret" and name not in self.fns:
             return ("secret",), None
         if name in self.tuples:
@@ -4070,6 +4139,15 @@ class Checker:
                     if j != "conflict":
                         binds[pt[1]] = j
                 continue
+            bt0 = self.base(t)
+            if pt[0] == "app" and pt[1] == "Array" and len(pt) > 3 and bt0.__class__ is tuple and bt0[0] == "tup" and len(bt0) == 2 and bt0[1]:
+                el = None
+                for it in bt0[1]:
+                    el = tys.join(el, self.base(it)) if it is not None else "conflict"
+                    if el == "conflict":
+                        break
+                bt0 = ("app", "Array", (None if el == "conflict" else el,), len(bt0[1]))        # a literal `(1, 2)` is an array of size 2
+                t = bt0
             clash = tys.unify(pt, self.base(t), binds)
             if clash:
                 self.err(n.line, f"`{fd.name}` needs one type for its type parameters, but `{p.name}` gets `{tshow(t)}` where `{tshow(clash[0])}` was fixed by another argument"
@@ -4078,6 +4156,11 @@ class Checker:
             if not tys.compatible(tys.subst(pt, binds), t) and not (tys.params_in(pt) - set(binds)):
                 self.err(n.line, f"mismatched types: expected `{tshow(tys.subst(pt, binds))}`, found `{tshow(t)}`")
                 return None
+        for tp in fd.tparams or []:                 # `where N > 0` on a size parameter whose size this call fixes
+            sz = binds.get("#" + tp.name)
+            if tp.where is not None and sz.__class__ is int:
+                if const_eval(tp.where, {tp.name: sz}) is False:
+                    self.err(n.line, f"this call to `{fd.name}` gives `{tp.name}` the size {sz}, which fails its `where` constraint")
         ret = self.ty_of_type(fd.ret, 0, keep) if fd.ret is not None else None
         if ret is None:
             return None
@@ -4172,6 +4255,13 @@ class Checker:
             params = [p for p in params if not self.hidden_foreign_param(p)]
         if any(p.mod == "using" for p in params):
             self.check_using_args(fd, n, args)
+            if not any(a.mod == "spread" or a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")) \
+                    and not any(p.variadic for p in params):
+                k = sum(1 for a in args if not a.label) + extra         # positional arguments fill the leading parameters
+                named = {a.label for a in args if a.label}
+                for q in params[k:]:
+                    if q.mod == "using" and q.name and q.name not in named and q.default is None:
+                        self.check_using_param(q, getattr(self, "cur_sc", None), n.line)     # left out: the value comes from the scope
             return self.ret_of(fd), None
         if any(a.mod == "spread" or a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")):
             return self.ret_of(fd), None
@@ -4843,6 +4933,45 @@ class Checker:
         if ty is None:
             return None, None
         return ("fn", (("named", td.name),), ty), None
+
+    def check_observer(self, n):
+        """`on_change(atom, prop, handler)` (and `atom.prop +% handler`): the atom holds a tuple with that property, and the handler
+        takes the old and the new value, both of the property's type."""
+        a0, a1, a2 = (a.expr for a in n.args)
+        pn = a1.parts[0] if a1.__class__ is StrLit and len(a1.parts) == 1 and isinstance(a1.parts[0], str) else None
+        at = self.base(self.arg_ty.get(id(a0)))
+        if pn is None or at.__class__ is not tuple or at[0] != "app" or at[1] != "Atom" or len(at[2]) != 1:
+            return
+        et = self.base(at[2][0])
+        td = self.tuples.get(et[1]) if et.__class__ is tuple and et[0] == "named" else None
+        if td is None or getattr(td, "spread", None):
+            return
+        pr = self.prop_in(td, pn)
+        fld = next((f for f in td.fields or [] if getattr(f, "name", None) == pn), None)
+        decl = pr if pr is not None else fld
+        if decl is None:
+            self.err(n.line, f"`{td.name}` has no property `{pn}` to watch")
+            return
+        pt = self.ty_of_type(decl.type) if decl.type is not None else None
+        if pt is None:
+            return
+        if a2.__class__ is Lambda:
+            if len(a2.params or []) != 2:
+                self.err(n.line, f"a handler for `{pn}` takes two parameters, the old and the new value, but this one takes {len(a2.params or [])}")
+                return
+            for prm in a2.params:
+                if getattr(prm, "type", None) is not None:
+                    self.compat(pt, self.ty_of_type(prm.type), None, n.line)
+            return
+        ht = self.base(self.arg_ty.get(id(a2)))
+        if ht.__class__ is tuple and ht[0] == "fn":
+            ps = ht[1]
+            if len(ps) != 2:
+                self.err(n.line, f"a handler for `{pn}` takes two parameters, the old and the new value, but this one takes {len(ps)}")
+                return
+            for q in ps:
+                if q is not None:
+                    self.compat(pt, self.base(q), None, n.line)
 
     def check_path_update(self, n, which, sc):
         """`replace(v, path, new)` and `modify(v, path, f)`: `v` is the type the path starts at, and `new` (or what `f` takes and returns)

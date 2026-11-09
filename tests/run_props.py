@@ -17,6 +17,12 @@ impl Account:
 
 # (name, source, how, text): how is "run" (exit 0 and text in output), "fail" (nonzero exit and text in output)
 CASES = [
+ ("an observer handler with one parameter is a compile error",
+  'tuple Meter:\n  property level: Int = 0\nm = Atom(Meter())\ntok = on_change(m, level, fn (a): println(a))\n', "fail", "takes two parameters"),
+ ("an observer handler typed for another type is a compile error",
+  'tuple Meter:\n  property level: Int = 0\nm = Atom(Meter())\nm.level +% fn (a: String, b: String): println(a)\n', "fail", "expected `Int`, found `String`"),
+ ("an observer handler of the right shape is accepted",
+  'tuple Meter:\n  property level: Int = 0\nm = Atom(Meter())\ntok = on_change(m, level, fn (a, b): println("$a $b"))\nprintln("ok")\n', "run", "ok"),
  ("a stored property with no accessors reads and writes",
   'tuple T:\n  property n: Int = 3\nt = T()\nprintln(t.n)\nt.n = 9\nprintln(t.n)\n', "run", "3\n9"),
  ("a setter validates a write",

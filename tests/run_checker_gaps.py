@@ -1,6 +1,8 @@
 """Checker gaps: repeated type parameters in builtins, mixed-type collection literals, lambda arity."""
 import sys, subprocess
 BAD = [
+ ("n = 7\nfn half(x: Double) Double:\n  x / 2.0\nprintln(half(n))\n", "`Int` does not convert to `Double` without loss"),
+ ("n = 7\ny: Double = n\n", "`Int` does not convert to `Double` without loss"),
  ("a: Result[String, String] = Ok(\"x\")\nb: Result[String, Int] = Ok(\"y\")\nq = map_all((x, y): x, a, b)\n", "repeated type parameter"),
  ("xs = List(1, \"a\")\n", "must share one type"),
  ("xs: List[Int] = List(1, \"a\")\n", "must share one type"),
@@ -64,6 +66,7 @@ GOOD = [
  "xs: List[Int | String] = List(1, \"a\")\nd: Dict[String, Int | Bool] = Dict(\"n\": 1, \"on\": true)\nprintln(len(xs) + len(d))\n",
  "x = Dict(1: 2).map((k, v): k) |> collect()\ny = Dict(\"a\": 1, b: 2)\nz = Dict((5, 6), (7, 8))\nprintln(len(y) + len(z))\n",
  "x = Ok(1).map((a): a + 1)\nprintln(x)\n",
+ "n = 7\nfn half(x: Double) Double:\n  x / 2.0\nprintln(half(7))\nprintln(half(cast[Double](n)))\nz: Double = 3\n",
 ]
 fails = 0
 def chk(src, *flags):

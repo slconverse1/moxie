@@ -18,6 +18,15 @@ CASES = [
  ("a local package: wrong argument", 'import lib\nprintln(lib.twice("x"))\n', "fail", "expected `Int`, found `String`", LIB),
  ("a local package: right argument", 'import lib\nprintln(lib.twice(4))\nprintln(lib.name_of("a"))\nprintln(lib.name_of("a", 2))\n', "run", "8\na\na", LIB),
  ("a local package: too many arguments", 'import lib\nprintln(lib.twice(1, 2))\n', "fail", "takes 1 argument", LIB),
+ ("a package type is not a String", 'import lib\nprintln(lib.unbox("x"))\n', "fail", "expected `lib.Box`, found `String`", LIB),
+ ("this file's own Box is not the package's Box", 'import lib\ntuple Box:\n  v: Int\nprintln(lib.unbox(Box(v: 1)))\n', "fail", "expected `lib.Box`, found `Box`", LIB),
+ ("a field of a package type is read with its type", 'import lib\nn: Int = lib.mk(2).v\nprintln(n)\ns: String = lib.mk(2).v\n', "fail", "expected `String`, found `Int`", LIB),
+ ("a missing field of a package type", 'import lib\nprintln(lib.mk(2).nope)\n', "fail", "has no field `nope`", LIB),
+ ("a package type in an annotation", 'import lib\nb: lib.Box = lib.mk(5)\nprintln(lib.unbox(b))\nc: lib.Box = 3\n', "fail", "expected `lib.Box`, found `Int`", LIB),
+ ("a result holding a package type", 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b):\n  Ok(l) -> println(stats.predict(l, 4.0))\n  Err(e) -> println(e)\n', "run", "9", None),
+ ("a package type where a number is wanted", 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b):\n  Ok(l) -> println(stats.predict(3.0, 4.0))\n  Err(e) -> println(e)\n', "fail", "expected `stats.Line`, found `Double`", None),
+ ("a package function used as a value is checked", 'import lib\nxs = List("a", "b")\nprintln(xs |> map(lib.twice) |> collect())\n', "fail", "can't take", LIB),
+ ("a package function used as a value runs", 'import lib\nxs = List(1, 2)\nprintln(xs |> map(lib.twice) |> collect())\n', "run", "List(2, 4)", LIB),
  ("a package type is the package's own", 'import lib\nprintln(lib.unbox(lib.mk(3)))\n', "run", "3", LIB),
 ]
 

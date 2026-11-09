@@ -10,6 +10,8 @@ fn send(url: String, using ctx: Context) Unit:
 
 # (name, source, how, text): how is "run" (exit 0 and text in output) or "fail" (nonzero exit and text in output)
 CASES = [
+ ("a call that leaves out using, with nothing in scope, is a compile error",
+  'tuple Context:\n  name: String\nfn greet(msg: String, using ctx: Context) String:\n  "$(ctx.name): $msg"\nprintln(greet("hi"))\n', "fail", "no `using` value of type `Context` in scope"),
  ("a top-level using is found by type, whatever the names",
   CTX + 'using c = Context(user: "ann")\nsend("u", using)\n', "run", "u ann"),
  ("a using declared inside a function body is found at the call",

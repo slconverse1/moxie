@@ -8,6 +8,12 @@ PAIR = '''fn pair[N](a: Array[Int][N], b: Array[Int][N]) Int:
 
 # (name, source, how, text): how is "run" (exit 0 and text in output) or "fail" (nonzero exit and text in output)
 CASES = [
+ ("a where constraint on a size is checked at the call",
+  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nx: Array[Int] = (1, 2)\nprintln(big(x))\n', "fail", "gives `N` the size 2, which fails its `where` constraint"),
+ ("a where constraint on a literal array is checked",
+  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nprintln(big((1, 2)))\n', "fail", "gives `N` the size 2"),
+ ("a where constraint that holds is accepted",
+  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nprintln(big((5, 2, 3)))\n', "run", "5"),
  ("arrays of different sizes, annotated without a size, are an error",
   PAIR + 'x: Array[Int] = (1, 2, 3)\ny: Array[Int] = (1, 2)\nprintln(pair(x, y))\n', "fail", "where `Array[Int][3]` was fixed by another argument"),
  ("arrays of different sizes, annotated with sizes, are an error",

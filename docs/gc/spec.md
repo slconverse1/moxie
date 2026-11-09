@@ -743,13 +743,10 @@ Signatures only, grouped. Names with an asterisk are planned.
 Moxie's rule is that a type error is a compile error. There are two kinds of exception, and both are written down here.
 - **Checks on values, by design.** A failure that depends on a value and not on a type aborts at run time: an index out of range, integer overflow, division by zero, a shift at or past the width, `cast[T]` to a type that can't hold the value, a full Dict given a new key, a failed `assert` or contract, a deadlock, and stack overflow (section 15, "Aborts"). A function that can fail on valid input returns a `Result` instead.
 - **Gaps in the reference interpreter's checker.** Each of these is a type error that the language treats as a compile error and that the interpreter finds only at run time, or not at all. The compiler must check every one, and an item leaves this list when its check is built:
-  1. **Calls into an imported package** are checked against its exported signatures, with three exceptions: a parameter or result of a type the package itself declares (such as `stats.Line`), a function with higher-kinded type parameters, and a package function passed as a value (`map(stats.mean)`). Those fail at run time.
-  2. **`where` constraints on size parameters** (section 9a) are not checked at the call, so `first_of(e)` with `e` of size 0 is not rejected.
-  3. **A call that leaves out a `using` argument** when no value is in scope aborts at run time. A call that writes `using` is checked at compile time.
-  4. **Handlers given to `on_change`** (and to `+%`, which is the same call) are not compared with the property's type. A handler with the wrong number of parameters aborts when the property changes.
-  5. **A non-literal `Int` used as a `Double`** is accepted, although the conversion is not lossless (the widening rule in section 5).
-  6. **A delegate declared in another module:** a write through a delegate whose setter can fail aborts at run time instead of being a compile error, and no `set_NAME` is generated for it.
-  7. **Generics in part:** bounds on method calls, nested generic signatures, and higher-kinded parameters; also memory spaces and pool sizing, SQL column and row types, and package manifests.
+  1. **Calls into an imported package** are checked against its exported signatures, its types, and its functions used as values. Not checked: a function with higher-kinded type parameters, and a method called on a package's type.
+  2. **`where` constraints on size parameters** (section 9a) are checked at a call whose array size is known when compiling (a literal, or a variable of a sized array type). When the size is not known then, the constraint is not checked at all.
+  3. **A delegate declared in another module:** a write through a delegate whose setter can fail aborts at run time instead of being a compile error, and no `set_NAME` is generated for it.
+  4. **Generics in part:** bounds on method calls, nested generic signatures, and higher-kinded parameters; also memory spaces and pool sizing, SQL column and row types, and package manifests.
 
 **25. Still open**
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
