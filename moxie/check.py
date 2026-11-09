@@ -163,6 +163,7 @@ class Sc:
         self.fnb = False                 # the top scope of a function or lambda body
         self.open = open_ or (parent.open if parent else False)
         self.loopbody = False            # the block that is a loop's body
+        self.usings = None               # name -> type of each `using` value declared in this scope (or a `using` parameter)
 
     def find(self, name):
         s = self
@@ -243,6 +244,7 @@ class Checker:
         self.consumes = {}         # function name -> parameter positions it takes ownership of
         self.method_consumes = set()
         self.methods = {}
+        self.top_using_names = set()     # the `using` bindings declared at the top level (their order against a function is not known)
         self.res_tuples = set()
         self.pending_gone = []
         self.ifaces = set()
@@ -535,6 +537,7 @@ class Checker:
         elif c is UsingDecl:
             if st.name:
                 self.globals.add(st.name)
+                self.top_using_names.add(st.name)
         elif c is Assign:
             for nm in self.pat_names(st.targets):
                 self.globals.add(nm)
@@ -1864,6 +1867,47 @@ class Checker:
         if stmts and stmts[-1].__class__ is not ExprStmt:
             return None, None
         return last
+
+    def e_UsingDecl(self, n, sc):
+        t, c = self.ev(n.expr, sc)
+        if sc.usings is None:
+            sc.usings = {}
+        sc.usings[n.name] = t
+        return None, None
+
+    def check_using_args(self, fd, n, args):
+        """A call that writes `using` for a parameter: some enclosing scope must hold a value of its type, and the nearest scope that does
+        must hold exactly one."""
+        ups = [p for p in fd.params or [] if p.mod == "using" and p.name]
+        marks = [a for a in args if getattr(a, "mod", None) == "using" and getattr(a, "expr", 1) is None]
+        if not ups or not marks:
+            return
+        named = {a.label for a in marks if a.label}
+        free = [p for p in ups if p.name not in named]
+        for a in marks:
+            p = next((q for q in ups if q.name == a.label), None) if a.label else (free.pop(0) if free else None)
+            if p is not None:
+                self.check_using_param(p, getattr(self, "cur_sc", None), n.line)
+
+    def check_using_param(self, p, sc, line):
+        pt = self.ty_of_type(p.type) if p.type is not None else None
+        if pt is None or tys.is_wild(pt):
+            return
+        seen = set()
+        s = sc
+        while s is not None:
+            if s.usings:
+                seen.update(s.usings)
+                exact = [k for k, t in s.usings.items() if t == pt]
+                if len(exact) > 1:
+                    self.err(line, f"ambiguous `using` for parameter `{p.name}`: {', '.join(exact)} are in the same scope; keep one, or pass the value yourself")
+                    return
+                if any(t is None or tys.compatible(pt, t) for t in s.usings.values()):
+                    return
+            s = s.parent
+        if self.top_using_names - seen:
+            return                  # a top-level `using` declared later in the file may be the one
+        self.err(line, f"no `using` value of type `{tshow(pt)}` in scope for parameter `{p.name}`: declare `using x = ...` in an enclosing scope, or pass one")
 
     def e_ExprStmt(self, n, sc):
         return self.ev(n.e, sc)
@@ -4022,6 +4066,7 @@ class Checker:
         if id(fd) in self.foreign_ids:
             params = [p for p in params if not self.hidden_foreign_param(p)]
         if any(p.mod == "using" for p in params):
+            self.check_using_args(fd, n, args)
             return self.ret_of(fd), None
         if any(a.mod == "spread" or a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")):
             return self.ret_of(fd), None
@@ -4137,6 +4182,10 @@ class Checker:
                     from .values import GC
                     pty = ("app", "List" if GC[0] else "Array", (pty,))       # inside the body, `...T` is an Array of T (a List in moxie/gc)
                 inner.vars[p.name] = Var(pty, res, 0)
+                if p.mod == "using":
+                    if inner.usings is None:
+                        inner.usings = {}
+                    inner.usings[p.name] = pty
                 if p.type.__class__ is TName and len(p.type.path) == 1 and p.type.path[0] in self.FIT and p.type.path[0] not in self.tuples \
                         and p.type.path[0] not in self.aliases:
                     inner.vars[p.name].inttype = p.type.path[0]

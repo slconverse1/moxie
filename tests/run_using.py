@@ -25,7 +25,13 @@ CASES = [
  ("a using parameter is a candidate for calls in the body",
   'tuple Context:\n  user: String\nfn inner(using ctx: Context) Unit:\n  println("inner ${ctx.user}")\nfn outer(n: Int, using ctx: Context) Unit:\n  inner(using)\nfn go() Unit:\n  using c = Context(user: "zed")\n  outer(1, using)\ngo()\n', "run", "inner zed"),
  ("no value in scope is an error",
-  CTX + 'send("u", using)\n', "fail", "no 'using' value"),
+  CTX + 'send("u", using)\n', "fail", "no `using` value of type `Context`"),
+ ("a using of another type doesn't count",
+  CTX + 'tuple Other:\n  n: Int\nusing b = Other(n: 1)\nsend("u", using)\n', "fail", "no `using` value of type `Context`"),
+ ("a using declared later at the top level still serves a function body",
+  CTX + 'fn go() Unit:\n  send("u", using)\nusing c = Context(user: "late")\ngo()\n', "run", "u late"),
+ ("a using in an enclosing function serves a lambda",
+  CTX + 'fn go() Unit:\n  using c = Context(user: "ann")\n  f = fn (): send("u", using)\n  f()\ngo()\n', "run", "u ann"),
 ]
 
 fails = []
