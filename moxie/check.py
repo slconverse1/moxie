@@ -244,6 +244,7 @@ class Checker:
         self.consumes = {}         # function name -> parameter positions it takes ownership of
         self.method_consumes = set()
         self.methods = {}
+        self.arg_ty = {}                 # the type of each call argument as it was checked (by the id of its expression)
         self.top_using_names = set()     # the `using` bindings declared at the top level (their order against a function is not known)
         self.res_tuples = set()
         self.pending_gone = []
@@ -2804,6 +2805,9 @@ class Checker:
         if f.__class__ is Name and f.name in self.tuples and f.name not in self.fns and sc.find(f.name) is None \
                 and self.fallible_ctor(self.tuples[f.name]) and r is not None and r[0] is not None:
             r = (("app", "Result", (r[0], ("named", "Error"))), r[1])          # a setter that can fail makes construction fallible
+        if f.__class__ is Name and f.name in ("replace", "modify") and f.name not in self.fns and sc.find(f.name) is None \
+                and len(n.args or []) == 3 and not extra:
+            self.check_path_update(n, f.name, sc)
         if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
                 and f.name not in self.fns and sc.find(f.name) is None:
             if len(n.args or []) == 1 and not extra:
@@ -3103,6 +3107,9 @@ class Checker:
                 self.err(n.line, f"`{fn.name}` takes at most {top} argument{'s' if top != 1 else ''}, but {len(sargs) + extra} given")
         if ov is not None and ov[0] and all(hasattr(a, "expr") for a in sargs):
             ats, sigres = self.sig_args(n, ov[0], ov[1], sargs, asc, sc, extra)
+            for a_, r_ in zip(sargs, ats):
+                if hasattr(a_, "expr") and r_.__class__ is tuple:
+                    self.arg_ty[id(a_.expr)] = r_[0]
             if sargs is not args:
                 ats = ats + opt_ats
             args_iter = ()
@@ -3119,6 +3126,8 @@ class Checker:
             r = self.ev(a.expr, asc) if hasattr(a, "expr") else (None, None)
             self.lam_expect = None
             ats.append(r)
+            if hasattr(a, "expr"):
+                self.arg_ty[id(a.expr)] = r[0]
             if pt is not None and r[0] is not None:
                 tys.unify(pt, self.base(r[0]), binds)           # what this argument tells the later ones (a lambda's parameters)
         if n.trailing is not None:
@@ -4722,7 +4731,49 @@ class Checker:
         return None, None
 
     def e_PathE(self, n, sc):
-        return None, None
+        """`/User/firm/name`: a function from the root tuple to the type of the field the path ends at, `(User) -> String`.
+        A path that names a field its tuple doesn't have is an error; a step the checker can't follow leaves the type open."""
+        segs = n.segs or []
+        td = self.tuples.get(segs[0]) if segs else None
+        if td is None or getattr(td, "tparams", None):
+            return None, None
+        cur, ty = td, None
+        for i, seg in enumerate(segs[1:], 1):
+            pd = self.prop_in(cur, seg)
+            fld = next((x for x in cur.fields or [] if x.name == seg), None)
+            if pd is None and fld is None:
+                self.err(n.line, f"the path `/{'/'.join(segs)}` names `{seg}`, but `{cur.name}` has no field or property of that name")
+                return None, None
+            ty = self.ty_of_type(pd.type if pd is not None else fld.type)
+            if i < len(segs) - 1:
+                if ty.__class__ is tuple and ty[0] == "named" and ty[1] in self.tuples and not getattr(self.tuples[ty[1]], "tparams", None):
+                    cur = self.tuples[ty[1]]
+                else:
+                    return None, None
+        if ty is None:
+            return None, None
+        return ("fn", (("named", td.name),), ty), None
+
+    def check_path_update(self, n, which, sc):
+        """`replace(v, path, new)` and `modify(v, path, f)`: `v` is the type the path starts at, and `new` (or what `f` takes and returns)
+        is the type of the field it ends at."""
+        a = n.args
+        if len(a) != 3 or any(not hasattr(x, "expr") for x in a):
+            return
+        vt, pt, wt = (self.arg_ty.get(id(x.expr)) for x in a)
+        if pt.__class__ is not tuple or pt[0] != "fn" or len(pt[1]) != 1:
+            return
+        root, leaf = pt[1][0], pt[2]
+        if vt is not None:
+            self.compat(root, self.base(vt), None, n.line)
+        if wt is None:
+            return
+        if which == "replace":
+            self.compat(leaf, self.base(wt), None, n.line)
+        elif wt.__class__ is tuple and wt[0] == "fn" and len(wt[1]) == 1:
+            self.compat(leaf, wt[1][0], None, n.line)
+            if wt[2] is not None:
+                self.compat(leaf, self.base(wt[2]), None, n.line)
 
     def e_Deref(self, n, sc):
         self.ev(n.e, sc)

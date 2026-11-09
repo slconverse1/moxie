@@ -741,7 +741,7 @@ Contextual parameters (`using`), 2026-11-09: `find_using` (calls.py) now looks f
 
 A `using` parameter must have a name: `parse_param` (pexpr.py) rejects `using Context` and `using _: Context` (an unnamed form was tried and removed, since it only saved a name and the body could not read it).
 
-Data paths are `PathV` values, so they are first-class; `replace` and `modify` take the path at run time, so a path parameter works (the Spec allows it; a compiled implementation would specialize per path). `tests/run_paths.py` covers passing, returning, storing, composing, and updating through paths.
+Data paths are `PathV` values, so they are first-class; `replace` and `modify` take the path at run time, so a path parameter works (the Spec allows it; a compiled implementation would specialize per path). `tests/run_paths.py` covers passing, returning, storing, composing, and updating through paths. Checker: `e_PathE` types a path as `(Root) -> Leaf` (an unknown field is a compile error); `_e_Call` hands `replace`/`modify` with three arguments to `check_path_update`, which compares the value with the root and the new value (or the function's parameter and result) with the leaf, using the argument types recorded in `arg_ty`. A path parameter is checked through its function type. Not built: the `*` traversal, positional segments, and a generic root (the parser takes NAME segments only; Spec 24a item 2).
 
 ## The stats package (moxie/std/stats.mxi, tests/run_stats.py)
 
