@@ -1,7 +1,7 @@
 //! stats: statistics and prediction for learning the ideas.
 //!
 //! Every function works on an `Array[Double][N]`. The functions that take two arrays (`covariance`, `fit_line`, `rmse`) need
-//! the same number of values in each, and the program stops with a failed assertion when they differ. Each function is a few
+//! the same number of values in each, and a mismatch the compiler can see (arrays of known, different sizes) is a compile error; otherwise the program stops with a failed assertion. Each function is a few
 //! lines you can read. Averages and spreads need at least one value, and the spread of a single value is 0.
 
 // ---------------------------------------------------------------- one list of numbers

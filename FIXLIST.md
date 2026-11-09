@@ -17,4 +17,4 @@ Remaining interpreter limits (not language changes)
 
 To do (Steve, 2026-11-09)
 * Document the library code with moxie's own documentation mechanism (`moxie doc` and its doctests): `moxie/std/stats.mxi` and the `fp.*` packages should carry doc comments with runnable examples, so we practice what we preach.
-* The checker does not type-check calls into an imported package (`stats.mean("abc")` fails at run time with a Python `ValueError`, and `stats.covariance(a, b)` with arrays of different lengths is a failed assertion, not a compile error). Fix: load an imported package's exported signatures into the checker and check `pkg.f(...)` like a local call. Asked of Steve; not started.
+* Calls into an imported package are checked from its exported signatures (`Checker.import_signatures`). Left unchecked: a parameter or result whose type the package declares (`Line`), higher-kinded type parameters, functions with several clauses or a guard, and a function passed as a value (`map(stats.mean)`). To do: load the package's own types so those are checked too.

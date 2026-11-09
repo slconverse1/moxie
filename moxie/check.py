@@ -212,6 +212,7 @@ class Checker:
         self.diags = []
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
+        self.pkg_calls = set()           # the functions known from an imported package's signatures
         self.callee_fields = set()
         self.tail_whens = set()
         self.callee_ty = {}
@@ -266,6 +267,87 @@ class Checker:
         self.tp_decl = {}
 
     # ------------------------------------------------------------ reporting
+    def package_program(self, parts):
+        """The parsed statements of an imported package (a local one first, then a built-in one), or None."""
+        from .packages import package_files, parse_package
+        from .stdpkg import find_std
+        from .parser import parse_program
+        try:
+            found = package_files(getattr(self, "search_dir", None), parts)
+            if found is not None:
+                return parse_package(found[0])[1].stmts
+            path = find_std(parts)
+            if path is not None:
+                return parse_program(open(path, encoding="utf-8").read(), path).stmts
+        except Exception:
+            return None
+        return None
+
+    def mentions_type(self, t, names):
+        """True when the type tree `t` names one of `names` (types the package declares)."""
+        if t is None:
+            return False
+        if t.__class__ is TName:
+            return t.path[0] in names or any(self.mentions_type(g, names) for grp in t.groups or [] for g in (grp if isinstance(grp, (list, tuple)) else [grp]))
+        if isinstance(t, (list, tuple)):
+            return any(self.mentions_type(x, names) for x in t)
+        return any(self.mentions_type(getattr(t, f, None), names) for f in getattr(t, "_fields", ()))
+
+    def import_signatures(self, st):
+        """Make the exported functions of an imported package known to the checker as `pkg.f` (and as `f` for `from pkg import f`),
+        so a call into the package is checked like a call of a function in this file.  A parameter or result that names a type the
+        package declares is left unchecked (its type belongs to the package)."""
+        import copy
+        stmts = self.package_program(st.pkg)
+        if stmts is None:
+            return
+        own = {x.name for x in stmts if x.__class__ in (TupleDecl, EnumDecl, AliasDecl, IfaceDecl)}
+        alias = st.alias or st.pkg[-1]
+        wanted = None
+        if st.names:
+            wanted = {nm if isinstance(nm, str) else getattr(nm, "name", None) for nm in st.names}
+        for x in stmts:
+            clauses = x.clauses if x.__class__ is FnGroup else [x] if x.__class__ is FnDecl else []
+            if len(clauses) != 1 or "export" not in (clauses[0].flags or ()):
+                continue
+            fd = clauses[0]
+            if fd.alias is not None or fd.guard is not None or any(getattr(tp, "holes", None) for tp in fd.tparams or []):
+                continue                # a higher-kinded parameter is left to the run time check
+            tps = {tp.name for tp in fd.tparams or []}
+            c = copy.copy(fd)
+            c.body = None
+            c.params = []
+            for p in fd.params or []:
+                q = copy.copy(p)
+                if self.mentions_type(p.type, own - tps):
+                    q.type = None
+                c.params.append(q)
+            if self.mentions_type(fd.ret, own - tps):
+                c.ret = None
+            if wanted is None:
+                key = f"{alias}.{fd.name}"
+            elif fd.name in wanted and fd.name not in self.fns:
+                key = fd.name
+            else:
+                continue
+            c.name = key
+            self.fns[key] = [c]
+            self.globals.add(key)
+            self.pkg_calls.add(key)
+
+    def pkg_redirect(self, n, sc):
+        """A call `pkg.f(...)` into an imported package is checked as a call of the function `pkg.f` known from its signature."""
+        f = n.fn
+        if f.__class__ is Field and f.obj.__class__ is Name and sc.find(f.obj.name) is None:
+            key = f"{f.obj.name}.{f.name}"
+            if key in self.pkg_calls and key in self.fns:
+                import copy
+                m = copy.copy(n)
+                m.fn = copy.copy(f.obj)
+                m.fn.name = key
+                return m
+        return n
+
     def has_local_pkg(self, parts):
         base = getattr(self, "search_dir", None) or "."
         return any(os.path.exists(p) for p in (os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")))
@@ -535,6 +617,7 @@ class Checker:
                 self.err(st.line, refusal(st.pkg))
             for nm in st.names or []:
                 self.globals.add(nm)
+            self.import_signatures(st)
         elif c is UsingDecl:
             if st.name:
                 self.globals.add(st.name)
@@ -2798,6 +2881,7 @@ class Checker:
         return any(getattr(p, "set", None).__class__ is tuple and p.set[3] is not None for p in (getattr(td, "props", None) or []))
 
     def _e_Call(self, n, sc, extra=0):
+        n = self.pkg_redirect(n, sc)
         pipe0 = self.pipe_ty
         self.cur_sc = sc
         r = self._e_Call0(n, sc, extra)
@@ -3546,6 +3630,12 @@ class Checker:
             pt = self.ty_of_type(ps[0].type)
             if pt is not None and not self.has_unsettled(pt):
                 self.compat(pt, self.base(lt), None, line)             # `5 |> f()` where `f` takes a String
+            return None
+        if fd.tparams and len(ps) == 1 and not args and not trailing and lt is not None and ps[0].type is not None \
+                and not self.has_unsettled(lt):
+            pt = self.ty_of_type(ps[0].type, 0, {tp.name for tp in fd.tparams})        # `"abc" |> mean()`: the one parameter takes the value
+            if pt is not None and not tys.match(pt, self.base(lt), {}):
+                self.err(line, f"mismatched types: expected `{tshow(pt)}`, found `{tshow(lt)}`")
             return None
         if fd.tparams or lt is None or self.has_unsettled(lt) or len(ps) < 2 or any(p.type is None for p in ps):
             return None

@@ -37,8 +37,8 @@ CASES = [
   HEAD + 'when stats.fit_line(hours, score):\n  Err(e) -> println("no line")\n  Ok(line) ->\n    fitted = stats.predict_all(line, hours)\n    println("${stats.rmse(score, fitted):.4f} ${stats.mean_absolute_error(score, fitted):.4f}")\n', "run", "0.5657 0.4800"),
  ("moving average and exponential smoothing",
   HEAD + 'println(stats.moving_average(score, 3))\nprintln(stats.smooth(score, 0.5))\n', "run", "List(58.333333333333336, 64.33333333333333, 71.0)\n71.5"),
- ("arrays of different lengths stop the program",
-  'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (1.0, 2.0)\nprintln(stats.covariance(a, b))\n', "fail", "assertion failed"),
+ ("arrays of different lengths are a compile error",
+  'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (1.0, 2.0)\nprintln(stats.covariance(a, b))\n', "fail", "Array[Double][2]"),
 ]
 
 fails = []

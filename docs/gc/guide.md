@@ -3783,7 +3783,7 @@ when stats.fit_line(x, y):
   Ok(line) -> println("fitted")
 ```
 
-Output: `fit_line: every x is the same, so there is no line to fit`. The two arrays given to `covariance`, `correlation`, `fit_line`, `rmse`, and `mean_absolute_error` must have the same number of values, and the program stops with a failed assertion when they differ.
+Output: `fit_line: every x is the same, so there is no line to fit`. The two arrays given to `covariance`, `correlation`, `fit_line`, `rmse`, and `mean_absolute_error` must have the same number of values, and a difference the compiler can see (two arrays of known, different sizes) is a compile error; otherwise the program stops with a failed assertion.
 
 **27c. A series over time**
 
