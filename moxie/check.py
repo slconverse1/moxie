@@ -2061,6 +2061,11 @@ class Checker:
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PPlace:
                 self.check_prop_write(tgt.expr, sc, n.line)
+                root = tgt.expr
+                while root.__class__ in (Field, Call) and (root.__class__ is Field or root.fn.__class__ in (Field, Name, Call)):
+                    root = root.obj if root.__class__ is Field else root.fn
+                if root.__class__ is Name and root.name == "self" and getattr(self, "method_ref", None) == "val" and sc.find("self") is None:
+                    self.err(n.line, "this assignment changes only a local copy of `self`, because the method isn't `fn (ref Self)`: declare it that way to change the receiver")
             elif tgt.__class__ is PCon and len(tgt.path or []) == 2 and tgt.path[0] in self.tuples and not tgt.args:
                 sp = self.prop_in(self.tuples[tgt.path[0]], tgt.path[1])      # `Account.rate = ...` reads as a pattern
                 if sp is not None and sp.static:
@@ -4480,7 +4485,12 @@ class Checker:
             if m.__class__ is FnDecl and m.name in (">", "<=", ">=", "~="):
                 self.err(m.line, f"`{m.name}` is derived, not defined: write only `==` and `<` in an impl, and the compiler gives `~=`, `>`, `<=`, and `>=`")
             inner = Sc(sc, open_=not has_self)
-            self.ev(m, inner)
+            saved_ref = getattr(self, "method_ref", None)
+            self.method_ref = (("ref" if "ref_self" in (m.flags or ()) else "val") if m.__class__ is FnDecl and not has_self else None)
+            try:
+                self.ev(m, inner)
+            finally:
+                self.method_ref = saved_ref
         return None, None
 
     def e_ForeignDecl(self, n, sc):

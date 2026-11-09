@@ -81,6 +81,17 @@ class PlacesMixin:
 
     def rebind(self, env, name, value):
         e = env
+        if name == "self":
+            # `self.n = v` in a `ref Self` method rebuilds the receiver itself, as a bare `n = v` does
+            while e is not None and "self" not in e.vars:
+                r = e.recv
+                if r is not None:
+                    if r.ref:
+                        r.value = value
+                        return
+                    break
+                e = e.parent
+            e = env
         while e is not None:
             if name in e.vars:
                 break
