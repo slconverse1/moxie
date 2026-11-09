@@ -17,6 +17,7 @@ class Parser(ExprParser):
         stmts = self.parse_stmts_until_dedent(top=True)
         if self.peek().kind != "EOF":
             self.err(f"unexpected {self.describe(self.peek())}")
+        stmts = expand_delegates(stmts)
         return Block(group_fns(stmts), line=1)
 
     def parse_stmts_until_dedent(self, top=False):
@@ -967,6 +968,40 @@ def _with_setter(td, p, ln):
                 lines(x)
     lines(fn)
     return fn
+
+
+def expand_delegates(stmts):
+    """For a delegate field whose `set_value` returns a `Result` (the delegate is declared in this module), a visible
+    `set_NAME(v) Result[Self, Error]` in an implicit impl, like the one a property with a failing setter gets."""
+    import copy
+    failing = set()
+    for s in stmts:
+        if s.__class__ is ImplDecl and s.target.__class__ is TName and s.target.path:
+            for m in s.members or []:
+                for fn in (m.clauses if m.__class__ is FnGroup else [m]):
+                    if fn.__class__ is FnDecl and fn.name == "set_value" and fn.ret.__class__ is TName and fn.ret.path == ["Result"]:
+                        failing.add(s.target.path[-1])
+    out = []
+    for s in stmts:
+        out.append(s)
+        if s.__class__ is not TupleDecl:
+            continue
+        members = []
+        for f in s.fields or []:
+            d = f.delegate
+            if d is None or d.__class__ is not TName or d.path[-1] not in failing:
+                continue
+            ln = s.line
+            src = f"fn set_{f.name}(value: Int) Result[Int, Error]:\n  __set_delegate(self, \"{f.name}\", value)\n"
+            fn = parse_program(src).stmts[0]
+            fn.params[0].type = copy.deepcopy(f.type)
+            fn.ret = TName(["Result"], [[TName([s.name], [[TName([tp.name], []) for tp in s.tparams]] if s.tparams else []),
+                                         TName(["Error"], [])]])
+            members.append(fn)
+        if members:
+            groups = [[TName([tp.name], []) for tp in s.tparams]] if s.tparams else []
+            out.append(ImplDecl(None, TName([s.name], groups), [], members, False, line=s.line))
+    return out
 
 
 def expand_props(td):

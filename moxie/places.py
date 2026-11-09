@@ -168,19 +168,27 @@ class PlacesMixin:
                 if f.type is not None:
                     value = self.coerce(value, f.type, info.env)
                 if f.delegate is not None:
-                    dv = cur.get(name)
-                    ms = self.methods_of(dv, "set_value")
-                    if ms:
-                        r = yield from self.apply_method(ms[0], dv, [value])
-                        value = self._last_self
-                    else:
-                        value = TupleV([value], dv.names, dv.tname)
+                    value, err = yield from self.delegate_put(cur, name, value)
+                    if err is not None:
+                        raise Abort(f"the delegate of '{name}' rejected the value; it can fail, so write it with set_{name} and handle the Result")
             return cur.replace(name, value)
         if k is EnumV:
             vals = list(cur.vals)
             vals[cur.names.index(name)] = value
             return EnumV(cur.et, cur.case, vals, cur.names)
         raise Abort(f"cannot set a field of {type_name(cur)}")
+
+    def delegate_put(self, cur, name, value):
+        """Run a write through a delegate field: returns the new delegate value and the `Err` the delegate's setter returned, if any."""
+        dv = cur.get(name)
+        ms = self.methods_of(dv, "set_value")
+        if not ms:
+            return TupleV([value], dv.names, dv.tname), None
+        r = yield from self.apply_method(ms[0], dv, [value])
+        nd = self._last_self
+        if isinstance(r, EnumV) and r.et is RESULT_T and r.case == "Err":
+            return nd, r
+        return nd, None
 
     def fire_watchers(self, at, old, new):
         """After a write through an Atom: call each `on_change` handler whose property now has a different value."""

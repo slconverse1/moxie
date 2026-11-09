@@ -1512,7 +1512,7 @@ g.level = -20
 println("${g.level}")
 ```
 
-Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value: Int) Result[Unit, Error]:`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because an assignment has nowhere to put a failure. For a write that can fail, use a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
+Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value: Int) Result[Unit, Error]:`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because an assignment has nowhere to put a failure. Moxie generates `g.set_level(x)` instead, which returns the changed `Gauge` or the `Err`, as for a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
 **Chapter 9b: Properties**
 

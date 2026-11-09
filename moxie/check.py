@@ -4473,7 +4473,7 @@ class Checker:
         if pd is None:
             df = next((f for f in self.tuples[t[1]].fields or [] if f.name == e.name and f.delegate is not None), None)
             if df is not None and self.delegate_fails(df):
-                self.err(line, f"the delegate of `{e.name}` can reject a value, so assignment can't be used: use a `property` whose `set` returns a `Result`")
+                self.err(line, f"the delegate of `{e.name}` can reject a value, so assignment can't be used: write `x = x.set_{e.name}(v)?` or handle the `Result`")
             return
         if pd.static:
             self.err(line, f"`{e.name}` is a static property, which is read-only")

@@ -1622,6 +1622,9 @@ def path_update(self, v, segs, fn):
         pd = self.prop_of(v, s)
         if pd is not None and not pd.static:
             return self.run_sync(self.prop_set(v, pd, new))        # a property is written through its setter
+        info = self.tuples.get(v.tname) if isinstance(s, str) and v.tname else None
+        if info is not None and any(f.name == s and f.delegate is not None for f in info.fields or []):
+            return self.run_sync(self.field_set(v, s, new))        # so is a delegate field
     return v.replace(s, new)
 
 
@@ -2157,6 +2160,19 @@ def b_reset(I, a, kw, ta):
     if a[0].watchers:
         yield from I.fire_watchers(a[0], old, a[1])
     return a[1]
+
+
+@bi("__set_delegate", "first", True)
+def b_set_delegate(I, a, kw, ta):
+    """The body of a generated `set_NAME` for a delegate field whose setter can fail: `Ok(changed copy)` or the delegate's `Err`."""
+    t, name, v = a
+    f = next(f for f in I.tuples[t.tname].fields if f.name == name)
+    if f.type is not None:
+        v = I.coerce(v, f.type, I.tuples[t.tname].env)
+    nd, err = yield from I.delegate_put(t, name, v)
+    if err is not None:
+        return err
+    return I.enum_instance(RESULT_T, RESULT_T.cases["Ok"], [t.replace(name, nd)])
 
 
 @bi("on_change")
