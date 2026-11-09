@@ -16,8 +16,6 @@ In short, moxie is perfect for Top Gun FP programmers who feel the need for spee
 
 You're welcome!
 
-*A note on the name: this moxie has no connection to [moxie](https://github.com/anp/moxie), a Rust library for interactive software, beyond sharing the name.*
-
 ## Get it running
 
 You can try moxie three ways, from least to most effort. Remember that what you run is the reference interpreter, not a compiler, so nothing here produces a native program.
