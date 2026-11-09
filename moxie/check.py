@@ -1679,6 +1679,10 @@ class Checker:
             if cs0 is not None and not (cs0.fields or []) and not getattr(ed, "tparams", None) and not getattr(ed, "fields", None) \
                     and id(n) not in self.callee_fields:
                 return ("named", ed.name), None              # `Color.Red` is a Color
+        if o.__class__ is Name and o.name in self.tuples and sc.find(o.name) is None and o.name not in self.fns:
+            sp = self.prop_in(self.tuples[o.name], n.name)       # `Account.rate`: a static property, read through the type
+            if sp is not None and sp.static:
+                return self.ty_of_type(sp.type), None
         t = self.t(n.obj, sc)
         if t.__class__ is tuple and t[0] == "rigid":
             self.check_tparam_member(n, t)
@@ -1687,6 +1691,11 @@ class Checker:
             for f in self.tuples[t[1]].fields or []:
                 if f.name == n.name:
                     return self.ty_of_type(f.type), None
+            pd = self.prop_in(self.tuples[t[1]], n.name)
+            if pd is not None:
+                if pd.static:
+                    self.err(n.line, f"`{n.name}` is a static property of `{t[1]}`: write `{t[1]}.{n.name}`")
+                return self.ty_of_type(pd.type), None
             self.no_such_field(n, t[1], self.tuples[t[1]])
         if t.__class__ is tuple and t[0] == "app" and t[1] in self.tuples:
             td = self.tuples[t[1]]
@@ -1695,8 +1704,19 @@ class Checker:
                     if f.name == n.name:
                         ft = self.ty_of_type(f.type, 0, {tp.name for tp in td.tparams})
                         return tys.subst(ft, {tp.name: a for tp, a in zip(td.tparams, t[2])}), None
+                pd = self.prop_in(td, n.name)
+                if pd is not None and not pd.static:
+                    ft = self.ty_of_type(pd.type, 0, {tp.name for tp in td.tparams})
+                    return tys.subst(ft, {tp.name: a for tp, a in zip(td.tparams, t[2])}), None
                 self.no_such_field(n, t[1], td)
         return None, None
+
+    def prop_in(self, td, name):
+        """The PropertyDecl called `name` in a tuple declaration (stored or not), or None."""
+        for p in getattr(td, "props", None) or []:
+            if p.name == name:
+                return p
+        return None
 
     def no_such_field(self, n, tname, td):
         """`p.nope` on a tuple with no such field (a method or function of that name is not a field, so it is left alone)."""
@@ -2039,6 +2059,12 @@ class Checker:
         if n.value.__class__ is Move:
             res = True
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
+            if tgt.__class__ is PPlace:
+                self.check_prop_write(tgt.expr, sc, n.line)
+            elif tgt.__class__ is PCon and len(tgt.path or []) == 2 and tgt.path[0] in self.tuples and not tgt.args:
+                sp = self.prop_in(self.tuples[tgt.path[0]], tgt.path[1])      # `Account.rate = ...` reads as a pattern
+                if sp is not None and sp.static:
+                    self.err(n.line, f"`{tgt.path[1]}` is a static property, which is read-only")
             if tgt.__class__ is PBind:
                 self.warn_shadow(tgt.name, sc, n)
                 if n.op == "=" and sc.loopbody and tgt.name not in sc.vars and not isinstance(n.targets, list):
@@ -4384,9 +4410,68 @@ class Checker:
             if name not in ("generate", "shrink"):
                 self.err(fns[name].line, f"Generatable has no method '{name}' (it has generate and shrink)")
 
+    def check_prop_reqs(self, n):
+        """`impl Named for T`: every property the interface lists must exist on the tuple `T` (as a field or a property),
+        with the same type, and be writable when the interface asks for `set`."""
+        if n.iface.__class__ is not TName or n.target.__class__ is not TName or not n.iface.path or not n.target.path:
+            return
+        idecl = self.iface_decls.get(n.iface.path[-1])
+        td = self.tuples.get(n.target.path[-1])
+        if idecl is None or td is None or idecl.__class__ is not IfaceDecl:
+            return
+        for m in idecl.members or []:
+            if m.__class__ is not FieldDecl or not isinstance(m.name, str):
+                continue
+            need = m.prop.need if m.prop is not None else {"get"}
+            have = next((f for f in td.fields or [] if f.name == m.name), None)
+            pd = self.prop_in(td, m.name)
+            if have is None and (pd is None or pd.static):
+                self.err(n.line, f"`impl {n.iface.path[-1]} for {td.name}`: `{td.name}` has no field or property `{m.name}`, which `{n.iface.path[-1]}` requires")
+                continue
+            ty = pd.type if pd is not None and not pd.static else have.type
+            if m.type.__class__ is TName and ty.__class__ is TName and not m.type.groups and not ty.groups \
+                    and len(m.type.path) == 1 and len(ty.path) == 1 and m.type.path[0] != ty.path[0] \
+                    and m.type.path[0] not in {tp.name for tp in idecl.tparams or []}:
+                self.err(n.line, f"`impl {n.iface.path[-1]} for {td.name}`: `{m.name}` is a `{ty.path[0]}`, but `{n.iface.path[-1]}` requires a `{m.type.path[0]}`")
+            if "set" in need and pd is not None and (pd.static or pd.lazy or (not pd.stored and not isinstance(pd.set, tuple))):
+                self.err(n.line, f"`impl {n.iface.path[-1]} for {td.name}`: `{m.name}` is read-only, but `{n.iface.path[-1]}` requires `set`")
+            if "set" in need and pd is not None and pd.priv_set:
+                self.err(n.line, f"`impl {n.iface.path[-1]} for {td.name}`: the setter of `{m.name}` is private, but `{n.iface.path[-1]}` requires `set`")
+
+    def check_prop_write(self, e, sc, line):
+        """`x.name = v` (or `x.name += v`) on a property: it needs a setter, and a `priv set` is private to the tuple's own impl."""
+        if e.__class__ is not Field or e.obj.__class__ is not Name:
+            return
+        if e.obj.name in self.tuples and sc.find(e.obj.name) is None:
+            sp = self.prop_in(self.tuples[e.obj.name], e.name)          # `Account.rate = ...`
+            if sp is not None and sp.static:
+                self.err(line, f"`{e.name}` is a static property, which is read-only")
+            return
+        t = self.t(e.obj, sc)
+        if not (t.__class__ is tuple and t[0] in ("named", "app") and t[1] in self.tuples):
+            return
+        pd = self.prop_in(self.tuples[t[1]], e.name)
+        if pd is None:
+            return
+        if pd.static:
+            self.err(line, f"`{e.name}` is a static property, which is read-only")
+        elif pd.lazy or (not pd.stored and not isinstance(pd.set, tuple)):
+            self.err(line, f"`{e.name}` is read-only: it has no `set`")
+        elif pd.priv_set and getattr(self, "impl_ty", None) != t[1]:
+            self.err(line, f"the setter of `{e.name}` is private: only `impl {t[1]}` can assign to it")
+
     def e_ImplDecl(self, n, sc):
         if n.iface is not None and n.iface.__class__ is TName and n.iface.path == ["Generatable"]:
             self.check_generatable(n)
+        if n.iface is not None:
+            self.check_prop_reqs(n)
+        saved_impl, self.impl_ty = getattr(self, "impl_ty", None), (n.target.path[-1] if n.target.__class__ is TName and n.target.path else None)
+        try:
+            return self._impl_members(n, sc)
+        finally:
+            self.impl_ty = saved_impl
+
+    def _impl_members(self, n, sc):
         for m in n.members or []:
             if n.iface is not None and m.__class__ is FnDecl and m.contracts:
                 self.err(m.line, f"an impl of an interface may not add contracts to '{m.name}'; "

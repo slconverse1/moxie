@@ -26,7 +26,7 @@ class Env:
             if v is not MISSING:
                 return v
             if e.recv is not None and interp is not None:
-                r = interp.recv_member(e.recv, name)
+                r = interp.recv_member(e.recv, name, self.func)
                 if r is not MISSING:
                     return r
             e = e.parent

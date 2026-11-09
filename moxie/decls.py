@@ -85,6 +85,7 @@ class DeclsMixin:
         info = TypeInfo(n.name, n.tparams, fields, n.derivs, n.positional)
         info.env = env
         info.invariants = n.invariants or []
+        info.props = {p.name: p for p in (n.props or [])}
         self.tuples[n.name] = info
         env.vars[n.name] = TypeV(n.name, info)
         self.note_export(env, n.name, n.vis)
@@ -149,6 +150,7 @@ class DeclsMixin:
             vals[j] = x
             have[j] = True
             raw[j] = False
+        setters = []
         for j, f in enumerate(fields):
             if not have[j]:
                 if f.default is not None:
@@ -172,8 +174,14 @@ class DeclsMixin:
                             return r
                         dv = nd
                     v = dv
+                elif f.prop is not None and isinstance(f.prop.set, tuple):
+                    setters.append((f.name, v))       # a custom setter runs on a value passed at construction
                 vals[j] = v
         tv = TupleV(vals, list(names) if names and names[0] is not None else None, info.name)
+        for sname, sv in setters:
+            ms = self.methods_of(tv, "__set_" + sname)
+            yield from self.apply_method(ms[0], tv, [sv])
+            tv = self._last_self
         invs = getattr(info, "invariants", None)
         if invs and CONTRACTS[0]:
             ienv = info.env.child()

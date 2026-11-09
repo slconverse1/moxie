@@ -19,6 +19,7 @@ class TypeInfo:
         self.derivs = derivs or []
         self.positional = positional
         self.delegates = {f.name: f.delegate for f in fields if f.delegate is not None}
+        self.props = {}               # property name -> PropertyDecl (filled when the declaration runs)
         self.env = None
 
     @property

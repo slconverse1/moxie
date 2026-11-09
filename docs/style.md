@@ -61,6 +61,7 @@ A lambda is a function with no name, written `(params): body`. It is meant to be
 ## Choices
 
 - **Write `else:` for the catch-all arm, not `_ ->`.** It is the last arm of a `when`, of a `select`, and of a `seq:`, and it never takes `->`: `else: "big"`, and in a `select` just `else: println("nothing")`, with no `case`. Keep `_` for what it is a pattern for, such as `(_, v)` or `Some(_)`. A catch-all that is the whole `when` (nothing else to match) is usually an `if`.
+- **Start with a field; reach for a `property` when a read or write needs code.** A caller can't tell them apart, so changing a field into a property later breaks nobody. Use a field delegate (`delegate(Percent)`) when one rule belongs to many fields, and a property when the rule is for one field or needs the others. Give a computed property a `get:` that is a short expression, mark a setter `priv set` when only the type's own methods should write, and use `lazy` for a pure value that costs something to compute. Share changing state through an Atom with `on_change`, not through a mutable static (there isn't one).
 
 ## Errors
 

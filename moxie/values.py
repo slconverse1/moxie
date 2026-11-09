@@ -245,13 +245,14 @@ def fmt_dec(d):
 
 # ---------------------------------------------------------------- composite values
 class TupleV:
-    __slots__ = ("tname", "vals", "names", "targs")
+    __slots__ = ("tname", "vals", "names", "targs", "lazy")
 
     def __init__(self, vals, names=None, tname=None):
         self.vals = vals
         self.names = names
         self.tname = tname
         self.targs = None       # type arguments known when the value was built (a generic tuple built under a type hint)
+        self.lazy = None        # values of `lazy property` members already computed for this value (a rebuilt tuple starts empty)
 
     def get(self, key):
         if isinstance(key, int):

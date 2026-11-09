@@ -1525,6 +1525,117 @@ fn (ref Self) set_value(new_value: Int) Result[Unit, Error]:
 
 Handle `g.level = -20` with a `when`, or discard it with `\`. **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
+**Chapter 9b: Properties**
+
+A property reads and writes like a field (`a.balance`, `a.balance = 5`), but it can run code when it is read or written. You declare it in a tuple, written like a field with the word `property` in front, and add accessors underneath only when you need them:
+
+```
+tuple Account:
+  owner: String,
+  property balance: Int = 0
+    priv set(value):
+      assert(value >= 0)
+      field = value
+    did_set(old):
+      println("balance ${old} -> ${field}")
+impl Account:
+  fn (ref Self) deposit(n: Int) Unit:
+    balance = balance + n
+a = Account(owner: "Ann", balance: 5)
+a.deposit(3)
+println(a.balance)
+```
+
+Output: `balance 5 -> 8`, then `8`. A property with no accessors is a stored field, and `= 0` is its initial value, as for a field. The accessors are `get:`, `set(value):`, and `did_set(old):`, indented under the property, and the header takes no colon of its own. Inside an accessor, `field` is the stored value: a getter can return it, and a setter stores with `field = value`. A bare `get` or `set` with no body means "the default one", so `priv set` keeps the default setter but makes it private to the tuple's own `impl` blocks. The constructor runs a value you pass through the setter, so `Account(owner: "Ann", balance: -1)` aborts. `did_set` runs only when a write changes the value, and never at construction. Outside a property's own accessors, a bare `balance` in an `impl` goes through the property, as `a.balance` does, so the tuple's own methods can't skip the check.
+
+A property that stores nothing is a computed one:
+
+```
+tuple Rect:
+  width: Int,
+  height: Int,
+  property area: Int
+    get:
+      width * height
+    set(value):
+      width = value / height
+r = Rect(width: 3, height: 4)
+println("${r.area} ${r}")
+r.area = 24
+println("${r.width} ${r.area}")
+```
+
+Output: `12 Rect(width: 3, height: 4)`, then `6 24`. A property has storage unless it has a `get:` body that never uses `field`. `area` has none: it isn't in the tuple's layout, it isn't printed or compared, and it can't have an `= value`. A computed property may have a setter, which writes the other fields. A property that does store a value must store it in its setter (the compiler reports a setter that never uses `field`). Callers can't tell a property from a field. Use a field delegate (chapter 9) when one rule is shared by many fields, and a property when the rule belongs to one field or needs the others.
+
+`lazy` computes a value once, on its first read. It works for a property and for a local binding. A `static` property belongs to the type and is read through it:
+
+```
+tuple Report:
+  data: List[Int],
+  lazy property total: Int
+    get:
+      data |> to_stream() |> sum()
+  static property title: String = "Weekly"
+r = Report(data: List(4, 5, 6))
+println("${Report.title}: ${r.total} ${r.total}")
+r.data = List(10, 20)
+println(r.total)
+lazy size = len(r.data) * 100
+println("${size}")
+```
+
+Output: `Weekly: 15 15`, then `30`, then `200`. The expression of a `lazy` property or binding must be pure, because it runs whenever the first read happens, so the compiler rejects one that prints or reads a channel. The result is kept in the value you hold, and `r.data = ...` builds a new value whose cache is empty, which is why the second `r.total` is recomputed. A value read out of an Atom is a copy, so read it once and keep the copy if you will ask again. This is different from a `lazy` parameter (chapter 6b), which re-runs its argument on every read. A static property is read-only: it takes an `= value` or a `get:` body, and shared state that changes belongs in an Atom.
+
+An interface lists a property the way it lists a field. A field, a property, or a delegate field satisfies it, and callers write `x.name` in every case:
+
+```
+interface Named:
+  name: String
+interface Wallet:
+  property balance: Int
+    get
+    set
+tuple Person:
+  given: String,
+  family: String,
+  property name: String
+    get:
+      "${given} ${family}"
+tuple Purse:
+  property balance: Int = 0
+impl Named for Person
+impl Wallet for Purse
+fn greet[T: Named](x: T) String:
+  "Hello, ${x.name}"
+println(greet(Person(given: "Ada", family: "Lovelace")))
+```
+
+Output: `Hello, Ada Lovelace`. `name: String` asks for something readable. `property balance: Int` with `get` and `set` underneath asks for something readable and writable (with neither line, it asks for both). `impl Named for T` is a compile error when `T` has no field or property of that name, or its type differs, or it is read-only where the interface asks for `set`.
+
+When the tuple is held in an Atom, other code can watch a property, as many listeners as it likes, such as a database handler and a GUI handler:
+
+```
+tuple Account:
+  owner: String,
+  property balance: Int = 0
+fn save_row(old: Int, new: Int) Unit:
+  println("db: ${old} -> ${new}")
+shared = Atom[Account](Account(owner: "Ann"))
+db = shared.on_change(balance, save_row)
+ui = shared.balance +% fn (old, new): println("ui: ${new}")
+\swap(shared, (a): Account(owner: a.owner, balance: 5))
+shared.off_change(ui)
+\swap(shared, (a): Account(owner: a.owner, balance: 5))
+\swap(shared, (a): Account(owner: a.owner, balance: 9))
+shared.balance -% db
+\swap(shared, (a): Account(owner: a.owner, balance: 1))
+println(@shared)
+```
+
+Output: `db: 0 -> 5`, `ui: 5`, `db: 5 -> 9`, then `Account(owner: "Ann", balance: 1)`. `on_change(shared, balance, handler)` calls `handler(old, new)` whenever a write through the Atom changes `balance`, in the order the handlers subscribed and after the type's own `did_set`. Writing the same value calls nobody. It returns a token, and `off_change(shared, token)` removes the handler. `shared.balance +% handler` and `shared.balance -% token` mean the same two things. A handler's closure copies what it captures, so it acts through effects: it prints, writes to a channel, or swaps another Atom. A property has room for 8 observers, and `property[16] balance: Int` gives it 16, though the list grows as needed, so the number is only a hint. Only properties can be watched, not plain fields.
+
+**Mistakes:** a setter that never stores into `field`, an `= value` on a property that stores nothing, `did_set` on a computed property, writing to a static or computed-only property, a `priv set` assigned from outside the tuple's `impl`, a `lazy` expression that prints, `on_change` on a plain field, and a property declared on the same line as a one-line tuple (a property goes on its own line).
+
 **Chapter 10: Operators, `|>>`, Results**
 
 An operator is defined in an `impl` block: the receiver is the left operand and the parameter is the right one.
@@ -2001,7 +2112,7 @@ Output: `7 21`. **Mistakes:** one stream feeding two terminals by accident, and 
 
 **Chapter 14: Caching is explicit**
 
-Nothing is memoized for you. The usual recipe is a bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
+Nothing is memoized unless you ask: the one built-in way is `lazy` on a binding or a property (chapter 9b), which computes a pure expression once, on its first read. For a function of a changing argument, nothing is cached for you, and the usual recipe is a bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
 
 ```
 fn fib(n: Int) Int:

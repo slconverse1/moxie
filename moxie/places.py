@@ -3,13 +3,16 @@ from .ast import *   # noqa
 from .values import *   # noqa
 from .core import *   # noqa
 from .types_ import *   # noqa
-from .calls import LazyV, RecvCell
+from .calls import LazyV, NeedV, RecvCell
 
 
 class PlacesMixin:
     def ev_Assign(self, n, env):
         pat = n.targets
         op = n.op
+        if n.lazy:
+            env.vars[pat.name] = NeedV(n.value, env, n.ann)          # `lazy x = expr`: computed on first read
+            return Done(UNIT) if False else UNIT
         if op != "=":
             cur = yield from self.read_place(pat, env)
             rhs = yield from self.ev(n.value, env)
@@ -83,7 +86,8 @@ class PlacesMixin:
                 break
             r = e.recv
             if r is not None and r.ref and self._has_field(r.value, name):
-                r.value = yield from self.field_set(r.value, name, value)
+                # inside a property's own accessors its bare name is the stored value; elsewhere a write goes through the property
+                r.value = yield from self.field_set(r.value, name, value, raw=(self.accessor_prop(env.func) == name))
                 return
             e = e.parent
         env.vars[name] = value
@@ -139,9 +143,12 @@ class PlacesMixin:
             return
         raise Abort("cannot assign to this expression")
 
-    def field_set(self, cur, name, value):
+    def field_set(self, cur, name, value, raw=False):
         k = cur.__class__
         if k is TupleV:
+            pd = None if raw else self.prop_of(cur, name)
+            if pd is not None and not pd.static:
+                return (yield from self.prop_set(cur, pd, value))
             if not (cur.names and name in cur.names) and not isinstance(name, int):
                 raise Abort(f"{cur.tname or 'tuple'} has no field '{name}'")
             info = self.tuples.get(cur.tname) if cur.tname else None
@@ -163,6 +170,37 @@ class PlacesMixin:
             vals[cur.names.index(name)] = value
             return EnumV(cur.et, cur.case, vals, cur.names)
         raise Abort(f"cannot set a field of {type_name(cur)}")
+
+    def fire_watchers(self, at, old, new):
+        """After a write through an Atom: call each `on_change` handler whose property now has a different value."""
+        if old.__class__ is not TupleV or new.__class__ is not TupleV:
+            return
+        for tok, prop, h in list(at.watchers):
+            if self.prop_of(new, prop) is None:
+                continue
+            ov = self.field_get(old, prop)
+            nv = self.field_get(new, prop)
+            if not self.values_eq(ov, nv):
+                yield from self.apply(h, [ov, nv])
+
+    def prop_set(self, cur, pd, value):
+        """`x.name = v` on a property: run its setter (or store the value), then `did_set` if the stored value changed."""
+        name = pd.name
+        info = self.tuples[cur.tname]
+        if pd.lazy or (not pd.stored and not isinstance(pd.set, tuple)):
+            raise Abort(f"the property '{name}' of {cur.tname} is read-only")
+        value = self.coerce(value, pd.type, info.env)
+        old = cur.get(name) if pd.stored else None
+        if isinstance(pd.set, tuple):
+            ms = self.methods_of(cur, "__set_" + name)
+            yield from self.apply_method(ms[0], cur, [value])
+            new = self._last_self
+        else:
+            new = cur.replace(name, value)
+        if pd.did_set is not None and new.get(name) != old:
+            ms = self.methods_of(new, "__did_set_" + name)
+            yield from self.apply_method(ms[0], new, [old])
+        return new
 
     def set_index(self, coll, keys, value):
         k = coll.__class__

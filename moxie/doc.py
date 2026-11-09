@@ -120,6 +120,8 @@ def collect(src):
             if st.vis not in ("export", "internal") and not doc_before(orig, line):
                 continue
             name = tg[0].name
+        if cn == "ImplDecl" and st.iface is None and st.members and all(str(getattr(m, "name", "")).startswith("__") for m in st.members):
+            continue                      # the hidden methods behind a tuple's properties; the tuple's own entry shows them
         if cn == "ImplDecl":
             name = f"impl {getattr(st, 'iface', '')} for {getattr(st, 'target', '')}"
             name = re.sub(r"\s+", " ", header_text(lines, line))

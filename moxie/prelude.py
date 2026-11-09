@@ -1618,6 +1618,10 @@ def path_update(self, v, segs, fn):
     s = segs[0]
     inner = self.field_get(v, s)
     new = self.path_update(inner, segs[1:], fn)
+    if v.__class__ is TupleV:
+        pd = self.prop_of(v, s)
+        if pd is not None and not pd.static:
+            return self.run_sync(self.prop_set(v, pd, new))        # a property is written through its setter
     return v.replace(s, new)
 
 
@@ -2138,15 +2142,48 @@ def b_is_cancelled(I, a, kw, ta):
 @bi("swap", "first", True)
 def b_swap(I, a, kw, ta):
     at, f = a[0], a[1]
-    nv = yield from I.apply(f, [at.atom_value])
+    old = at.atom_value
+    nv = yield from I.apply(f, [old])
     at.atom_value = nv
+    if at.watchers:
+        yield from I.fire_watchers(at, old, nv)
     return nv
 
 
-@bi("reset")
+@bi("reset", "first", True)
 def b_reset(I, a, kw, ta):
+    old = a[0].atom_value
     a[0].atom_value = a[1]
+    if a[0].watchers:
+        yield from I.fire_watchers(a[0], old, a[1])
     return a[1]
+
+
+@bi("on_change")
+def b_on_change(I, a, kw, ta):
+    """`on_change(atom, "prop", handler)`: call `handler(old, new)` whenever a write through the Atom changes the property."""
+    at, prop, h = a[0], a[1], a[2]
+    if not hasattr(at, "watchers"):
+        raise Abort("on_change watches a property of a value held in an Atom")
+    pd = I.prop_of(at.atom_value, prop) if at.atom_value.__class__ is TupleV else None
+    if pd is None or pd.static:
+        raise Abort(f"{type_name(at.atom_value)} has no property '{prop}' to watch")
+    cap = pd.cap or 8
+    if not GC[0] and sum(1 for w in at.watchers if w[1] == prop) >= cap:
+        raise Abort(f"the property '{prop}' already has {cap} observers; declare it property[n] for more")
+    tok = at.next_tok
+    at.next_tok += 1
+    at.watchers.append((tok, prop, h))
+    return tok
+
+
+@bi("off_change")
+def b_off_change(I, a, kw, ta):
+    at, tok = a[0], a[1]
+    if not hasattr(at, "watchers") or not any(w[0] == tok for w in at.watchers):
+        raise Abort("off_change was given a token that is not subscribed (already removed, or from another Atom)")
+    at.watchers = [w for w in at.watchers if w[0] != tok]
+    return UNIT
 
 
 @bi("Chan")

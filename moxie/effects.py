@@ -31,7 +31,7 @@ BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRI
            "lookup_host": PARKS, "run_command": PARKS, "spawn": PARKS, "wait_child": PARKS, "kill_child": PARKS, "make_fifo": PARKS, "listen_unix": PARKS, "connect_unix": PARKS, "read_key": PARKS, "make_temp_file": PARKS, "make_temp_dir": PARKS, **{n: SYSTEM for n in SYSTEM_CALLS}}
 RESOURCE = "uses a resource"     # creating, closing, cloning, or changing a channel, timer, future, cancel token, or atom
 RESOURCE_CALLS = ("Chan", "Timer", "after", "Future", "Cancel", "Atom", "clone", "close", "arm", "arm_every", "disarm",
-                  "resolve", "reject", "cancel", "swap", "reset")
+                  "resolve", "reject", "cancel", "swap", "reset", "on_change", "off_change")
 BUILTIN.update({n: RESOURCE for n in RESOURCE_CALLS})
 EXEMPT = {"dbg", "trace"}
 
@@ -363,6 +363,12 @@ class Effects:
             else:
                 self.walk(st, fnnames, acc, summ)
             return
+        if c is Assign and getattr(n, "lazy", None):
+            sub = {}
+            self.walk(n.value, fnnames, sub, None)
+            if sub:
+                eff = next(iter(sub))
+                self.diags.append((getattr(n, "line", 0), f"the initializer of a `lazy` binding must be pure, because it runs on the first read, whenever that is, but it {eff} (calls '{sub[eff][2]}')"))
         if c is Deref:
             acc.setdefault(RESOURCE, ("@", getattr(n, "line", 0), "@"))
         if c is SqlE:
@@ -506,7 +512,8 @@ class Effects:
                             self.diags.append((ln or d.line, f"fn '{d.name}' {eff} (calls '{root}'), so it must be declared impure"))
                             continue
                         self.diags.append((ln or d.line, f"{who}fn '{d.name}' {eff} (calls '{root}'), but it is not declared {eff}"
-                                           if dec else f"pure fn '{d.name}' {eff} (calls '{root}')"))
+                                           if dec else (f"the `get` of the lazy property `{d.name[6:]}` must be pure, because it runs on the first read, whenever that is, but it {eff} (calls '{root}')"
+                                                        if d.name.startswith("__get_") else f"pure fn '{d.name}' {eff} (calls '{root}')")))
                 for eff in dec:
                     if eff not in acc:
                         self.diags.append((d.line, f"fn '{d.name}' is declared {eff} but never does"))

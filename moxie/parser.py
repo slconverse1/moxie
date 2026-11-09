@@ -28,7 +28,12 @@ class Parser(ExprParser):
                 break
             if t.kind == "INDENT":
                 self.err("unexpected indent")
-            out.append(self.parse_stmt())
+            s = self.parse_stmt()
+            out.append(s)
+            if s.__class__ is TupleDecl and s.props:
+                im = expand_props(s)
+                if im is not None:
+                    out.append(im)           # the methods behind the tuple's properties, as an impl right after it
         return group_fns(out)
 
     def parse_stmt(self):
@@ -49,6 +54,13 @@ class Parser(ExprParser):
                 self.err("`\\` discards a value, so an expression must follow it on the same line")
             value = self.parse_expr()
             return self.trail_if(Assign(PWild(line=line), value, None, "=", None, line=line))
+        if t.kind == "NAME" and t.val == "lazy" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2)):
+            self.next()
+            s = self.parse_stmt_core(allow_decl)
+            if s.__class__ is not Assign or s.targets.__class__ is not PBind or s.op != "=":
+                self.err("`lazy` goes in front of a plain binding: `lazy total = sum(data)`", t)
+            s.lazy = True
+            return s
         if t.kind == "NAME":
             v = t.val
             if v in MODS or v in DECL_START:
@@ -544,15 +556,148 @@ class Parser(ExprParser):
         derivs = self.parse_derivs()
         fields = []
         invariants = []
+        props = []
         if self.at_op(":"):
             self.next()
             self._invariants = invariants
+            self._props = props
             fields = self.parse_field_decls()
         vis = None
         for m in mods:
             if m in ("export", "internal"):
                 vis = m
-        return TupleDecl(name, tparams, fields, derivs, positional, vis, invariants, line=line)
+        return TupleDecl(name, tparams, fields, derivs, positional, vis, invariants, props or None, line=line)
+
+    # ------------------------------------------------------------ properties
+    def property_ahead(self):
+        """`property name: T`, `property[n] name: T`, `lazy property ...`, `static property ...` (a field may still be called `property`)."""
+        i = 0
+        while self.peek(i).kind == "NAME" and self.peek(i).val in ("static", "lazy"):
+            i += 1
+        t = self.peek(i)
+        if not (t.kind == "NAME" and t.val == "property"):
+            return False
+        n = self.peek(i + 1)
+        return n.kind == "NAME" or (n.kind == "OP" and n.val == "[")
+
+    def err_at(self, line, msg):
+        raise MoxieSyntaxError(msg, line, 0, self.file)
+
+    def parse_property(self):
+        mods = set()
+        while self.peek().kind == "NAME" and self.peek().val in ("static", "lazy"):
+            m = self.next().val
+            if m in mods:
+                self.err(f"`{m}` twice")
+            mods.add(m)
+        line = self.next().line                      # property
+        cap = None
+        if self.at_op("["):
+            self.next()
+            ct = self.next()
+            if ct.kind != "INT" or not isinstance(ct.val, int) or ct.val < 1:
+                self.err("the number in `property[n]` is how many observers the property can have, a positive integer", ct)
+            cap = ct.val
+            self.expect_op("]")
+        name = self.expect_ident("a property name").val
+        self.expect_op(":")
+        typ = self.parse_type()
+        default = None
+        if self.at_op("="):
+            self.next()
+            default = self.parse_expr()
+        self.eat_op(",")
+        get = set_ = did = None
+        priv = False
+        if self.peek().kind == "NL" and self.peek(1).kind == "INDENT" and self.peek(2).kind == "NAME" \
+                and self.peek(2).val in ("get", "set", "priv", "did_set"):
+            self.expect_nl_indent()
+            while True:
+                self.skip_nl()
+                if self.peek().kind in ("DEDENT", "EOF"):
+                    break
+                t = self.next()
+                if t.kind != "NAME":
+                    self.err("expected `get`, `set`, or `did_set` in a property", t)
+                which = t.val
+                if which == "priv":
+                    if not self.at_name("set"):
+                        self.err("`priv` goes in front of `set`: a property's getter is always public", t)
+                    self.next()
+                    which = "set"
+                    priv = True
+                if which == "get":
+                    if get is not None:
+                        self.err(f"`{name}` has two getters", t)
+                    if self.at_op(":"):
+                        self.next()
+                        get = self.parse_block_or_inline()
+                    else:
+                        get = "default"
+                elif which == "set":
+                    if set_ is not None:
+                        self.err(f"`{name}` has two setters", t)
+                    pname, ptype = "value", None
+                    named = False
+                    if self.at_op("("):
+                        self.next()
+                        pname = self.expect_ident("the name of the new value").val
+                        if self.eat_op(":"):
+                            ptype = self.parse_type()
+                        self.expect_op(")")
+                        named = True
+                    if self.at_op(":"):
+                        self.next()
+                        set_ = (pname, ptype, self.parse_block_or_inline())
+                    elif named:
+                        self.err("a setter with a parameter needs a body: `set(value):`", t)
+                    else:
+                        set_ = "default"
+                elif which == "did_set":
+                    if did is not None:
+                        self.err(f"`{name}` has two `did_set` blocks", t)
+                    self.expect_op("(")
+                    pname = self.expect_ident("the name of the old value").val
+                    self.expect_op(")")
+                    self.expect_op(":")
+                    did = (pname, self.parse_block_or_inline())
+                else:
+                    self.err(f"expected `get`, `set`, or `did_set` in a property, not `{which}`", t)
+                self.end_line()
+            self.expect_dedent()
+        bodies = [get if isinstance(get, N) else None,
+                  set_[2] if isinstance(set_, tuple) else None,
+                  did[1] if did is not None else None]
+        uses = any(b is not None and _mentions_field(b) for b in bodies)
+        static, lazy = "static" in mods, "lazy" in mods
+        if static and lazy:
+            self.err_at(line, f"`{name}`: a static property can't also be `lazy`")
+        if static:
+            if set_ is not None or did is not None or priv or cap is not None:
+                self.err_at(line, f"`{name}`: a static property is read-only, so it has no `set`, `did_set`, or observer count")
+            if uses:
+                self.err_at(line, f"`{name}`: a static property stores nothing, so `field` has no meaning there")
+            if default is not None and get is not None:
+                self.err_at(line, f"`{name}`: a static property has an `= value` or a `get`, not both")
+            if default is None and not isinstance(get, N):
+                self.err_at(line, f"`{name}`: a static property needs a value (`= expr`) or a `get:` body")
+        computed = isinstance(get, N) and not uses
+        if lazy:
+            if not isinstance(get, N) or uses:
+                self.err_at(line, f"`{name}`: a `lazy` property is computed by its `get:` body, which stores nothing")
+            if set_ is not None or did is not None or default is not None or cap is not None:
+                self.err_at(line, f"`{name}`: a `lazy` property has only a `get:` body")
+        stored = not static and not lazy and not computed
+        if computed and default is not None and not static:
+            self.err_at(line, f"`{name}` has no storage (its `get` never uses `field`), so it can't have an `= value`")
+        if stored and isinstance(set_, tuple) and not _mentions_field(set_[2]):
+            self.err_at(line, f"the setter of `{name}` never stores into `field`, so every write would be lost")
+        if did is not None and not stored:
+            self.err_at(line, f"`did_set` goes on a property that stores a value, and `{name}` doesn't")
+        for b in bodies:
+            if b is not None:
+                _subst_field(b, name)
+        return PropertyDecl(name, typ, default, cap, get, set_, did, priv, stored, lazy, static, None, line=line)
 
     def parse_field_decls(self):
         fields = []
@@ -564,6 +709,14 @@ class Parser(ExprParser):
                 self.skip_nl()
                 if self.peek().kind in ("DEDENT", "EOF"):
                     break
+            if self.property_ahead():
+                if inline:
+                    self.err("a property goes on its own line, inside an indented tuple body")
+                p = self.parse_property()
+                self._props.append(p)
+                if p.stored:
+                    fields.append(FieldDecl(p.name, p.type, p.default, None, p, line=p.line))
+                continue
             t = self.peek()
             if t.kind == "NAME" and t.val == "invariant" and self.peek(1).kind not in ("NL", "EOF") \
                     and not (self.peek(1).kind == "OP" and self.peek(1).val == ":"):
@@ -697,6 +850,31 @@ class Parser(ExprParser):
                     continue
                 self.end_line()
                 continue
+            if iface and t.kind == "NAME" and t.val == "property" and self.peek(1).kind == "NAME":
+                self.next()
+                nm = self.expect_ident("a property name").val
+                self.expect_op(":")
+                ty = self.parse_type()
+                self.eat_op(",")
+                need = set()
+                if self.peek().kind == "NL" and self.peek(1).kind == "INDENT" and self.peek(2).kind == "NAME" \
+                        and self.peek(2).val in ("get", "set"):
+                    self.expect_nl_indent()
+                    while True:
+                        self.skip_nl()
+                        if self.peek().kind in ("DEDENT", "EOF"):
+                            break
+                        w = self.next()
+                        if w.kind != "NAME" or w.val not in ("get", "set"):
+                            self.err("an interface lists a property's accessors bare: `get`, `set`", w)
+                        need.add(w.val)
+                        self.eat_op(",")
+                    self.expect_dedent()
+                need = need or {"get", "set"}
+                pd = PropertyDecl(nm, ty, None, None, None, None, None, False, False, False, False, need, line=t.line)
+                members.append(FieldDecl(nm, ty, None, None, pd, line=t.line))
+                self.end_line()
+                continue
             if iface and t.kind == "NAME":
                 # embedded interface or property
                 if self.at_op(":", 1):
@@ -720,6 +898,70 @@ class Parser(ExprParser):
             self.err(f"unexpected {self.describe(t)} in a declaration block")
         self.expect_dedent()
         return group_fns(members), embeds
+
+
+def _walk_field(node, fn):
+    if isinstance(node, N):
+        fn(node)
+        for f in node._fields:
+            _walk_field(getattr(node, f, None), fn)
+    elif isinstance(node, (list, tuple)):
+        for x in node:
+            _walk_field(x, fn)
+    elif isinstance(node, dict):
+        for x in node.values():
+            _walk_field(x, fn)
+
+
+def _mentions_field(body):
+    hit = []
+    _walk_field(body, lambda n: hit.append(1) if n.__class__ in (Name, PBind) and n.name == "field" else None)
+    return bool(hit)
+
+
+def _subst_field(body, new):
+    """Inside an accessor, `field` is the property's own stored value: rename it to the field's name."""
+    def sub(n):
+        if n.__class__ in (Name, PBind) and n.name == "field":
+            n.name = new
+    _walk_field(body, sub)
+
+
+def _as_block(b, line):
+    return b if b.__class__ is Block else Block([b], line=line)
+
+
+def expand_props(td):
+    """The hidden methods that make a tuple's properties work, as an inherent `impl` for the tuple:
+    `__get_NAME` (a computed, lazy, or custom getter, or a static property's value), `__set_NAME` (a custom setter, with a
+    `ref` receiver so that `field = ...` writes the stored value), and `__did_set_NAME`."""
+    import copy
+    members = []
+    unit = TName(["Unit"], [])
+    for p in td.props:
+        ln = p.line
+        if p.static:
+            body = p.get if isinstance(p.get, N) else Block([ExprStmt(p.default, line=ln)], line=ln)
+            members.append(FnDecl("__get_" + p.name, [], [], copy.deepcopy(p.type), None, _as_block(body, ln),
+                                  {"static"}, None, None, None, [], line=ln))
+            continue
+        if isinstance(p.get, N):
+            members.append(FnDecl("__get_" + p.name, [], [], copy.deepcopy(p.type), None, _as_block(p.get, ln),
+                                  {"pure"} if p.lazy else set(), None, None, None, [], line=ln))
+        if isinstance(p.set, tuple):
+            pname, ptype, body = p.set
+            prm = Param(None, pname, ptype or copy.deepcopy(p.type), None, None, False, line=ln)
+            members.append(FnDecl("__set_" + p.name, [], [prm], copy.deepcopy(unit), None, _as_block(body, ln),
+                                  {"ref_self"}, None, None, None, [], line=ln))
+        if p.did_set is not None:
+            pname, body = p.did_set
+            prm = Param(None, pname, copy.deepcopy(p.type), None, None, False, line=ln)
+            members.append(FnDecl("__did_set_" + p.name, [], [prm], copy.deepcopy(unit), None, _as_block(body, ln),
+                                  set(), None, None, None, [], line=ln))
+    if not members:
+        return None
+    groups = [[TName([tp.name], []) for tp in td.tparams]] if td.tparams else []
+    return ImplDecl(None, TName([td.name], groups), [], members, False, line=td.line)
 
 
 def group_fns(stmts):

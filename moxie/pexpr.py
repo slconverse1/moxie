@@ -8,7 +8,7 @@ T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_AD
 COMP_OPS = {"==", "~=", "<", ">", "<=", ">=", "<$>", "<*>", "<~"}
 BINTIER = {
     "|": T_BOR, "|>>": T_BOR, "^": T_BXOR, "&": T_BAND, "<<": T_SHIFT, ">>": T_SHIFT,
-    "+": T_ADD, "-": T_ADD, "*": T_MUL, "/": T_MUL, "%": T_MUL, "~>": T_OTHER,
+    "+": T_ADD, "-": T_ADD, "*": T_MUL, "/": T_MUL, "%": T_MUL, "~>": T_OTHER, "+%": T_OR, "-%": T_OR,
     "..": T_RANGE, "..=": T_RANGE,
 }
 for _o in COMP_OPS:
@@ -205,11 +205,25 @@ class ExprParser(PBase):
                 if not self._ends_operand(nt):
                     hi = self._climb(tier + 1)
                 left = RangeE(left, hi, t.val == "..=", line=line)
+            elif t.val in ("+%", "-%"):
+                self.next()
+                right = self._climb(tier + 1)
+                left = self.listener_op(t.val, left, right, line)
             else:
                 self.next()
                 right = self._climb(tier + 1)
                 left = Binary(t.val, left, right, line=line)
         return left
+
+    def listener_op(self, op, l, r, line):
+        """`thing.prop +% handler` subscribes to a property (`on_change`), `thing.prop -% token` unsubscribes (`off_change`)."""
+        if l.__class__ is not Field or not isinstance(l.name, str):
+            self.err(f"`{op}` goes after a property: `thing.property {op} " + ("handler" if op == "+%" else "token") + "`")
+        if op == "+%":
+            return Call(Name("on_change", line=line), [Arg(None, l.obj, None, line=line),
+                                                        Arg(None, StrLit([l.name], line=line), None, line=line),
+                                                        Arg(None, r, None, line=line)], None, line=line)
+        return Call(Name("off_change", line=line), [Arg(None, l.obj, None, line=line), Arg(None, r, None, line=line)], None, line=line)
 
     def _ends_operand(self, t):
         if t.kind in ("NL", "DEDENT", "INDENT", "EOF"):
@@ -475,6 +489,15 @@ class ExprParser(PBase):
                 else:
                     a = Arg(a.label, ph_lambda(a.expr, a.line), a.mod, line=a.line)
             new_args.append(a)
+        # `shared.on_change(balance, h)` and `on_change(shared, balance, h)`: the property is named by a bare name
+        if fn.__class__ is Field and fn.name == "on_change" and len(new_args) == 2 and new_args[0].label is None \
+                and new_args[0].expr.__class__ is Name:
+            nm = new_args[0].expr.name
+            new_args = [Arg(None, fn.obj, None, line=line), Arg(None, StrLit([nm], line=line), None, line=line), new_args[1]]
+            fn = Name("on_change", line=line)
+        elif fn.__class__ is Name and fn.name == "on_change" and len(new_args) == 3 and new_args[1].label is None \
+                and new_args[1].expr.__class__ is Name:
+            new_args[1] = Arg(None, StrLit([new_args[1].expr.name], line=line), None, line=line)
         call = Call(fn, new_args, None, line=line)
         if partial:
             lam = ph_lambda(call, line)

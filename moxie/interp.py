@@ -7,7 +7,7 @@ from .core import *   # noqa
 from .types_ import *   # noqa
 from .lexer import MoxieSyntaxError, tokenize
 from .perms import PLATFORMS
-from .calls import CallsMixin, LazyV, SLOT, USING, RecvCell, END
+from .calls import CallsMixin, LazyV, NeedV, SLOT, USING, RecvCell, END
 from .decls import DeclsMixin
 from . import heap
 from .patterns import PatternsMixin
@@ -515,7 +515,20 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             return self._name_missing(n, env, hint)
         if v.__class__ is LazyV:
             return self._force_lazy(v)
+        if v.__class__ is NeedV:
+            return self._force_need(v)
         return Done(v)
+
+    def _force_need(self, nv):
+        if not nv.done:
+            if nv.ann is not None:
+                r = yield from self.evh(nv.expr, nv.env, nv.ann)
+                r = self.coerce(r, nv.ann, nv.env)
+            else:
+                r = yield from self.ev(nv.expr, nv.env)
+            nv.value = r
+            nv.done = True
+        return nv.value
 
     def _force_lazy(self, lz):
         r = yield from self.ev(lz.expr, lz.env)

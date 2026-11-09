@@ -98,7 +98,7 @@ def _defs():
         "Move": "e",
         "Deref": "e",                  # @atom
         # statements
-        "Assign": "targets value ann op vis",
+        "Assign": "targets value ann op vis lazy",
         "ElseLet": "pat value else_",
         "Incr": "target delta",
         "Return": "e",
@@ -109,8 +109,9 @@ def _defs():
         # declarations
         "FnDecl": "name tparams params ret locals body flags clauses alias guard contracts",
         "FnGroup": "name clauses",
-        "TupleDecl": "name tparams fields derivs positional vis invariants",
-        "FieldDecl": "name type default delegate",
+        "TupleDecl": "name tparams fields derivs positional vis invariants props",
+        "FieldDecl": "name type default delegate prop",
+        "PropertyDecl": "name type default cap get set did_set priv_set stored lazy static need",
         "EnumDecl": "name tparams header cases derivs vis",
         "CaseDecl": "name fields",
         "IfaceDecl": "name tparams members embeds vis",

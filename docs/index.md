@@ -1074,7 +1074,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 
 ## 16. Interfaces and impls (a.k.a. typeclasses)
 
-An `interface` says what a type can do, and an `impl` says that a type does it. You can implement your own interface for somebody else's type, so you can extend things you don't own. There are bounds (`[T: Ordered + Equatable]`), default method bodies, associated types, read-only properties, and conditional instances. Everything is specialized per use at compile time, so there are no tables at run time.
+An `interface` says what a type can do, and an `impl` says that a type does it. You can implement your own interface for somebody else's type, so you can extend things you don't own. There are bounds (`[T: Ordered + Equatable]`), default method bodies, associated types, properties (a field that can run code, computed or lazy, with observers), and conditional instances. Everything is specialized per use at compile time, so there are no tables at run time.
 
 When you want a mixed bag of types, say `any Voice`:
 

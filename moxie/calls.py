@@ -28,6 +28,18 @@ class LazyV:
         self.env = env
 
 
+class NeedV:
+    """A `lazy` local binding: evaluated on first read, then kept (the initializer must be pure, so this can't be seen)."""
+    __slots__ = ("expr", "env", "done", "value", "ann")
+
+    def __init__(self, expr, env, ann=None):
+        self.expr = expr
+        self.env = env
+        self.ann = ann
+        self.done = False
+        self.value = None
+
+
 class RecvCell:
     __slots__ = ("value", "ref")
 
@@ -105,16 +117,33 @@ class CallsMixin:
         return c
 
     # ------------------------------------------------------------ receiver members
-    def recv_member(self, cell, name):
+    @staticmethod
+    def accessor_prop(func):
+        """The property whose hidden accessor method (`__get_X`, `__set_X`, `__did_set_X`) is running, or None."""
+        n = func.name if func is not None else ""
+        if n.startswith("__set_") or n.startswith("__get_"):
+            return n[6:]
+        if n.startswith("__did_set_"):
+            return n[10:]
+        return None
+
+    def recv_member(self, cell, name, func=None):
         v = cell.value
         if name == "self":
             return v
         if v.__class__ is TupleV:
             if v.names and name in v.names:
+                if v.tname is not None and self.accessor_prop(func) != name:
+                    pd = self.prop_of(v, name)
+                    if pd is not None and pd.get is not None and not isinstance(pd.get, str):
+                        return self.prop_read(v, pd)         # a custom getter applies everywhere but inside the property's own accessors
                 x = v.vals[v.names.index(name)]
                 if v.tname and v.tname in self.tuples and name in self.tuples[v.tname].delegates:
                     return self.delegate_get_sync(x)
                 return x
+            pd = self.prop_of(v, name)
+            if pd is not None and not pd.stored and not pd.static:
+                return self.prop_read(v, pd)            # a computed or lazy property, by its bare name inside an impl
         elif v.__class__ is EnumV:
             if v.names and name in v.names:
                 return v.vals[v.names.index(name)]
@@ -523,6 +552,11 @@ class CallsMixin:
                 return Builtin(lambda I, a, kw, ta: self._enum_value_of(et, a[0]), "value_of")
             if name == "from_index":
                 return Builtin(lambda I, a, kw, ta: self._enum_from_index(et, a[0]), "from_index")
+        if isinstance(info, TypeInfo) and info.props:
+            pd = info.props.get(name)
+            if pd is not None and pd.static:
+                c = self.statics.get(t.name, {}).get("__get_" + name)
+                return self.run_sync(self.apply(c[0], []))      # a static property is a value, read through the type
         d = self.statics.get(t.name)
         if d is not None and name in d:
             return self.bind_impl_targs(d[name][0], t)
@@ -606,9 +640,41 @@ class CallsMixin:
         return err_reserved("OUT_OF_RANGE")
 
     # ------------------------------------------------------------ field access
+    # ------------------------------------------------------------ properties
+    def prop_of(self, obj, name):
+        """The PropertyDecl called `name` on a tuple value, or None."""
+        if obj.tname is None or not isinstance(name, str):
+            return None
+        info = self.tuples.get(obj.tname)
+        if info is None or not info.props:
+            return None
+        return info.props.get(name)
+
+    def prop_read(self, obj, pd):
+        """Read a property that has a getter body, or none stored (computed, lazy, custom `get`)."""
+        if pd.lazy:
+            c = obj.lazy
+            if c is not None and pd.name in c:
+                return c[pd.name]
+            v = self._prop_get(obj, pd)
+            if obj.lazy is None:
+                obj.lazy = {}
+            obj.lazy[pd.name] = v                  # computed once for this value; a rebuilt tuple starts empty
+            return v
+        if pd.stored and not (pd.get is not None and not isinstance(pd.get, str)):
+            return obj.vals[obj.names.index(pd.name)]
+        return self._prop_get(obj, pd)
+
+    def _prop_get(self, obj, pd):
+        ms = self.methods_of(obj, "__get_" + pd.name)
+        return self.run_sync(self.apply_method(ms[0], obj, []))
+
     def field_get(self, obj, name, line=0):
         k = obj.__class__
         if k is TupleV:
+            pd = self.prop_of(obj, name)
+            if pd is not None and not pd.static and (not pd.stored or (pd.get is not None and not isinstance(pd.get, str))):
+                return self.prop_read(obj, pd)
             if obj.names and name in obj.names:
                 x = obj.vals[obj.names.index(name)]
                 if obj.tname and obj.tname in self.tuples and name in self.tuples[obj.tname].delegates:

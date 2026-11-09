@@ -254,6 +254,8 @@ class AtomV:
 
     def __init__(self, v):
         self.atom_value = v
+        self.watchers = []      # (token, property name, handler) added by on_change, in subscription order
+        self.next_tok = 1
 
 
 class FutureState:
