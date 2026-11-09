@@ -92,7 +92,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 
 - **Go:** interfaces, goroutines, channels, and `select`, and (in moxie/gc) the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
-- **Kotlin:** scoped receiver blocks, Domain-Specific Languages, and labeled `break` and `continue`.
+- **Kotlin:** scoped receiver blocks, field delegates (`level: Int delegate(Percent)` is Kotlin's `by`), Domain-Specific Languages, and labeled `break` and `continue`.
 - **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
@@ -101,7 +101,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
-- **Swift:** named tuples and keypaths that act as lenses.
+- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`).
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 

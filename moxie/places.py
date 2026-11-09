@@ -202,6 +202,9 @@ class PlacesMixin:
             raise Abort(f"the property '{name}' of {cur.tname} is read-only")
         value = self.coerce(value, pd.type, info.env)
         old = cur.get(name) if pd.stored else None
+        if pd.will_set is not None and not self.values_eq(value, old):
+            ms = self.methods_of(cur, "__will_set_" + name)
+            yield from self.apply_method(ms[0], cur, [value])      # the value on offer; the stored one is still the old value
         if isinstance(pd.set, tuple):
             ms = self.methods_of(cur, "__set_" + name)
             yield from self.apply_method(ms[0], cur, [value])

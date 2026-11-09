@@ -607,10 +607,10 @@ class Parser(ExprParser):
             self.next()
             default = self.parse_expr()
         self.eat_op(",")
-        get = set_ = did = None
+        get = set_ = did = will = None
         priv = False
         if self.peek().kind == "NL" and self.peek(1).kind == "INDENT" and self.peek(2).kind == "NAME" \
-                and self.peek(2).val in ("get", "set", "priv", "did_set"):
+                and self.peek(2).val in ("get", "set", "priv", "did_set", "will_set"):
             self.expect_nl_indent()
             while True:
                 self.skip_nl()
@@ -653,6 +653,14 @@ class Parser(ExprParser):
                         self.err("a setter with a parameter needs a body: `set(value):`", t)
                     else:
                         set_ = "default"
+                elif which == "will_set":
+                    if will is not None:
+                        self.err(f"`{name}` has two `will_set` blocks", t)
+                    self.expect_op("(")
+                    pname = self.expect_ident("the name of the new value").val
+                    self.expect_op(")")
+                    self.expect_op(":")
+                    will = (pname, self.parse_block_or_inline())
                 elif which == "did_set":
                     if did is not None:
                         self.err(f"`{name}` has two `did_set` blocks", t)
@@ -662,18 +670,19 @@ class Parser(ExprParser):
                     self.expect_op(":")
                     did = (pname, self.parse_block_or_inline())
                 else:
-                    self.err(f"expected `get`, `set`, or `did_set` in a property, not `{which}`", t)
+                    self.err(f"expected `get`, `set`, `will_set`, or `did_set` in a property, not `{which}`", t)
                 self.end_line()
             self.expect_dedent()
         bodies = [get if isinstance(get, N) else None,
                   set_[2] if isinstance(set_, tuple) else None,
-                  did[1] if did is not None else None]
+                  did[1] if did is not None else None,
+                  will[1] if will is not None else None]
         uses = any(b is not None and _mentions_field(b) for b in bodies)
         static, lazy = "static" in mods, "lazy" in mods
         if static and lazy:
             self.err_at(line, f"`{name}`: a static property can't also be `lazy`")
         if static:
-            if set_ is not None or did is not None or priv or cap is not None:
+            if set_ is not None or did is not None or will is not None or priv or cap is not None:
                 self.err_at(line, f"`{name}`: a static property is read-only, so it has no `set`, `did_set`, or observer count")
             if uses:
                 self.err_at(line, f"`{name}`: a static property stores nothing, so `field` has no meaning there")
@@ -685,19 +694,19 @@ class Parser(ExprParser):
         if lazy:
             if not isinstance(get, N) or uses:
                 self.err_at(line, f"`{name}`: a `lazy` property is computed by its `get:` body, which stores nothing")
-            if set_ is not None or did is not None or default is not None or cap is not None:
+            if set_ is not None or did is not None or will is not None or default is not None or cap is not None:
                 self.err_at(line, f"`{name}`: a `lazy` property has only a `get:` body")
         stored = not static and not lazy and not computed
         if computed and default is not None and not static:
             self.err_at(line, f"`{name}` has no storage (its `get` never uses `field`), so it can't have an `= value`")
         if stored and isinstance(set_, tuple) and not _mentions_field(set_[2]):
             self.err_at(line, f"the setter of `{name}` never stores into `field`, so every write would be lost")
-        if did is not None and not stored:
-            self.err_at(line, f"`did_set` goes on a property that stores a value, and `{name}` doesn't")
+        if (did is not None or will is not None) and not stored:
+            self.err_at(line, f"`did_set` and `will_set` go on a property that stores a value, and `{name}` doesn't")
         for b in bodies:
             if b is not None:
                 _subst_field(b, name)
-        return PropertyDecl(name, typ, default, cap, get, set_, did, priv, stored, lazy, static, None, line=line)
+        return PropertyDecl(name, typ, default, cap, get, set_, did, priv, stored, lazy, static, None, will, line=line)
 
     def parse_field_decls(self):
         fields = []
@@ -953,6 +962,11 @@ def expand_props(td):
             prm = Param(None, pname, ptype or copy.deepcopy(p.type), None, None, False, line=ln)
             members.append(FnDecl("__set_" + p.name, [], [prm], copy.deepcopy(unit), None, _as_block(body, ln),
                                   {"ref_self"}, None, None, None, [], line=ln))
+        if p.will_set is not None:
+            pname, body = p.will_set
+            prm = Param(None, pname, copy.deepcopy(p.type), None, None, False, line=ln)
+            members.append(FnDecl("__will_set_" + p.name, [], [prm], copy.deepcopy(unit), None, _as_block(body, ln),
+                                  set(), None, None, None, [], line=ln))
         if p.did_set is not None:
             pname, body = p.did_set
             prm = Param(None, pname, copy.deepcopy(p.type), None, None, False, line=ln)

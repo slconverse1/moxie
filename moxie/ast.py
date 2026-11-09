@@ -111,7 +111,7 @@ def _defs():
         "FnGroup": "name clauses",
         "TupleDecl": "name tparams fields derivs positional vis invariants props",
         "FieldDecl": "name type default delegate prop",
-        "PropertyDecl": "name type default cap get set did_set priv_set stored lazy static need",
+        "PropertyDecl": "name type default cap get set did_set priv_set stored lazy static need will_set",
         "EnumDecl": "name tparams header cases derivs vis",
         "CaseDecl": "name fields",
         "IfaceDecl": "name tparams members embeds vis",

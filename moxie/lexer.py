@@ -819,7 +819,7 @@ class Lexer:
                 if ind > top:
                     if not prev_opens_block and not (first.kind == "NAME" and first.val in ("requires", "ensures")
                                                      and len(toks) > 1) \
-                            and not (first.kind == "NAME" and first.val in ("get", "set", "priv", "did_set")
+                            and not (first.kind == "NAME" and first.val in ("get", "set", "priv", "did_set", "will_set")
                                      and prev_toks is not None
                                      and any(t.kind == "NAME" and t.val == "property" for t in prev_toks[:3])):
                         raise MoxieSyntaxError("unexpected indent", first.line, ind + 1, self.file)

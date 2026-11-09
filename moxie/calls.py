@@ -125,6 +125,8 @@ class CallsMixin:
             return n[6:]
         if n.startswith("__did_set_"):
             return n[10:]
+        if n.startswith("__will_set_"):
+            return n[11:]
         return None
 
     def recv_member(self, cell, name, func=None):
