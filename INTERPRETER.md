@@ -56,7 +56,7 @@ this interpreter never enforced the memory-space rules. It has no collector and 
 
 ## Not in v1
 Full type inference. Generic bounds are checked only for parameters typed directly as the type parameter, and
-size parameters, `where N > 0` and Dict key eligibility are not checked. Pool/stack sizing and memory spaces (S-space/T-space),
+`where N > 0` and Dict key eligibility are not checked (Spec section 24a lists every gap). Pool/stack sizing and memory spaces (S-space/T-space),
 the SQL schema check, `moxie build`/`--release`, package manifests and lockfiles, and everything the Spec marks "not designed".
 Memory limits are not enforced: collection capacity is.
 
