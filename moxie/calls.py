@@ -892,6 +892,7 @@ class CallsMixin:
 
     # ------------------------------------------------------------ closure calls
     def call_closure(self, c, pos, named, refspec, cenv, targs, line):
+        self.using_env = cenv                 # where a `using` parameter looks first: the caller's scope
         node = c.node
         if node.__class__ is FnGroup:
             return self.call_group(c, pos, named, refspec, cenv, targs, line)
@@ -981,6 +982,9 @@ class CallsMixin:
                     v = self.find_using(c.env, env, p)
                 if pname:
                     env.vars[pname] = v
+                    if env.usings is None:
+                        env.usings = {}
+                    env.usings[pname] = v         # a `using` parameter is a candidate for the calls in the body
                 continue
             remaining_nonusing -= 1
             if p.variadic:
@@ -1112,27 +1116,18 @@ class CallsMixin:
         return [[self.close_type(x, env) if x.__class__ is not TExpr else x for x in g] for g in groups]
 
     def find_using(self, cenv, env, p):
-        e = env
-        cands = []
-        while e is not None:
-            if e.usings:
-                for k, v in e.usings.items():
-                    cands.append(v)
-                if cands:
-                    break
-            e = e.parent
-        if not cands:
-            e = cenv
+        """The value a `using` parameter takes: the nearest enclosing scope of the CALL that has a `using` value of the parameter's
+        type, then the scope the function was defined in. Two fitting values in one scope are ambiguous."""
+        for start in (getattr(self, "using_env", None), env):
+            e = start
             while e is not None:
                 if e.usings:
-                    cands.extend(e.usings.values())
-                    break
+                    fit = [(k, v) for k, v in e.usings.items() if p.type is None or self.type_matches(v, p.type, cenv)]
+                    if len(fit) > 1 and len({id(v) for _, v in fit}) > 1:
+                        raise Abort(f"ambiguous 'using' for parameter '{p.name}': {', '.join(k for k, _ in fit)} are in the same scope")
+                    if fit:
+                        return fit[0][1]
                 e = e.parent
-        for v in cands:
-            if p.type is None or self.type_matches(v, p.type, cenv):
-                return v
-        if cands:
-            return cands[0]
         raise Abort(f"no 'using' value in scope for parameter '{p.name}'")
 
     def run_bound(self, c, node, env, refspec, cenv, line):
