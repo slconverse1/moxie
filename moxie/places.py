@@ -207,8 +207,10 @@ class PlacesMixin:
             yield from self.apply_method(ms[0], cur, [value])      # the value on offer; the stored one is still the old value
         if isinstance(pd.set, tuple):
             ms = self.methods_of(cur, "__set_" + name)
-            yield from self.apply_method(ms[0], cur, [value])
+            r = yield from self.apply_method(ms[0], cur, [value])
             new = self._last_self
+            if pd.set[3] is not None and isinstance(r, EnumV) and r.et is RESULT_T and r.case == "Err":
+                raise Abort(f"the setter of '{name}' rejected the value; it can fail, so write it with set_{name} and handle the Result")
         else:
             new = cur.replace(name, value)
         if pd.did_set is not None and new.get(name) != old:

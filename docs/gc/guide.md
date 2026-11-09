@@ -1512,18 +1512,7 @@ g.level = -20
 println("${g.level}")
 ```
 
-Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, and then a write is a `Result` too:
-
-```
-fn (ref Self) set_value(new_value: Int) Result[Unit, Error]:
-  if new_value < 0:
-    fail(1, "negative")
-  else:
-    value = new_value
-    Ok(())
-```
-
-Handle `g.level = -20` with a `when`, or discard it with `\`. **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
+Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value: Int) Result[Unit, Error]:`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because an assignment has nowhere to put a failure. For a write that can fail, use a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
 **Chapter 9b: Properties**
 
@@ -1547,6 +1536,31 @@ println(a.balance)
 ```
 
 Output: `balance 5 -> 8`, then `8`. A property with no accessors is a stored field, and `= 0` is its initial value, as for a field. The accessors are `get:`, `set(value):`, `will_set(new):`, and `did_set(old):`, indented under the property, and the header takes no colon of its own. Inside an accessor, `field` is the stored value: a getter can return it, and a setter stores with `field = value`. A bare `get` or `set` with no body means "the default one", so `priv set` keeps the default setter but makes it private to the tuple's own `impl` blocks. The constructor runs a value you pass through the setter, so `Account(owner: "Ann", balance: -1)` aborts. `did_set` runs only when a write changes the value, and never at construction. `will_set(new)` runs just before such a write is stored, with the value on offer, while `field` still holds the old one: the order is `will_set`, then `set`, then `did_set`. It can't veto a write, so validation belongs in `set`. Outside a property's own accessors, a bare `balance` in an `impl` goes through the property, as `a.balance` does, so the tuple's own methods can't skip the check.
+
+A setter can reject a value by returning a `Result`. You write the return type after the parameter, and moxie makes a function `set_NAME` that returns the changed tuple, or the `Err`:
+
+```
+tuple Account:
+  owner: String,
+  property balance: Int = 0
+    set(value: Int) Result[Unit, Error]:
+      if value < 0:
+        fail(1, "negative")
+      else:
+        field = value
+        Ok(())
+when Account(owner: "Ann", balance: 5):
+  Err(e) -> println("rejected")
+  Ok(a) ->
+    when a.set_balance(-1):
+      Ok(b) -> println("changed")
+      Err(e) -> println("rejected, still ${a.balance}")
+    when a.set_balance(9):
+      Ok(b) -> println("${b.balance}, was ${a.balance}")
+      Err(e) -> println("rejected")
+```
+
+Output: `rejected, still 5`, then `9, was 5`. The original is never touched, as with any value. Because a write can fail, `a.balance = 9` is a compile error on such a property, and the constructor is a `Result` too (`Account(owner: "Ann", balance: -1)` is an `Err`). A `priv set` can't return a `Result`, since `set_balance` is public.
 
 A property that stores nothing is a computed one:
 

@@ -2731,11 +2731,25 @@ class Checker:
         del self.pending_gone[mark:]
         return r
 
+    def delegate_fails(self, f):
+        d = f.delegate
+        m = self.methods.get((d.path[-1], "set_value")) if d.__class__ is TName and d.path else None
+        r = getattr(m, "ret", None)
+        return r.__class__ is TName and r.path == ["Result"]
+
+    def fallible_ctor(self, td):
+        if any(f.delegate is not None and self.delegate_fails(f) for f in td.fields or []):
+            return True
+        return any(getattr(p, "set", None).__class__ is tuple and p.set[3] is not None for p in (getattr(td, "props", None) or []))
+
     def _e_Call(self, n, sc, extra=0):
         pipe0 = self.pipe_ty
         self.cur_sc = sc
         r = self._e_Call0(n, sc, extra)
         f = n.fn
+        if f.__class__ is Name and f.name in self.tuples and f.name not in self.fns and sc.find(f.name) is None \
+                and self.fallible_ctor(self.tuples[f.name]) and r is not None and r[0] is not None:
+            r = (("app", "Result", (r[0], ("named", "Error"))), r[1])          # a setter that can fail makes construction fallible
         if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
                 and f.name not in self.fns and sc.find(f.name) is None:
             if len(n.args or []) == 1 and not extra:
@@ -4457,11 +4471,16 @@ class Checker:
             return
         pd = self.prop_in(self.tuples[t[1]], e.name)
         if pd is None:
+            df = next((f for f in self.tuples[t[1]].fields or [] if f.name == e.name and f.delegate is not None), None)
+            if df is not None and self.delegate_fails(df):
+                self.err(line, f"the delegate of `{e.name}` can reject a value, so assignment can't be used: use a `property` whose `set` returns a `Result`")
             return
         if pd.static:
             self.err(line, f"`{e.name}` is a static property, which is read-only")
         elif pd.lazy or (not pd.stored and not isinstance(pd.set, tuple)):
             self.err(line, f"`{e.name}` is read-only: it has no `set`")
+        elif isinstance(pd.set, tuple) and pd.set[3] is not None:
+            self.err(line, f"the setter of `{e.name}` can fail, so assignment can't be used: write `x = x.set_{e.name}(v)?` or handle the `Result`")
         elif pd.priv_set and getattr(self, "impl_ty", None) != t[1]:
             self.err(line, f"the setter of `{e.name}` is private: only `impl {t[1]}` can assign to it")
 

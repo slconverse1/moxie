@@ -646,9 +646,14 @@ class Parser(ExprParser):
                             ptype = self.parse_type()
                         self.expect_op(")")
                         named = True
+                    rtype = None
+                    if named and not self.at_op(":"):
+                        rtype = self.parse_type()
+                        if not (rtype.__class__ is TName and rtype.path == ["Result"]):
+                            self.err(f"a setter that can fail returns a `Result`, as in `set(value) Result[Unit, Error]:`", t)
                     if self.at_op(":"):
                         self.next()
-                        set_ = (pname, ptype, self.parse_block_or_inline())
+                        set_ = (pname, ptype, self.parse_block_or_inline(), rtype)
                     elif named:
                         self.err("a setter with a parameter needs a body: `set(value):`", t)
                     else:
@@ -699,6 +704,8 @@ class Parser(ExprParser):
         stored = not static and not lazy and not computed
         if computed and default is not None and not static:
             self.err_at(line, f"`{name}` has no storage (its `get` never uses `field`), so it can't have an `= value`")
+        if isinstance(set_, tuple) and set_[3] is not None and (priv or static or lazy):
+            self.err_at(line, f"`{name}`: a setter that returns a `Result` is public, so it can't be `priv set`")
         if stored and isinstance(set_, tuple) and not _mentions_field(set_[2]):
             self.err_at(line, f"the setter of `{name}` never stores into `field`, so every write would be lost")
         if (did is not None or will is not None) and not stored:
@@ -940,6 +947,28 @@ def _as_block(b, line):
     return b if b.__class__ is Block else Block([b], line=line)
 
 
+def _with_setter(td, p, ln):
+    """`set_NAME(value) Result[Self, Error]`: the visible function for a property whose setter can fail. It runs the setter on
+    a copy and returns the changed tuple, or the setter's `Err`; the original is untouched either way."""
+    import copy
+    src = (f"fn set_{p.name}(value: Int) Result[Int, Error]:\n"
+           f"  c = self\n  c.__set_{p.name}(value)?\n  Ok(c)\n")
+    fn = parse_program(src).stmts[0]
+    me = TName([td.name], [[TName([tp.name], []) for tp in td.tparams]] if td.tparams else [])
+    fn.params[0].type = copy.deepcopy(p.set[1] or p.type)
+    fn.ret = TName(["Result"], [[me, TName(["Error"], [])]])
+    def lines(n):
+        if isinstance(n, N):
+            n.line = ln
+            for f in n._fields:
+                lines(getattr(n, f, None))
+        elif isinstance(n, (list, tuple)):
+            for x in n:
+                lines(x)
+    lines(fn)
+    return fn
+
+
 def expand_props(td):
     """The hidden methods that make a tuple's properties work, as an inherent `impl` for the tuple:
     `__get_NAME` (a computed, lazy, or custom getter, or a static property's value), `__set_NAME` (a custom setter, with a
@@ -958,10 +987,12 @@ def expand_props(td):
             members.append(FnDecl("__get_" + p.name, [], [], copy.deepcopy(p.type), None, _as_block(p.get, ln),
                                   {"pure"} if p.lazy else set(), None, None, None, [], line=ln))
         if isinstance(p.set, tuple):
-            pname, ptype, body = p.set
+            pname, ptype, body, rtype = p.set
             prm = Param(None, pname, ptype or copy.deepcopy(p.type), None, None, False, line=ln)
-            members.append(FnDecl("__set_" + p.name, [], [prm], copy.deepcopy(unit), None, _as_block(body, ln),
+            members.append(FnDecl("__set_" + p.name, [], [prm], copy.deepcopy(rtype or unit), None, _as_block(body, ln),
                                   {"ref_self"}, None, None, None, [], line=ln))
+            if rtype is not None:
+                members.append(_with_setter(td, p, ln))
         if p.will_set is not None:
             pname, body = p.will_set
             prm = Param(None, pname, copy.deepcopy(p.type), None, None, False, line=ln)

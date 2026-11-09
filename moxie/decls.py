@@ -117,6 +117,13 @@ class DeclsMixin:
                 tv.targs = args
         return tv
 
+    def delegate_can_fail(self, f):
+        dinfo = self.tuples.get(self.rtype_name(f.delegate))
+        ms = self.methods_of(TupleV([None], dinfo.names if dinfo else ["value"], dinfo.name if dinfo else None), "set_value") if dinfo else []
+        node = getattr(ms[0], "node", None) if ms else None
+        r = getattr(node, "ret", None)
+        return r.__class__ is TName and r.path == ["Result"]
+
     def construct_tuple(self, info, pos, named, spreads, line):
         fields = info.fields
         nf = len(fields)
@@ -180,7 +187,9 @@ class DeclsMixin:
         tv = TupleV(vals, list(names) if names and names[0] is not None else None, info.name)
         for sname, sv in setters:
             ms = self.methods_of(tv, "__set_" + sname)
-            yield from self.apply_method(ms[0], tv, [sv])
+            r = yield from self.apply_method(ms[0], tv, [sv])
+            if isinstance(r, EnumV) and r.et is RESULT_T and r.case == "Err":
+                return r
             tv = self._last_self
         invs = getattr(info, "invariants", None)
         if invs and CONTRACTS[0]:
@@ -192,6 +201,9 @@ class DeclsMixin:
                 ok = yield from self.ev(expr, ienv)
                 if ok is not True:
                     raise Abort(f"invariant of {info.name} failed: {text} (supplier bug)", line)
+        if any(f.prop is not None and isinstance(f.prop.set, tuple) and f.prop.set[3] is not None for f in fields) \
+                or any(f.delegate is not None and self.delegate_can_fail(f) for f in fields):
+            return self.enum_instance(RESULT_T, RESULT_T.cases["Ok"], [tv])
         return tv
 
     # ------------------------------------------------------------ enums

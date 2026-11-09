@@ -85,6 +85,13 @@ CASES = [
   'tuple R:\n  property: Int\nprintln(R(property: 3).property)\n', "run", "3"),
  ("a generic tuple has properties",
   'tuple Box[T]:\n  v: T,\n  property same: T\n    get: v\nprintln(Box(v: 7).same)\n', "run", "7"),
+ ('a setter that returns a Result gives a set_ function that returns the changed copy', 'tuple Account:\n  owner: String,\n  property balance: Int = 0\n    set(value: Int) Result[Unit, Error]:\n      if value < 0:\n        fail(1, "negative")\n      else:\n        field = value\n        Ok(())\nwhen Account(owner: "x", balance: 1):\n  Err(e) -> println("rejected")\n  Ok(a) ->\n    when a.set_balance(5):\n      Ok(b) -> println("${b.balance} ${a.balance}")\n      Err(e) -> println("err")\n', 'run', '5 1'),
+ ('a failing set_ function returns the Err and leaves the original', 'tuple Account:\n  owner: String,\n  property balance: Int = 0\n    set(value: Int) Result[Unit, Error]:\n      if value < 0:\n        fail(1, "negative")\n      else:\n        field = value\n        Ok(())\nwhen Account(owner: "x", balance: 1):\n  Err(e) -> println("rejected")\n  Ok(a) ->\n    when a.set_balance(-5):\n      Ok(b) -> println("changed")\n      Err(e) -> println("err ${a.balance}")\n', 'run', 'err 1'),
+ ('construction with a failing setter is a Result', 'tuple Account:\n  owner: String,\n  property balance: Int = 0\n    set(value: Int) Result[Unit, Error]:\n      if value < 0:\n        fail(1, "negative")\n      else:\n        field = value\n        Ok(())\nwhen Account(owner: "y", balance: -1):\n  Ok(b) -> println("made")\n  Err(e) -> println("rejected")\n', 'run', 'rejected'),
+ ('construction that passes is Ok', 'tuple Account:\n  owner: String,\n  property balance: Int = 0\n    set(value: Int) Result[Unit, Error]:\n      if value < 0:\n        fail(1, "negative")\n      else:\n        field = value\n        Ok(())\nwhen Account(owner: "y", balance: 3):\n  Ok(b) -> println("made ${b.balance}")\n  Err(e) -> println("rejected")\n', 'run', 'made 3'),
+ ('plain assignment to a property whose setter can fail is an error', 'tuple Account:\n  owner: String,\n  property balance: Int = 0\n    set(value: Int) Result[Unit, Error]:\n      if value < 0:\n        fail(1, "negative")\n      else:\n        field = value\n        Ok(())\nwhen Account(owner: "y"):\n  Ok(a) -> a.balance = 4\n  Err(e) -> println("no")\n', 'fail', 'can fail'),
+ ("a Result setter can't be priv", 'tuple A:\n  property n: Int = 0\n    priv set(v: Int) Result[Unit, Error]:\n      field = v\n      Ok(())\nprintln(1)\n', 'fail', "can't be `priv set`"),
+ ("a setter's return type must be a Result", 'tuple A:\n  property n: Int = 0\n    set(v: Int) Int:\n      field = v\n      1\nprintln(1)\n', 'fail', 'returns a `Result`'),
 ]
 
 fails = []
