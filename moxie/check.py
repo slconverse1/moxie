@@ -401,6 +401,10 @@ class Checker:
                 for m in st.members or []:
                     if m.__class__ is not FnDecl or m.body is None:
                         continue
+                    old = self.methods.get((tn, m.name))
+                    if old is not None and old is not m and (("generated" in (old.flags or ())) or ("generated" in (m.flags or ()))):
+                        mine = m if "generated" not in (m.flags or ()) else old
+                        self.err(mine.line, f"`{m.name}` is generated for a property or delegate of `{tn}` whose setter returns a `Result`, so it can't also be written by hand; drop yours, or drop the `Result` from the setter")
                     self.methods[(tn, m.name)] = m
                     ps = m.params or []
                     if ps and ps[0].name == "self" and ps[0].type is None and self.is_res_type(st.target) and keeps(m, "self"):

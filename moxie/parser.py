@@ -956,6 +956,7 @@ def _with_setter(td, p, ln):
            f"  c = self\n  c.__set_{p.name}(value)?\n  Ok(c)\n")
     fn = parse_program(src).stmts[0]
     me = TName([td.name], [[TName([tp.name], []) for tp in td.tparams]] if td.tparams else [])
+    fn.flags = set(fn.flags or ()) | {"generated"}
     fn.params[0].type = copy.deepcopy(p.set[1] or p.type)
     fn.ret = TName(["Result"], [[me, TName(["Error"], [])]])
     def lines(n):
@@ -994,6 +995,7 @@ def expand_delegates(stmts):
             ln = s.line
             src = f"fn set_{f.name}(value: Int) Result[Int, Error]:\n  __set_delegate(self, \"{f.name}\", value)\n"
             fn = parse_program(src).stmts[0]
+            fn.flags = set(fn.flags or ()) | {"generated"}
             fn.params[0].type = copy.deepcopy(f.type)
             fn.ret = TName(["Result"], [[TName([s.name], [[TName([tp.name], []) for tp in s.tparams]] if s.tparams else []),
                                          TName(["Error"], [])]])
