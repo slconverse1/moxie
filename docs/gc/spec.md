@@ -718,6 +718,15 @@ Files and network connections are resources of one type, `Io`, so code that read
 - **Reader** is `using`. **Writer** is a convention (return the log with the value).
 - **`Locale`** (2026-11-05): a tuple of separators, date order, and names, passed by `using`. The `n` format type and the date names read it.
 
+**23a. Statistics and prediction (the `stats` package)** (a built-in package written in moxie, `moxie/std/stats.mxi`; `import stats`)
+A small library for learning statistics and simple prediction, in both dialects. It is for teaching, so each function is a few readable lines, and it is not a numeric toolkit. Every function takes an `Array[Double][N]`.
+- **One list:** `total(xs)`, `mean(xs)`, `variance(xs)` and `stddev(xs)` (population, divide by `n`), `sample_variance(xs)` and `sample_stddev(xs)` (divide by `n - 1`), `median(xs)`, `quantile(xs, q) Result[Double, Error]` (`q` from 0.0 to 1.0, interpolating, an `Err` outside that), and `z_scores(xs) Result[Array[Double][N], Error]` (an `Err` when the values do not vary). Averages need at least one value, and the spread of a single value is 0.
+- **Two lists:** `covariance(xs, ys) Double` and `correlation(xs, ys) Result[Double, Error]` (an `Err` when either list does not vary). The two arrays must have the same length, and a mismatch is a failed assertion at run time.
+- **Prediction:** `tuple Line: slope: Double, intercept: Double, r_squared: Double`. `fit_line(xs, ys) Result[Line, Error]` is the least-squares line (an `Err` when every `x` is the same), `predict(line, x)` is `slope * x + intercept`, and `predict_all(line, xs)` predicts each value of an array. `r_squared` is the share of the variation in `y` that the line explains.
+- **Error measures:** `rmse(actual, predicted)` and `mean_absolute_error(actual, predicted)`, with arrays of the same length.
+- **A series:** `moving_average(xs, window) List[Double]` averages each `window` values in a row, and `smooth(xs, alpha) Double` is exponential smoothing (`alpha` from 0.0 to 1.0): the level after the last value, which is also the forecast for the next one.
+- **Not included:** regression on several variables, classifiers, and anything that needs matrix inversion. Sizes are not unified across arguments (section 9a), so a length mismatch is found at run time.
+
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.
 - **Numbers:** `abs`, `min`, `max`, `pow`, `sqrt`, `cast[T]`, `try_cast[T]`, `wrap_to[T]`, `checked_add/sub/mul/div`, `wrapping_*`, `saturating_*`, `is_nan`, `is_inf`, `is_finite`, `finite(x)`, `round_to[n](x, mode)`, `div(a, b, scale, mode)` (Decimal), `parse_number`.

@@ -1,0 +1,140 @@
+//! stats: statistics and prediction for learning the ideas.
+//!
+//! Every function works on an `Array[Double][N]`. The functions that take two arrays (`covariance`, `fit_line`, `rmse`) need
+//! the same number of values in each, and the program stops with a failed assertion when they differ. Each function is a few
+//! lines you can read. Averages and spreads need at least one value, and the spread of a single value is 0.
+
+// ---------------------------------------------------------------- one list of numbers
+
+fn square(x: Double) Double:
+  x * x
+
+fn count_of[N](xs: Array[Double][N]) Double:
+  cast[Double](len(xs))
+
+fn sorted[N](xs: Array[Double][N]) Array[Double][N]:
+  xs |> to_stream() |> sort() |> collect()
+
+export fn total[N](xs: Array[Double][N]) Double:
+  xs |> to_stream() |> sum()
+
+export fn mean[N](xs: Array[Double][N]) Double:
+  total(xs) / count_of(xs)
+
+// The average squared distance from the mean (divide by n: these values are the whole population).
+export fn variance[N](xs: Array[Double][N]) Double:
+  m = mean(xs)
+  (xs |> to_stream() |> map((x): square(x - m)) |> sum()) / count_of(xs)
+
+export fn stddev[N](xs: Array[Double][N]) Double:
+  sqrt(variance(xs))
+
+// The same, dividing by n - 1, which is the usual estimate when the values are a sample of a larger population.
+export fn sample_variance[N](xs: Array[Double][N]) Double:
+  if len(xs) < 2:
+    0.0
+  else:
+    m = mean(xs)
+    (xs |> to_stream() |> map((x): square(x - m)) |> sum()) / (count_of(xs) - 1.0)
+
+export fn sample_stddev[N](xs: Array[Double][N]) Double:
+  sqrt(sample_variance(xs))
+
+export fn median[N](xs: Array[Double][N]) Double:
+  s = sorted(xs)
+  n = len(s)
+  if n % 2 == 1:
+    s(n / 2)
+  else:
+    (s(n / 2 - 1) + s(n / 2)) / 2.0
+
+// `q` runs from 0.0 (the smallest value) to 1.0 (the largest); 0.5 is the median. Between two values it interpolates.
+export fn quantile[N](xs: Array[Double][N], q: Double) Result[Double, Error]:
+  if q < 0.0 or q > 1.0:
+    fail(1, "quantile: q must be between 0.0 and 1.0")
+  else:
+    s = sorted(xs)
+    pos = q * cast[Double](len(s) - 1)
+    lo = cast[Int](floor(pos))
+    hi = cast[Int](ceil(pos))
+    frac = pos - floor(pos)
+    Ok(s(lo) + (s(hi) - s(lo)) * frac)
+
+// Each value as a number of standard deviations from the mean. A list with no spread has no z-scores.
+export fn z_scores[N](xs: Array[Double][N]) Result[Array[Double][N], Error]:
+  m = mean(xs)
+  sd = stddev(xs)
+  if sd == 0.0:
+    fail(1, "z_scores: the values do not vary")
+  else:
+    Ok(xs |> to_stream() |> map((x): (x - m) / sd) |> collect())
+
+// ---------------------------------------------------------------- two lists: how they move together
+
+// Positive when the two tend to rise together, negative when one rises as the other falls.
+export fn covariance[N](xs: Array[Double][N], ys: Array[Double][N]) Double:
+  assert(len(xs) == len(ys))
+  mx = mean(xs)
+  my = mean(ys)
+  (xs |> to_stream() |> zip(ys |> to_stream()) |> map((p): (p(0) - mx) * (p(1) - my)) |> sum()) / count_of(xs)
+
+// From -1.0 (a perfect downhill line) through 0.0 (no straight-line relationship) to 1.0 (a perfect uphill line).
+export fn correlation[N](xs: Array[Double][N], ys: Array[Double][N]) Result[Double, Error]:
+  sx = stddev(xs)
+  sy = stddev(ys)
+  if sx == 0.0 or sy == 0.0:
+    fail(1, "correlation: a list that does not vary has no correlation")
+  else:
+    Ok(covariance(xs, ys) / (sx * sy))
+
+// ---------------------------------------------------------------- prediction: a straight line through the data
+
+// y is predicted as `slope * x + intercept`. `r_squared` says how much of the variation in y the line explains:
+// 1.0 is a perfect fit, and 0.0 is no better than always guessing the mean of y.
+export tuple Line:
+  slope: Double,
+  intercept: Double,
+  r_squared: Double
+
+// The least-squares line: the one that makes the squared errors in y as small as they can be.
+export fn fit_line[N](xs: Array[Double][N], ys: Array[Double][N]) Result[Line, Error]:
+  vx = variance(xs)
+  if vx == 0.0:
+    fail(1, "fit_line: every x is the same, so there is no line to fit")
+  else:
+    slope = covariance(xs, ys) / vx
+    intercept = mean(ys) - slope * mean(xs)
+    vy = variance(ys)
+    r2 = if vy == 0.0: 1.0 else: square(covariance(xs, ys)) / (vx * vy)
+    Ok(Line(slope: slope, intercept: intercept, r_squared: r2))
+
+export fn predict(line: Line, x: Double) Double:
+  line.slope * x + line.intercept
+
+export fn predict_all[N](line: Line, xs: Array[Double][N]) Array[Double][N]:
+  xs |> to_stream() |> map((x): predict(line, x)) |> collect()
+
+// ---------------------------------------------------------------- how good is a prediction
+
+// The typical size of the errors, in the units of y. Large mistakes count for more than small ones.
+export fn rmse[N](actual: Array[Double][N], predicted: Array[Double][N]) Double:
+  assert(len(actual) == len(predicted))
+  sqrt((actual |> to_stream() |> zip(predicted |> to_stream()) |> map((p): square(p(0) - p(1))) |> sum()) / count_of(actual))
+
+// The average size of the errors, with every error counting the same.
+export fn mean_absolute_error[N](actual: Array[Double][N], predicted: Array[Double][N]) Double:
+  assert(len(actual) == len(predicted))
+  (actual |> to_stream() |> zip(predicted |> to_stream()) |> map((p): abs(p(0) - p(1))) |> sum()) / count_of(actual)
+
+// ---------------------------------------------------------------- a series over time
+
+// The average of each `window` values in a row, which smooths out the ups and downs.
+export fn moving_average[N](xs: Array[Double][N], window: Int) List[Double]:
+  xs |> to_stream() |> windows(window) |> map((w): mean(w)) |> collect()
+
+// Exponential smoothing: each new value pulls the running level toward itself by `alpha` (0.0 to 1.0). A big alpha follows
+// the data closely, and a small one changes slowly. The level after the last value is also the forecast for the next one.
+export fn smooth[N](xs: Array[Double][N], alpha: Double) Double:
+  first_value = xs(0)
+  rest = xs |> to_stream() |> drop(1)
+  rest |> reduce(first_value, (level, x): alpha * x + (1.0 - alpha) * level)

@@ -742,3 +742,7 @@ Contextual parameters (`using`), 2026-11-09: `find_using` (calls.py) now looks f
 A `using` parameter must have a name: `parse_param` (pexpr.py) rejects `using Context` and `using _: Context` (an unnamed form was tried and removed, since it only saved a name and the body could not read it).
 
 Data paths are `PathV` values, so they are first-class; `replace` and `modify` take the path at run time, so a path parameter works (the Spec allows it; a compiled implementation would specialize per path). `tests/run_paths.py` covers passing, returning, storing, composing, and updating through paths.
+
+## The stats package (moxie/std/stats.mxi, tests/run_stats.py)
+
+A teaching library written in moxie, found by `stdpkg.find_std` like `fp.state` (it is not in `GC_ONLY`, so it runs in both dialects). Everything takes an `Array[Double][N]`. The checker does not make two arguments share one `N` (a function `pair[N](a: Array[Int][N], b: Array[Int][N])` accepts arrays of different sizes), so the two-array functions `assert` equal lengths at run time instead. `sort` of an array is a stream, so `sorted` collects it back into an array. The expected values in `tests/run_stats.py` were computed independently with Python's `statistics` module and numpy.
