@@ -32,14 +32,12 @@ CASES = [
   CTX + 'fn go() Unit:\n  send("u", using)\nusing c = Context(user: "late")\ngo()\n', "run", "u late"),
  ("a using in an enclosing function serves a lambda",
   CTX + 'fn go() Unit:\n  using c = Context(user: "ann")\n  f = fn (): send("u", using)\n  f()\ngo()\n', "run", "u ann"),
- ("a using parameter with no name is written with just its type",
-  CTX + 'fn outer(n: Int, using Context) Unit:\n  send("u", using)\n  println("outer ${n}")\nusing c = Context(user: "ann")\nouter(1, using)\n', "run", "u ann\nouter 1"),
- ("an unnamed using parameter still needs a value",
-  CTX + 'fn outer(using Context) Unit:\n  send("u", using)\nouter(using)\n', "fail", "no `using` value of type `Context`"),
- ("an unnamed using parameter takes part in ambiguity",
-  CTX + 'fn outer(using Context) Unit:\n  send("u", using)\nusing a = Context(user: "ann")\nusing b = Context(user: "bob")\nouter(using)\n', "fail", "ambiguous"),
- ("a function may have several unnamed using parameters, and each is passed along",
-  'tuple Config:\n  url: String\ntuple Logger:\n  tag: String\nfn work(using cfg: Config, using log: Logger) Unit:\n  println("${log.tag} ${cfg.url}")\nfn outer(n: Int, using Config, using Logger) Unit:\n  work(using, using)\nfn go() Unit:\n  using c = Config(url: "example.com")\n  using l = Logger(tag: "main")\n  outer(1, using, using)\ngo()\n', "run", "main example.com"),
+ ("a using parameter needs a name",
+  CTX + 'fn outer(using Context) Unit:\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
+ ("`using _` is not a name either",
+  CTX + 'fn outer(using _: Context) Unit:\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
+ ("a named using parameter is passed along",
+  CTX + 'fn outer(n: Int, using ctx: Context) Unit:\n  send("u", using)\n  println("outer ${n}")\nusing c = Context(user: "ann")\nouter(1, using)\n', "run", "u ann\nouter 1"),
 ]
 
 fails = []

@@ -4185,7 +4185,7 @@ class Checker:
                 if p.mod == "using":
                     if inner.usings is None:
                         inner.usings = {}
-                    inner.usings[p.name if p.name != "_" else f"_{len(inner.usings)}"] = pty
+                    inner.usings[p.name] = pty
                 if p.type.__class__ is TName and len(p.type.path) == 1 and p.type.path[0] in self.FIT and p.type.path[0] not in self.tuples \
                         and p.type.path[0] not in self.aliases:
                     inner.vars[p.name].inttype = p.type.path[0]

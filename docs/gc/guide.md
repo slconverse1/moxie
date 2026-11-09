@@ -793,21 +793,21 @@ greet("hi", "bob")
 
 Output: `ada: hello`, then `bob: hi`. A `using` value can't be a channel end, a timer, or a file, because a callee could read or close it out of sight; an `Atom` is fine, so a shared counter can be injected the same way (`fn bump(using hits: Atom[Int])`).
 
-Scala's `summon[T]` fetches the contextual value of type `T` from the scope, which it needs because a parameter written `(using Config)` has no name. Moxie has no `summon`, but you can write that unnamed parameter, `using Config`, and a call that writes `using` passes the value along:
+Scala's `summon[T]` fetches the contextual value of type `T` from the scope, which it needs because a parameter written `(using Config)` has no name. Moxie has no `summon`, and every `using` parameter has a name, so a function that wants the value uses the name, and a call that writes `using` passes it along:
 
 ```
 tuple Config:
   url: String
 fn connect(using cfg: Config) String:
   "connecting to ${cfg.url}"
-fn retry(attempts: Int, using Config) String:
+fn retry(attempts: Int, using cfg: Config) String:
   connect(using)
 using c = Config(url: "example.com")
 println(retry(2, using))
 println(connect(using))
 ```
 
-Output: `connecting to example.com`, then `connecting to example.com`. `retry` never names its `Config`, so it can't read it, and there is nothing to fetch it with. If a function needs the value, it names the parameter, as `connect` does with `cfg`. The other use of `summon` in Scala, getting the instance behind a bound like `[T: Ordering]`, has no counterpart either, because in moxie a type does not hand you an instance. Its `impl` supplies methods that you call on a value of the bounded type, `a.combine(b)`, or on the type itself, `T.empty()`, as `mconcat` does in chapter 8d. A missing or ambiguous `using` value is a compile error, so there is no "which instance did the compiler pick" to ask about.
+Output: `connecting to example.com`, then `connecting to example.com`. `retry` hands its `cfg` on to `connect` by writing `using`, which finds the value of the right type. The other use of `summon` in Scala, getting the instance behind a bound like `[T: Ordering]`, has no counterpart either, because in moxie a type does not hand you an instance. Its `impl` supplies methods that you call on a value of the bounded type, `a.combine(b)`, or on the type itself, `T.empty()`, as `mconcat` does in chapter 8d. A missing or ambiguous `using` value is a compile error, so there is no "which instance did the compiler pick" to ask about.
 
 A `todo` stands in for any expression you haven't written yet. The compiler warns and lists it, and running it aborts the fiber:
 

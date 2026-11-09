@@ -867,8 +867,7 @@ class ExprParser(PBase):
             self.next()
             t = self.peek()
             if mod == "using" and t.kind == "NAME" and not self.at_op(":", 1):
-                # `using Context`: a contextual parameter that has no name (the same as `using _: Context`)
-                return Param(None, "_", self.parse_type(), None, "using", False, line=line)
+                self.err("a `using` parameter needs a name: write `using ctx: Context`", t)
         pat = None
         name = None
         if t.kind == "NAME" and (t.val not in HARD or t.val == "self") and (self.at_op(":", 1) or self.at_op(",", 1) or self.at_op(")", 1)) :
@@ -889,6 +888,8 @@ class ExprParser(PBase):
         if self.at_op("="):
             self.next()
             default = self.parse_expr()
+        if mod == "using" and (name is None or name == "_"):
+            self.err("a `using` parameter needs a name: write `using ctx: Context`", t)
         return Param(pat, name, typ, default, mod, variadic, line=line)
 
     # ------------------------------------------------------------ blocks
