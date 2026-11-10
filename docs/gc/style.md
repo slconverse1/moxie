@@ -1,8 +1,8 @@
 ---
 layout: default
 dialect: gc
-title: "moxie/gc Style Guide"
+title: "Moxie Style Guide"
 ---
-# MOXIE/GC STYLE GUIDE
+# MOXIE STYLE GUIDE
 
 {% include style-body.md %}
