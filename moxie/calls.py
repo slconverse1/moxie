@@ -963,6 +963,13 @@ class CallsMixin:
                     tp[nm] = self.targ_value(ta, c.env)
             for k2, v2 in tp.items():
                 env.vars[k2] = v2
+            if strict:
+                for tpd in node.tparams:
+                    sz = tp.get(tpd.name)
+                    if tpd.where is not None and sz.__class__ is int:
+                        from .check import const_eval, NOCONST
+                        if const_eval(tpd.where, {tpd.name: sz}) is False:
+                            raise Abort(f"`{tpd.name}` is {sz} in this call to `{node.name}`, which fails the `where` constraint on `{tpd.name}`")
         i = 0
         npos = len(pos)
         remaining_nonusing = len([p for p in params if p.mod != "using"])
@@ -1028,6 +1035,10 @@ class CallsMixin:
                         return None
                 if v.__class__ is not LazyV:
                     v = self.coerce(v, p.type, c.env)
+                    if strict and node.__class__ is FnDecl and p.mod != "lazy" \
+                            and not self.type_matches(v, p.type, c.env, self.tparam_names(node)):
+                        raise Abort(f"type error in call to `{node.name}`: parameter `{p.name}` is `{self.show_type(p.type)}`, "
+                                    f"but the argument is a `{type_name(v)}`")
                 if p.type.__class__ is TFn and p.type.recv is not None and v.__class__ is Closure \
                         and v.node.__class__ is Lambda and not v.recv:
                     nv = Closure(v.node, v.env, v.name)

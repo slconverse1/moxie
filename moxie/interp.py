@@ -131,7 +131,11 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             self.err.write(str(e) + "\n")
             return 2
         if check:
-            errs = [d for d in self.static_check(prog) if d.kind == "error"]
+            diags = self.static_check(prog)
+            errs = [d for d in diags if d.kind == "error"]
+            for d in diags:
+                if d.kind == "warning" and getattr(d, "unverified", False):         # a spot whose types are checked at run time
+                    self.err.write(f"{file}:{d.line}: warning: {d.msg}\n")
             if errs:
                 for d in errs:
                     self.err.write(f"{file}:{d.line}: error: {d.msg}\n")

@@ -17,4 +17,6 @@ Remaining interpreter limits (not language changes)
 
 To do (Steve, 2026-11-09)
 * Document the library code with moxie's own documentation mechanism (`moxie doc` and its doctests): `moxie/std/stats.mxi` and the `fp.*` packages should carry doc comments with runnable examples, so we practice what we preach.
-* Calls into an imported package are checked from its exported signatures, its types, and its functions used as values (`Checker.import_signatures`). Left: higher-kinded type parameters and methods called on a package's type. Also open: `where` on a size that is not known at compile time is not checked at all (add a run-time abort), and a delegate declared in another module still gets no generated `set_NAME`.
+* Calls into an imported package are checked from its exported signatures, its types, and its functions used as values (`Checker.import_signatures`). Left: higher-kinded type parameters and methods called on a package's type. Also open: a delegate declared in another module still gets no generated `set_NAME`.
+
+* To do for the warnings: warn also for the remaining gaps (methods called on a package's type, a delegate from another module, bounds on method calls), and then for any expression whose type the checker cannot work out (the stronger form; noisy until the checker leaves fewer types unknown). `--strict` / `strict = true` in `Moxie.toml` would turn the warnings into errors.

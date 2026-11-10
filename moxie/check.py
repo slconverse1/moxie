@@ -212,6 +212,7 @@ class Checker:
         self.diags = []
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
+        self.pkg_unchecked = {}          # `pkg.f` -> why a call of it is checked only at run time
         self.pkg_methods = {}            # (`pkg.T`, method name) -> the method's signature
         self.pkg_types = set()           # a package's types, registered as `pkg.T`
         self.pkg_calls = set()           # the functions known from an imported package's signatures
@@ -363,6 +364,8 @@ class Checker:
                 continue
             fd = clauses[0]
             if fd.alias is not None or fd.guard is not None or any(getattr(tp, "holes", None) for tp in fd.tparams or []):
+                if wanted is None:
+                    self.pkg_unchecked[f"{alias}.{fd.name}"] = "has higher-kinded type parameters"
                 continue                # a higher-kinded parameter is left to the run time check
             tps = {tp.name for tp in fd.tparams or []}
             c = copy.copy(fd)
@@ -389,6 +392,10 @@ class Checker:
     def pkg_redirect(self, n, sc):
         """A call `pkg.f(...)` into an imported package is checked as a call of the function `pkg.f` known from its signature."""
         f = n.fn
+        if f.__class__ is Field and f.obj.__class__ is Name and sc.find(f.obj.name) is None \
+                and f"{f.obj.name}.{f.name}" in self.pkg_unchecked:
+            self.warn_unverified(n.line, f"`{f.obj.name}.{f.name}` {self.pkg_unchecked[f'{f.obj.name}.{f.name}']}, so its arguments can't be checked at compile time; "
+                                         f"a mismatch is found at run time instead.")
         if f.__class__ is Field and f.obj.__class__ is Name and sc.find(f.obj.name) is None:
             key = f"{f.obj.name}.{f.name}"
             if key in self.pkg_calls and key in self.fns:
@@ -402,6 +409,14 @@ class Checker:
     def has_local_pkg(self, parts):
         base = getattr(self, "search_dir", None) or "."
         return any(os.path.exists(p) for p in (os.path.join(base, *parts) + ".mxi", os.path.join(base, *parts, parts[-1] + ".mxi")))
+
+    def warn_unverified(self, line, msg):
+        """A spot where compile-time type safety can't be guaranteed: the check happens at run time instead."""
+        if any(d.line == line and d.msg == msg for d in self.diags):
+            return
+        d = Diag(line, msg, "warning")
+        d.unverified = True
+        self.diags.append(d)
 
     def err(self, line, msg):
         if any(d.line == line and d.msg == msg for d in self.diags):
@@ -4158,6 +4173,13 @@ class Checker:
                 return None
         for tp in fd.tparams or []:                 # `where N > 0` on a size parameter whose size this call fixes
             sz = binds.get("#" + tp.name)
+            if tp.where is not None and not sz.__class__ is int:
+                sized = next((a.expr for p, a in zip(params, args) if p.type is not None and self.mentions_type(p.type, {"Array"})
+                              and a.expr.__class__ is Name), None)
+                who = f"the size of `{sized.name}`" if sized is not None else "the size"
+                hint = f"give `{sized.name}` a sized type such as `{sized.name}: Array[Int][3]`" if sized is not None else "give the argument a sized type such as `Array[Int][3]`"
+                self.warn_unverified(n.line, f"`{fd.name}` needs `{tp.name}` to satisfy its `where` constraint, but {who} is not known here; "
+                                             f"{hint} to check this at compile time instead of runtime.")
             if tp.where is not None and sz.__class__ is int:
                 if const_eval(tp.where, {tp.name: sz}) is False:
                     self.err(n.line, f"this call to `{fd.name}` gives `{tp.name}` the size {sz}, which fails its `where` constraint")

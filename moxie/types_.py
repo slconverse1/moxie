@@ -425,13 +425,14 @@ class TypesMixin:
                 return
             if t.groups:
                 # F[A]  where F is a constructor parameter handled above; sizes: Array[T][N]
-                if len(t.groups) >= 2 and isinstance(v, (Seq,)):
+                if len(t.groups) >= 2 and (isinstance(v, (Seq,)) or (isinstance(v, TupleV) and t.path[-1] == "Array")):
+                    ln = len(v.items) if isinstance(v, Seq) else len(v.vals)       # a literal `(1, 2)` given to an Array parameter has its length
                     for g in t.groups[1:]:
                         for x in g:
                             if isinstance(x, TName) and x.path[-1] in names and len(x.path) == 1:
-                                out.setdefault(x.path[-1], len(v.items))
+                                out.setdefault(x.path[-1], ln)
                             elif isinstance(x, TExpr) and isinstance(x.expr, Name) and x.expr.name in names:
-                                out.setdefault(x.expr.name, len(v.items))
+                                out.setdefault(x.expr.name, ln)
                 if isinstance(v, MultiV) and len(t.groups) >= 2:
                     for g_i, x in enumerate(t.groups[1]):
                         nm = x.path[-1] if isinstance(x, TName) else (x.expr.name if isinstance(x, TExpr) and isinstance(x.expr, Name) else None)

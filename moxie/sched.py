@@ -1,5 +1,6 @@
 """Cooperative scheduler, channels, timers, futures, atoms, select and run."""
 import heapq
+import os
 import time
 import queue
 import threading
@@ -550,6 +551,14 @@ class Scheduler:
             raise
         except Abort as a:
             self.abort(f, a)
+            return
+        except (TypeError, ValueError, AttributeError, KeyError) as e:
+            if os.environ.get("MOXIE_DEBUG"):
+                raise
+            # A value of the wrong type reached an operation the checker could not see. It ends the fiber like any abort,
+            # with a message, and never as a Python crash (a program that type-checks and gets here has hit a compiler bug).
+            self.abort(f, Abort(f"type error at run time: {type(e).__name__}: {e}. The compiler could not check this at compile time; "
+                                f"if the program type-checks without a warning, this is a compiler bug (run with MOXIE_DEBUG=1 for the trace)"))
             return
         k = req[0]
         if k == "tick":

@@ -8,6 +8,10 @@ PAIR = '''fn pair[N](a: Array[Int][N], b: Array[Int][N]) Int:
 
 # (name, source, how, text): how is "run" (exit 0 and text in output) or "fail" (nonzero exit and text in output)
 CASES = [
+ ("an unknown size is a warning that says how to check it at compile time",
+  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nfn make(n: Int) Array[Int]:\n  List(1, 2, 3, 4) |> to_stream() |> take(n) |> collect()\nx = make(2)\nprintln(big(x))\n', "fail", "to check this at compile time instead of runtime"),
+ ("and the constraint is checked at run time, not silently",
+  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nfn make(n: Int) Array[Int]:\n  List(1, 2, 3, 4) |> to_stream() |> take(n) |> collect()\nx = make(2)\nprintln(big(x))\n', "fail", "fails the `where` constraint"),
  ("a where constraint on a size is checked at the call",
   'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nx: Array[Int] = (1, 2)\nprintln(big(x))\n', "fail", "gives `N` the size 2, which fails its `where` constraint"),
  ("a where constraint on a literal array is checked",
