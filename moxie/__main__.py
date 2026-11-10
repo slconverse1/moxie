@@ -10,6 +10,7 @@ USAGE = """usage: moxie [--gc] [--release] [--pools] run [FILE] [args...]   run 
        moxie test [--seed N] [--cases N] FILE [name]
                                     run the test blocks (the entry body does not run); forall runs N cases (default 100)
        moxie check FILE             parse and check without running
+       moxie repl                   an interactive session: expressions print their value and type (res1, res2, it)
        moxie pools [FILE] [--header OUT]  the static pool tally: how many of each counted resource the program creates
        moxie --header=FILE run FILE     start with a pool header: refuse a stale one, hold the program to its counts
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]
@@ -135,6 +136,9 @@ def main(argv=None):
         I = make_interp(None, [])
         return I.run_source(argv[1], "<-e>")
     cmd = argv[0]
+    if cmd == "repl":
+        from .repl import main as repl_main
+        return repl_main(argv[1:], make_interp(None, []))
     if cmd == "bindgen":
         from .bindgen import main as bg_main
         return bg_main(argv[1:])

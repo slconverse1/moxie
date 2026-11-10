@@ -433,6 +433,7 @@ class Checker:
             self.collect(st)
         self.find_consumers(prog)
         top = Sc()
+        self.top = top                    # the top scope, which the REPL reads to show the type of a binding
         for st in prog.stmts:
             self.fold_binding(st)
             self.ev(st, top)
