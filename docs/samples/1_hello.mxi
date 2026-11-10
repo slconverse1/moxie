@@ -1,4 +1,4 @@
-// Hello, Mixers. A function with a when and a table of cases.
+// Hello, mixers. A function with a when and a table of cases.
 fn describe(status: Int) String:
   when status:
     200 -> "Success"
