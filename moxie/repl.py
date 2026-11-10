@@ -180,10 +180,11 @@ class Session:
     # ------------------------------------------------------------ commands
     def command(self, line):
         word, _, rest = line.partition(" ")
-        if word in (":quit", ":q", ":exit"):
+        browser = getattr(self.I, "platform", None) == "browser"     # there is nothing to leave in a browser tab
+        if word in (":quit", ":q", ":exit") and not browser:
             raise EOFError
         if word == ":help":
-            self.out.write(HELP)
+            self.out.write("".join(l for l in HELP.splitlines(True) if not (browser and ":quit" in l)))
         elif word == ":reset":
             self.reset()
             self.out.write("session cleared\n")
