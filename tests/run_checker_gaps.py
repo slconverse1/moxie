@@ -1,6 +1,9 @@
 """Checker gaps: repeated type parameters in builtins, mixed-type collection literals, lambda arity."""
 import sys, subprocess
 BAD = [
+ ("tuple Box:\n  v: Int\nimpl Box:\n  fn plus(self: Box, n: Int) Int:\n    self.v + n\nb = Box(v: 1)\nprintln(b.plus(\"x\"))\n", "expected `Int`, found `String`"),
+ ("tuple Box:\n  v: Int\nimpl Box:\n  fn plus(self: Box, n: Int) Int:\n    self.v + n\nb = Box(v: 1)\ns: String = b.plus(1)\n", "expected `String`, found `Int`"),
+ ("tuple Box:\n  v: Int\nimpl Box:\n  fn plus(self: Box, n: Int) Int:\n    self.v + n\nb = Box(v: 1)\nprintln(b.plus(1, 2))\n", "`plus` takes 1 argument, but 2 given"),
  ("n = 7\nfn half(x: Double) Double:\n  x / 2.0\nprintln(half(n))\n", "`Int` does not convert to `Double` without loss"),
  ("n = 7\ny: Double = n\n", "`Int` does not convert to `Double` without loss"),
  ("a: Result[String, String] = Ok(\"x\")\nb: Result[String, Int] = Ok(\"y\")\nq = map_all((x, y): x, a, b)\n", "repeated type parameter"),

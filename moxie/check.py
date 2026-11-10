@@ -561,6 +561,14 @@ class Checker:
                     if ps and ps[0].name == "self" and ps[0].type is None and self.is_res_type(st.target) and keeps(m, "self"):
                         self.method_consumes.add((tn, m.name))
         self.add_pkg_methods()
+        for tn, td in self.tuples.items():
+            for f in td.fields or []:
+                d = f.delegate
+                if d.__class__ is TName and d.path and d.path[-1] not in self.tuples and d.path[-1] not in self.enums \
+                        and "." not in tn and self.delegate_fails(f):
+                    self.warn_unverified(getattr(f, "line", None) or getattr(td, "line", 0),
+                                         f"`{tn}.{f.name}` delegates to `{d.path[-1]}`, declared in another module, and its setter can reject a value. "
+                                         f"A plain write is a compile error, but no `set_{f.name}` is generated for it here: declare the delegate in this module to get one.")
 
     def add_pkg_methods(self):
         for k, m in self.pkg_methods.items():
@@ -3405,7 +3413,45 @@ class Checker:
         ft = self.ev(fn, sc)[0]
         if fn.__class__ is Call:
             self.callee_ty[id(n)] = ft                   # `mk()(0)`: what the indexed call gave
+        if fn.__class__ is Field and not extra and n.trailing is None:
+            r = self.check_method_call(n, fn, args, ats, sc)
+            if r is not None:
+                return r, None
         return None, None
+
+    def check_method_call(self, n, fn, args, ats, sc):
+        """`b.plus(1)` where `b` is a plain tuple or enum with a method `plus`: the arguments are checked against its parameters
+        (after `self`), and the result has its declared type.  Anything not settled (type parameters, `Self`) is left alone."""
+        rt = self.base(self.quick_ty(fn.obj, sc))
+        if rt.__class__ is not tuple or rt[0] != "named":
+            return None
+        decl = self.tuples.get(rt[1]) or self.enums.get(rt[1])
+        m = self.methods.get((rt[1], fn.name))
+        if decl is None or m is None or getattr(decl, "tparams", None) or m.tparams or m.alias is not None:
+            return None
+        ps = list(m.params or [])
+        if not ps or ps[0].name != "self" or any(p.variadic or p.mod for p in ps) or any(a.label or getattr(a, "mod", None) for a in args):
+            return None
+        ps = ps[1:]
+        if any(a.expr.__class__ in (PH, Slot) for a in args):
+            return None
+        need = [p for p in ps if p.default is None]
+        if len(args) > len(ps) or len(args) < len(need):
+            self.err(n.line, f"`{fn.name}` takes {len(ps)} argument{'s' if len(ps) != 1 else ''}, but {len(args)} given")
+            return None
+        for p, (t, c) in zip(ps, ats):
+            if p.type is None or t is None:
+                continue
+            pt = self.ty_of_type(p.type)
+            if pt is None or self.has_unsettled(pt) or "Self" in tshow(pt):
+                continue
+            self.compat(pt, self.base(t), c, n.line)
+        if m.ret is None:
+            return None
+        ret = self.ty_of_type(m.ret)
+        if ret is None or self.has_unsettled(ret) or "Self" in tshow(ret):
+            return None
+        return ret
 
     def collection_ctor(self, name, args, ats, n=None):
         """`List(1, 2)` is `List[Int]`: the elements share one type; an unknown element leaves it unknown.  Two settled

@@ -4,6 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 A = 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nc: Array[Double] = (1.0, 2.0)\n'
 LIB = 'export fn twice(n: Int) Int:\n  n * 2\n\nexport fn name_of(s: String, k: Int = 1) String:\n  s\n\nexport tuple Box:\n  v: Int\n\nexport fn unbox(b: Box) Int:\n  b.v\n\nexport fn mk(n: Int) Box:\n  Box(v: n)\n'
+LIB2 = LIB + 'impl Box:\n  export fn plus(self: Box, n: Int) Int:\n    self.v + n\n'
 
 # (name, source, how, text, library source or None)
 CASES = [
@@ -27,6 +28,9 @@ CASES = [
  ("a package type where a number is wanted", 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b):\n  Ok(l) -> println(stats.predict(3.0, 4.0))\n  Err(e) -> println(e)\n', "fail", "expected `stats.Line`, found `Double`", None),
  ("a package function used as a value is checked", 'import lib\nxs = List("a", "b")\nprintln(xs |> map(lib.twice) |> collect())\n', "fail", "can't take", LIB),
  ("a package function used as a value runs", 'import lib\nxs = List(1, 2)\nprintln(xs |> map(lib.twice) |> collect())\n', "run", "List(2, 4)", LIB),
+ ("a method of a package type is checked", 'import lib\nprintln(lib.mk(1).plus("x"))\n', "fail", "expected `Int`, found `String`", LIB2),
+ ("a method of a package type runs", 'import lib\nprintln(lib.mk(1).plus(2))\n', "run", "3", LIB2),
+ ("a delegate from another module warns", 'import lib (Pct)\ntuple Gauge:\n  level: Int delegate(Pct)\nprintln("hi")\n', "run", "declared in another module", 'export tuple Pct:\n  value: Int\nimpl Pct:\n  export fn get_value(self: Pct) Int:\n    self.value\n  export fn set_value(self: Pct, v: Int) Result[Unit, Error]:\n    Ok(())\n'),
  ("a package type is the package's own", 'import lib\nprintln(lib.unbox(lib.mk(3)))\n', "run", "3", LIB),
 ]
 
