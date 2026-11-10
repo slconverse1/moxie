@@ -361,20 +361,13 @@ The values here are only examples. The `limit` is a default for each fiber funct
 
 Moxie is a general language, but four kinds of application come with the language itself, so you start with a toolbox instead of a shopping list.
 
-**Typeclasses and their operations.** The traditional classes are real interfaces in the prelude: `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, `Numeric`, `Semigroup` and `Monoid` (`combine` and `empty`), and `Functor`, `Applicative`, and `Monad` (`map`, `pure`, `ap`, `flat_map`, with operators such as `|>>`). You write your own the same way, and generic code uses them as bounds, specialized at compile time, so they cost nothing at run time. The details are in superpower 18 (interfaces and impls) and superpower 19 (functional programming).
+**Typeclasses and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
 
-**SQL databases.** A `sql(conn):` block holds plain SQL text, and moxie fills its `$name` placeholders from your variables and turns the rows into your tuple types, so a query is a call like any other, returning a `Result`. Connections are resources with one owner, and a transaction is a connection you pass along. Foreign libraries and permissions, which is how a database driver reaches the program, are in superpower 22, and the Mixer's Guide has a chapter on SQL.
+**SQL databases.** See the Mixer's Guide, Chapter 22.
 
-```
-fn fetch_active(conn: Connection, min_value: Double) Result[Stream[Telemetry], Error]:
-  sql(conn):
-    SELECT id, value FROM telemetry
-    WHERE value >= $min_value AND active = true
-```
+**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It is not a numeric toolkit. See the Mixer's Guide, Chapter 26.
 
-**Data science (lite).** A small built-in `stats` package for learning and for quick answers: mean, median, variance, standard deviation, quantiles, correlation, a least-squares line with `predict`, error measures, and moving averages and smoothing. Every function is a few readable lines, so you can read how it works, and it is not a numeric toolkit (no matrices, no classifiers). The Mixer's Guide has a chapter on it, and the Spec lists every function.
-
-**HTTP client and server** (planned). A small `http` package over moxie's own sockets, with a client for `get` and `post` and a server that calls your handler once for each request. Sockets, `listen`, `accept`, and the `net.connect` and `net.listen` permissions it will run under are in superpower 22.
+**HTTP client and server** (planned). A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. Sockets and their permissions are in superpower 22.
 
 ## 4. Everything is an expression
 
