@@ -28,4 +28,4 @@ To do (Steve, 2026-11-09)
 - Yes to a low-profile `http` socket library (std package over `Listener`/`Connection`): scope to be proposed (client, server, or both) before building.
 - Superpowers: added "8. Properties" (later numbers moved up by one; cross-references updated).
 
-- Site look to keep (2026-11-10): the dialect note on each intro is a Markdown quote that the layout draws as a green-bordered box, with blue links in the page content. Saved as git tag `site-intro-box-2026-11-10`; restore with `git checkout site-intro-box-2026-11-10 -- docs/_layouts/default.html docs/index.md docs/gc/index.md`.
+- Site look to keep (2026-11-10): the dialect note on each intro is a Markdown quote that the layout draws as a green-bordered box, with blue links in the page content. Saved as the GitHub branch `saved/site-intro-box-2026-11-10` (a tag could not be pushed); restore with `git checkout origin/saved/site-intro-box-2026-11-10 -- docs/_layouts/default.html docs/index.md docs/gc/index.md`.
