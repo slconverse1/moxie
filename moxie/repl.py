@@ -4,9 +4,10 @@ Each accepted input joins the session, so later inputs see earlier bindings, fun
 runs, the whole session plus the new input is checked, and a compile error leaves the session as it was.  Only the new input
 runs, in the session's one module scope, so earlier side effects do not repeat.
 
-A bare expression is bound to `res1` (ordinary names, no special syntax) and the older results move up: `res2` is the result before it, and so on.  `it` is the latest, the same as `res1`.
+A bare expression's result is `$res1` and the older results move up: `$res2` is the result before it, and so on.  `$res1 + 5` uses one in an expression.
 A unit result (`println(...)`) is not bound.  Commands: `:type expr`, `:reset`, `:results`, `:help`, `:quit`.
 """
+import re
 import sys
 from .lexer import MoxieSyntaxError
 from .parser import parse_program
@@ -16,8 +17,51 @@ from .core import show
 from .values import UNIT, Abort
 from .core import ProgramExit
 
+class Pretty:
+    """Shows a result's internal name `__res1` as `$res1`."""
+    def __init__(self, f):
+        self.f = f
+
+    def write(self, text):
+        return self.f.write(re.sub(r"__res(\d+)", r"$res\1", text))
+
+    def flush(self):
+        if hasattr(self.f, "flush"):
+            self.f.flush()
+
+
+def dollars(text):
+    """`$res1` in an input means the result `res1`; outside strings, characters, and comments it is rewritten to the session's internal name."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c in "\"'":
+            j = i + 1
+            while j < n and text[j] != c:
+                j += 2 if text[j] == "\\" else 1
+            out.append(text[i:j + 1])
+            i = j + 1
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            out.append(text[i:j])
+            i = j
+        elif c == "$":
+            m = re.match(r"\$res(\d+)\b", text[i:])
+            if m:
+                out.append("__res" + m.group(1))
+                i += m.end()
+            else:
+                out.append(c)
+                i += 1
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
 HELP = """moxie repl
-  an expression    prints its value and type, and binds it to res1 (the older results move up to res2, res3, ...; `it` is res1)
+  an expression    prints its value and type; the result is $res1 (older results move up to $res2, $res3, ...), and `$res1 + 5` uses one
   a declaration    fn, tuple, enum, impl, import, or `name = value` joins the session
   a block          a line ending in `:` or `->` continues until a blank line
   :type expr       the type of an expression, without running it
@@ -29,7 +73,7 @@ HELP = """moxie repl
 
 class Session:
     def __init__(self, I, out, err):
-        self.I, self.out, self.err = I, out, err
+        self.I, self.out, self.err = I, Pretty(out), Pretty(err)
         self.reset()
 
     def reset(self):
@@ -70,6 +114,7 @@ class Session:
             return
         if text.lstrip().startswith(":"):
             return self.command(text.strip())
+        text = dollars(text)
         try:
             stmts = parse_program(text, "<repl>").stmts
         except MoxieSyntaxError as e:
@@ -117,14 +162,14 @@ class Session:
             ty = self.type_of(name, ck)
             vt = show(val, self.I)
             for k in range(self.n, 0, -1):       # res1 is the newest result: each older one moves up
-                self.chunks.append(f"res{k + 1} = res{k}")
-                self.env.vars[f"res{k + 1}"] = self.env.vars[f"res{k}"]
-            self.chunks += ["res1 = __new", "it = res1"]
-            self.env.vars["res1"] = self.env.vars["it"] = val
+                self.chunks.append(f"__res{k + 1} = __res{k}")
+                self.env.vars[f"__res{k + 1}"] = self.env.vars[f"__res{k}"]
+            self.chunks.append("__res1 = __new")
+            self.env.vars["__res1"] = val
             self.env.vars.pop(name, None)
             self.n += 1
             self.results.insert(0, (ty, vt))
-            self.out.write(f"res1: {ty} = {vt}\n")
+            self.out.write(f"$res1: {ty} = {vt}\n")
         else:
             for st in new:
                 if st.__class__ is Assign and not isinstance(st.targets, list) and st.targets.__class__ is PBind:
@@ -144,13 +189,13 @@ class Session:
             self.out.write("session cleared\n")
         elif word == ":results":
             for i, (ty, vt) in enumerate(self.results):
-                self.out.write(f"res{i + 1}: {ty} = {vt}\n")
+                self.out.write(f"$res{i + 1}: {ty} = {vt}\n")
         elif word == ":type":
             if not rest.strip():
                 self.err.write("error: write an expression after :type\n")
                 return
             try:
-                diags, ck = self.check(f"__t = {rest.strip()}")
+                diags, ck = self.check(f"__t = {dollars(rest.strip())}")
             except MoxieSyntaxError as e:
                 self.err.write(f"error: {e.msg}\n")
                 return
