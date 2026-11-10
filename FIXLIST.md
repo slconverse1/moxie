@@ -29,3 +29,8 @@ To do (Steve, 2026-11-09)
 - Superpowers: added "8. Properties" (later numbers moved up by one; cross-references updated).
 
 - Site look to keep (2026-11-10): the dialect note on each intro is a Markdown quote that the layout draws as a green-bordered box, with blue links in the page content. Saved as the GitHub branch `saved/site-intro-box-2026-11-10` (a tag could not be pushed); restore with `git checkout origin/saved/site-intro-box-2026-11-10 -- docs/_layouts/default.html docs/index.md docs/gc/index.md`.
+
+## Self-hosted lexer progress (2026-11-10)
+- Done and compared with `moxie/lexer.py` (884 tokens over 77 lines of std and examples agree): names, plain ints and decimals, plain strings, operators, `//` comments, and the logical-line pass (NL, INDENT, DEDENT, EOF, continuation lines by open brackets, dangling operators, leading `|>` and `.name`, `requires`/`ensures` and property accessors).
+- Found: a rebinding inside a nested `if` in a loop body does not carry to the next iteration (the first lexer loop hung, and so did the first `group_lines`); use a state tuple and a step function. A field followed by `(...)` reads as a method call (`g.cur(n)`), so index through a helper function. `list + list` concatenates, so add a row to a list of lists as `rows + List(row)`.
+- Still to do: interpolated strings, chars, hex/underscore/suffixed numbers, byte and raw strings, `/* */` comments, `sql` blocks, tab errors and the error cases ("unexpected indent" is an `ERR` token for now).

@@ -1,5 +1,6 @@
-//! The first slice of moxie's lexer, written in moxie. It reads names, whole numbers, decimal numbers, strings without
-//! interpolation, operators, comments, and line breaks, and gives the same tokens as the Python lexer for those.
+//! The first slices of moxie's lexer, written in moxie. `lex` reads names, whole numbers, decimal numbers, strings without
+//! interpolation, operators, comments, and line breaks. `structure` turns those tokens into logical lines with `NL`, `INDENT`,
+//! and `DEDENT`, and `lex_lines` does both. They give the same tokens as the Python lexer for that part.
 //! `tests/run_selfhost.py` checks it against `moxie/lexer.py`.
 
 export tuple Token:
@@ -102,6 +103,145 @@ export fn lex(src: String) List[Token]:
   else:
     st
   done.out
+
+// ---------------------------------------------------------------------------------------------------------------
+// The second pass: logical lines, with NL, INDENT, and DEDENT (the same rules as `_structure` in moxie/lexer.py).
+
+dangling = List("+", "-", "*", "/", "%", "==", "~=", "<", ">", "<=", ">=", "=", "&", "|", "^", "<<", ">>", "|>", "|>>",
+                "~>", "<~", "<$>", "<*>", "+=", "-=", "*=", "/=", "%=", ",", "&=", "|=", "^=")
+cont_starters = List("|>", "|>>", "~>", "<~", "<$>", "<*>")
+word_ops = List("and", "or", "not", "in", "is")
+accessors = List("get", "set", "priv", "did_set", "will_set")
+
+fn has(xs: List[String], x: String) Bool:
+  xs |> any(_ == x)
+
+fn mk(kind: String, line: Int) Token:
+  Token(kind: kind, text: "", line: line, col: 1)
+
+// One physical line's tokens, in order, with the line breaks left out.
+tuple Gp:
+  rows: List[List[Token]],
+  cur: List[Token]
+
+fn last_of(xs: List[Token]) Token:
+  xs(len(xs) - 1)
+
+fn group_step(g: Gp, t: Token) Gp:
+  if t.kind == "NL":
+    g
+  elif len(g.cur) > 0 and t.line ~= last_of(g.cur).line:
+    Gp(rows: g.rows + List(g.cur), cur: List(t))
+  else:
+    Gp(...g, cur: g.cur + t)
+
+fn group_lines(toks: List[Token]) List[List[Token]]:
+  g = Gp(rows: List[List[Token]](), cur: List[Token]())
+  i = 0
+  done = while i < len(toks):
+    g = group_step(g, toks(i))
+    i = i + 1
+  else:
+    g
+  if len(done.cur) > 0: done.rows + List(done.cur) else: done.rows
+
+tuple Sx:
+  stack: List[Int],
+  depth: Int,
+  stmt_indent: Int,
+  prev: List[Token],
+  have_line: Bool,
+  opens: Bool,
+  out: List[Token]
+
+fn drop_last(xs: List[Int]) List[Int]:
+  xs(..len(xs) - 1)
+
+fn top_of(stack: List[Int]) Int:
+  stack(len(stack) - 1)
+
+// Pops indentation levels deeper than `target`, giving a DEDENT for each.
+fn dedent_to(sx: Sx, target: Int, line: Int) Sx:
+  st = sx
+  done = while len(st.stack) > 1 and top_of(st.stack) > target:
+    st = Sx(...st, stack: drop_last(st.stack), out: st.out + mk("DEDENT", line))
+  else:
+    st
+  done
+
+fn continues(sx: Sx, row: List[Token]) Bool:
+  first = row(0)
+  if not sx.have_line:
+    false
+  elif sx.depth > 0:
+    true
+  else:
+    last = last_of(sx.prev)
+    (last.kind == "OP" and has(dangling, last.text)) or (last.kind == "NAME" and has(word_ops, last.text)) \
+      or (first.kind == "OP" and has(cont_starters, first.text)) \
+      or (first.kind == "OP" and first.text == "." and len(row) > 1 and row(1).kind == "NAME" and row(1).col == first.col + 1)
+
+fn bracket_delta(t: Token) Int:
+  if t.kind == "OP" and (t.text == "(" or t.text == "[" or t.text == "{"):
+    1
+  elif t.kind == "OP" and (t.text == ")" or t.text == "]" or t.text == "}"):
+    -1
+  else:
+    0
+
+fn depth_after(depth: Int, row: List[Token]) Int:
+  depth + (row |> to_stream() |> map(bracket_delta) |> sum())
+
+fn allowed_indent(sx: Sx, row: List[Token]) Bool:
+  first = row(0)
+  sx.opens or (first.kind == "NAME" and (first.text == "requires" or first.text == "ensures") and len(row) > 1) \
+    or (first.kind == "NAME" and has(accessors, first.text) and len(sx.prev) > 0 \
+        and (sx.prev |> take(3) |> any((t): t.kind == "NAME" and t.text == "property")))
+
+fn step_line(sx: Sx, row: List[Token]) Sx:
+  first = row(0)
+  cont = continues(sx, row)
+  st = if cont:
+    if sx.depth == 0 and first.kind == "OP" and (has(cont_starters, first.text) or first.text == "."):
+      dedent_to(sx, sx.stmt_indent, first.line)
+    else:
+      sx
+  else:
+    ind = first.col - 1
+    with_nl = if sx.have_line: Sx(...sx, out: sx.out + mk("NL", first.line)) else: sx
+    if ind > top_of(with_nl.stack):
+      if allowed_indent(sx, row):
+        Sx(...with_nl, stack: with_nl.stack + ind, stmt_indent: ind, out: with_nl.out + mk("INDENT", first.line))
+      else:
+        Sx(...with_nl, stmt_indent: ind, out: with_nl.out + Token(kind: "ERR", text: "unexpected indent", line: first.line, col: ind + 1))
+    elif ind < top_of(with_nl.stack):
+      back = dedent_to(with_nl, ind, first.line)
+      Sx(...back, stmt_indent: ind)
+    else:
+      Sx(...with_nl, stmt_indent: ind)
+  d = st.depth + depth_after(0, row)
+  last = last_of(row)
+  Sx(...st, depth: d, prev: row, have_line: true, opens: d == 0 and last.kind == "OP" and (last.text == ":" or last.text == "->"),
+     out: st.out + row)
+
+// The tokens with NL, INDENT, and DEDENT in place, ending with EOF on line `last_line`.
+export fn structure(toks: List[Token], last_line: Int) List[Token]:
+  rows = group_lines(toks)
+  sx = Sx(stack: List(0), depth: 0, stmt_indent: 0, prev: List[Token](), have_line: false, opens: false, out: List[Token]())
+  i = 0
+  fin = while i < len(rows):
+    sx = step_line(sx, rows(i))
+    i = i + 1
+  else:
+    sx
+  closed = if fin.have_line: Sx(...fin, out: fin.out + mk("NL", last_line)) else: fin
+  tail = dedent_to(Sx(...closed, stack: closed.stack), 0, last_line)
+  tail.out + mk("EOF", last_line)
+
+// Every token of `src`, with logical lines.
+export fn lex_lines(src: String) List[Token]:
+  toks = lex(src)
+  structure(toks, 1 + (toks |> to_stream() |> filter((t): t.kind == "NL") |> count()))
 
 fn show_token(t: Token) String:
   "${t.kind}\t${t.text}\t${t.line}\t${t.col}"

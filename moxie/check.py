@@ -3792,6 +3792,16 @@ class Checker:
                    "is_cancelled": "Bool", "hash": "Int", "hostname": "String", "cwd": "String", "os_name": "String",
                    "temp_dir": "String", "path_join": "String", "char_count": "Int", "grapheme_count": "Int"}
 
+    def warn_list_spread(self, fd, n, args, ats):
+        """No-GC moxie: spreading a `List` into a variadic checks the count at run time, so say how to check it at compile time."""
+        from .values import GC
+        if GC[0] or not any(p.variadic for p in fd.params or []):
+            return
+        for a, (t, _c) in zip(args, ats):
+            bt = self.base(t) if t is not None else None
+            if getattr(a, "mod", None) == "spread" and bt.__class__ is tuple and bt[0] == "app" and bt[1] == "List":
+                self.warn_unverified(n.line, f"spreading a `List` into `{fd.name}` checks the count at run time; spread an `Array` of known size to check this at compile time instead of runtime")
+
     def call_known(self, n, name, args, ats, extra):
         if name in self.BUILTIN_RET and name not in self.fns and name not in self.tuples and name not in self.aliases \
                 and name not in self.cases and not extra_bad(args) and not any(k[1] == name for k in self.methods):
@@ -3820,6 +3830,7 @@ class Checker:
             return ("named", name), None
         if name in self.fns and len(self.fns[name]) == 1:
             fd = self.fns[name][0]
+            self.warn_list_spread(fd, n, args, ats)
             if fd.tparams or fd.alias is not None:
                 if fd.tparams:
                     self.check_bounds(fd, n, args, ats)

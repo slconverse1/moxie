@@ -1,5 +1,6 @@
 """The lexer written in moxie (moxie/selfhost/lexer.mxi) gives the same tokens as moxie/lexer.py for the part it covers.
-Every line of the library and example sources that stays inside that part is lexed by both, and the tokens are compared
+A sample of runs of consecutive lines from the library and example sources that stay inside that part is lexed by both,
+and the tokens are compared: names, numbers, strings, operators, and the logical-line tokens NL, INDENT, DEDENT, and EOF
 (kind, line, column, and the text of names and operators).  Run: python3 tests/run_selfhost.py"""
 import glob, os, subprocess, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,37 +10,59 @@ from moxie.lexer import Lexer, MoxieSyntaxError
 SNIPPETS = ["x = 1 + 2.5", "fn add(a: Int, b: Int) Int:", "  a + b", "println(\"hi there\")", "xs |> map(f) |> collect()",
             "a ~= b and c <= d", "y = f(x) // a comment", "t = (1, 2, 3)", "...rest", "n >>= 2", "s = \"a\\\"b\"", "v = xs(0)"]
 KINDS = {"NAME", "INT", "FLOAT", "STR", "OP"}
+STRUCT = {"NL", "INDENT", "DEDENT", "EOF"}
 
-def lines():
-    out = list(SNIPPETS)
+def supported(ln):
+    """True when this one line stays inside the part the moxie lexer covers."""
+    if "\t" in ln or "/*" in ln:
+        return False
+    try:
+        toks = Lexer(ln).tokenize()
+    except MoxieSyntaxError:
+        return False
+    data = [t for t in toks if t.kind not in ("NL", "INDENT", "DEDENT", "EOF", "BOL")]
+    if any(t.kind not in KINDS for t in data):
+        return False
+    if any(t.kind == "INT" and t.extra for t in data) or any(t.kind == "FLOAT" and ("e" in str(t.val).lower() or t.extra) for t in data):
+        return False
+    if any(t.kind == "STR" and ("$" in ln or "\\" in ln) for t in data):
+        return False
+    if any(t.kind == "NAME" and not t.val.isascii() for t in data):
+        return False
+    return True
+
+def runs():
+    """Runs of up to 12 consecutive supported lines that begin at the left margin (blank and comment lines may sit inside)."""
+    out = []
     files = glob.glob(os.path.join(ROOT, "moxie", "std", "**", "*.mxi"), recursive=True) + glob.glob(os.path.join(ROOT, "examples", "*.mxi"))
     for f in sorted(files):
+        cur = []
         for ln in open(f, encoding="utf-8").read().split("\n"):
-            if ln.strip() == "" or ln.strip().startswith("//") or "\t" in ln or "/*" in ln:
+            plain = ln.strip() == "" or ln.strip().startswith("//")
+            if plain and not cur:
                 continue
-            try:
-                toks = [t for t in Lexer(ln).tokenize()]
-            except MoxieSyntaxError:
-                continue
-            data = [t for t in toks if t.kind not in ("NL", "INDENT", "DEDENT", "EOF", "BOL")]
-            if any(t.kind not in KINDS for t in data):
-                continue
-            if any(t.kind == "INT" and t.extra for t in data) or any(t.kind == "FLOAT" and ("e" in str(t.val).lower() or t.extra) for t in data):
-                continue
-            if any(t.kind == "STR" and ("$" in ln or "\\" in ln) for t in data):
-                continue
-            if any(t.kind == "NAME" and not t.val.isascii() for t in data):
-                continue
-            out.append(ln)
-    step = max(1, (len(out) - len(SNIPPETS)) // 40)          # the moxie lexer is slow on the interpreter, so use a sample
-    return SNIPPETS + out[len(SNIPPETS)::step]
+            if (plain or supported(ln)) and len(cur) < 12 and (cur or not ln.startswith(" ")):
+                cur.append(ln)
+            else:
+                if cur and any(x.strip() and not x.strip().startswith("//") for x in cur):
+                    out.append(cur)
+                cur = [ln] if (supported(ln) and not ln.startswith(" ")) else []
+        if cur and any(x.strip() and not x.strip().startswith("//") for x in cur):
+            out.append(cur)
+    return out
+
+def lines():
+    rs = runs()
+    step = max(1, len(rs) // 30)                     # the moxie lexer is slow on the interpreter, so use a sample
+    text = list(SNIPPETS)
+    for r in rs[::step]:
+        text += r + [""]
+    return text
 
 def python_tokens(src):
-    lx = Lexer(src)
-    lx.tokenize()
     res = []
-    for t in lx.raw:
-        if t.kind in ("NL", "BOL") or t.kind not in KINDS:
+    for t in Lexer(src).tokenize():
+        if t.kind not in KINDS and t.kind not in STRUCT:
             continue
         res.append((t.kind, t.line, t.col, t.val if t.kind in ("NAME", "OP") else ""))
     return res
@@ -50,7 +73,7 @@ def main():
     lib = open(os.path.join(ROOT, "moxie", "selfhost", "lexer.mxi"), encoding="utf-8").read()
     driver = lib + '''
 when read_all():
-  Ok(s) -> println(lex(s) |> to_stream() |> filter((t): t.kind ~= "NL") |> map(show_token) |> join("\\n"))
+  Ok(s) -> println(lex_lines(s) |> to_stream() |> map(show_token) |> join("\\n"))
   Err(e) -> println("no input")
 '''
     path = os.path.join(ROOT, "tests", "_selfhost_driver.mxi")
