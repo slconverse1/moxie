@@ -372,11 +372,30 @@ limit = 8
 heap = "256MiB"
 ```
 
-The manifest is also where a program's permissions live (superpower 21): a `[permissions]` table lists what it may read, write, connect to, and load.
+The manifest is also where a program's permissions live (superpower 22): a `[permissions]` table lists what it may read, write, connect to, and load.
 
 The values here are only examples. The `limit` is a default for each fiber function, not a total for the program. A fiber function that declares its own limit (`fiber[3] fn`) uses that number instead, which means at most three copies of it alive at a time. With a `limit` of 8, one unannotated fiber function and one `fiber[3]` function, a program can have at most 1 + 8 + 3 = 12 fibers (the entry fiber plus the sum of the limits). The limit says how many copies of a function can be alive, not how many fibers that function starts. A size like `"64KiB"` is 1024-based while `"64KB"` is 1000-based. The Manifest also names the database schema that SQL is checked against, but that's a story for another day.
 
-## 3. Everything is an expression
+## 3. What moxie is built for
+
+Moxie is a general language, but four kinds of application come with the language itself, so you start with a toolbox instead of a shopping list.
+
+**Typeclasses and their operations.** The traditional classes are real interfaces in the prelude: `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, `Numeric`, `Semigroup` and `Monoid` (`combine` and `empty`), and `Functor`, `Applicative`, and `Monad` (`map`, `pure`, `ap`, `flat_map`, with operators such as `|>>`). You write your own the same way, and generic code uses them as bounds, specialized at compile time, so they cost nothing at run time. The details are in superpower 18 (interfaces and impls) and superpower 19 (functional programming).
+
+**SQL databases.** A `sql(conn):` block holds plain SQL text, and moxie fills its `$name` placeholders from your variables and turns the rows into your tuple types, so a query is a call like any other, returning a `Result`. Connections are resources with one owner, and a transaction is a connection you pass along. Foreign libraries and permissions, which is how a database driver reaches the program, are in superpower 22, and the Mixer's Guide has a chapter on SQL.
+
+```
+fn fetch_active(conn: Connection, min_value: Double) Result[Stream[Telemetry], Error]:
+  sql(conn):
+    SELECT id, value FROM telemetry
+    WHERE value >= $min_value AND active = true
+```
+
+**Data science (lite).** A small built-in `stats` package for learning and for quick answers: mean, median, variance, standard deviation, quantiles, correlation, a least-squares line with `predict`, error measures, and moving averages and smoothing. Every function is a few readable lines, so you can read how it works, and it is not a numeric toolkit (no matrices, no classifiers). The Mixer's Guide has a chapter on it, and the Spec lists every function.
+
+**HTTP client and server** (planned). A small `http` package over moxie's own sockets, with a client for `get` and `post` and a server that calls your handler once for each request. Sockets, `listen`, `accept`, and the `net.connect` and `net.listen` permissions it will run under are in superpower 22.
+
+## 4. Everything is an expression
 
 The core benefit of an "everything is an expression" language is that code is built from expressions, and every expression returns a value.
 
@@ -455,7 +474,7 @@ fn rank_of(acct: Account) Result[Int, Error]:
 
 If `acct` is `Active`, then `rank` is bound and the function carries on to the next line, so `rank_of(Account.Active("ada", 3))` is `Ok(30)`. If it's `Closed`, the function stops right there and returns the `else:` value, so `rank_of(Account.Closed)` is an `Err`. The pattern can be anything `when` accepts, and the names it binds are in scope for the rest of the block. (Without let-else, you'd write a `when` with one useful arm and one bail-out arm, and indent everything after it.) In the entry file, the `else:` value ends the program (an `Err` prints its diagnostic and exits with a non-zero status). In addition, if a let-else pattern can never fail, as in `(a, b) = pair` where `pair` is always a two-part tuple, the `else:` could never run, so the compiler warns you that it's pointless.
 
-## 4. No null
+## 5. No null
 
 Every programmer is well aware of the hazards of null. Well, moxie bans null altogether.
 
@@ -470,11 +489,11 @@ So moxie has no null (and, obviously, no nullable types) and no "zero value" sta
 - Bounded types (`Int[0..=100]`) and exhaustive `when` checking move whole classes of "what if it's missing or wrong?" out of run time and into the compiler.
 - Truly impossible situations (an out-of-range array index, say) abort the fiber with a diagnostic instead of making you thread a Result through code that can't recover anyway.
 
-## 5. Numbers that tell the truth
+## 6. Numbers that tell the truth
 
 Integer overflow aborts instead of silently wrapping, unless you ask for `wrapping_add`, `saturating_add`, or `checked_add` by name. A range can live in the type (`Int[0..=100]`), and a `when` that covers the range needs no `_` arm. Big integers have a fixed size (`BigInt[128]`) and are stored inline. **[gc]** `Decimal[10, 2]` does exact money math, and rounding is always something you say out loud (`round_to[2](x, #half_even)`). Floats follow IEEE and warn you when you compare them with `==`.
 
-## 6. Data paths: lenses you get for free
+## 7. Data paths: lenses you get for free
 
 A path like `/User/firm/name` names a spot inside nested tuples, and it's an ordinary function, so you can store it, pass it, and compose it:
 
@@ -485,7 +504,7 @@ c = modify(a, /User/firm/name, (s): "$s Ltd")
 
 You never write the nested-copy boilerplate, and the original `a` is untouched.
 
-## 7. Tuple and parameter-list unification
+## 8. Tuple and parameter-list unification
 
 This comes straight out of the SML/OCaml playbook: **a tuple and a parameter list are the same idea.** In most languages those live in separate silos, with different syntax, different compiler rules, and boilerplate to convert from one to the other. In moxie, a function's parameter list is a compile-time named tuple. Parameters use the same colon as tuple fields (`fn greet(name: String, age: Int)`), and the two follow the same rules, so a call stops being a unique, magical event and becomes a structural assignment.
 
@@ -585,7 +604,7 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 
 **The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
 
-## 8. Properties
+## 9. Properties
 
 A field is a name in a tuple that holds a value. A *property* looks exactly like one from the outside, `r.area` and `r.area = 12.0`, but it can run code when it is read or written. That lets you start with a plain field and add a rule later without touching a single caller.
 
@@ -607,11 +626,11 @@ println(r.width)
 
 Output: `6.0`, then `6.0`. Here `area` is *computed*: it takes no space in the tuple, and reading it multiplies, while writing it changes `width` to fit. A property can also keep a value of its own and watch it (`did_set(old)` runs after a change, and a setter can refuse a bad value by returning a `Result`), be `lazy` (computed once, on first read), be `static` (belongs to the type), or be made read-only outside the tuple with `priv set`. There is no run-time cost, because every access is specialized and inlined, and moxie/gc and moxie treat properties the same way.
 
-If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level: Int delegate(Percent)`. Delegates come up with tuples in superpower 7, and the Mixer's Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
+If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level: Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Mixer's Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
 
-**Properties in interfaces.** An interface can ask for a property too: `name: Type` means "readable", and `property name: Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 17.
+**Properties in interfaces.** An interface can ask for a property too: `name: Type` means "readable", and `property name: Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 18.
 
-## 9. Pattern matching
+## 10. Pattern matching
 
 A pattern describes the shape of a value. Matching a value against patterns tests that shape, takes the value apart, binds names to the pieces, and runs the code for the first pattern that fits, all in one step. Instead of nesting `if` and `else` tests, you say what the data looks like. In moxie it's `when value:`, and the arms are tried from top to bottom.
 
@@ -811,7 +830,7 @@ Chapter 12 of the Mixer's Guide has an example of each.
 
 In most languages, an `if` or a `switch` checks conditions or flat values. A pattern checks the shape, the case, and the values in one step, binds the pieces for you, and lets the compiler make sure no case is left out.
 
-## 10. Pipes and placeholders
+## 11. Pipes and placeholders
 
 `|>` drops the value on its left into the call on its right. The compiler tries the first and last parameters, keeps whichever type-checks, and if both do, it asks you to say which with `&` instead of guessing:
 
@@ -850,7 +869,7 @@ fn log_error = log("ERROR", _)
 
 That one line makes a plain, storable function out of `log`.
 
-## 11. Uniform function call syntax
+## 12. Uniform function call syntax
 
 `x.f(args)` and `f(x, args)` mean the same thing. If `x` has no field or method called `f`, moxie looks for an ordinary function `f` and hands it `x` as its first argument. (The full lookup order is field, then method, then extension, then free function.) So any function can be called with method syntax, on any type, including types you don't own.
 
@@ -914,7 +933,7 @@ With UFCS:
 
 **The fine print.** A field of function type wins over a function of the same name: `x.name(args)` calls the field and passes no receiver, the compiler warns when a field hides a function, and `x |> name(args)` forces the function reading. Two `impl`s that give the same name different bodies are an ambiguity error that asks you to write `Speaker.speak(x)`.
 
-## 12. DSLs, and why moxie has no macros
+## 13. DSLs, and why moxie has no macros
 
 Let's be clear about what DSLs are and aren't. A DSL can't alter the grammar or invent new keywords, and it doesn't generate code; it only structures ordinary calls. Macros do those things, and Kotlin, which has no macros of its own, hands code generation to compiler plugins and a symbol-processing API. Moxie has neither macros nor plugins, so we had to ask how much we'd miss them. For builder-style problems (HTML, configuration, test descriptions), not much, because the DSL tools below cover them. For generating boilerplate, moxie leans on the compiler itself (`deriving`, `test` blocks, `for:` comprehensions, and SQL that's checked against your schema). And there's a plain reason moxie can't have macros: the grammar is fixed and context-free so the compiler can parse and type-check in one pass, and a macro would rewrite the grammar in the middle of the parse.
 
@@ -936,7 +955,7 @@ That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li
 
 One thing moxie doesn't have is Kotlin's lambda-with-receiver, where a block sees an implicit parent and children register themselves as they're created. In moxie, children are returned values, not side effects. Whether we need a dedicated child-collection mechanism is still an open question.
 
-## 13. "There is no try"
+## 14. "There is no try"
 
 Failure is a value. A function that can fail returns a `Result`, and `?` propagates it:
 
@@ -949,7 +968,7 @@ fn fetch_total(id: Int) Result[Int, Error]:
 
 No exceptions flying over your head, and no hidden control flow. Not bad! Your errors can be your own enums, and `?` converts between error types when you've said how (a visible `From` impl, one hop). In the entry file, a failed `?` prints the error and exits with a non-zero status, which is exactly what you wanted.
 
-## 14. Iterators, generators, and comprehensions
+## 15. Iterators, generators, and comprehensions
 
 **Iterators.** Any collection is a loop source: `for x in numbers:`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `Range(3..=1, -1)` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
 
@@ -1001,7 +1020,7 @@ good = for:
 
 `Box` and `half` are defined by the mixer, as the functional programming section explains. Here, we use `Box.Full(25)`, but start from 10 and you get `Box.Empty`, because 5 is odd. A `for:` comprehension works for `Box`, `Result`, streams, and anything else with the right interfaces (more in the interfaces section). A line `name = expr` binds a value, and a line that can fail to match uses a let-else (`Active(_, rank) = user else: Err(NotFound(id: id))`, explained in the "Everything is an expression" section). Independent generators joined with `and` run side by side and need less from the type *(the exact `and` parse rule is an assumption)*.
 
-## 15. Laziness
+## 16. Laziness
 
 Moxie is eager by default, so laziness is something you ask for, in two places.
 
@@ -1056,7 +1075,7 @@ println("${fib(40)}")
 
 Output: `102334155`, instantly. Without the table the same recursion makes over three hundred million calls. **[gc]** (The table needs no declared size here, because a Dict grows as needed.) (`$n` in `seen($n)` means "the value of `n` as the key". A bare `n` would be the word `n`.) The other recipes are a table built bottom-up with `reduce`, and one fiber or Atom that owns a shared table and answers over channels.
 
-## 16. Generics
+## 17. Generics
 
 Go shipped without generics in 2009 and didn't get them until version 1.18, in 2022. A language can survive without them for a while, but it pays in copy-and-paste code and `any`-typed escape hatches. Moxie has them from the start, and the interesting part is how they say what a type must be able to do.
 
@@ -1120,7 +1139,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 - **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `Result`, so `fn double_in[F[_]: Monad](m: F[Int])` works for any monad without being written twice.
 - **No cost at run time.** The compiler builds one specialized copy of the function for each set of types it's actually used with. There's no boxing, no run-time type information, and no call through a table. The price is code size, and that's the trade moxie makes on purpose, in keeping with FCFX.
 
-## 17. Interfaces and impls (a.k.a. typeclasses)
+## 18. Interfaces and impls (a.k.a. typeclasses)
 
 An `interface` says what a type can do, and an `impl` says that a type does it. You can implement your own interface for somebody else's type, so you can extend things you don't own. There are bounds (`[T: Ordered + Equatable]`), default method bodies, associated types, properties (a field that can run code, computed or lazy, with observers), and conditional instances. Everything is specialized per use at compile time, so there are no tables at run time.
 
@@ -1134,7 +1153,7 @@ for s in crowd:
 
 If you're a Haskell person: class is `interface`, instance is `impl`, superclass is an embedded interface, and `Functor`, `Applicative`, and `Monad` are real interfaces over type constructors.
 
-## 18. Functional programming
+## 19. Functional programming
 
 You already know the toolbox. Here's how it looks in moxie.
 
@@ -1199,7 +1218,7 @@ That works for `Box.Full(21)` and `Ok(21)` alike.
 
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
 - A State monad can be defined, and **[gc]** it has none of no-GC moxie's limits. `ref` threading is still the simple way to carry state.
-- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. Matching on types and recursion at the type level are covered in superpower 25.
+- Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. Matching on types and recursion at the type level are covered in superpower 26.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
 
@@ -1224,7 +1243,7 @@ pure fn noisy(w: Int) Int:
 
 **[gc]** In no-GC moxie the two lines marked "fine in moxie/gc" are errors. They are the price of having no heap: a closure's size depends on what it captures, so it can't live in a slot of fixed size, and a function returns exactly one closure type. With a collector, a function type is just its signature, so closures can be stored anywhere and a function can return a different one from each branch. Only the last error, the `pure fn`, is left.
 
-## 19. Fibers, channels, and daemons
+## 20. Fibers, channels, and daemons
 
 A fiber is started for the entry file and with `run`. Here's a complete run routine:
 
@@ -1325,7 +1344,7 @@ daemon:
 
 Around it, you get Go-style channels, `select`, timers, futures, atoms, and fibers. The compiler checks all of it: a channel end moves to one owner, and `clone(end)` is how you request another handle. **[gc]** They live on the heap, so you can create them wherever you like, loops included. (In no-GC moxie the compiler tallies them, so the Runtime can allocate them all up front.)
 
-## 20. Run routines
+## 21. Run routines
 
 In most FP languages, starting concurrent work takes machinery. In Haskell you reach for `forkIO` and an `MVar` (or a library like `async`), and it all lives in `IO`. In Scala, cats-effect and ZIO give you fibers, but as values you build inside an effect type and run later. Clojure brings `core.async` and its `go` blocks, and Kotlin and Rust bring `suspend` and `async`/`await`, with scopes or executors to set up first.
 
@@ -1370,7 +1389,7 @@ The fine print:
 - **Cancelling is a request.** A `Cancel` token is passed to the fiber, which ends itself when it sees the token in a `select` arm or a check. Nothing is killed mid-statement, and a fiber that never looks keeps running.
 - **Everything shares one thread.** A long computation in one fiber holds up the others until it parks.
 
-## 21. The outside world
+## 22. The outside world
 
 Moxie programs read, write, and call C, and every one of those goes through a value you can see.
 
@@ -1411,7 +1430,7 @@ println(xs)
 
 The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees, so the convention is a small moxie wrapper around each call. The Guide's sections 20a to 20d go through all of it.
 
-## 22. Resources have one owner
+## 23. Resources have one owner
 
 A channel end, a timer, a future, a file, a socket, a child process, a terminal, or a handle from a C library is a resource: a value with an identity, not just a number or a piece of text. You can't copy a file the way you copy an `Int`, so moxie doesn't try. A resource has exactly one owner at a time, it moves rather than copies, and a tuple that holds one is a resource too. Where a language with a collector would tidy up later, moxie closes things at a place you can see, and the compiler checks it. There's no borrow checker to feed with lifetimes and no `&` to write. There is one rule, with two cases:
 
@@ -1461,7 +1480,7 @@ Output: `6`. The limit (`fiber[3]`) is what lets the compiler count the handles 
 
 None of this costs anything at run time. It's all decided by the compiler, so there are no reference counts and no collector to run, which is the same reason moxie/gc keeps these rules exactly as they are.
 
-## 23. Effects you never write
+## 24. Effects you never write
 
 Haskell tracks effects by putting them in the type: an `IO` function can't hide inside a pure one. Koka and Scala's effect libraries do something similar with more machinery. Moxie tracks them too, but you don't write them, and nothing threads through your types. The compiler works out what each function does: it prints, it waits (parks) on a channel or a timer, it uses a resource, or it uses the system (`cwd()`, `hostname()`). A caller inherits what its callees do, all the way up:
 
@@ -1498,11 +1517,11 @@ pure fn peek(a: Atom[Int]) Int:
 
 The compiler rejects a body that does more than it declared, and it rejects a declaration the body no longer earns, so a stale `prints` can't linger after the print is gone. An interface member can be declared the same way, and then the declaration is an upper bound: an impl may do less, never more, and code that calls through the interface is checked against it. Debugging output (`dbg`, `trace`) is exempt and is removed from release builds, but `println` is real output and counts.
 
-Purity isn't only a label. `swap`, `debug_assert`, contract conditions, and the compile-time evaluation of your own functions (superpower 25) all require a pure function, with or without the word. That's what lets the compiler run your code while it checks your code.
+Purity isn't only a label. `swap`, `debug_assert`, contract conditions, and the compile-time evaluation of your own functions (superpower 26) all require a pure function, with or without the word. That's what lets the compiler run your code while it checks your code.
 
-Effects say what code *does*. Permissions (superpower 21) say what a program is *allowed to reach*. The two meet at the edges: a call that uses the system is an effect, and whether it may touch the file system or the network is a permission the program was given.
+Effects say what code *does*. Permissions (superpower 22) say what a program is *allowed to reach*. The two meet at the edges: a call that uses the system is an effect, and whether it may touch the file system or the network is a permission the program was given.
 
-## 24. Contracts
+## 25. Contracts
 
 A contract states what a function needs and what it promises, in the code instead of a comment. `requires` is a precondition the caller must meet, `ensures` is a postcondition the function guarantees (it may name `result`), and `invariant` is a condition every value of a tuple type must satisfy:
 
@@ -1543,7 +1562,7 @@ go(0)    // where go calls withdraw(acct, n) with n = 0 at run time
 
 Eiffel made contracts famous. In moxie they sit beside the types, and the checker uses what it can see at compile time before the run-time check ever has to fire.
 
-## 25. Type-level programming
+## 26. Type-level programming
 
 Most languages let you write functions on values. Moxie also lets you write functions on *types*, and run them while the compiler checks your program. A type alias whose body is a `when` is a function that takes a type apart and builds another, with an arm for each shape:
 
@@ -1595,7 +1614,7 @@ Output: `ada (1, "a", true) Array(1, 2) Ada Array(1, 2, 3, 4, 5)`. Change any of
 
 Scala does much of this with implicits and inline code, and C++ with templates. In moxie it is the same `when` you use on values, one pass, with the same error messages as the rest of the checker.
 
-## 26. FCFX
+## 27. FCFX
 
 This is the one the whole language is built around.
 
