@@ -4,7 +4,7 @@ Each accepted input joins the session, so later inputs see earlier bindings, fun
 runs, the whole session plus the new input is checked, and a compile error leaves the session as it was.  Only the new input
 runs, in the session's one module scope, so earlier side effects do not repeat.
 
-A bare expression is bound to `res1`, `res2`, ... (ordinary names, no special syntax), and `it` is always the latest one.
+A bare expression is bound to `res1` (ordinary names, no special syntax) and the older results move up: `res2` is the result before it, and so on.  `it` is the latest, the same as `res1`.
 A unit result (`println(...)`) is not bound.  Commands: `:type expr`, `:reset`, `:results`, `:help`, `:quit`.
 """
 import sys
@@ -17,7 +17,7 @@ from .values import UNIT, Abort
 from .core import ProgramExit
 
 HELP = """moxie repl
-  an expression    prints its value and type, and binds it to res1, res2, ... (and `it` for the latest)
+  an expression    prints its value and type, and binds it to res1 (the older results move up to res2, res3, ...; `it` is res1)
   a declaration    fn, tuple, enum, impl, import, or `name = value` joins the session
   a block          a line ending in `:` or `->` continues until a blank line
   :type expr       the type of an expression, without running it
@@ -79,7 +79,7 @@ class Session:
         name = None
         src = text
         if bare:
-            name = f"res{self.n + 1}"
+            name = "__new"                    # becomes res1 once it has run, and the older results move up one
             src = f"{name} = {text}"
         try:
             diags, ck = self.check(src)
@@ -114,13 +114,17 @@ class Session:
                 self.chunks.pop()                 # a unit result is not kept
                 self.env.vars.pop(name, None)
                 return
-            self.n += 1
             ty = self.type_of(name, ck)
             vt = show(val, self.I)
-            self.results.append((name, ty, vt))
-            self.out.write(f"{name}: {ty} = {vt}\n")
-            self.chunks.append(f"it = {name}")
-            self.env.vars["it"] = val
+            for k in range(self.n, 0, -1):       # res1 is the newest result: each older one moves up
+                self.chunks.append(f"res{k + 1} = res{k}")
+                self.env.vars[f"res{k + 1}"] = self.env.vars[f"res{k}"]
+            self.chunks += ["res1 = __new", "it = res1"]
+            self.env.vars["res1"] = self.env.vars["it"] = val
+            self.env.vars.pop(name, None)
+            self.n += 1
+            self.results.insert(0, (ty, vt))
+            self.out.write(f"res1: {ty} = {vt}\n")
         else:
             for st in new:
                 if st.__class__ is Assign and not isinstance(st.targets, list) and st.targets.__class__ is PBind:
@@ -139,8 +143,8 @@ class Session:
             self.reset()
             self.out.write("session cleared\n")
         elif word == ":results":
-            for name, ty, vt in self.results:
-                self.out.write(f"{name}: {ty} = {vt}\n")
+            for i, (ty, vt) in enumerate(self.results):
+                self.out.write(f"res{i + 1}: {ty} = {vt}\n")
         elif word == ":type":
             if not rest.strip():
                 self.err.write("error: write an expression after :type\n")

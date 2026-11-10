@@ -18,12 +18,13 @@ p.lead{color:var(--muted);margin:0 0 12px}
 button{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
 button.run{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 button:disabled{opacity:.5}
-textarea,pre{width:100%;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;border-radius:8px;margin:0}
-textarea{height:5.5rem;resize:vertical;padding:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);tab-size:2;white-space:pre}
-pre{background:var(--out);color:var(--out-ink);padding:12px;min-height:0;max-height:32rem;overflow:auto;white-space:pre-wrap}
-#log:empty{display:none}
-pre .echo{color:var(--echo)}
-pre .err{color:var(--err)}
+.console{background:var(--out);color:var(--out-ink);border-radius:8px;padding:12px;max-height:34rem;overflow:auto;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;cursor:text}
+.console pre{margin:0;white-space:pre-wrap;font:inherit}
+.console .echo{color:var(--echo)}
+.console .err{color:var(--err)}
+.line{display:flex;gap:8px;align-items:flex-start}
+.ps{color:var(--echo);white-space:pre;padding-top:0}
+textarea{flex:1;min-width:0;font:inherit;line-height:1.5;color:inherit;background:transparent;border:0;outline:0;resize:none;padding:0;margin:0;overflow:hidden;tab-size:2;white-space:pre-wrap}
 #status{color:var(--muted);font-size:14px}
 </style>
 </head>
@@ -31,23 +32,25 @@ pre .err{color:var(--err)}
 <nav id="nav"><a href="./">moxie/gc</a><a href="tutorial.html">Tutorial</a><a href="guide.html">Mixer's Guide</a><a href="spec.html">Spec</a><a href="style.html">Style</a><a href="try.html">Try moxie/gc</a><a href="repl.html">REPL</a><a href="https://github.com/slconverse1/moxie">Source</a></nav>
 <main>
 <h1>moxie/gc REPL</h1>
-<p class="lead">Type an expression and see its value and type; it is kept as <code>res1</code>, <code>res2</code>, ... and <code>it</code> is the latest. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. It runs in your browser using the reference interpreter, so nothing is sent anywhere.</p>
-<pre id="log" aria-live="polite"></pre>
-<div class="bar"><span id="status">Loading the interpreter (about 10 MB the first time)...</span></div>
-<textarea id="inp" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" aria-label="Moxie input" placeholder="1 + 2    (Enter to run, Up for earlier inputs)" disabled></textarea>
-<div class="bar">
-  <button class="run" id="go" disabled>Run</button>
-  <button id="reset" disabled>Reset session</button>
-  <button id="stop" hidden>Stop</button>
+<p class="lead">Type an expression and see its value and type: the results are kept in <code>res1</code>, <code>res2</code>, ..., where <code>res1</code> is the most recent result, <code>res2</code> the result before it, and so on. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. It runs in your browser using the reference interpreter, so downloading it is avoided.</p>
+<p class="lead"><code>1 + 2</code> (Enter to run, arrow UP for earlier inputs)</p>
+<div class="console" id="console">
+  <pre id="log" aria-live="polite"></pre>
+  <div class="line"><span class="ps" id="ps">moxie&gt;</span><textarea id="inp" rows="1" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" aria-label="Moxie input"></textarea></div>
 </div>
+<div class="bar">
+  <button id="reset" disabled>Reset session</button>
+  <button id="stop" disabled>Stop</button>
+</div>
+<div id="status">Loading the interpreter (about 10 MB the first time)...</div>
 </main>
 <script>
 // A "?pyodide=/some/dir/" parameter points at a local copy of Pyodide, for testing without the CDN.
 const PYO = new URLSearchParams(location.search).get('pyodide') || 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 const GC = true;   // tools/make_gc_pages.py sets this to true for the moxie/gc copy
 const $ = id => document.getElementById(id);
-const log = $('log'), inp = $('inp'), status = $('status'), goB = $('go'), resetB = $('reset'), stopB = $('stop');
-let worker = null, busy = false, nextId = 1, waiting = {}, history = [], hpos = 0;
+const log = $('log'), inp = $('inp'), ps = $('ps'), status = $('status'), resetB = $('reset'), stopB = $('stop'), box = $('console');
+let worker = null, ready = false, busy = false, cont = false, nextId = 1, waiting = {}, history = [], hpos = 0;
 
 function add(text, cls) {
   if (!text) return;
@@ -55,28 +58,32 @@ function add(text, cls) {
   if (cls) s.className = cls;
   s.textContent = text.endsWith('\n') ? text : text + '\n';
   log.append(s);
-  log.scrollTop = log.scrollHeight;
+  scrollDown();
+}
+function scrollDown() { box.scrollTop = box.scrollHeight; }
+function fit() {                       // the prompt line grows with its text; earlier lines are plain output
+  inp.rows = Math.max(1, inp.value.split('\n').length);
+  ps.textContent = cont ? '  ...>' : 'moxie>';
+  scrollDown();
 }
 function setBusy(b) {
   busy = b;
-  const ok = !b && !!worker;
-  inp.disabled = !ok; goB.disabled = !ok; resetB.disabled = !ok;
-  stopB.hidden = !b;
-  if (ok) inp.focus();
+  resetB.disabled = b || !ready;
+  stopB.disabled = !b;
 }
 function startWorker(note) {
-  setBusy(false);
-  inp.disabled = goB.disabled = resetB.disabled = true;
+  ready = false; busy = false; cont = false;
+  resetB.disabled = true; stopB.disabled = true;
   status.textContent = 'Loading the interpreter (about 10 MB the first time)...';
   worker = new Worker('../repl-worker.js');
   const mine = worker;
   mine.onmessage = e => {
     if (mine !== worker) return;
     const m = e.data;
-    if (m.type === 'ready') { setBusy(false); status.textContent = ''; if (note) add(note, 'echo'); }
+    if (m.type === 'ready') { ready = true; setBusy(false); status.textContent = ''; if (note) add(note, 'echo'); inp.focus(); }
     else if (m.type === 'failed') { worker = null; status.textContent = 'Could not start: ' + m.message; add('The in-browser interpreter did not load.', 'err'); }
     else if (m.type === 'more') { const f = waiting[m.id]; delete waiting[m.id]; if (f) f(m.more); }
-    else if (m.type === 'done') { add(m.out); add(m.err, 'err'); status.textContent = ''; setBusy(false); }
+    else if (m.type === 'done') { add(m.out); add(m.err, 'err'); setBusy(false); inp.focus(); }
   };
   mine.onerror = e => { if (mine === worker) { status.textContent = 'Error.'; add('The interpreter stopped: ' + e.message, 'err'); setBusy(false); } };
   mine.postMessage({ type: 'init', pyo: new URL(PYO, location.href).href, zip: new URL('../moxie.zip', location.href).href, gc: GC });
@@ -85,31 +92,38 @@ function needsMore(text) {
   return new Promise(res => { const id = nextId++; waiting[id] = res; worker.postMessage({ type: 'more', id, text }); });
 }
 function submit(text) {
-  if (!worker || busy || !text.trim()) return;
   history.push(text); hpos = history.length;
   add('moxie> ' + text.replace(/\n/g, '\n  ...> '), 'echo');
-  inp.value = '';
+  inp.value = ''; cont = false; fit();
   setBusy(true);
-  status.textContent = '';
   worker.postMessage({ type: 'feed', text });
 }
 async function onEnter() {
-  const text = inp.value.replace(/\n+$/, '');
-  const endsBlank = /\n\s*$/.test(inp.value);
-  if (!text.trim()) return;
-  if (!endsBlank && await needsMore(text)) { inp.value += '\n'; return; }
-  submit(text);
+  if (!ready || busy) return;                       // the line stays as typed until the interpreter can take it
+  const text = inp.value.replace(/\s+$/, '');
+  if (!text.trim()) { inp.value = ''; cont = false; fit(); return; }
+  if (cont) {                                       // inside a block: a blank line ends it
+    if (/\n[ \t]*$/.test(inp.value)) return submit(text);
+    inp.value += '\n';
+  } else if (await needsMore(text)) {
+    cont = true; inp.value += '\n';
+  } else return submit(text);
+  fit();
 }
+inp.addEventListener('input', fit);
 inp.addEventListener('keydown', e => {
+  const first = inp.selectionStart === 0 || !inp.value.slice(0, inp.selectionStart).includes('\n');
+  const last = !inp.value.slice(inp.selectionEnd).includes('\n');
   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEnter(); }
   else if (e.key === 'Tab') { e.preventDefault(); inp.setRangeText('  ', inp.selectionStart, inp.selectionEnd, 'end'); }
-  else if (e.key === 'ArrowUp' && !inp.value.includes('\n') && hpos > 0) { e.preventDefault(); inp.value = history[--hpos]; }
-  else if (e.key === 'ArrowDown' && !inp.value.includes('\n') && hpos < history.length) { e.preventDefault(); hpos++; inp.value = hpos < history.length ? history[hpos] : ''; }
+  else if (e.key === 'ArrowUp' && first && hpos > 0) { e.preventDefault(); inp.value = history[--hpos]; cont = inp.value.includes('\n'); fit(); inp.setSelectionRange(inp.value.length, inp.value.length); }
+  else if (e.key === 'ArrowDown' && last && hpos < history.length) { e.preventDefault(); hpos++; inp.value = hpos < history.length ? history[hpos] : ''; cont = inp.value.includes('\n'); fit(); inp.setSelectionRange(inp.value.length, inp.value.length); }
 });
-goB.onclick = onEnter;
-resetB.onclick = () => submit(':reset');
+box.addEventListener('click', () => { if (!getSelection().toString()) inp.focus(); });
+resetB.onclick = () => { if (ready && !busy) { history.push(':reset'); hpos = history.length; add('moxie> :reset', 'echo'); setBusy(true); worker.postMessage({ type: 'feed', text: ':reset' }); } };
 stopB.onclick = () => { if (worker) worker.terminate(); worker = null; add('Stopped. The session was cleared.', 'err'); startWorker(); };
 startWorker();
+fit();
 </script>
 </body>
 </html>
