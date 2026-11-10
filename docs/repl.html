@@ -45,6 +45,7 @@ pre .err{color:var(--err)}
 // A "?pyodide=/some/dir/" parameter points at a local copy of Pyodide, for testing without the CDN.
 const PYO = new URLSearchParams(location.search).get('pyodide') || 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 const $ = id => document.getElementById(id);
+if (new URLSearchParams(location.search).get('gc') === '1') $('gc').checked = true;   // from the moxie/gc pages
 const log = $('log'), inp = $('inp'), status = $('status'), goB = $('go'), resetB = $('reset'), stopB = $('stop'), gcB = $('gc');
 let worker = null, busy = false, nextId = 1, waiting = {}, history = [], hpos = 0;
 

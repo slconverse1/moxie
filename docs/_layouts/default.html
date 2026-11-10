@@ -31,8 +31,8 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-ali
   <a href="{{ '/guide.html' | relative_url }}">Mixer's Guide</a>
   <a href="{{ '/spec.html' | relative_url }}">Spec</a>
   <a href="{{ '/style.html' | relative_url }}">Style</a>
-  <a href="{{ '/try.html' | relative_url }}">Try moxie</a>
-  <a href="{{ '/repl.html' | relative_url }}">REPL</a>
+  <a href="{{ '/try.html' | relative_url }}{% if page.url contains '/gc/' %}?gc=1{% endif %}">Try moxie</a>
+  <a href="{{ '/repl.html' | relative_url }}{% if page.url contains '/gc/' %}?gc=1{% endif %}">REPL</a>
   <a href="{{ '/gc/' | relative_url }}">moxie/gc</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
 </nav>

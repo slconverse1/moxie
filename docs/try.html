@@ -56,6 +56,7 @@ const SAMPLES = [
   ['7_gradebook', 'Gradebook (from the Tutorial)'],
 ];
 const $ = id => document.getElementById(id);
+if (new URLSearchParams(location.search).get('gc') === '1') $('gc').checked = true;   // from the moxie/gc pages
 const sel = $('sample'), src = $('src'), out = $('out'), status = $('status');
 const goButtons = [$('run'), $('test'), $('check')], stopButton = $('stop');
 let worker = null, running = false;
