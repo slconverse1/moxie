@@ -35,7 +35,7 @@ You can try moxie/gc three ways, from least to most effort. Remember that what y
    Welcome to Moxie 101
    ```
 
-   `python3 -m moxie --gc check hello.mxi` checks a program without running it, and `test` runs its `test` blocks.
+   `python3 -m moxie --gc check hello.mxi` checks a program without running it, and `test` runs its `test` blocks. `python3 -m moxie --gc repl` opens an interactive session: type an expression and see its value and type, and refer to earlier results as `res1`, `res2`, or `it`.
 3. **Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
 
 **On a Mac.** Check `python3 --version` in Terminal. If it is older than 3.11, install a current Python from python.org or with `brew install python`. Then:
