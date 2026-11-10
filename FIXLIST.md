@@ -20,3 +20,5 @@ To do (Steve, 2026-11-09)
 * Calls into an imported package are checked from its exported signatures, its types, and its functions used as values (`Checker.import_signatures`). Left: higher-kinded type parameters (warns). Also open: a delegate declared in another module still gets no generated `set_NAME`.
 
 * Warnings now cover every gap in Spec 24a. To do: generate `set_NAME` for a delegate declared in another module, and warn for any expression whose type the checker cannot work out (the stronger form; noisy until the checker leaves fewer types unknown). `--strict` / `strict = true` in `Moxie.toml` would turn the warnings into errors.
+
+* Self-hosting: write the compiler in moxie, one piece at a time, run on the reference interpreter and tested against the Python version. Order: the lexer, then the type unifier (`tys.py`), then the parser and checker. A compiled build of the compiler is delayed until the language is final (decided by Steve, 2026-11-09). Expect to find moxie bugs this way; each goes on this list.
