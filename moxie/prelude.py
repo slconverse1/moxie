@@ -742,10 +742,10 @@ def b_split(I, a, kw, ta):
     return ListV(parts, max(len(parts), 1))
 
 
-@bi("join")
+@bi("join", "first", True)
 def b_join(I, a, kw, ta):
     xs, sep = a[0], (a[1] if len(a) > 1 else "")
-    items = xs.items if isinstance(xs, Seq) else list(xs)
+    items = yield from drain(I, xs)          # a list, an array, a set, or a stream
     return sep.join(display(x, I) for x in items)
 
 
