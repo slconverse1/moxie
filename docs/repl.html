@@ -18,7 +18,7 @@ p.lead{color:var(--muted);margin:0 0 12px}
 button{font:inherit;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
 button.run{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 button:disabled{opacity:.5}
-.console{min-height:14.6rem;background:var(--out);color:var(--out-ink);border-radius:8px;padding:12px;max-height:34rem;overflow:auto;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;cursor:text}
+.console{min-height:14.6rem;background:var(--out);color:var(--out-ink);border-radius:8px;padding:12px;max-height:60vh;overflow:auto;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;cursor:text}
 .console pre{margin:0;white-space:pre-wrap;font:inherit}
 .console .echo{color:var(--echo)}
 .console .err{color:var(--err)}
@@ -34,13 +34,13 @@ textarea{flex:1;min-width:0;font:inherit;line-height:1.5;color:inherit;backgroun
 <h1>Moxie REPL</h1>
 <p class="lead">Type an expression and see its value and type: the results are kept in <code>$res1</code>, <code>$res2</code>, ..., where <code>$res1</code> is the most recent result, <code>$res2</code> the result before it, and so on. A result can be used in an expression, as in <code>$res1 + 5</code>. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. It runs in your browser using the reference interpreter, so downloading it is avoided.</p>
 <p class="lead"><code>1 + 2</code> (Enter to run, arrow UP for earlier inputs; scroll UP/DOWN to navigate the REPL box)</p>
-<div class="console" id="console">
-  <pre id="log" aria-live="polite"></pre>
-  <div class="line"><span class="ps" id="ps">moxie&gt;</span><textarea id="inp" rows="1" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" aria-label="Moxie input"></textarea></div>
-</div>
 <div class="bar">
   <button id="reset" disabled>Reset session</button>
   <button id="stop" disabled>Stop</button>
+</div>
+<div class="console" id="console">
+  <pre id="log" aria-live="polite"></pre>
+  <div class="line"><span class="ps" id="ps">moxie&gt;</span><textarea id="inp" rows="1" spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off" aria-label="Moxie input"></textarea></div>
 </div>
 <div id="status">Loading the interpreter (about 10 MB the first time)...</div>
 </main>
