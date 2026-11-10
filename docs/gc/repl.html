@@ -20,7 +20,8 @@ button.run{background:var(--accent);color:var(--accent-ink);border-color:var(--a
 button:disabled{opacity:.5}
 textarea,pre{width:100%;font:14px/1.5 ui-monospace,Menlo,Consolas,monospace;border-radius:8px;margin:0}
 textarea{height:5.5rem;resize:vertical;padding:12px;border:1px solid var(--line);background:var(--panel);color:var(--ink);tab-size:2;white-space:pre}
-pre{background:var(--out);color:var(--out-ink);padding:12px;min-height:14rem;max-height:32rem;overflow:auto;white-space:pre-wrap}
+pre{background:var(--out);color:var(--out-ink);padding:12px;min-height:0;max-height:32rem;overflow:auto;white-space:pre-wrap}
+#log:empty{display:none}
 pre .echo{color:var(--echo)}
 pre .err{color:var(--err)}
 #status{color:var(--muted);font-size:14px}

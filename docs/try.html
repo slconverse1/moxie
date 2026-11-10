@@ -30,8 +30,8 @@ pre .err{color:var(--err)}
 <main>
 <h1>Try moxie</h1>
 <p class="lead">Pick a sample or write your own, then run it. The program runs in your browser using the reference interpreter, so nothing is sent anywhere. A program is one file, and its top level is <code>main</code>. The page is a sandbox: there is no network and no native libraries, <code>signals</code> is not available, and files live in memory only. A program that needs one of those is refused when it is checked, with a message that says so.</p>
+<div class="bar"><select id="sample" aria-label="Sample program"></select></div>
 <div class="bar">
-  <select id="sample" aria-label="Sample program"></select>
   <button class="run" id="run" disabled>Run</button>
   <button id="check" disabled>Check only</button>
   <button id="stop" disabled>Stop</button>
