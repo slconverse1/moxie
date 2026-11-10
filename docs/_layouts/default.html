@@ -13,6 +13,8 @@ nav{border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap
 nav a{color:var(--accent);text-decoration:none;font-weight:600}
 nav a:hover{text-decoration:underline}
 nav .brand{margin-right:0}
+.dialect{border:1px solid var(--accent);border-radius:8px;padding:8px 14px;margin:14px 0;background:var(--code)}
+.dialect p{margin:0}
 main{max-width:50rem;margin:0 auto;padding:8px 16px 64px}
 h1,h2,h3{line-height:1.25}
 a{color:var(--accent)}
@@ -26,14 +28,14 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-ali
 </head>
 <body>
 <nav>
-  <a class="brand" href="{{ '/' | relative_url }}">moxie</a>
-  <a href="{{ '/tutorial.html' | relative_url }}">Tutorial</a>
-  <a href="{{ '/guide.html' | relative_url }}">Mixer's Guide</a>
-  <a href="{{ '/spec.html' | relative_url }}">Spec</a>
+  {% assign gc = false %}{% assign q = '' %}{% assign base = '' %}{% if page.url contains '/gc/' %}{% assign gc = true %}{% assign q = '?gc=1' %}{% assign base = '/gc' %}{% endif %}
+  <a class="brand" href="{{ base | append: '/' | relative_url }}">{% if gc %}moxie/gc{% else %}moxie{% endif %}</a>
+  <a href="{{ base | append: '/tutorial.html' | relative_url }}">Tutorial</a>
+  <a href="{{ base | append: '/guide.html' | relative_url }}">Mixer's Guide</a>
+  <a href="{{ base | append: '/spec.html' | relative_url }}">Spec</a>
   <a href="{{ '/style.html' | relative_url }}">Style</a>
-  <a href="{{ '/try.html' | relative_url }}{% if page.url contains '/gc/' %}?gc=1{% endif %}">Try moxie</a>
-  <a href="{{ '/repl.html' | relative_url }}{% if page.url contains '/gc/' %}?gc=1{% endif %}">REPL</a>
-  <a href="{{ '/gc/' | relative_url }}">moxie/gc</a>
+  <a href="{{ '/try.html' | relative_url }}{{ q }}">Try moxie</a>
+  <a href="{{ '/repl.html' | relative_url }}{{ q }}">REPL</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
 </nav>
 <main>

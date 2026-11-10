@@ -27,7 +27,7 @@ pre .err{color:var(--err)}
 </style>
 </head>
 <body>
-<nav><a href="./">moxie</a><a href="tutorial.html">Tutorial</a><a href="guide.html">Mixer's Guide</a><a href="spec.html">Spec</a><a href="try.html">Try moxie</a><a href="repl.html">REPL</a></nav>
+<nav id="nav"><a href="./">moxie</a><a href="tutorial.html">Tutorial</a><a href="guide.html">Mixer's Guide</a><a href="spec.html">Spec</a><a href="style.html">Style</a><a href="try.html">Try moxie</a><a href="repl.html">REPL</a><a href="https://github.com/slconverse1/moxie">Source</a></nav>
 <main>
 <h1>Moxie REPL</h1>
 <p class="lead">Type an expression and see its value and type; it is kept as <code>res1</code>, <code>res2</code>, ... and <code>it</code> is the latest. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. It runs in your browser using the reference interpreter, so nothing is sent anywhere.</p>
@@ -45,7 +45,11 @@ pre .err{color:var(--err)}
 // A "?pyodide=/some/dir/" parameter points at a local copy of Pyodide, for testing without the CDN.
 const PYO = new URLSearchParams(location.search).get('pyodide') || 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
 const $ = id => document.getElementById(id);
-if (new URLSearchParams(location.search).get('gc') === '1') $('gc').checked = true;   // from the moxie/gc pages
+if (new URLSearchParams(location.search).get('gc') === '1') {
+  $('gc').checked = true;   // from the moxie/gc pages: show that dialect's tabs
+  document.querySelectorAll('#nav a').forEach(a => { const h = a.getAttribute('href'); if (['./', 'tutorial.html', 'guide.html', 'spec.html'].includes(h)) a.setAttribute('href', 'gc/' + (h === './' ? '' : h)); else if (h === 'try.html' || h === 'repl.html') a.setAttribute('href', h + '?gc=1'); });
+  document.querySelector('#nav a').textContent = 'moxie/gc';
+}
 const log = $('log'), inp = $('inp'), status = $('status'), goB = $('go'), resetB = $('reset'), stopB = $('stop'), gcB = $('gc');
 let worker = null, busy = false, nextId = 1, waiting = {}, history = [], hpos = 0;
 

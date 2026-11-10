@@ -2,13 +2,17 @@
 layout: default
 title: "Moxie"
 ---
+<div class="dialect" markdown="1">
+This is **moxie**, the no-GC language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Guide, and Spec. The two are kept apart on purpose, because they make different promises.
+</div>
+
 # Hello, mixers!
 
 Allow me to introduce you to moxie.
 
 Moxie is a compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem.
 
-Moxie compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie-to-hardware mapping is so tight, moxie runs impossibly fast. Best of all, it needs no GC. (If you'd rather have a collector, there is a second dialect, [moxie/gc](gc/), with its own Spec and Guide. The two are kept apart on purpose, because they make different promises.)
+Moxie compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie-to-hardware mapping is so tight, moxie runs impossibly fast. Best of all, it needs no GC.
 
 Moxie has just about all the features you've come to expect from an FP language: iterators, generators, comprehensions, lambdas, monads, pipes, laziness, generics, you name it. For data, it has the usual suspects: primitive types (numbers and String), structure types (tuple and enum), collection types (Array, MultiArray, List, Set, and Dict), resource types, and a fistful of others for good luck. Last but not least, as in any respectable FP language, functions are first-class citizens.
 
