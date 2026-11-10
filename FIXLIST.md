@@ -36,3 +36,5 @@ To do (Steve, 2026-11-09)
 - Still to do: interpolated strings, chars, hex/underscore/suffixed numbers, byte and raw strings, `/* */` comments, `sql` blocks, tab errors and the error cases ("unexpected indent" is an `ERR` token for now).
 
 - Fixed 2026-11-10: a fiber abort while another fiber waited on a socket read left the process hanging (closing the socket blocked on the reader's lock); sockets are now shut down before they are closed. Test: tests/run_http.py.
+
+- Orphan impls (2026-11-10, Steve's decision): a package may impl a foreign interface for a foreign type (no wrapper tuple). Such an impl is private to the package and importers never see it (checker skips it when registering imported methods). Spec 12 updated in both dialects. NOT yet enforced: the clash error when the interface already has a visible impl for the type; no test yet for a private local impl.

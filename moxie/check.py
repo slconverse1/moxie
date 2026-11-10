@@ -352,6 +352,8 @@ class Checker:
         wanted = None
         for x in stmts:
             if x.__class__ is ImplDecl and x.target.__class__ is TName and x.target.path:
+                if x.iface is not None and x.target.path[-1] not in own:
+                    continue          # a private impl of a foreign interface for a foreign type is never seen by importers
                 for m in x.members or []:
                     if m.__class__ is FnDecl:
                         c = self.renamed(m, mp)
