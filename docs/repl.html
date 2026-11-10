@@ -72,10 +72,10 @@ function startWorker(note) {
   mine.onmessage = e => {
     if (mine !== worker) return;
     const m = e.data;
-    if (m.type === 'ready') { setBusy(false); status.textContent = 'Ready.'; if (note) add(note, 'echo'); }
-    else if (m.type === 'failed') { worker = null; status.textContent = 'Could not start: ' + m.message; add('The in-browser interpreter did not load. You can still run moxie on your own computer; see the README.', 'err'); }
+    if (m.type === 'ready') { setBusy(false); status.textContent = ''; if (note) add(note, 'echo'); }
+    else if (m.type === 'failed') { worker = null; status.textContent = 'Could not start: ' + m.message; add('The in-browser interpreter did not load.', 'err'); }
     else if (m.type === 'more') { const f = waiting[m.id]; delete waiting[m.id]; if (f) f(m.more); }
-    else if (m.type === 'done') { add(m.out); add(m.err, 'err'); status.textContent = 'Ready.'; setBusy(false); }
+    else if (m.type === 'done') { add(m.out); add(m.err, 'err'); status.textContent = ''; setBusy(false); }
   };
   mine.onerror = e => { if (mine === worker) { status.textContent = 'Error.'; add('The interpreter stopped: ' + e.message, 'err'); setBusy(false); } };
   mine.postMessage({ type: 'init', pyo: new URL(PYO, location.href).href, zip: new URL('moxie.zip', location.href).href, gc: GC });
@@ -89,7 +89,7 @@ function submit(text) {
   add('moxie> ' + text.replace(/\n/g, '\n  ...> '), 'echo');
   inp.value = '';
   setBusy(true);
-  status.textContent = 'Running...';
+  status.textContent = '';
   worker.postMessage({ type: 'feed', text });
 }
 async function onEnter() {

@@ -29,7 +29,7 @@ pre .err{color:var(--err)}
 <nav id="nav"><a href="./">moxie/gc</a><a href="tutorial.html">Tutorial</a><a href="guide.html">Mixer's Guide</a><a href="spec.html">Spec</a><a href="style.html">Style</a><a href="try.html">Try moxie/gc</a><a href="repl.html">REPL</a><a href="https://github.com/slconverse1/moxie">Source</a></nav>
 <main>
 <h1>Try moxie/gc</h1>
-<p class="lead">Pick a sample or write your own, then run it. The program runs in your browser using the reference interpreter, so nothing is sent anywhere. A program is one file, and its top level is <code>main</code>. The page is a sandbox: there is no network and no native libraries, <code>signals</code> is not available, and files live in memory only. A program that needs one of those is refused when it is checked, with a message that says so. Run <code>moxie --platform=browser check FILE</code> to see the same answer on your own computer.</p>
+<p class="lead">Pick a sample or write your own, then run it. The program runs in your browser using the reference interpreter, so nothing is sent anywhere. A program is one file, and its top level is <code>main</code>. The page is a sandbox: there is no network and no native libraries, <code>signals</code> is not available, and files live in memory only. A program that needs one of those is refused when it is checked, with a message that says so.</p>
 <div class="bar">
   <select id="sample" aria-label="Sample program"></select>
   <button class="run" id="run" disabled>Run</button>
@@ -86,13 +86,13 @@ function startWorker() {
   mine.onmessage = e => {
     if (mine !== worker) return;
     const m = e.data;
-    if (m.type === 'ready') { setBusy(false); status.textContent = 'Ready.'; }
-    else if (m.type === 'failed') { worker = null; status.textContent = 'Could not start: ' + m.message; show('', 'The in-browser interpreter did not load. You can still run moxie on your own computer; see the README.'); }
+    if (m.type === 'ready') { setBusy(false); status.textContent = ''; }
+    else if (m.type === 'failed') { worker = null; status.textContent = 'Could not start: ' + m.message; show('', 'The in-browser interpreter did not load.'); }
     else if (m.type === 'done') {
       let o = m.out;
       if (running && !m.err && !o && lastMode === 'check') o = 'No problems found.';
       show(o, m.err);
-      status.textContent = m.code === 0 ? 'Done.' : 'Finished with exit code ' + m.code + '.';
+      status.textContent = '';
       setBusy(false);
     }
   };
@@ -105,7 +105,7 @@ function go(mode) {
   if (!worker || running) return;
   lastMode = mode;
   setBusy(true);
-  status.textContent = 'Running...';
+  status.textContent = '';
   worker.postMessage({ type: 'run', src: src.value, mode, gc: GC });
 }
 stopButton.onclick = () => {
