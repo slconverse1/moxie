@@ -672,6 +672,14 @@ class Checker:
                 if m.__class__ is AliasDecl and tname:
                     self.assoc[(tname, m.name)] = m.type          # `type Item = String` in an impl
             if iname and tname:
+                if not st.tparams and st.iface.__class__ is TName and st.target.__class__ is TName:
+                    full = ".".join(st.target.path)
+                    key = (".".join(st.iface.path), full)
+                    seen = self.__dict__.setdefault("impl_seen", set())
+                    if key in seen or iname in self.impls.get(full, ()) and "." in full:
+                        self.err(st.line, f"`{key[1]}` already implements `{key[0]}`; a second impl would change what existing code means, "
+                                          "so delete this one")
+                    seen.add(key)
                 self.impls.setdefault(tname, set()).add(iname)
             elif tname:
                 # an inherent impl that defines `<` or `==` makes the type Ordered or Equatable

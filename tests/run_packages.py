@@ -85,6 +85,22 @@ if not ok: fails.append("the pages exist")
 chk("a broken qualified link is reported by --check", make({"p/Moxie.toml": 'files = ["a.mxi"]\n', "p/a.mxi": '/// See [`q.nothing`].\nexport fn f() Int:\n  1\n'}), ["doc", "p", "--check"], 1, "broken link")
 chk("--std adds the packages that ship with moxie", D, ["--gc", "doc", "app.mxi", "--all", "--std"], 0, "shapes")
 
+# local (private) impls of a foreign interface for a foreign type
+SQ = 'export tuple Square:\n  side: Int\n'
+SP = 'export interface Speaker:\n  fn say(self) String\n'
+IMPL = 'impl talk.Speaker for shapes.Square:\n  fn say(self) String:\n    "side ${self.side}"\n'
+HEAD = 'import shapes\nimport talk\n'
+O = make({
+    "shapes.mxi": SQ, "talk.mxi": SP,
+    "ok.mxi": HEAD + IMPL + 'println(shapes.Square(side: 4).say())\n',
+    "twice.mxi": HEAD + IMPL + IMPL,
+    "owned.mxi": 'import talk\ntuple Sq:\n  side: Int\nimpl talk.Speaker for Sq:\n  fn say(self) String:\n    "mine"\nprintln(Sq(side: 1).say())\n',
+    "mid.mxi": 'import shapes\nimport talk\n' + 'export fn mk() shapes.Square:\n  shapes.Square(side: 2)\n' + IMPL,
+   })
+chk("a local impl of a foreign interface for a foreign type works in its own package", O, ["ok.mxi"], 0, "side 4")
+chk("a second local impl of the same pair is an error", O, ["twice.mxi"], 2, "already implements")
+chk("an impl for your own type still works", O, ["owned.mxi"], 0, "mine")
+
 print()
 print("FAILURES: " + ", ".join(fails) if fails else "all package tests passed")
 sys.exit(1 if fails else 0)
