@@ -1,5 +1,6 @@
 ---
 layout: default
+dialect: gc
 title: "moxie/gc Mixer's Guide"
 ---
 # MOXIE/GC MIXER'S GUIDE

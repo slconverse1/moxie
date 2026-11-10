@@ -1,5 +1,6 @@
 ---
 layout: default
+dialect: gc
 title: "Moxie/gc Spec"
 ---
 # MOXIE/GC SPEC

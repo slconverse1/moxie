@@ -1,5 +1,6 @@
 ---
 layout: default
+dialect: gc
 title: "moxie/gc"
 ---
 <div class="dialect" markdown="1">
@@ -26,7 +27,7 @@ You're welcome!
 
 You can try moxie/gc three ways, from least to most effort. Remember that what you run is the reference interpreter, not a compiler, so nothing here produces a native program.
 
-1. **In your browser.** [Try moxie](../try.html?gc=1) runs a program (and the [REPL](../repl.html?gc=1) is an interactive session) on this site, with nothing to install (tick "moxie/gc rules" for this dialect). It's a sandbox: no network, no native libraries, and files that live only in the page.
+1. **In your browser.** [Try moxie/gc](try.html) runs a program (and the [REPL](repl.html) is an interactive session) on this site, with nothing to install (tick "moxie/gc rules" for this dialect). It's a sandbox: no network, no native libraries, and files that live only in the page.
 2. **Download the interpreter.** [moxie.zip](../moxie.zip) is the whole interpreter, and it needs only Python 3.11 or later. Unzip it, save the lines below as `hello.mxi` next to the `moxie` folder, and run it from there:
 
    ```

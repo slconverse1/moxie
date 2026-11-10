@@ -1,5 +1,6 @@
 ---
 layout: default
+dialect: gc
 title: "moxie/gc Tutorial"
 ---
 # MOXIE/GC TUTORIAL: build a gradebook
