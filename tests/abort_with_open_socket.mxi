@@ -1,0 +1,12 @@
+fiber fn server(l: Listener) Unit:
+  c = accept(l)
+  xs = List(1)
+  println(xs(5))
+
+l = listen(0)?
+port = port_of(l)
+run server(l)
+c = connect("localhost", port)?
+println(c, "hi")
+r = read_line(c)
+println("got ${r}")

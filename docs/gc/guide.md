@@ -3802,3 +3802,37 @@ println("slow forecast ${stats.smooth(sales, 0.1):.2f}")
 ```
 
 Output: `List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)`, then `forecast 29.50`, then `slow forecast 22.99`. The slow forecast lags behind a series that is climbing, and that is the trade-off between smoothing the noise and following a real change. **Mistakes:** passing arrays of different lengths, reading a prediction far outside the data as a fact, and treating a high `r_squared` as proof of cause.
+
+**Chapter 28: HTTP (the `http` package)**
+
+`import http` gives you a small HTTP client and server. It is for plain jobs, with text bodies and one request per connection. A server is a function from a `Request` to a `Response`, and `http.serve` calls it for each connection:
+
+```
+import http
+
+fn handle(req: http.Request) http.Response:
+  if req.method == "POST":
+    http.text(200, "you said: ${req.body}")
+  elif req.path == "/hello":
+    http.text(200, "hello, mixer")
+  else:
+    http.text(404, "nothing at ${req.path}")
+
+fiber fn server(l: Listener, count: Int) Unit:
+  http.serve_n(l, count, handle)
+
+l = listen(0)?
+port = port_of(l)
+run server(l, 3)
+a = http.get("localhost", port, "/hello")?
+println("${a.status} ${a.body}")
+b = http.post("localhost", port, "/echo", "hello")?
+println("${b.status} ${b.body}")
+c = http.get("localhost", port, "/nope")?
+println("${c.status} ${c.body}")
+```
+
+Output: `200 hello, mixer`, then `200 you said: hello`, then `404 nothing at /nope`. `listen(0)` picks a free port and `port_of` says which. `serve_n` handles three connections and returns, and `http.serve(l, handle)` would go on forever. The client calls return a `Result`, so `?` hands a failed connection back to the caller. Headers are a list of `Header(name, value)`, `http.header_value(headers, "Content-Type")` finds one without regard to case, and `http.request(host, port, method, path, headers, body)` is the general form behind `get` and `post`.
+
+**Mistakes:** expecting TLS or chunked bodies (neither is there), sending binary data as the body, forgetting the `net.connect` or `net.listen` permission, and calling the client on the browser platform, which has no network.
+

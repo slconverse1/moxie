@@ -91,6 +91,11 @@ class IoV:
             return
         self.closed = True
         self.I.pools.release("Io " + self.kind)
+        if self.sock is not None:
+            try:
+                self.sock.shutdown(2)          # wakes a helper thread blocked in a read, which would otherwise hold the file's lock
+            except Exception:
+                pass
         for x in (self.f, self.sock):
             try:
                 if x is not None:
@@ -405,6 +410,22 @@ def b_read_bytes(I, a, kw, ta):
         return io_error(raw)
     cls = INT_CLASSES.get("UInt8")
     return Ok(ArrayV([cls(b) if cls else b for b in raw]))
+
+
+@bi("from_utf8")
+def b_from_utf8(I, a, kw, ta):
+    """`from_utf8(bytes)`: the text in an `Array[Byte]`, or an `Err` (BAD_ENCODING) when the bytes are not valid UTF-8."""
+    try:
+        return Ok(bytes(int(x) for x in a[0].items).decode("utf-8"))
+    except UnicodeDecodeError:
+        return err_reserved("BAD_ENCODING", "from_utf8: the bytes are not valid UTF-8")
+
+
+@bi("to_utf8")
+def b_to_utf8(I, a, kw, ta):
+    """`to_utf8(text)`: the UTF-8 bytes of a String, as an `Array[Byte]`."""
+    cls = INT_CLASSES.get("UInt8")
+    return ArrayV([cls(b) if cls else b for b in a[0].encode("utf-8")])
 
 
 @bi("write_bytes")

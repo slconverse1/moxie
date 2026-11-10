@@ -1,0 +1,22 @@
+import http
+
+fn handle(req: http.Request) http.Response:
+  if req.method == "POST":
+    http.text(200, "you said: ${req.body}")
+  elif req.path == "/hello":
+    http.text(200, "hello, mixer")
+  else:
+    http.text(404, "nothing at ${req.path}")
+
+fiber fn server(l: Listener, count: Int) Unit:
+  http.serve_n(l, count, handle)
+
+l = listen(0)?
+port = port_of(l)
+run server(l, 3)
+a = http.get("localhost", port, "/hello")?
+println("${a.status} ${a.body}")
+b = http.post("localhost", port, "/echo", "héllo")?
+println("${b.status} ${b.body}")
+c = http.get("localhost", port, "/nope")?
+println("${c.status} ${c.body}")

@@ -365,7 +365,7 @@ Moxie is a general language, but four kinds of application come with the languag
 
 **Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It is not a numeric toolkit. See the Mixer's Guide, Chapter 26.
 
-**HTTP client and server** (planned). A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. Sockets and their permissions are in superpower 22.
+**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the Mixer's Guide, Chapter 27. Sockets and their permissions are in superpower 22.
 
 ## 4. Everything is an expression
 
