@@ -34,62 +34,74 @@ fn op_at(cs: List[Char], i: Int) String:
       return op
   ""
 
+// The scanner's state: where it is, which line it is on, where that line began, and the tokens so far.
+tuple Lx:
+  i: Int,
+  line: Int,
+  line_start: Int,
+  out: List[Token]
+
+fn emit(st: Lx, kind: String, text: String, to: Int) Lx:
+  t = Token(kind: kind, text: text, line: st.line, col: st.i - st.line_start + 1)
+  Lx(...st, i: to, out: st.out + t)
+
+fn skip_while(cs: List[Char], from: Int, ok: (Char) -> Bool) Int:
+  for k in from..len(cs):
+    if not ok(cs(k)):
+      break(k)
+  else:
+    len(cs)
+
+fn scan_number(cs: List[Char], st: Lx) Lx:
+  j = skip_while(cs, st.i, is_digit)
+  frac = j + 1 < len(cs) and cs(j) == '.' and is_digit(cs(j + 1))
+  end = if frac: skip_while(cs, j + 1, is_digit) else: j
+  emit(st, if frac: "FLOAT" else: "INT", text_of(cs, st.i, end), end)
+
+fn scan_string(cs: List[Char], st: Lx) Lx:
+  j = st.i + 1
+  end = while j < len(cs) and cs(j) ~= '"':
+    j = if cs(j) == '\\': j + 2 else: j + 1
+  else:
+    j
+  emit(st, "STR", text_of(cs, st.i, end + 1), end + 1)
+
+fn scan_operator(cs: List[Char], st: Lx) Lx:
+  op = op_at(cs, st.i)
+  if op == "":
+    emit(st, "ERR", "${cs(st.i)}", st.i + 1)
+  else:
+    emit(st, "OP", op, st.i + len(op))
+
+// One step: the state after the token (or the blank, comment, or line break) at the current position.
+fn step(cs: List[Char], st: Lx) Lx:
+  c = cs(st.i)
+  if c == '\n':
+    after = emit(st, "NL", "", st.i + 1)
+    Lx(...after, line: st.line + 1, line_start: st.i + 1)
+  elif c == ' ':
+    Lx(...st, i: st.i + 1)
+  elif c == '/' and st.i + 1 < len(cs) and cs(st.i + 1) == '/':
+    Lx(...st, i: skip_while(cs, st.i, (d): d ~= '\n'))
+  elif is_id_start(c):
+    end = skip_while(cs, st.i, is_id_char)
+    emit(st, "NAME", text_of(cs, st.i, end), end)
+  elif is_digit(c):
+    scan_number(cs, st)
+  elif c == '"':
+    scan_string(cs, st)
+  else:
+    scan_operator(cs, st)
+
 // Every raw token of `src`. A line break is an `NL` token. Anything outside the slice is an `ERR` token holding the character.
 export fn lex(src: String) List[Token]:
   cs = chars(src) |> collect()
-  n = len(cs)
-  out = List[Token]()
-  i = 0
-  line = 1
-  line_start = 0
-  while i < n:
-    c = cs(i)
-    col = i - line_start + 1
-    if c == '\n':
-      gimme.1.out = out + Token(kind: "NL", text: "", line: line, col: col)
-      gimme.1.i = i + 1
-      gimme.1.line = line + 1
-      gimme.1.line_start = i
-    elif c == ' ':
-      gimme.1.i = i + 1
-    elif c == '/' and i + 1 < n and cs(i + 1) == '/':
-      while i < n and cs(i) ~= '\n':
-        gimme.1.i = i + 1
-    elif is_id_start(c):
-      j = i
-      while j < n and is_id_char(cs(j)):
-        gimme.1.j = j + 1
-      gimme.1.out = out + Token(kind: "NAME", text: text_of(cs, i, j), line: line, col: col)
-      gimme.1.i = j
-    elif is_digit(c):
-      j = i
-      while j < n and is_digit(cs(j)):
-        gimme.1.j = j + 1
-      kind = "INT"
-      if j + 1 < n and cs(j) == '.' and is_digit(cs(j + 1)):
-        gimme.1.kind = "FLOAT"
-        gimme.1.j = j + 1
-        while j < n and is_digit(cs(j)):
-          gimme.1.j = j + 1
-      gimme.1.out = out + Token(kind: kind, text: text_of(cs, i, j), line: line, col: col)
-      gimme.1.i = j
-    elif c == '"':
-      j = i + 1
-      while j < n and cs(j) ~= '"':
-        if cs(j) == '\\':
-          gimme.1.j = j + 1
-        gimme.1.j = j + 1
-      gimme.1.out = out + Token(kind: "STR", text: text_of(cs, i, j + 1), line: line, col: col)
-      gimme.1.i = j + 1
-    else:
-      op = op_at(cs, i)
-      if op == "":
-        gimme.1.out = out + Token(kind: "ERR", text: "$c", line: line, col: col)
-        gimme.1.i = i + 1
-      else:
-        gimme.1.out = out + Token(kind: "OP", text: op, line: line, col: col)
-        gimme.1.i = i + len(op)
-  out
+  st = Lx(i: 0, line: 1, line_start: 0, out: List[Token]())
+  done = while st.i < len(cs):
+    st = step(cs, st)
+  else:
+    st
+  done.out
 
 fn show_token(t: Token) String:
   "${t.kind}\t${t.text}\t${t.line}\t${t.col}"

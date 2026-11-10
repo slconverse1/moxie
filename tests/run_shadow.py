@@ -22,6 +22,7 @@ QUIET = [
  ("a function local named like a global", "n = 1\nfn f() Int:\n  n = 2\n  n\nprintln(f() + n)\n"),
  ("a lambda local named like an outer name", "n = 1\nf = (a): a + 1\nprintln(f(n))\n"),
  ("a parameter rebound at the top of its function", "fn f(xs: List[Int]) List[Int]:\n  xs += 1\n  xs\nprintln(f(List(1)))\n"),
+ ("a while loop whose else reads the carried name", "fn count(n: Int) Int:\n  j = 0\n  while j < n:\n    j = j + 1\n  else:\n    j\nprintln(count(3))\n"),
  ("an underscore name", "_t = 0\nfor i in List(1):\n  _t = i\nprintln(1)\n"),
 ]
 fails = []

@@ -228,6 +228,7 @@ class Checker:
         self.foreign_ids = set()   # ids of foreign FnDecls
         self._later = False
         self.loop_depth = 0
+        self.else_names = []              # for each enclosing loop, the names its `else:` mentions
         self.exit_ctx = False
         self.fn_ret = None
         self.fn_tparams = ()
@@ -2292,7 +2293,10 @@ class Checker:
                 if sp is not None and sp.static:
                     self.err(n.line, f"`{tgt.path[1]}` is a static property, which is read-only")
             if tgt.__class__ is PBind:
-                self.warn_shadow(tgt.name, sc, n)
+                carried = n.op == "=" and sc.loopbody and tgt.name not in sc.vars and self.else_names and tgt.name in self.else_names[-1] \
+                    and sc.parent is not None and sc.parent.find(tgt.name) is not None
+                if not carried:                  # the loop's `else:` reads the name, so the rebinding is meant to be carried forward
+                    self.warn_shadow(tgt.name, sc, n)
                 if n.op == "=" and sc.loopbody and tgt.name not in sc.vars and not isinstance(n.targets, list):
                     ov = sc.parent.find(tgt.name) if sc.parent is not None else None      # a name that was bound when the loop began
                     nt = ann or t
@@ -2524,7 +2528,9 @@ class Checker:
         elif it is not None and (it in INTS or it in ("Bool", "Float", "Decimal", "Char")):
             self.err(n.line, f"`for` needs a collection, a range, or a stream, found `{tshow(it)}`")
         self.bind_pat(n.pat, inner, el)
+        self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], inner, n.label)
+        self.else_names.pop()
         self.ev(n.else_, sc)
         return None, None
 
@@ -2532,7 +2538,9 @@ class Checker:
         ct = self.t(n.cond, sc)
         if ct is not None and ct != "Bool":
             self.err(n.line, f"`while` condition must be `Bool`, found `{tshow(ct)}`")
+        self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], sc, n.label)
+        self.else_names.pop()
         self.ev(n.else_, sc)
         return None, None
 
