@@ -2,9 +2,7 @@
 layout: default
 title: "Moxie"
 ---
-<div class="dialect" markdown="1">
-This is **moxie**, the no-GC language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Guide, and Spec. The two are kept apart on purpose, because they make different promises.
-</div>
+> This is **moxie**, the no-GC language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Guide, and Spec. The two are kept apart on purpose, because they make different promises.
 
 # Hello, mixers!
 
