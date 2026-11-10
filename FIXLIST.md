@@ -22,3 +22,8 @@ To do (Steve, 2026-11-09)
 
 * Self-hosting: write the compiler in moxie, one piece at a time, run on the reference interpreter and tested against the Python version. Order: the lexer, then the type unifier (`tys.py`), then the parser and checker. A compiled build of the compiler is delayed until the language is final (decided by Steve, 2026-11-09). Expect to find moxie bugs this way; each goes on this list.
 * Found while porting the lexer to moxie (moxie/selfhost/lexer.mxi, checked against `moxie/lexer.py` by `tests/run_selfhost.py`): (1) `join` crashed on a stream (fixed: it now drains any source); (2) a scanner loop needs its state to leave the loop: settled with no new syntax, as one state tuple that each step returns (`Lx(...st, i: st.i + 1)`) and `while cond: st = step(st)` with `else: st`, or `for ... break(k)` with `else:`; the shadow warning stays quiet when the loop's `else:` reads the name; (3) speed: appending to a list in a loop and matching operators one text slice at a time make the moxie lexer about 100 times slower than the Python one on the interpreter (900 tokens take about 25 seconds), which the compiled build is meant to fix. Not yet covered by the moxie lexer: layout tokens (INDENT/DEDENT), interpolated strings, chars, byte and raw strings, hex/suffixed numbers, block comments, `sql` blocks.
+
+## Decisions 2026-11-10 (Steve)
+- No UI kit: coders will use a native toolkit.
+- Yes to a low-profile `http` socket library (std package over `Listener`/`Connection`): scope to be proposed (client, server, or both) before building.
+- Superpowers: added "8. Properties" (later numbers moved up by one; cross-references updated).
