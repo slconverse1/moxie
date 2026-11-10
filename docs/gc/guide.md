@@ -1508,7 +1508,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 - Instances must live with the type or the interface (no orphans).
 - Default method bodies and associated types exist. Missing from the language: functional dependencies and type families.
 
-**Mistakes:** an `impl` of someone else's interface for someone else's type, calling `empty()` with no type to say which one, combining two `any Monoid` values (`Self` in a parameter), comparing `any` values with `==`, and a bound written twice on one parameter (embed the interfaces instead).
+**Mistakes:** an `impl` of someone else's interface for someone else's type, calling `empty()` with no type to say which one, combining two `any Monoid` values (`Self` in a parameter), comparing `any` values with `==` when the interface doesn't list `Equatable` (list `Equatable`, `Ordered`, or `Hashable` inside it and `==`, `<`, `Set`, and `Dict` keys all work), and a bound written twice on one parameter (embed the interfaces instead).
 
 **Chapter 9: Field delegates**
 

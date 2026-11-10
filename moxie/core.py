@@ -153,6 +153,11 @@ def lt(a, b):
         return a.v < b.v
     if isinstance(a, Dur):
         return a.ns < b.ns
+    if isinstance(a, (TupleV, EnumV)) and isinstance(b, (TupleV, EnumV)):
+        na = a.tname if isinstance(a, TupleV) else getattr(a.et, "name", None)       # through an `any I`, two different types order by type name
+        nb = b.tname if isinstance(b, TupleV) else getattr(b.et, "name", None)
+        if na != nb and na is not None and nb is not None:
+            return na < nb
     if isinstance(a, TupleV):
         for x, y in zip(a.vals, b.vals):
             if lt(x, y):

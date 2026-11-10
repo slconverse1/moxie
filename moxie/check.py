@@ -3936,8 +3936,11 @@ class Checker:
 
     def check_op_bound(self, n, sc):
         """`a < b` on values of an unbounded (or wrongly bounded) type parameter is an error: the body may use only what the bound provides."""
-        need = self.OP_NEEDS.get(n.op)
-        if need is None or not self.tp_vars:
+        need = self.OP_NEEDS.get("!=" if n.op == "~=" else n.op)
+        if need is None:
+            return
+        self.check_any_op(n, sc, need)
+        if not self.tp_vars:
             return
         for side in (n.l, n.r):
             if side.__class__ is not Name:
@@ -3951,6 +3954,30 @@ class Checker:
                 continue          # a user interface may embed what is needed; the checker cannot tell
             if not set(names) & need[0]:
                 self.err(n.line, f"`{n.op}` on a `{tp.name}` needs a `{need[1]}` bound: write `{tp.name}: {need[1]}`")
+                return
+
+    def embedded_names(self, names):
+        """Every interface name in `names`, with those they embed (built-in names such as `Equatable` included)."""
+        out, todo = set(), list(names)
+        while todo:
+            nm = todo.pop()
+            if nm in out:
+                continue
+            out.add(nm)
+            d = self.iface_decls.get(nm)
+            todo += [_tn(e) for e in (d.embeds or []) if d is not None] if d is not None else []
+        return out
+
+    def check_any_op(self, n, sc, need):
+        """`a == b` or `a < b` on an `any I` value: allowed when `I` embeds `Equatable` (or `Hashable`) or `Ordered`."""
+        for side in (n.l, n.r):
+            if side.__class__ is not Name:
+                continue
+            at = self.any_vars.get(sc.find(side.name))
+            if at is None:
+                continue
+            if not self.embedded_names(at[1]) & need[0]:
+                self.err(n.line, f"`{n.op}` on an `any {' + '.join(at[1])}` needs the interface to embed `{need[1]}`: list `{need[1]}` inside `{at[1][0]}`")
                 return
 
     SCALAR_TYPES = {"Int", "Float", "Double", "LongDouble", "Decimal", "String", "Bool", "Char", "Unit", "Self", "Secret", "Never", "Any", "BigInt",
@@ -4013,6 +4040,9 @@ class Checker:
         return set(self.tuples) | set(self.enums) | set(self.aliases) | set(self.cases)
 
     def check_stored_closure(self, lam, sc, line):
+        from .values import GC
+        if GC[0]:
+            return                    # moxie/gc: a closure is a heap object, so it can be stored anywhere
         names = self.lambda_captures(lam, sc)
         if names:
             self.err(line, f"closure captures `{names[0]}`, and only plain functions can be stored here (a tuple field, collection element, Dict value, or channel element of a function type)")
@@ -4115,6 +4145,8 @@ class Checker:
                 bn = [_tn(x) for x in getattr(tp, "bounds", None) or []]
                 if "Hashable" not in bn and all(x in VALUE_IFACES for x in bn):
                     self.err(line, f"`{tp.name}` is used as {'a Dict key' if t.path == ['Dict'] else 'a Set element'}, so it needs a `Hashable` bound: write `{tp.name}: Hashable`")
+            if k.__class__ is TAny and self.any_names(k) and "Hashable" not in self.embedded_names(self.any_names(k)):
+                self.err(line, f"`any {' + '.join(self.any_names(k))}` is used as {'a Dict key' if t.path == ['Dict'] else 'a Set element'}, so the interface must embed `Hashable`")
             if k.__class__ is TName and len(k.path) == 1 and (k.path[0] in self.tuples or k.path[0] in self.enums) and not k.groups:
                 self.need_hash(k.path[0], line, "a Dict key" if t.path == ["Dict"] else "a Set element")
         if t.path == ["Seq"] and "Seq" not in self.tuples and "Seq" not in self.enums and "Seq" not in self.aliases \

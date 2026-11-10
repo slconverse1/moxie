@@ -32,9 +32,13 @@ Status key: A = recommend, B = worth discussing, C = recommend keeping.
 17. **Cycles in values** (C). Keep; immutability is the foundation of the memory model.
 
 ## Suggested order
-1. Item 5 (`any` with equality and order), cheapest and most useful.
+1. Item 5 (`any` with equality and order): DONE 2026-11-09.
 2. gc items 1 and 2 (views and closures), which make the two dialects differ in the direction you intended: gc lifts restrictions that exist only for no-GC.
 3. Item 7 (package-local retroactive impl).
 4. Items 10 and 14 after checking what exists.
 
 Each approved item gets: Spec text in both dialects, a checker/interpreter change, tests, and a Guide sentence.
+
+## Done 2026-11-09 (A items)
+- Item 5: `any I` supports `==`, `<`, Set members, and Dict keys when `I` embeds `Equatable`/`Ordered`/`Hashable`; the checker errors otherwise; different types order by type name. Tests: tests/run_anyeq.py.
+- gc items 1, 2, 4: the gc Spec already said views can be returned, closures stored anywhere, and variadics are a `List`. The reference interpreter already ran views and variadic spread; the checker still refused stored capturing closures under `--gc`, now fixed (tests/run_gcrelax.py). Item 3 (`any` boxing) has no visible effect.
