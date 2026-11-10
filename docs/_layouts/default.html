@@ -33,7 +33,7 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-ali
   <a href="{{ base | append: '/tutorial.html' | relative_url }}">Tutorial</a>
   <a href="{{ base | append: '/guide.html' | relative_url }}">Mixer's Guide</a>
   <a href="{{ base | append: '/spec.html' | relative_url }}">Spec</a>
-  <a href="{{ '/style.html' | relative_url }}">Style</a>
+  <a href="{{ base | append: '/style.html' | relative_url }}">Style</a>
   {% if gc %}<a href="{{ '/gc/try.html' | relative_url }}">Try moxie/gc</a>{% else %}<a href="{{ '/try.html' | relative_url }}">Try moxie</a>{% endif %}
   <a href="{{ base | append: '/repl.html' | relative_url }}">REPL</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
