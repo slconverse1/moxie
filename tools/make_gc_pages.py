@@ -15,14 +15,11 @@ for page, title in (("try.html", "Try moxie/gc"), ("repl.html", "moxie/gc REPL")
     t = re.sub(r"<title>.*?</title>", f"<title>{title}</title>", t, 1)
     t = re.sub(r"<h1>.*?</h1>", f"<h1>{title}</h1>", t, 1)
     t = sub(t, "new URL('moxie.zip', location.href)", "new URL('../moxie.zip', location.href)")
-    t = sub(t, '<input type="checkbox" id="gc">', '<input type="checkbox" id="gc" checked>')
+    t = sub(t, "const GC = false;", "const GC = true;")
     if page == "try.html":
         t = sub(t, "fetch('samples/'", "fetch('../samples/'")
         t = sub(t, "new Worker('try-worker.js')", "new Worker('../try-worker.js')")
-        t = sub(t, 'Tick "moxie/gc rules" to run it under the garbage-collected language (collections grow as needed).',
-                'It runs under the moxie/gc rules (collections grow as needed); untick "moxie/gc rules" to see it under no-GC moxie.')
     else:
         t = sub(t, "new Worker('repl-worker.js')", "new Worker('../repl-worker.js')")
-        t = sub(t, "Try <code>:help</code>.", "It runs under the moxie/gc rules; untick the box to start a no-GC session. Try <code>:help</code>.")
     open(os.path.join(D, "gc", page), "w").write(t)
 print("wrote docs/gc/try.html and docs/gc/repl.html")

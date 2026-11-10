@@ -38,14 +38,14 @@ pre .err{color:var(--err)}
   <button class="run" id="go" disabled>Run</button>
   <button id="reset" disabled>Reset session</button>
   <button id="stop" hidden>Stop</button>
-  <label style="margin-left:8px"><input type="checkbox" id="gc"> moxie/gc rules</label>
 </div>
 </main>
 <script>
 // A "?pyodide=/some/dir/" parameter points at a local copy of Pyodide, for testing without the CDN.
 const PYO = new URLSearchParams(location.search).get('pyodide') || 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
+const GC = false;   // tools/make_gc_pages.py sets this to true for the moxie/gc copy
 const $ = id => document.getElementById(id);
-const log = $('log'), inp = $('inp'), status = $('status'), goB = $('go'), resetB = $('reset'), stopB = $('stop'), gcB = $('gc');
+const log = $('log'), inp = $('inp'), status = $('status'), goB = $('go'), resetB = $('reset'), stopB = $('stop');
 let worker = null, busy = false, nextId = 1, waiting = {}, history = [], hpos = 0;
 
 function add(text, cls) {
@@ -78,7 +78,7 @@ function startWorker(note) {
     else if (m.type === 'done') { add(m.out); add(m.err, 'err'); status.textContent = 'Ready.'; setBusy(false); }
   };
   mine.onerror = e => { if (mine === worker) { status.textContent = 'Error.'; add('The interpreter stopped: ' + e.message, 'err'); setBusy(false); } };
-  mine.postMessage({ type: 'init', pyo: new URL(PYO, location.href).href, zip: new URL('moxie.zip', location.href).href, gc: gcB.checked });
+  mine.postMessage({ type: 'init', pyo: new URL(PYO, location.href).href, zip: new URL('moxie.zip', location.href).href, gc: GC });
 }
 function needsMore(text) {
   return new Promise(res => { const id = nextId++; waiting[id] = res; worker.postMessage({ type: 'more', id, text }); });
@@ -107,7 +107,6 @@ inp.addEventListener('keydown', e => {
 });
 goB.onclick = onEnter;
 resetB.onclick = () => submit(':reset');
-gcB.onchange = () => { if (worker) worker.terminate(); worker = null; startWorker('New session' + (gcB.checked ? ' (moxie/gc rules).' : '.')); };
 stopB.onclick = () => { if (worker) worker.terminate(); worker = null; add('Stopped. The session was cleared.', 'err'); startWorker(); };
 startWorker();
 </script>
