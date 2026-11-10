@@ -32,8 +32,14 @@ textarea{flex:1;min-width:0;font:inherit;line-height:1.5;color:inherit;backgroun
 <nav id="nav"><a href="./">moxie/gc</a><a href="tutorial.html">Tutorial</a><a href="guide.html">Mixer's Guide</a><a href="spec.html">Spec</a><a href="style.html">Style</a><a href="try.html">Try moxie/gc</a><a href="repl.html">REPL</a><a href="https://github.com/slconverse1/moxie">Source</a></nav>
 <main>
 <h1>moxie/gc REPL</h1>
-<p class="lead">Type an expression and see its value and type: the results are kept in <code>$res1</code>, <code>$res2</code>, ..., where <code>$res1</code> is the most recent result, <code>$res2</code> the result before it, and so on. A result can be used in an expression, as in <code>$res1 + 5</code>. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. It runs in your browser using the reference interpreter, so downloading it is avoided.</p>
-<p class="lead"><code>1 + 2</code> (Enter to run, arrow UP for earlier inputs; scroll UP/DOWN to navigate the REPL box)</p>
+<p class="lead">Type an expression and see its value and type: the results are kept in <code>$res1</code>, <code>$res2</code>, ..., where <code>$res1</code> is the most recent result, <code>$res2</code> the result before it, and so on. A result is created only if the line isn’t a binding (<code>name = value</code>). A result can be used in an expression, as in <code>$res1 + 5</code>. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. REPL runs in your browser using the reference interpreter, so downloading it is avoided.</p>
+<p class="lead">Example:</p>
+<pre class="lead" style="overflow-x:auto">moxie&gt; x: Int = 5   // binding
+moxie&gt; 10           // no binding
+$res1: Int = 10
+moxie&gt; $res1 + x    // no binding
+$res1: Int = 15     // 10 is now $res2</pre>
+<p class="lead">(Enter to run, arrow UP for earlier inputs; scroll UP/DOWN to navigate the REPL box)</p>
 <div class="bar">
   <button id="reset" disabled>Reset session</button>
   <button id="stop" disabled>Stop</button>
