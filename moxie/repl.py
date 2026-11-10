@@ -87,6 +87,8 @@ class Session:
             self.err.write(f"error: {e.msg}\n")
             return
         errs = [d for d in diags if d.kind == "error"]
+        if len(errs) > 1:
+            errs = [d for d in errs if not d.msg.startswith("evaluating ")] or errs     # the compile-time run repeats an error already shown
         for d in diags:
             if d.kind == "warning" and getattr(d, "unverified", True):
                 self.err.write(f"warning: {d.msg}\n")
@@ -149,6 +151,8 @@ class Session:
                 self.err.write(f"error: {e.msg}\n")
                 return
             errs = [d for d in diags if d.kind == "error"]
+            if len(errs) > 1:
+                errs = [d for d in errs if not d.msg.startswith("evaluating ")] or errs
             if errs:
                 for d in errs:
                     self.err.write(f"error: {d.msg}\n")

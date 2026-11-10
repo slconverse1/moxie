@@ -761,3 +761,5 @@ Generics and delegates: `structured_call` now rejects a plain value for a higher
 
 REPL: `moxie/repl.py`, started by `moxie repl`. A `Session` keeps the accepted source (`chunks`) and one persistent module scope; each input is parsed alone, a bare expression is rewritten to `resN = expr`, the session plus the input is checked (`static_check`, and a second `Checker` run whose `top` scope gives the binding's type), and only the new statements run, with `exec_stmts` in the session's scope. `it` is re-bound after every result. Not built: line editing and history (use `rlwrap`), tab completion, and showing a value's type for a unit-returning call.
 
+
+Moxie REPL page (`docs/repl.html`, `docs/repl-worker.js`): the same in-browser setup as Try moxie (Pyodide in a worker, `moxie.zip`), holding one `moxie.repl.Session` whose output goes to StringIO buffers. Enter submits unless the input is unfinished (`needs_more`), Up recalls earlier inputs, "moxie/gc rules" starts a new session, Stop clears the session. The page UI was smoke-tested with a stub worker; the Pyodide path itself mirrors try-worker.js and was not run here (the sandbox cannot reach the Pyodide CDN).
