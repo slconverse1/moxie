@@ -30,7 +30,9 @@ CASES = [
  ("a package function used as a value runs", 'import lib\nxs = List(1, 2)\nprintln(xs |> map(lib.twice) |> collect())\n', "run", "List(2, 4)", LIB),
  ("a method of a package type is checked", 'import lib\nprintln(lib.mk(1).plus("x"))\n', "fail", "expected `Int`, found `String`", LIB2),
  ("a method of a package type runs", 'import lib\nprintln(lib.mk(1).plus(2))\n', "run", "3", LIB2),
- ("a delegate from another module warns", 'import lib (Pct)\ntuple Gauge:\n  level: Int delegate(Pct)\nprintln("hi")\n', "run", "declared in another module", 'export tuple Pct:\n  value: Int\nimpl Pct:\n  export fn get_value(self: Pct) Int:\n    self.value\n  export fn set_value(self: Pct, v: Int) Result[Unit, Error]:\n    Ok(())\n'),
+ ("a delegate from another module gets its set function", 'import lib (Pct)\ntuple Gauge:\n  level: Int delegate(Pct)\nfn bump(g: Gauge) Result[Gauge, Error]:\n  g.set_level(9)\nwhen Gauge(level: 5):\n  Ok(g) -> println(bump(g))\n  Err(e) -> println(e)\n', "run", "Ok(Gauge(level: 5))", 'export tuple Pct:\n  value: Int\nimpl Pct:\n  export fn get_value(self: Pct) Int:\n    self.value\n  export fn set_value(self: Pct, v: Int) Result[Unit, Error]:\n    Ok(())\n'),
+ ("a higher-kinded parameter is checked against a plain value", 'fn lift[F[_]: Functor, A, B](x: F[A], f: (A) -> B) F[B]:\n  x.map(f)\nprintln(lift("abc", (a): a + 1))\n', "fail", "takes a type argument", None),
+ ("a nested generic parameter is checked", 'fn flat[T](xs: List[List[T]]) Int:\n  len(xs)\nprintln(flat(List(1, 2)))\n', "fail", "expected `List[T]`, found `Int`", None),
  ("a package type is the package's own", 'import lib\nprintln(lib.unbox(lib.mk(3)))\n', "run", "3", LIB),
 ]
 

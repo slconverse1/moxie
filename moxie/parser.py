@@ -17,7 +17,7 @@ class Parser(ExprParser):
         stmts = self.parse_stmts_until_dedent(top=True)
         if self.peek().kind != "EOF":
             self.err(f"unexpected {self.describe(self.peek())}")
-        stmts = expand_delegates(stmts)
+        stmts = expand_delegates(stmts, self.file)
         return Block(group_fns(stmts), line=1)
 
     def parse_stmts_until_dedent(self, top=False):
@@ -971,10 +971,12 @@ def _with_setter(td, p, ln):
     return fn
 
 
-def expand_delegates(stmts):
-    """For a delegate field whose `set_value` returns a `Result` (the delegate is declared in this module), a visible
-    `set_NAME(v) Result[Self, Error]` in an implicit impl, like the one a property with a failing setter gets."""
-    import copy
+_DELEGATE_BUSY = set()
+SEARCH_DIR = [None]        # where imported packages are found, set by the interpreter before it parses the entry file
+
+
+def failing_delegates(stmts):
+    """The names of the types in `stmts` whose `set_value` returns a `Result`."""
     failing = set()
     for s in stmts:
         if s.__class__ is ImplDecl and s.target.__class__ is TName and s.target.path:
@@ -982,6 +984,45 @@ def expand_delegates(stmts):
                 for fn in (m.clauses if m.__class__ is FnGroup else [m]):
                     if fn.__class__ is FnDecl and fn.name == "set_value" and fn.ret.__class__ is TName and fn.ret.path == ["Result"]:
                         failing.add(s.target.path[-1])
+    return failing
+
+
+def imported_failing_delegates(stmts, file):
+    """The same for the packages this module imports, so a delegate declared elsewhere gets its `set_NAME` too."""
+    import os
+    from .packages import package_files, parse_package
+    from .stdpkg import find_std
+    out = set()
+    for s in stmts:
+        if s.__class__ is not ImportDecl:
+            continue
+        try:
+            base = SEARCH_DIR[0] if SEARCH_DIR[0] is not None else (os.path.dirname(os.path.abspath(file)) if file and not file.startswith("<") else None)
+            found = package_files(base, s.pkg)
+            if found is not None:
+                paths = found[0]
+            else:
+                one = find_std(s.pkg)
+                paths = [one] if one else []
+            if not paths or any(p in _DELEGATE_BUSY for p in paths):
+                continue
+            _DELEGATE_BUSY.update(paths)
+            try:
+                out |= failing_delegates(parse_package(paths)[1].stmts)
+            finally:
+                _DELEGATE_BUSY.difference_update(paths)
+        except Exception:
+            continue
+    return out
+
+
+def expand_delegates(stmts, file=None):
+    """For a delegate field whose `set_value` returns a `Result` (declared in this module or in an imported package), a visible
+    `set_NAME(v) Result[Self, Error]` in an implicit impl, like the one a property with a failing setter gets."""
+    import copy
+    failing = failing_delegates(stmts)
+    if any(s.__class__ is TupleDecl and any(f.delegate is not None for f in s.fields or []) for s in stmts):
+        failing |= imported_failing_delegates(stmts, file)
     out = []
     for s in stmts:
         out.append(s)

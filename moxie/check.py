@@ -364,10 +364,8 @@ class Checker:
             if len(clauses) != 1 or "export" not in (clauses[0].flags or ()):
                 continue
             fd = clauses[0]
-            if fd.alias is not None or fd.guard is not None or any(getattr(tp, "holes", None) for tp in fd.tparams or []):
-                if wanted is None:
-                    self.pkg_unchecked[f"{alias}.{fd.name}"] = "has higher-kinded type parameters"
-                continue                # a higher-kinded parameter is left to the run time check
+            if fd.alias is not None or fd.guard is not None:
+                continue
             tps = {tp.name for tp in fd.tparams or []}
             c = copy.copy(fd)
             c.body = None
@@ -562,15 +560,6 @@ class Checker:
                     if ps and ps[0].name == "self" and ps[0].type is None and self.is_res_type(st.target) and keeps(m, "self"):
                         self.method_consumes.add((tn, m.name))
         self.add_pkg_methods()
-        for tn, td in self.tuples.items():
-            for f in td.fields or []:
-                d = f.delegate
-                if d.__class__ is TName and d.path and d.path[-1] not in self.tuples and d.path[-1] not in self.enums \
-                        and "." not in tn and self.delegate_fails(f):
-                    self.warn_unverified(getattr(f, "line", None) or getattr(td, "line", 0),
-                                         f"`{tn}.{f.name}` delegates to `{d.path[-1]}`, declared in another module, and its setter can reject a value. "
-                                         f"A plain write is a compile error, but no `set_{f.name}` is generated for it here: declare the delegate in this module to get one.")
-
     def add_pkg_methods(self):
         for k, m in self.pkg_methods.items():
             self.methods.setdefault(k, m)
@@ -4209,6 +4198,10 @@ class Checker:
                         binds[pt[1]] = j
                 continue
             bt0 = self.base(t)
+            if bt0.__class__ is str and bt0 in self.SCAL and pt[0] in ("appv", "fn"):
+                shown = tshow(pt) if pt[0] == "fn" else f"{pt[1]}[...]"
+                self.err(n.line, f"mismatched types: `{p.name}` of `{fd.name}` is {'a function' if pt[0] == 'fn' else 'a type that takes a type argument'} (`{shown}`), found `{tshow(bt0)}`")
+                return None
             if pt[0] == "app" and pt[1] == "Array" and len(pt) > 3 and bt0.__class__ is tuple and bt0[0] == "tup" and len(bt0) == 2 and bt0[1]:
                 el = None
                 for it in bt0[1]:
@@ -4218,6 +4211,11 @@ class Checker:
                 bt0 = ("app", "Array", (None if el == "conflict" else el,), len(bt0[1]))        # a literal `(1, 2)` is an array of size 2
                 t = bt0
             clash = tys.unify(pt, self.base(t), binds)
+            if clash and any(getattr(tp, "holes", None) for tp in fd.tparams or []):
+                return None                  # a partly applied type constructor (`Result[_, E]` for `M[_]`) isn't compared yet
+            if clash and clash[0].__class__ is tuple and clash[0][0] == "app" and clash[1].__class__ is str:
+                self.err(n.line, f"mismatched types: expected `{tshow(clash[0])}`, found `{tshow(clash[1])}` (in the argument for `{p.name}` of `{fd.name}`)")
+                return None
             if clash:
                 self.err(n.line, f"`{fd.name}` needs one type for its type parameters, but `{p.name}` gets `{tshow(t)}` where `{tshow(clash[0])}` was fixed by another argument"
                          if clash[0] is not None else f"mismatched types in call to `{fd.name}`")

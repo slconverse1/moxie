@@ -433,7 +433,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
 
     def load_source(self, src, file="<input>"):
         self.file = file
-        return parse_program(src, file)
+        from . import parser as _parser
+        _parser.SEARCH_DIR[0] = self.search_dir
+        try:
+            return parse_program(src, file)
+        finally:
+            _parser.SEARCH_DIR[0] = None
 
     # ------------------------------------------------------------ literals / names
     def ev_IntLit(self, n, env):

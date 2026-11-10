@@ -325,6 +325,9 @@ def unify(pat, act, binds):
             return (cur, act)
         binds[pat[1]] = j
         return None
+    if pat.__class__ is tuple and pat[0] == "app" and pat[1] in ("List", "Array", "Set", "Dict", "Result", "Ring") \
+            and act.__class__ is str and act in ("Int", "Float", "String", "Bool", "Char", "Decimal", "Unit"):
+        return (pat, act)                # a plain value where a collection or a Result is wanted
     if pat.__class__ is not tuple or act.__class__ is not tuple:
         return None
     if pat[0] == "appv":
