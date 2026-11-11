@@ -2975,37 +2975,42 @@ class Checker:
         return any(getattr(p, "set", None).__class__ is tuple and p.set[3] is not None for p in (getattr(td, "props", None) or []))
 
     def check_fmt(self, n, sc):
-        """`fmt(template, args...)`: with a literal template, the field count and each spec are checked against the arguments
-        at compile time; with any other template, say so and how to get the check.  The result is `Result[String, Error]`."""
+        """`fmt(template, args...)` (a `String`) and `try_fmt(template, args...)` (a `Result[String, Error]`).  With a literal
+        template the field count and each spec are checked against the arguments at compile time.  `fmt` needs a literal
+        template, because it can't fail; `try_fmt` takes any template and reports a bad one at run time."""
         from .core import fmt_parse
+        name = n.fn.name
         line = getattr(n, "line", 0) or self.cur_line
         tys = [self.ev(a.expr, sc)[0] for a in n.args]
         first = n.args[0].expr
         literal = first.__class__ is StrLit and all(isinstance(p, str) for p in first.parts or [])
         spread = any(a.mod == "spread" for a in n.args[1:])
-        if not literal or spread:
-            self.warn_unverified(line, "`fmt` can't check this template and its arguments at compile time" +
-                                 (" because the arguments are spread" if literal else " because the template is not a string literal") +
-                                 "; write the template as a literal with one argument for each field to check this at compile time instead of runtime")
-        else:
+        if name == "fmt" and not literal:
+            self.err(line, "`fmt` needs a string-literal template so the compiler can check it; "
+                           "use `try_fmt(template, ...)` for a template that comes from data (it returns a `Result`)")
+        elif name == "fmt" and spread:
+            self.err(line, "`fmt` can't check spread arguments at compile time; use `try_fmt(template, ...)`, which returns a `Result`")
+        elif literal and not spread:
             try:
                 fields = [x for x in fmt_parse("".join(first.parts)) if x.__class__ is tuple]
             except ValueError as e:
-                self.err(line, f"bad `fmt` template: {e}")
+                self.err(line, f"bad `{name}` template: {e}")
                 fields = None
             if fields is not None:
                 if len(fields) != len(n.args) - 1:
-                    self.err(line, f"this `fmt` template has {len(fields)} field{'' if len(fields) == 1 else 's'}, "
+                    self.err(line, f"this `{name}` template has {len(fields)} field{'' if len(fields) == 1 else 's'}, "
                                    f"but {len(n.args) - 1} argument{'' if len(n.args) == 2 else 's'} {'is' if len(n.args) == 2 else 'are'} given")
                 else:
                     for (_, spec), t in zip(fields, tys[1:]):
                         mt = re.search(r"([dxXobfeE%n])$", spec or "")
                         if mt and t in ("String", "Bool", "Char"):
                             self.err(line, f"the format type `{mt.group(1)}` needs a number, but this is a `{t}`")
+        if name == "fmt":
+            return "String", None
         return ("app", "Result", ("String", ("named", "Error"))), set()
 
     def _e_Call(self, n, sc, extra=0):
-        if n.fn.__class__ is Name and n.fn.name == "fmt" and "fmt" not in self.fns and sc.find("fmt") is None and n.args:
+        if n.fn.__class__ is Name and n.fn.name in ("fmt", "try_fmt") and n.fn.name not in self.fns and sc.find(n.fn.name) is None and n.args:
             return self.check_fmt(n, sc)
         n = self.pkg_redirect(n, sc)
         pipe0 = self.pipe_ty

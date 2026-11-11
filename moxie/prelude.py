@@ -421,9 +421,9 @@ def b_from_utf8(I, a, kw, ta):
         return err_reserved("BAD_ENCODING", "from_utf8: the bytes are not valid UTF-8")
 
 
-@bi("fmt")
-def b_fmt(I, a, kw, ta):
-    """`fmt(template, args...)`: fills each `{}` or `{:spec}` in the template with the next argument, formatted like `${x:spec}`.
+@bi("try_fmt")
+def b_try_fmt(I, a, kw, ta):
+    """`try_fmt(template, args...)`: fills each `{}` or `{:spec}` in the template with the next argument, formatted like `${x:spec}`.
     `{{` and `}}` are literal braces.  A bad template, the wrong number of arguments, or a spec the value doesn't fit gives
     an `Err` (BAD_FORMAT), never an abort."""
     vals = list(a[1:])
@@ -442,6 +442,15 @@ def b_fmt(I, a, kw, ta):
     except (ValueError, Abort) as e:
         return err_reserved("BAD_FORMAT", str(e))
     return Ok("".join(out))
+
+
+@bi("fmt")
+def b_fmt(I, a, kw, ta):
+    """`fmt(template, args...)`: the same as `try_fmt`, for a literal template the compiler has already checked, so it gives the text itself."""
+    r = b_try_fmt(I, a, kw, ta)
+    if not is_ok(r):
+        raise Abort("fmt: " + str(r.vals[0]))
+    return r.vals[0]
 
 
 @bi("to_utf8")
