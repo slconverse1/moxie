@@ -3061,9 +3061,32 @@ class Checker:
             return "String", None
         return ("app", "Result", ("String", ("named", "Error"))), set()
 
+    def type_node_text(self, t):
+        if t.__class__ is not TName:
+            return "…"
+        gs = [x for grp in t.groups or [] for x in (grp if isinstance(grp, (list, tuple)) else [grp])]
+        return ".".join(t.path) + (f"[{', '.join(self.type_node_text(x) for x in gs)}]" if gs else "")
+
+    def check_poly_rec(self, n, sc):
+        """Polymorphic recursion: a generic function that calls itself with a type argument that is not its own parameter
+        (`nest[Pair, Pair[A]](...)` inside `nest[F[_], A]`). One copy is made per type, so the copies would never end."""
+        fd, g = getattr(self, "cur_fn", None), n.fn
+        if fd is None or not fd.tparams or g.__class__ is not GenApp or g.base.__class__ is not Name or g.base.name != fd.name \
+                or sc.find(fd.name) is not None and sc.find(fd.name).kind is not None:
+            return
+        names = [t.name for t in fd.tparams]
+        for i, t in enumerate((g.groups or [[]])[0]):
+            same = t.__class__ is TName and len(t.path) == 1 and not t.groups and i < len(names) and t.path[0] == names[i]
+            if not same and self.mentions_type(t, names):
+                shown = self.type_node_text(t)
+                self.err(n.line, f"`{fd.name}` calls itself with a different type each time (`{shown}` for `{names[i] if i < len(names) else '?'}`): "
+                                 "a copy is compiled for each type, so this could never finish. Use a recursive data type instead")
+                return
+
     def _e_Call(self, n, sc, extra=0):
         if n.fn.__class__ is Name and n.fn.name in ("fmt", "try_fmt") and n.fn.name not in self.fns and sc.find(n.fn.name) is None and n.args:
             return self.check_fmt(n, sc)
+        self.check_poly_rec(n, sc)
         n = self.pkg_redirect(n, sc)
         pipe0 = self.pipe_ty
         self.cur_sc = sc
@@ -4574,6 +4597,7 @@ class Checker:
         for p_ in n.params or []:
             if p_.mod == "using" and p_.type is not None and self.is_res_type(p_.type):
                 self.err(n.line, f"parameter `{p_.name}` of `{n.name}` is a resource type, and a resource can't be injected with `using` (it has one owner: pass it, or `move` it)")
+        saved_fn, self.cur_fn = getattr(self, "cur_fn", None), n
         saved = (self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars)
         self.tp_vars = {}
         saved_any, self.any_params = self.any_params, {}
@@ -4638,6 +4662,7 @@ class Checker:
                 self.check_tailrec(n)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
         self.any_params = saved_any
+        self.cur_fn = saved_fn
         self.tp_decl = saved_decl
         return None, None
 

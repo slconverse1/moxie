@@ -25,7 +25,7 @@ There is no run-time cost. Each use is compiled for its concrete container (the 
 1. Type constructors as functions on types (`Box`, `List`, `Result[_, E]`).
 2. `F[_]` and `F[_, _]`; bounds go after: `[F[_]: Monad]`.
 3. The `twice` example above, then "why you can't do this without it" (three copies).
-4. Club framing: `Monad` is a club for type constructors, not for types. `impl Monad[Box]:` has no `for`.
+4. Club framing (the set parenthetical is in the membership passage, so only repeat it if this section comes first): `Monad` is a club for type constructors, not for types. `impl Monad[Box]:` has no `for`.
 5. Calls with no receiver go through the parameter: `F.pure(x)`.
 6. Partly applied constructors: `Result[_, E]` fixes `E`. Type lambdas fix any argument.
 7. "Names you may know": higher-kinded types (Scala, Haskell), constructor classes (Haskell).
@@ -34,6 +34,6 @@ There is no run-time cost. Each use is compiled for its concrete container (the 
 ## Limits to state honestly (found by testing)
 
 - Partly applied constructors against `M[_]` are not compared by the checker (already Spec 24a).
-- **Polymorphic recursion** (a function that calls itself at a different constructor each time, like `nest` with `Pair`): the interpreter accepts and runs it, because it does not specialize. A compiler that specializes per use would never finish. Needs a decision: reject it at compile time with a clear error, or document it as interpreter-only. I recommend rejecting it.
+- **Polymorphic recursion** (a function that calls itself at a different constructor each time, like `nest` with `Pair`): the interpreter accepts and runs it, because it does not specialize. A compiler that specializes per use would never finish. DECIDED (Steve): reject. Done in check.py (`check_poly_rec`), explicit type arguments only; inferred or mutual recursion is not caught. Spec type-constructor bullet updated.
 - **Ownership:** not tested. I did not check whether `map` over a container holding resources obeys move/ownership rules in `F[_]` code. The docs should not claim it until a test shows it.
 - `Option`'s constructor name is not `Some` in the prelude; check the actual name before using Option in examples.
