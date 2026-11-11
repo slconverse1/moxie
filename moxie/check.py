@@ -262,6 +262,7 @@ class Checker:
         self.in_tfun = False
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
+        self.union_vars = {}             # Var of a parameter typed with a `type union` -> the names of its members
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
         self.consts = {}                 # top-level constant bindings the compiler could evaluate
         self.tf_fuel = TF_FUEL
@@ -1650,10 +1651,44 @@ class Checker:
         self.ev(n.r, sc)
         return "Bool", None
 
+    def union_members(self, t, depth=0):
+        """The names of the members of a written type that is a `type union` (a nested union flattened), else None."""
+        if depth > 6 or t.__class__ is not TName or len(t.path) != 1 or t.groups:
+            return None
+        a = self.aliases.get(t.path[0])
+        if a is None or a.kind != "union" or a.tparams or a.type.__class__ is not TUnion:
+            return None
+        out = []
+        for m in a.type.members:
+            if m.__class__ is not TName or len(m.path) != 1 or m.groups:
+                return None
+            sub = self.union_members(m, depth + 1)
+            out.extend(sub if sub is not None else [m.path[0]])
+        return out
+
+    def narrowed_type(self, v, p):
+        """The type a variable `v` has inside a branch taken by the pattern `p`: for a union, the member the pattern names; for an
+        `any I`, the concrete type it names.  None when there is nothing to narrow."""
+        if v is None:
+            return None
+        if p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is not PCon or len(p.path) != 1:
+            return None
+        nm = p.path[0]
+        members = self.union_vars.get(v)
+        if members is not None and nm in members:
+            return self.ty_of_type(TName([nm], []))
+        at = self.any_vars.get(v)
+        if at is not None and (nm in self.tuples or nm in self.enums) and not (self.tuples.get(nm) or self.enums.get(nm)).tparams:
+            return ("named", nm)
+        return None
+
     def e_IsOp(self, n, sc):
         self.ev(n.e, sc)
+        nt = self.narrowed_type(sc.find(n.e.name), n.pat) if n.e.__class__ is Name else None
         for nm in self.pat_names(n.pat):
-            sc.vars[nm] = Var(None, False, self.loop_depth)
+            sc.vars[nm] = Var(nt if (nt is not None and n.pat.__class__ is PAs and n.pat.name == nm) else None, False, self.loop_depth)
         return "Bool", None
 
     SCAL = {"Int", "Float", "String", "Bool", "Char", "Decimal", "Unit"}
@@ -2665,6 +2700,14 @@ class Checker:
             for p in a.pats or []:
                 self.bind_pat(p, inner, st if n.scrut is not None else None)
                 self.check_pat_names(p, inner)
+            if n.scrut.__class__ is Name and len(a.pats or []) == 1:
+                v0 = sc.find(n.scrut.name)
+                nt = self.narrowed_type(v0, a.pats[0])
+                if nt is not None:
+                    inner.vars[n.scrut.name] = Var(nt, v0.resource, v0.depth)      # inside this arm the value has the narrowed type
+                    if a.pats[0].__class__ is PAs:
+                        inner.vars[a.pats[0].name] = Var(nt, v0.resource, v0.depth)
+            for p in a.pats or []:
                 if n.scrut is not None:
                     self.check_pat_fit(p, st, getattr(p, "line", 0) or n.line)
             if a.guard is not None:
@@ -4560,6 +4603,9 @@ class Checker:
                     inner.vars[p.name].inttype = p.type.path[0]
                 if self.any_params.get(p.name, (None,))[0] == "any":
                     self.any_vars[inner.vars[p.name]] = self.any_params[p.name]
+                um = self.union_members(p.type)
+                if um is not None and not res:
+                    self.union_vars[inner.vars[p.name]] = um
                 tp = self.bare_tparam(n, p.type)
                 if tp is not None:
                     self.tp_vars[inner.vars[p.name]] = tp

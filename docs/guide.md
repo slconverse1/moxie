@@ -1998,6 +1998,8 @@ for s in crowd:
 
 Output: `a dog named Rex`, then `a robot, Robot(serial: 7)`. In `Dog(name)`, the parentheses take the dog apart like any tuple pattern, so `name` is the dog's first field (a `String`), not the dog. In `r@Robot()`, `r@` names the whole value, so `r` is the `Robot` itself, and the empty parentheses mean no fields are taken. `d@Dog(name)` gives both. **Mistakes:** writing `Int(n)` for a scalar (use `n@Int`), and expecting `Dog(d)` to bind the whole `Dog` (it binds the first field).
 
+Inside an arm, the variable has the narrowed type: in the `Int` arm above, `v` is an `Int`, so `len(v)` there is a compile error, and in the `String` arm `v + 1` is one. The same holds for a parameter typed `any Speaker` inside a `d@Dog() ->` arm, where `d.serial` is a compile error because a `Dog` has no `serial`.
+
 **Chapter 13: Streams and loops**
 
 ```
