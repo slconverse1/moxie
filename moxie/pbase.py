@@ -401,6 +401,11 @@ class PBase:
             while self.at_op(".") and self.peek(1).kind == "NAME":
                 self.next()
                 path.append(self.next().val)
+            if self.at_op("[") and not self.peek().sp and path[-1][:1].isupper():
+                groups = []                                  # `List[Int] ->`: a type with arguments, as a union member pattern
+                while self.at_op("[") and not self.peek().sp:
+                    groups.append(self.parse_targ_group())
+                return PTyped(PWild(line=line), TName(path, groups, line=line), line=line)
             if self.at_op("(") and not self.peek().sp or (self.at_op("(") and v[:1].isupper()):
                 self.next()
                 args = self.parse_pattern_args()

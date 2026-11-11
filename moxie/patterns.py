@@ -83,6 +83,8 @@ class PatternsMixin:
                 return v < x
             except TypeError:
                 return False
+        if c is PTyped:
+            return self.pat_type_matches(v, p.type, env) and self.pmatch(p.pat, v, b, env)
         if c is PTuple:
             return self.match_tuple(p, v, b, env)
         if c is PCon:
@@ -211,6 +213,16 @@ class PatternsMixin:
         if args and not any(l is not None or q.__class__ is PRest for l, q in args) and len(args) != n:
             return False
         return True
+
+    def pat_type_matches(self, v, t, env):
+        """`List[Int]` as a pattern: the head must match and every item must match the item type (an empty list has no
+        items, so it matches any `List[...]`)."""
+        if t.__class__ is TName and t.groups and t.groups[0] and t.path[-1] in ("List", "Array"):
+            if not (isinstance(v, Seq) and type_name(v) == t.path[-1]):
+                return False
+            et = t.groups[0][0]
+            return all(self.pat_type_matches(x, et, env) for x in v.items)
+        return self.type_matches(v, t, env)
 
     def match_con(self, p, v, b, env):
         name = p.path[-1]

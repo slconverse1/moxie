@@ -1987,6 +1987,8 @@ println(describe("hi"))
 
 Output: `the number 42`, then `the text hi`. A union is exhaustive without a `_` arm. An `any` value is taken apart the same way, with a `_` arm because the full set of types isn't known. What a name in the arm refers to depends on how you write it:
 
+Members with type arguments work the same way. With `type union Data = List[Int] | List[String] | Int`, the arms `List[Int] ->` and `xs@List[String] ->` take a `Data` apart, and inside each arm the value has that list type, so `d(0) + 1` is checked as an `Int` addition in the first and rejected in the second. `d is List[Int]` is the same test as a condition.
+
 ```
 interface Speaker:
   fn speak(self) String

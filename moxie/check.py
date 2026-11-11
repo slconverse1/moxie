@@ -1660,8 +1660,11 @@ class Checker:
             return None
         out = []
         for m in a.type.members:
-            if m.__class__ is not TName or len(m.path) != 1 or m.groups:
+            if m.__class__ is not TName or len(m.path) != 1:
                 return None
+            if m.groups:
+                out.append(self.type_node_text(m))          # `List[Int]`: a member is named by its written type
+                continue
             sub = self.union_members(m, depth + 1)
             out.extend(sub if sub is not None else [m.path[0]])
         return out
@@ -1673,6 +1676,11 @@ class Checker:
             return None
         if p.__class__ is PAs:
             p = p.pat
+        if p.__class__ is PTyped and p.pat.__class__ is PWild and p.type.__class__ is TName:
+            members = self.union_vars.get(v)
+            if members is not None and self.type_node_text(p.type) in members:
+                return self.ty_of_type(p.type)
+            return None
         if p.__class__ is not PCon or len(p.path) != 1:
             return None
         nm = p.path[0]
