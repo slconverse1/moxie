@@ -1,5 +1,5 @@
 //! The first slices of moxie's lexer, written in moxie. `lex` reads names, numbers (decimal, hex, octal, binary, `_` separators, exponents, and suffixes), strings without
-//! interpolation, operators, comments, and line breaks. `structure` turns those tokens into logical lines with `NL`, `INDENT`,
+//! interpolation (also raw strings), chars, byte strings and chars, block comments, operators, comments, and line breaks. `structure` turns those tokens into logical lines with `NL`, `INDENT`,
 //! and `DEDENT`, and `lex_lines` does both. They give the same tokens as the Python lexer for that part.
 //! `tests/run_selfhost.py` checks it against `moxie/lexer.py`.
 
@@ -121,13 +121,61 @@ fn scan_number(cs: List[Char], st: Lx) Lx:
   else:
     scan_decimal(cs, st)
 
-fn scan_string(cs: List[Char], st: Lx) Lx:
-  j = st.i + 1
-  end = while j < len(cs) and cs(j) ~= '"':
+// A quoted token whose opening is `open` characters long (`"`, `'`, `b"`, `b'`) and whose closing character is `quote`.
+// A backslash skips the character after it, so `\"` and `\'` do not end the token.
+fn scan_quoted(cs: List[Char], st: Lx, open: Int, quote: Char, kind: String) Lx:
+  j = st.i + open
+  end = while j < len(cs) and cs(j) ~= quote:
     j = if cs(j) == '\\': j + 2 else: j + 1
   else:
     j
-  emit(st, "STR", text_of(cs, st.i, end + 1), end + 1)
+  emit(st, kind, text_of(cs, st.i, end + 1), end + 1)
+
+// How many `#` follow the `r` at `i`, when they are followed by `"` (a raw string opens there), otherwise -1.
+fn raw_hashes(cs: List[Char], i: Int) Int:
+  h = skip_while(cs, i + 1, (c): c == '#') - (i + 1)
+  if i + 1 + h < len(cs) and cs(i + 1 + h) == '"': h else: -1
+
+// Does a raw string that opened with `h` hashes close at `k` (a `"` followed by `h` hashes)?
+fn raw_closes(cs: List[Char], k: Int, h: Int) Bool:
+  k + h < len(cs) and cs(k) == '"' and skip_while(cs, k + 1, (c): c == '#') - (k + 1) >= h
+
+fn scan_raw(cs: List[Char], st: Lx, h: Int) Lx:
+  j = st.i + 2 + h
+  end = while j < len(cs) and not raw_closes(cs, j, h):
+    j = j + 1
+  else:
+    j
+  stop = end + 1 + h
+  emit(st, "STR", text_of(cs, st.i, stop), stop)
+
+// A block comment, which nests. Its line breaks move the line count but make no `NL`.
+tuple Cm:
+  k: Int,
+  depth: Int,
+  line: Int,
+  ls: Int
+
+fn pair_at(cs: List[Char], k: Int, a: Char, b: Char) Bool:
+  k + 1 < len(cs) and cs(k) == a and cs(k + 1) == b
+
+fn comment_step(cs: List[Char], c: Cm) Cm:
+  if pair_at(cs, c.k, '/', '*'):
+    Cm(...c, k: c.k + 2, depth: c.depth + 1)
+  elif pair_at(cs, c.k, '*', '/'):
+    Cm(...c, k: c.k + 2, depth: c.depth - 1)
+  elif cs(c.k) == '\n':
+    Cm(...c, k: c.k + 1, line: c.line + 1, ls: c.k + 1)
+  else:
+    Cm(...c, k: c.k + 1)
+
+fn skip_block_comment(cs: List[Char], st: Lx) Lx:
+  c = Cm(k: st.i + 2, depth: 1, line: st.line, ls: st.line_start)
+  done = while c.k < len(cs) and c.depth > 0:
+    c = comment_step(cs, c)
+  else:
+    c
+  Lx(...st, i: done.k, line: done.line, line_start: done.ls)
 
 fn scan_operator(cs: List[Char], st: Lx) Lx:
   op = op_at(cs, st.i)
@@ -146,13 +194,23 @@ fn step(cs: List[Char], st: Lx) Lx:
     Lx(...st, i: st.i + 1)
   elif c == '/' and st.i + 1 < len(cs) and cs(st.i + 1) == '/':
     Lx(...st, i: skip_while(cs, st.i, (d): d ~= '\n'))
+  elif c == '/' and pair_at(cs, st.i, '/', '*'):
+    skip_block_comment(cs, st)
+  elif c == 'r' and raw_hashes(cs, st.i) >= 0:
+    scan_raw(cs, st, raw_hashes(cs, st.i))
+  elif c == 'b' and pair_at(cs, st.i, 'b', '"'):
+    scan_quoted(cs, st, 2, '"', "BYTES")
+  elif c == 'b' and pair_at(cs, st.i, 'b', '\''):
+    scan_quoted(cs, st, 2, '\'', "BCHAR")
   elif is_id_start(c):
     end = skip_while(cs, st.i, is_id_char)
     emit(st, "NAME", text_of(cs, st.i, end), end)
   elif is_digit(c):
     scan_number(cs, st)
   elif c == '"':
-    scan_string(cs, st)
+    scan_quoted(cs, st, 1, '"', "STR")
+  elif c == '\'':
+    scan_quoted(cs, st, 1, '\'', "CHAR")
   else:
     scan_operator(cs, st)
 
@@ -191,9 +249,7 @@ fn last_of(xs: List[Token]) Token:
 
 fn group_step(g: Gp, t: Token) Gp:
   if t.kind == "NL":
-    g
-  elif len(g.cur) > 0 and t.line ~= last_of(g.cur).line:
-    Gp(rows: g.rows + List(g.cur), cur: List(t))
+    if len(g.cur) > 0: Gp(rows: g.rows + List(g.cur), cur: List[Token]()) else: g
   else:
     Gp(...g, cur: g.cur + t)
 
@@ -303,7 +359,7 @@ export fn structure(toks: List[Token], last_line: Int) List[Token]:
 // Every token of `src`, with logical lines.
 export fn lex_lines(src: String) List[Token]:
   toks = lex(src)
-  structure(toks, 1 + (toks |> to_stream() |> filter((t): t.kind == "NL") |> count()))
+  structure(toks, 1 + (chars(src) |> filter((c): c == '\n') |> count()))
 
 fn show_token(t: Token) String:
   "${t.kind}\t${t.text}\t${t.line}\t${t.col}"

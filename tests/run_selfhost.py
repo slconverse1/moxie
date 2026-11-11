@@ -8,13 +8,13 @@ sys.path.insert(0, ROOT)
 from moxie.lexer import Lexer, MoxieSyntaxError
 
 SNIPPETS = ["x = 1 + 2.5", "fn add(a: Int, b: Int) Int:", "  a + b", "println(\"hi there\")", "xs |> map(f) |> collect()",
-            "a ~= b and c <= d", "n = 0xFF_FFu8 + 0b1010 + 0o17 + 1_000", "x = 1.5e-3 + 2E4 + 3.0f + 5d + 10ms + 2h", "t = 7u32 + 8i64", "y = f(x) // a comment", "t = (1, 2, 3)", "...rest", "n >>= 2", "s = \"a\\\"b\"", "v = xs(0)"]
-KINDS = {"NAME", "INT", "FLOAT", "DUR", "DEC", "STR", "OP"}
+            "a ~= b and c <= d", "n = 0xFF_FFu8 + 0b1010 + 0o17 + 1_000", "x = 1.5e-3 + 2E4 + 3.0f + 5d + 10ms + 2h", "t = 7u32 + 8i64", "c = 'a' + '\\n' + '\\'' + '\\u{41}'", "b = b\"GET /\" + b'\\x7F'", "r = r\"C:\\t\" + r#\"a\"b\"#", "x = 1 /* a\n b */ + 2", "y /* c /* nested */ d */ = 3", "// r\"not raw", "r = r + b", "y = f(x) // a comment", "t = (1, 2, 3)", "...rest", "n >>= 2", "s = \"a\\\"b\"", "v = xs(0)"]
+KINDS = {"NAME", "INT", "FLOAT", "DUR", "DEC", "STR", "CHAR", "BCHAR", "BYTES", "OP"}
 STRUCT = {"NL", "INDENT", "DEDENT", "EOF"}
 
 def supported(ln):
     """True when this one line stays inside the part the moxie lexer covers."""
-    if "\t" in ln or "/*" in ln:
+    if "\t" in ln:
         return False
     try:
         toks = Lexer(ln).tokenize()
