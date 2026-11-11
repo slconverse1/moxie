@@ -1973,6 +1973,20 @@ println(describe(p))
 
 Output: `Array(202, 33, 0, 2, 104, 105, 88, 89, 90)`, then `v2 k1 size 2 body 2 rest 3`. A value that does not fit its kind (`300: u8`) aborts. Arms that cover every length need no `_`: `Bin()`, `Bin(a: u8)`, and `Bin(a: u8, b: u8, rest: bytes)` together do, and the compiler names the first length that no arm covers. An arm with a literal, a guard, or a `bytes(n)` sized by a field earns no credit, so those still need a `_` arm.
 
+**Taking a value apart by its type.** A union, or an `any` value, carries a small tag with its type, and `when` reads it. A bare type is an arm (`Int ->`), and `n@Int` also binds the value itself, so `n` is an `Int` in that arm:
+
+```
+type union Value = Int | String
+fn describe(v: Value) String:
+  when v:
+    n@Int -> "the number ${n + 1}"
+    s@String -> "the text ${s}"
+println(describe(41))
+println(describe("hi"))
+```
+
+Output: `the number 42`, then `the text hi`. A union is exhaustive without a `_` arm. An `any Speaker` value is taken apart the same way, with a `_` arm because the full set of types isn't known: `d@Dog() -> ...` binds the `Dog` itself, and `Dog(name) -> ...` binds its fields. **Mistakes:** writing `Int(n)` for a scalar (use `n@Int`), and expecting `Dog(d)` to bind the whole `Dog` (it binds the first field).
+
 **Chapter 13: Streams and loops**
 
 ```

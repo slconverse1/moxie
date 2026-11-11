@@ -1128,7 +1128,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 
   Output: `7 hi! yo!!`. Other languages handle this with a family of types or overloads (Scala's function types come as `Function1` through `Function22`, with a catch-all for longer lists, and Scala 3 dropped the old 22-argument limit), or with a feature like C++'s variadic templates. In moxie it falls out of tuple and parameter-list unification. The limit is that a wrapper can pass an argument list along but can't add or remove an argument, because moxie has no way to take a tuple type apart.
 - **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `Result`, so `fn double_in[F[_]: Monad](m: F[Int])` works for any monad without being written twice.
-- **No cost at run time.** The compiler builds one specialized copy of the function for each set of types it's actually used with. There's no boxing, no run-time type information, and no call through a table. The price is code size, and that's the trade moxie makes on purpose, in keeping with FCFX.
+- **No cost at run time.** The compiler builds one specialized copy of the function for each set of types it's actually used with. There's no boxing, no run-time type information on ordinary values (see superpower 27), and no call through a table. The price is code size, and that's the trade moxie makes on purpose, in keeping with FCFX.
 
 ## 18. Interfaces and impls (a.k.a. typeclasses)
 
@@ -1605,7 +1605,23 @@ Output: `ada (1, "a", true) Array(1, 2) Ada Array(1, 2, 3, 4, 5)`. Change any of
 
 Scala does much of this with implicits and inline code, and C++ with templates. In moxie it is the same `when` you use on values, one pass, with the same error messages as the rest of the checker.
 
-## 27. FCFX
+## 27. Run-time metadata, only where it's needed
+
+Moxie keeps type information at run time only for values whose type is chosen at run time. An enum is a one-byte tag plus its largest case, a `type union` is a tag plus its largest member, and an `any Interface` value is a tag plus a payload. Everything else, such as an `Int`, a `String`, or a tuple, carries nothing, because the compiler already knows its type. The tag is what lets `when` take a value apart by type, with an action for each:
+
+```
+type union Value = Int | String
+fn describe(v: Value) String:
+  when v:
+    n@Int -> "the number ${n + 1}"
+    s@String -> "the text ${s}"
+println(describe(41))
+println(describe("hi"))
+```
+
+Output: `the number 42` then `the text hi`. `n@Int` binds the value itself, so `n` is an `Int` in its arm. A union is exhaustive without a `_` arm, and an `any` value needs one, since the full set of types isn't known where you match. See the Mixer's Guide, Chapter 12 for patterns and superpower 18 for `any` and interfaces.
+
+## 28. FCFX
 
 This is the one the whole language is built around.
 
@@ -1620,7 +1636,7 @@ a = numbers |> to_stream() |> map(_ * 2) |> take(3) |> sum()
 In most languages, that line allocates iterators or intermediate collections and calls through function objects. In moxie, it should compile to roughly the loop you'd have written in assembly by hand. The reasons, at the highest level:
 
 - **Streams fuse.** A stream is a source plus an index range, with stages nested around it. The terminal (`sum` here) fuses the whole chain into one flat loop, and one element at a time travels through the entire pipeline with no buffer in between.
-- **Everything is specialized.** The compiler builds a copy of each generic function for each concrete use, with the lambda inlined. There's no boxing, no run-time type information, and no call through a table.
+- **Everything is specialized.** The compiler builds a copy of each generic function for each concrete use, with the lambda inlined. There's no boxing, no run-time type information on ordinary values (see superpower 27), and no call through a table.
 - **Allocation is cheap and short-lived.** **[gc]** Scalars and small fixed-size values live in stack frames, and a lazy stream is a small record. What does go on the heap (strings, the contents of collections, closures) mostly dies young, which is what a generational collector is built for.
 - **A garbage collector built for short pauses.** **[gc]** It works in bounded slices at points where a fiber parks or allocates. Only one fiber runs at a time and values never change, so ordinary code needs no write barrier. The pauses are short, not zero, and a collector costs some memory overhead and some time that no-GC moxie doesn't pay.
 
