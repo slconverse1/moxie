@@ -1134,6 +1134,41 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 
 An `interface` says what a type can do, and an `impl` says that a type does it. You can implement your own interface for somebody else's type, so you can extend things you don't own. There are bounds (`[T: Ordered + Equatable]`), default method bodies, associated types, properties (a field that can run code, computed or lazy, with observers), and conditional instances. Everything is specialized per use at compile time, so there are no tables at run time.
 
+There is no type hierarchy and no inheritance. An interface works like a club (a set, in mathematical terms), and an `impl` says a type belongs to it. A type can join one club or a hundred, and joining adds nothing to the type: no fields, no hidden pointer, no parent. A generic function can say which clubs its type must belong to, and any member can be used, related or not. Membership can be added after the fact, and by someone else, so even a built-in like `Int` can join. A class language would need a common base class or a wrapper for that. A non-member is a compile error ("`Dog` doesn't implement `Describable`, which `describe_all` requires of `T`").
+
+```
+interface Speaker:
+  fn speak(self) String
+interface Describable:
+  fn describe(self) String
+tuple Dog deriving eq, ord:
+  name: String
+tuple Car:
+  model: String
+impl Speaker for Dog:
+  fn speak(self) String:
+    "${self.name} says Woof"
+impl Describable for Dog:
+  fn describe(self) String:
+    "a dog called ${self.name}"
+impl Describable for Car:
+  fn describe(self) String:
+    "a ${self.model}"
+impl Describable for Int:
+  fn describe(self) String:
+    "the number ${self}"
+fn describe_all[T: Describable](items: List[T]) String:
+  items |> to_stream() |> map((x): x.describe()) |> join(", ")
+fn same_voice[T: Speaker + Equatable](a: T, b: T) String:
+  if a == b: a.speak() else: "two different voices"
+println(describe_all(List(Dog(name: "Rex"), Dog(name: "Ann"))))
+println(describe_all(List(Car(model: "Mini"))))
+println(describe_all(List(1, 2, 3)))
+println(same_voice(Dog(name: "Rex"), Dog(name: "Rex")))
+```
+
+This prints `a dog called Rex, a dog called Ann`, then `a Mini`, then `the number 1, the number 2, the number 3`, then `Rex says Woof`.
+
 When you want a mixed bag of types, say `any Voice`:
 
 ```
