@@ -1,4 +1,4 @@
-//! The first slices of moxie's lexer, written in moxie. `lex` reads names, whole numbers, decimal numbers, strings without
+//! The first slices of moxie's lexer, written in moxie. `lex` reads names, numbers (decimal, hex, octal, binary, `_` separators, exponents, and suffixes), strings without
 //! interpolation, operators, comments, and line breaks. `structure` turns those tokens into logical lines with `NL`, `INDENT`,
 //! and `DEDENT`, and `lex_lines` does both. They give the same tokens as the Python lexer for that part.
 //! `tests/run_selfhost.py` checks it against `moxie/lexer.py`.
@@ -53,11 +53,73 @@ fn skip_while(cs: List[Char], from: Int, ok: (Char) -> Bool) Int:
   else:
     len(cs)
 
-fn scan_number(cs: List[Char], st: Lx) Lx:
-  j = skip_while(cs, st.i, is_digit)
+fn is_hex(c: Char) Bool:
+  is_digit(c) or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F')
+
+fn is_alnum(c: Char) Bool:
+  is_id_char(c)
+
+// A run of digits where a single `_` may sit between two digits (`1_000`).
+fn skip_digits(cs: List[Char], from: Int) Int:
+  for k in from..len(cs):
+    ok = is_digit(cs(k)) or (cs(k) == '_' and k > from and k + 1 < len(cs) and is_digit(cs(k + 1)) and is_digit(cs(k - 1)))
+    if not ok:
+      break(k)
+  else:
+    len(cs)
+
+// The suffixes a number may carry, as the Python lexer lists them.
+suffixes = List("i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f", "d", "ns", "us", "ms", "s", "m", "h")
+
+// The suffix at `j` (not followed by a letter, digit, or `_`), or "".
+fn suffix_at(cs: List[Char], j: Int) String:
+  for sx in suffixes:
+    n = len(sx)
+    if j + n <= len(cs) and text_of(cs, j, j + n) == sx and (j + n == len(cs) or not is_alnum(cs(j + n))):
+      return sx
+  ""
+
+fn is_radix(c: Char) Bool:
+  c == 'x' or c == 'X' or c == 'o' or c == 'O' or c == 'b' or c == 'B'
+
+fn radix_digit(base: Char, c: Char) Bool:
+  c == '_' or (if base == 'x' or base == 'X': is_hex(c) else: (if base == 'o' or base == 'O': c >= '0' and c <= '7' else: c == '0' or c == '1'))
+
+fn number_kind(suffix: String, is_float: Bool) String:
+  if suffix == "ns" or suffix == "us" or suffix == "ms" or suffix == "s" or suffix == "m" or suffix == "h":
+    "DUR"
+  elif suffix == "d":
+    "DEC"
+  elif suffix == "f" or is_float:
+    "FLOAT"
+  else:
+    "INT"
+
+fn scan_radix(cs: List[Char], st: Lx) Lx:
+  base = cs(st.i + 1)
+  end = skip_while(cs, st.i + 2, (c): radix_digit(base, c))
+  hex = base == 'x' or base == 'X'
+  sx = suffix_at(cs, end)
+  keep = if hex: (sx == "" or cs(end) == 'i' or cs(end) == 'u') else: true
+  stop = if keep: end + len(sx) else: end
+  emit(st, "INT", text_of(cs, st.i, stop), stop)
+
+fn scan_decimal(cs: List[Char], st: Lx) Lx:
+  j = skip_digits(cs, st.i)
   frac = j + 1 < len(cs) and cs(j) == '.' and is_digit(cs(j + 1))
-  end = if frac: skip_while(cs, j + 1, is_digit) else: j
-  emit(st, if frac: "FLOAT" else: "INT", text_of(cs, st.i, end), end)
+  k = if frac: skip_digits(cs, j + 1) else: j
+  sign = if k + 1 < len(cs) and (cs(k + 1) == '+' or cs(k + 1) == '-'): 1 else: 0
+  has_exp = k + 1 + sign < len(cs) and (cs(k) == 'e' or cs(k) == 'E') and is_digit(cs(k + 1 + sign))
+  end = if has_exp: skip_while(cs, k + 1 + sign, is_digit) else: k
+  sx = suffix_at(cs, end)
+  stop = end + len(sx)
+  emit(st, number_kind(sx, frac or has_exp), text_of(cs, st.i, stop), stop)
+
+fn scan_number(cs: List[Char], st: Lx) Lx:
+  if cs(st.i) == '0' and st.i + 1 < len(cs) and is_radix(cs(st.i + 1)):
+    scan_radix(cs, st)
+  else:
+    scan_decimal(cs, st)
 
 fn scan_string(cs: List[Char], st: Lx) Lx:
   j = st.i + 1

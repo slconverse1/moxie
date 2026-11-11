@@ -8,8 +8,8 @@ sys.path.insert(0, ROOT)
 from moxie.lexer import Lexer, MoxieSyntaxError
 
 SNIPPETS = ["x = 1 + 2.5", "fn add(a: Int, b: Int) Int:", "  a + b", "println(\"hi there\")", "xs |> map(f) |> collect()",
-            "a ~= b and c <= d", "y = f(x) // a comment", "t = (1, 2, 3)", "...rest", "n >>= 2", "s = \"a\\\"b\"", "v = xs(0)"]
-KINDS = {"NAME", "INT", "FLOAT", "STR", "OP"}
+            "a ~= b and c <= d", "n = 0xFF_FFu8 + 0b1010 + 0o17 + 1_000", "x = 1.5e-3 + 2E4 + 3.0f + 5d + 10ms + 2h", "t = 7u32 + 8i64", "y = f(x) // a comment", "t = (1, 2, 3)", "...rest", "n >>= 2", "s = \"a\\\"b\"", "v = xs(0)"]
+KINDS = {"NAME", "INT", "FLOAT", "DUR", "DEC", "STR", "OP"}
 STRUCT = {"NL", "INDENT", "DEDENT", "EOF"}
 
 def supported(ln):
@@ -22,8 +22,6 @@ def supported(ln):
         return False
     data = [t for t in toks if t.kind not in ("NL", "INDENT", "DEDENT", "EOF", "BOL")]
     if any(t.kind not in KINDS for t in data):
-        return False
-    if any(t.kind == "INT" and t.extra for t in data) or any(t.kind == "FLOAT" and ("e" in str(t.val).lower() or t.extra) for t in data):
         return False
     if any(t.kind == "STR" and ("$" in ln or "\\" in ln) for t in data):
         return False
