@@ -935,6 +935,7 @@ class CallsMixin:
         """Bind arguments to parameters. Returns the call Env or None when a clause doesn't match."""
         params = node.params or []
         pos = list(pos)
+        selfval = c.bound if c.bound is not None else (pos[0] if pos and params and params[0].name == "self" and c.impl is not None else None)
         base = c.env
         recvenv = None
         if c.bound is not None:
@@ -1047,6 +1048,11 @@ class CallsMixin:
                     pass
                 continue
             if p.type is not None:
+                if selfval is not None and p.type.__class__ is TName and p.type.path == ["Self"] and not p.type.groups \
+                        and type_name(v) in self.impls and type_name(selfval) in self.impls and type_name(v) != type_name(selfval):
+                    raise Abort(f"`{p.name}` must have the same type as the receiver (`{type_name(selfval)}`), but this one is a "
+                                f"`{type_name(v)}`: an `any` value hides its type, so use a generic function "
+                                f"`fn f[T: I](a: T, b: T)` or a `when` on the concrete types")
                 if not strict and v.__class__ is not LazyV and p.mod != "lazy":
                     if not self.type_matches(v, p.type, c.env, self.tparam_names(node)):
                         return None
