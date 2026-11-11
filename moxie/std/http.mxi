@@ -21,9 +21,8 @@ export tuple Response:
   headers: List[Header],
   body: String
 
-// moxie strings have no `\r` escape, so the carriage return comes from its byte.
 fn crlf() String:
-  get_or(from_utf8(Array[Byte](13, 10)), "\n")
+  "\r\n"
 
 fn lower_eq(a: String, b: String) Bool:
   lower(a) == lower(b)

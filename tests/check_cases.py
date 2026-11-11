@@ -20,6 +20,8 @@ CASES = [
 ("resource copy", 'rx, tx = Chan[Int][1]()\nt2 = tx\n', "is a resource"),
 ("move in loop", 'rx, tx = Chan[Int][1]()\nfor i in 0..3:\n  t = move tx\n', "exiting path"),
 ("ok: move then break", 'rx, tx = Chan[Int][1]()\nfor i in 0..3:\n  t = move tx\n  break\n', None),
+("ok: carriage return escape", 's = "a\\r\\nb"\nc = \'\\r\'\nb = b"x\\r"\nprintln(len(s))\n', None),
+("unknown escape still an error", 's = "a\\qb"\n', "unknown escape"),
 ("ok: plain", 'fn f(x: Int) Int:\n  x + 1\nprintln(f(2))\n', None),
 ("clauses enum", 'enum Shape:\n  Circle(r: Double),\n  Dot\nfn area(Shape.Circle(r)) Double: r\nfn area(Shape.Dot) Double: 0.0\nfn g(Shape.Circle(r)) Double: r\nfn g(Shape.Circle(q)) Double: q\n', "`g` does not cover `Dot`"),
 ("clauses literal", 'fn code_name(200) String: "ok"\nfn code_name(404) String: "missing"\n', "needs a final `_` clause"),
