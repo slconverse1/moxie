@@ -1985,7 +1985,30 @@ println(describe(41))
 println(describe("hi"))
 ```
 
-Output: `the number 42`, then `the text hi`. A union is exhaustive without a `_` arm. An `any Speaker` value is taken apart the same way, with a `_` arm because the full set of types isn't known: `d@Dog() -> ...` binds the `Dog` itself, and `Dog(name) -> ...` binds its fields. **Mistakes:** writing `Int(n)` for a scalar (use `n@Int`), and expecting `Dog(d)` to bind the whole `Dog` (it binds the first field).
+Output: `the number 42`, then `the text hi`. A union is exhaustive without a `_` arm. An `any` value is taken apart the same way, with a `_` arm because the full set of types isn't known. What a name in the arm refers to depends on how you write it:
+
+```
+interface Speaker:
+  fn speak(self) String
+tuple Dog:
+  name: String
+tuple Robot:
+  serial: Int
+impl Speaker for Dog:
+  fn speak(self) String:
+    "Woof"
+impl Speaker for Robot:
+  fn speak(self) String:
+    "Beep"
+crowd: List[any Speaker] = List(Dog(name: "Rex"), Robot(serial: 7))
+for s in crowd:
+  when s:
+    Dog(name) -> println("a dog named ${name}")
+    r@Robot() -> println("a robot, ${r}")
+    _ -> println("something else")
+```
+
+Output: `a dog named Rex`, then `a robot, Robot(serial: 7)`. In `Dog(name)`, the parentheses take the dog apart like any tuple pattern, so `name` is the dog's first field (a `String`), not the dog. In `r@Robot()`, `r@` names the whole value, so `r` is the `Robot` itself, and the empty parentheses mean no fields are taken. `d@Dog(name)` gives both. **Mistakes:** writing `Int(n)` for a scalar (use `n@Int`), and expecting `Dog(d)` to bind the whole `Dog` (it binds the first field).
 
 **Chapter 13: Streams and loops**
 
