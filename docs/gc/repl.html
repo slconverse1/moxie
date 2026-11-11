@@ -34,14 +34,14 @@ textarea{flex:1;min-width:0;font:inherit;line-height:1.5;color:inherit;backgroun
 <h1>moxie/gc REPL</h1>
 <p class="lead">Type an expression and see its value and type: the results are kept in <code>$res1</code>, <code>$res2</code>, ..., where <code>$res1</code> is the most recent result, <code>$res2</code> the result before it, and so on. A result is created only if a line isn’t a binding (<code>name = value</code>). A result can be used in an expression, as in <code>$res1 + 5</code>. Declarations (<code>fn</code>, <code>tuple</code>, <code>x = 5</code>) join the session. A line ending in <code>:</code> continues until a blank line. Try <code>:help</code>. REPL runs in your browser using the reference interpreter, so downloading it is avoided.</p>
 <p class="lead">Example:</p>
-<pre class="lead" style="overflow-x:auto">moxie&gt; x = 5         // binding
+<pre class="lead" style="white-space:pre-wrap">moxie&gt; x = 5         // binding
 x: Int = 5
 moxie&gt; :type x
 Int
 moxie&gt; 10            // no binding
 $res1: Int = 10
 moxie&gt; $res1 + x     // no binding
-$res1: Int = 15      // 10 is now $res2</pre>
+$res1: Int = 15      // 10 becomes $res2 in the REPL</pre>
 <p class="lead">(Enter to run, arrow UP for earlier inputs; scroll UP/DOWN to navigate the REPL box)</p>
 <div class="bar">
   <button id="reset" disabled>Reset session</button>
