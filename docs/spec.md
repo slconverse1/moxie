@@ -740,6 +740,8 @@ Moxie's rule is that a type error is a compile error. There are two kinds of exc
   1. **Calls into an imported package** are checked against its exported signatures, its types, and its functions used as values.
   2. **`where` constraints on size parameters** (section 9a) are checked at a call whose array size is known when compiling (a literal, or a variable of a sized array type). When the size is not known then, the compiler warns and the check runs at the call.
   3. **Not checked by the reference interpreter:** memory spaces and pool sizing, SQL column and row types, and package manifests. A partly applied type constructor (`Result[_, E]` for `M[_]`) is not compared with a higher-kinded parameter.
+  4. **Narrowing.** Inside a `when` arm on a union or an `any` value (`Int ->`, `n@Int ->`) and in the then-branch of `v is Int`, the variable has the narrowed type, so a misuse such as `len(v)` in the `Int` arm is a compile error. The reference interpreter's checker does not narrow yet, so it finds such a mistake only when the arm runs.
+  5. **`any` values the checker does not track** (an element of a `List[any I]`, say): a call of a member that takes `Self` is checked when it runs, and it aborts with a clear message when the two types differ.
 
 **25. Still open**
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
