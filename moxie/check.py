@@ -873,6 +873,15 @@ class Checker:
         if found is None:
             return NOANY
         d, assoc = found
+        if d.name not in ("==", "<"):
+            for p in d.params or []:
+                if p.type.__class__ is TName and p.type.path == ["Self"] and not p.type.groups:
+                    msg = (f"`{fn.name}` takes a `Self`, so it can't be called on `{fn.obj.name}`, an `any {'`, `'.join(at[1])}` "
+                           f"(its type is hidden, so the other value might not have the same type): write a generic function, "
+                           f"`fn f[T: {at[1][0]}](a: T, b: T)`, or branch on the concrete types with `when`")
+                    if not any(x.line == n.line and x.msg == msg for x in self.diags):
+                        self.err(n.line, msg)
+                    break
 
         def own(t):
             if t.__class__ is TName and len(t.path) == 1 and t.path[0] in assoc and not t.groups:
