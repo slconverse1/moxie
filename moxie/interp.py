@@ -937,7 +937,15 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def ev_body(self, body, env, hint=None):
         if body.__class__ is Block:
             return self.ev_Block(body, env, hint=hint)
+        if UTAGS and id(body.e if body.__class__ is ExprStmt else body) in UTAGS:
+            return self._tagged_body(body, env, hint)
         return self.exec_stmt(body, env, hint)
+
+    def _tagged_body(self, body, env, hint):
+        v = yield from self.exec_stmt(body, env, hint)
+        if isinstance(v, Seq):
+            v.tag = UTAGS[id(body.e if body.__class__ is ExprStmt else body)][1]
+        return v
 
     def ev_WhenE(self, n, env, hint=None):
         if n.scrut is None:
@@ -979,6 +987,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         for i, s in enumerate(stmts):
             if i == k:
                 last = yield from self.exec_stmt(s, e, hint)
+                if UTAGS and isinstance(last, Seq):
+                    tg = UTAGS.get(id(s.e if s.__class__ is ExprStmt else s))
+                    if tg is not None:
+                        last.tag = tg[1]
             else:
                 yield from self.exec_stmt(s, e)
         return last
@@ -1013,6 +1025,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         if n.e is not None:
             hint = env.func.ret if env.func is not None else None
             v = yield from self.evh(n.e, env, hint)
+            if UTAGS and isinstance(v, Seq):
+                tg = UTAGS.get(id(n.e))
+                if tg is not None:
+                    v.tag = tg[1]
         raise ReturnEx(v)
 
     def ev_Break(self, n, env):

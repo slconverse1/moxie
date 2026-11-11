@@ -30,6 +30,10 @@ case("a plain union member left out is a compile error", 'type union V = Int | S
 case("a _ arm covers the rest", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    _ -> "other"\nprintln(f(3))\n', 0, "other")
 case("every member named is exhaustive", 'type union V = Int | String\nfn f(v: V) String:\n  when v:\n    Int -> "n"\n    String -> "s"\nprintln(f(1))\n', 0, "n")
 
+case("an empty List keeps its member through returns and collections", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nfn make() Data:\n  List[String]()\nfn make2(flag: Bool) Data:\n  if flag:\n    List[String]()\n  else:\n    List[Int]()\nfn make3() Data:\n  return List[String]()\nprintln(f(make()))\nprintln(f(make2(true)))\nprintln(f(make2(false)))\nprintln(f(make3()))\nitems = List[Data](List[String](), List[Int](), 3)\nfor x in items:\n  println(f(x))\nmore: List[Data] = List(List[String](), List[Int]())\nfor x in more:\n  println(f(x))\n', 0, "strings\nstrings\nints\nstrings\nstrings\nints\none\nstrings\nints")
+case("a local of a union type must be covered too", U + 'd: Data = List[String]()\nwhen d:\n  List[Int] -> println("ints")\n  Int -> println("one")\n', 2, "`when` does not cover `List[String]`")
+case("a local of a union type is narrowed", U + 'd: Data = List(1, 2)\nwhen d:\n  List[Int] -> println(d(0) + 1)\n  List[String] -> println(len(d(0)))\n  Int -> println(d)\n', 0, "2")
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)

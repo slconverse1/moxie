@@ -371,12 +371,12 @@ class CallsMixin:
             else:
                 if ptype is not None:
                     v = yield from self.evh(a.expr, env, ptype)
-                    if UTAGS and isinstance(v, Seq):
-                        tg = UTAGS.get(id(a.expr))
-                        if tg is not None:
-                            v.tag = tg[1]               # a list going into a union: remember which member it is
                 else:
                     v = yield from self.ev(a.expr, env)
+                if UTAGS and isinstance(v, Seq):
+                    tg = UTAGS.get(id(a.expr))
+                    if tg is not None:
+                        v.tag = tg[1]               # a list going into a union: remember which member it is
             if lab is None:
                 pos.append(v)
             else:
@@ -1243,6 +1243,10 @@ class CallsMixin:
         for i, s in enumerate(stmts):
             if i == k:
                 last = yield from self.exec_stmt(s, env, hint)
+                if UTAGS and isinstance(last, Seq):
+                    tg = UTAGS.get(id(s.e if s.__class__ is ExprStmt else s))
+                    if tg is not None:
+                        last.tag = tg[1]
             else:
                 yield from self.exec_stmt(s, env)
         return last

@@ -2143,6 +2143,8 @@ class Checker:
 
     def e_Return(self, n, sc):
         t, c = self.ev(n.e, sc)
+        if n.e is not None and getattr(self, "cur_fn", None) is not None and n.e.__class__ is not Name:
+            self.tag_value(n.e, self.cur_fn.ret, t)
         if n.e is not None:
             self.settle_mixed(n.e, self.fn_ret)
         if self.fn_ret is not None and n.e is not None:
@@ -2308,6 +2310,9 @@ class Checker:
             m = self.union_member_tag(n.ann, t)
             if m is not None:
                 UTAGS[id(n.value)] = (n.value, m)
+            if n.ann.__class__ is TName and n.ann.path[-1] in ("List", "Array") and n.ann.groups and n.ann.groups[0] \
+                    and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == n.ann.path[-1]:
+                self.tag_ctor_args(n.ann.groups[0][0], n.value)
             self.check_literal_capacity(n, ann)
             self.check_marr(n)
             self.check_lambda_slots(n, ann, sc)
@@ -2367,6 +2372,10 @@ class Checker:
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
+                um = self.union_members(n.ann) if n.ann is not None else (
+                    self.union_members(TName([t[1]], [])) if t.__class__ is tuple and len(t) == 2 and t[0] == "named" and t[1] in self.aliases else None)
+                if um and not res:
+                    self.union_vars[sc.vars[tgt.name]] = um          # a local of a union type is tracked like a parameter
                 if n.ann.__class__ is TName and len(n.ann.path) == 1 and n.ann.path[0] in self.FIT and n.ann.path[0] not in self.tuples \
                         and n.ann.path[0] not in self.aliases:
                     sc.vars[tgt.name].inttype = n.ann.path[0]
@@ -3139,6 +3148,52 @@ class Checker:
                 return m
         return None
 
+    def tag_value(self, e, ut, st):
+        """Mark expression `e` (static type `st`) to be tagged with its member of union type `ut`, when it has one to name."""
+        if e is None or ut is None:
+            return
+        m = self.union_member_tag(ut, st)
+        if m is not None:
+            UTAGS[id(e)] = (e, m)
+
+    def tail_nodes(self, x, out):
+        """The expressions whose value a body produces: the last statement of a block, through `if` and `when` branches."""
+        c = x.__class__
+        if c is ExprStmt:
+            self.tail_nodes(x.e, out)
+        elif c is Block:
+            if x.stmts:
+                self.tail_nodes(x.stmts[-1], out)
+        elif c is IfE:
+            for _cond, body in x.branches:
+                self.tail_nodes(body, out)
+            if x.else_ is not None:
+                self.tail_nodes(x.else_, out)
+        elif c is WhenE:
+            for a in x.arms:
+                self.tail_nodes(a.body, out)
+        elif x is not None:
+            out.append(x)
+
+    def tag_tails(self, fd):
+        """The values a function with a union return type gives back are tagged with their member (see `tag_union_args`)."""
+        if fd.ret is None or fd.body is None or not self.union_members(fd.ret) \
+                or not any("[" in m for m in self.union_members(fd.ret)):
+            return
+        out = []
+        self.tail_nodes(fd.body, out)
+        for e in out:
+            if e.__class__ is not Name:
+                self.tag_value(e, fd.ret, self.node_ty.get(id(e)))
+
+    def tag_ctor_args(self, elem, call):
+        """`List[Data](a, b)` or `xs: List[Data] = List(a, b)`: each element is tagged with its member of the union `elem`."""
+        if call.__class__ is not Call or not self.union_members(elem):
+            return
+        for a in call.args or []:
+            if a.expr is not None and not getattr(a, "label", None) and not getattr(a, "mod", None):
+                self.tag_value(a.expr, elem, self.node_ty.get(id(a.expr)))
+
     def tag_union_args(self, fd, args, ats):
         """A list passed where a union is expected is tagged with the member its static type names, so an empty list is still
         told apart from another member at run time (the interpreter keeps no other type on a value)."""
@@ -3170,11 +3225,18 @@ class Checker:
         if n.fn.__class__ is Name and n.fn.name in ("fmt", "try_fmt") and n.fn.name not in self.fns and sc.find(n.fn.name) is None and n.args:
             return self.check_fmt(n, sc)
         self.check_poly_rec(n, sc)
+        g0 = n.fn
+        if g0.__class__ is GenApp and g0.base.__class__ is Name and g0.base.name in ("List", "Array") and g0.groups and g0.groups[0] \
+                and g0.base.name not in self.fns:
+            pass
         self.check_read_target(n, sc)
         n = self.pkg_redirect(n, sc)
         pipe0 = self.pipe_ty
         self.cur_sc = sc
         r = self._e_Call0(n, sc, extra)
+        if g0.__class__ is GenApp and g0.base.__class__ is Name and g0.base.name in ("List", "Array") and g0.groups and g0.groups[0] \
+                and g0.base.name not in self.fns:
+            self.tag_ctor_args(g0.groups[0][0], n)         # `List[Data](a, b)`
         f = n.fn
         if f.__class__ is Name and f.name in self.tuples and f.name not in self.fns and sc.find(f.name) is None \
                 and self.fallible_ctor(self.tuples[f.name]) and r is not None and r[0] is not None:
@@ -4743,6 +4805,7 @@ class Checker:
                 self.note_expected(te, self.fn_ret)
             t, c = self.ev(n.body, inner)
             self.check_tail(n.body, inner)
+            self.tag_tails(n)
             if "tailrec" in (n.flags or ()):
                 self.check_tailrec(n)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
