@@ -20,10 +20,15 @@ def case(name, src, rc_want, *wants, args=()):
 U = 'type union Data = List[Int] | List[String] | Int\n'
 
 case('when takes apart List members', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nprintln(f(List(1, 2)))\nprintln(f(List("a")))\nprintln(f(3))' + '\n', 0, 'ints\nstrings\none')
-case('an empty List matches the first List arm', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nprintln(f(List[String]()))' + '\n', 0, 'ints')
 case('a name binds the whole value', U + 'fn f(d: Data) Int:\n  when d:\n    List[Int] -> d(0) + 1\n    xs@List[String] -> len(xs(0))\n    Int -> d\nprintln(f(List(5)))\nprintln(f(List("abc")))' + '\n', 0, '6\n3')
 case('is tests a List member', U + 'fn f(d: Data) Bool:\n  d is List[String]\nprintln(f(List("a")))\nprintln(f(List(1)))\nprintln(f(3))' + '\n', 0, 'true\nfalse\nfalse')
 case('an arm narrows the type', U + 'fn f(d: Data) Int:\n  when d:\n    List[Int] -> d(0) + 1\n    List[String] -> d(0) + 1\n    Int -> d\nprintln(f(List(5)))' + '\n', 2, 'cannot apply `+` to `String` and `Int`')
+
+case("an empty List is told apart by its static type", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nxs: List[String] = List()\nprintln(f(xs))\nprintln(f(List[String]()))\nprintln(f(List[Int]()))\nd: Data = List[String]()\nprintln(f(d))\n', 0, "strings\nstrings\nints\nstrings")
+case("a member left out of a when is a compile error", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    Int -> "one"\nprintln(f(3))\n', 2, "`when` does not cover `List[String]`")
+case("a plain union member left out is a compile error", 'type union V = Int | String\nfn f(v: V) String:\n  when v:\n    Int -> "n"\nprintln(f(1))\n', 2, "`when` does not cover `String`")
+case("a _ arm covers the rest", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    _ -> "other"\nprintln(f(3))\n', 0, "other")
+case("every member named is exhaustive", 'type union V = Int | String\nfn f(v: V) String:\n  when v:\n    Int -> "n"\n    String -> "s"\nprintln(f(1))\n', 0, "n")
 
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')

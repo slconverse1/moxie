@@ -20,6 +20,10 @@ class PlacesMixin:
         else:
             if n.ann is not None:
                 value = yield from self.evh(n.value, env, n.ann)
+                if UTAGS and isinstance(value, Seq):
+                    tg = UTAGS.get(id(n.value))
+                    if tg is not None:
+                        value.tag = tg[1]
                 value = self.coerce(value, n.ann, env)
             else:
                 value = yield from self.ev(n.value, env)

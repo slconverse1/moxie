@@ -220,6 +220,8 @@ class PatternsMixin:
         if t.__class__ is TName and t.groups and t.groups[0] and t.path[-1] in ("List", "Array"):
             if not (isinstance(v, Seq) and type_name(v) == t.path[-1]):
                 return False
+            if v.tag is not None:                                   # the member it was converted to, known from its static type
+                return v.tag.replace(" ", "") == _tnode_text(t).replace(" ", "")
             et = t.groups[0][0]
             return all(self.pat_type_matches(x, et, env) for x in v.items)
         return self.type_matches(v, t, env)
@@ -302,3 +304,10 @@ class PatternsMixin:
         rest = items[len(head):mid_end]
         b[args[rest_i][1].name] = ListV(list(rest)) if v.kind == "List" else ArrayV(list(rest))
         return True
+
+
+def _tnode_text(t):
+    if not isinstance(t, TName):
+        return "?"
+    gs = [x for grp in t.groups or [] for x in (grp if isinstance(grp, (list, tuple)) else [grp])]
+    return ".".join(t.path) + (f"[{', '.join(_tnode_text(x) for x in gs)}]" if gs else "")

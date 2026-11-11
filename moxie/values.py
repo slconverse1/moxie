@@ -8,6 +8,7 @@ from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_HALF_DOWN, RO
 import os as _os
 GC = [bool(_os.environ.get("MOXIE_GC"))]
 INF_CAP = 1 << 62
+UTAGS = {}     # id(expression node) -> (node, written union member): set by the checker where a list is converted to a union
 CONTRACTS = [True]    # False under --release: requires/ensures/invariant are not checked
 
 
@@ -361,10 +362,11 @@ def err_reserved(name, msg=None):
 # collections
 class Seq:
     """Base for Array, List, MultiArray element sequences."""
-    __slots__ = ("items", "cap", "kind")
+    __slots__ = ("items", "cap", "kind", "tag")
 
     def __init__(self, items, cap=None):
         self.items = items
+        self.tag = None         # the `type union` member this list was converted to (`List[String]`), when the checker knew it
         self.cap = cap if cap is not None else len(items)
         if GC[0] and self.kind == "List":
             self.cap = INF_CAP

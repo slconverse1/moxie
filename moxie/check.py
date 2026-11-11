@@ -7,6 +7,7 @@ Anything the checker cannot type is "unknown" and never produces an error.
 import os
 import re
 from .ast import *   # noqa
+from .values import UTAGS
 from . import tys
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
@@ -2304,6 +2305,9 @@ class Checker:
             self.check_type_arity(n.ann, n.line)
         if n.ann is not None and n.op == "=":
             self.compat(ann, t, c, n.line)
+            m = self.union_member_tag(n.ann, t)
+            if m is not None:
+                UTAGS[id(n.value)] = (n.value, m)
             self.check_literal_capacity(n, ann)
             self.check_marr(n)
             self.check_lambda_slots(n, ann, sc)
@@ -2728,6 +2732,7 @@ class Checker:
         self.moved = base
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
+            self.union_cover(n, sc)
             self.exhaustive(n, st)
         if n.scrut is not None:
             self.check_branch_types(arm_ts, n.line, "`when`")
@@ -2804,6 +2809,39 @@ class Checker:
         if c is PTyped:
             return False
         return False
+
+    def union_cover(self, n, sc):
+        """A `when` on a parameter typed with a `type union` must name every member (or have a `_` or binding arm). A pattern
+        this does not recognize ends the check without an error, so a union holding an enum may be covered by its cases."""
+        if n.scrut.__class__ is not Name:
+            return
+        v = sc.find(n.scrut.name)
+        members = self.union_vars.get(v) if v is not None else None
+        if not members:
+            return
+        names = set(self.cases) | {"Ok", "Err"}
+        covered = set()
+        for a in n.arms:
+            for p in a.pats or []:
+                if a.guard is None and self.catch_all(p, names):
+                    return
+                q = p
+                while q.__class__ is PAs:
+                    q = q.pat
+                if a.guard is not None:
+                    continue
+                if q.__class__ is PTyped and q.pat.__class__ is PWild and q.type.__class__ is TName:
+                    covered.add(self.type_node_text(q.type))
+                elif q.__class__ is PCon and len(q.path) == 1 and q.path[0] in members \
+                        and all(x.__class__ in (PWild, PBind) for _, x in q.args or []):
+                    covered.add(q.path[0])
+                elif q.__class__ is PCon and len(q.path) == 1 and q.path[0] in members:
+                    continue                                    # `Dog("Rex")` may not match every Dog
+                else:
+                    return                                      # not a plain member pattern: do not guess
+        miss = [m for m in members if m not in covered]
+        if miss:
+            self.err(n.line, "`when` does not cover " + ", ".join(f"`{m}`" for m in miss))
 
     def exhaustive(self, n, st):
         arms = n.arms
@@ -3088,6 +3126,29 @@ class Checker:
         if name in self.tuples or name in self.enums:
             if self.implements(("named", name), "Read") is False:
                 self.err(n.line, f"`{name}` doesn't implement `Read`, which `read` requires: add `deriving read` to `{name}`")
+
+    def union_member_tag(self, ut, st):
+        """The written member of union type `ut` that the static type `st` is, when the union has members with type
+        arguments (`List[Int] | List[String]`): the member to tag a list with, else None."""
+        members = self.union_members(ut) if ut is not None else None
+        if not members or not any("[" in m for m in members) or st is None:
+            return None
+        key = tshow(st).replace(" ", "")
+        for m in members:
+            if m.replace(" ", "") == key:
+                return m
+        return None
+
+    def tag_union_args(self, fd, args, ats):
+        """A list passed where a union is expected is tagged with the member its static type names, so an empty list is still
+        told apart from another member at run time (the interpreter keeps no other type on a value)."""
+        params = [q for q in fd.params or [] if getattr(q, "name", None) != "self"]
+        for q, a, (t, _c) in zip(params, args, ats):
+            if getattr(a, "label", None) or getattr(a, "mod", None) or a.expr is None:
+                continue
+            m = self.union_member_tag(q.type, t)
+            if m is not None:
+                UTAGS[id(a.expr)] = (a.expr, m)
 
     def check_poly_rec(self, n, sc):
         """Polymorphic recursion: a generic function that calls itself with a type argument that is not its own parameter
@@ -3976,6 +4037,7 @@ class Checker:
         if name in self.fns and len(self.fns[name]) == 1:
             fd = self.fns[name][0]
             self.warn_list_spread(fd, n, args, ats)
+            self.tag_union_args(fd, args, ats)
             if fd.tparams or fd.alias is not None:
                 if fd.tparams:
                     self.check_bounds(fd, n, args, ats)
