@@ -309,6 +309,8 @@ println("${1234567.891:.2n}")
 
 Output: `1.234.567,89`. Without a `Locale` in scope, `n` is a compile error. `parse_number(text, locale)` reads numbers back and returns a `Result`.
 
+A template that is written apart from its values uses `fmt`: `fmt("{:>8.2f} | {:<5}", price, name)` returns `Ok("   12.50 | Ann  ")`. Each `{}` or `{:spec}` takes the next argument and uses the same specs as above, and `{{` and `}}` are literal braces. With a string-literal template the compiler checks the number of fields and each spec against the arguments. For a template that comes from data, `fmt` can't check until run time, so it warns, and a mismatch gives an `Err` (`BAD_FORMAT`) instead of a crash. Prefer interpolation, and use `fmt` when the template is loaded or chosen at run time.
+
 The same `Locale` names the days and months when you format a date: with the `de_de` above, `format_time(t, "%A, %d. %B %Y")` gives `Donnerstag, 05. November 2026`, and `%x` writes the date in the locale's order (`05.11.2026`). Pass a `Locale` as a third argument to override the one in scope, as in `format_time(t, "%x", Locale.fr_fr)`. `parse_time` reads the same names.
 
 **2c. Overflow, division, floats, and big numbers**

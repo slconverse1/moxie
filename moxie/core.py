@@ -607,3 +607,33 @@ ROUNDING = {
     "half_even": ROUND_HALF_EVEN, "half_up": ROUND_HALF_UP, "half_down": ROUND_HALF_DOWN,
     "up": ROUND_UP, "down": ROUND_DOWN, "ceiling": ROUND_CEILING, "floor": ROUND_FLOOR,
 }
+
+
+def fmt_parse(tpl):
+    """Split an `fmt` template into text pieces and `("field", spec)` items.  `{}` and `{:spec}` are fields, `{{` and `}}` are
+    literal braces.  Raises ValueError with the reason when the template is malformed."""
+    items, buf, i = [], [], 0
+    while i < len(tpl):
+        c = tpl[i]
+        if c == "{" and tpl[i + 1:i + 2] == "{":
+            buf.append("{"); i += 2
+        elif c == "}" and tpl[i + 1:i + 2] == "}":
+            buf.append("}"); i += 2
+        elif c == "}":
+            raise ValueError("a `}` with no `{` (write `}}` for a literal brace)")
+        elif c == "{":
+            j = tpl.find("}", i)
+            if j < 0:
+                raise ValueError("a `{` with no `}` (write `{{` for a literal brace)")
+            field = tpl[i + 1:j]
+            if field != "" and not field.startswith(":"):
+                raise ValueError("a field is `{}` or `{:spec}`, not `{" + field + "}`")
+            if buf:
+                items.append("".join(buf)); buf = []
+            items.append(("field", field[1:]))
+            i = j + 1
+        else:
+            buf.append(c); i += 1
+    if buf:
+        items.append("".join(buf))
+    return items

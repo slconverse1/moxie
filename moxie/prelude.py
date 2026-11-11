@@ -421,6 +421,29 @@ def b_from_utf8(I, a, kw, ta):
         return err_reserved("BAD_ENCODING", "from_utf8: the bytes are not valid UTF-8")
 
 
+@bi("fmt")
+def b_fmt(I, a, kw, ta):
+    """`fmt(template, args...)`: fills each `{}` or `{:spec}` in the template with the next argument, formatted like `${x:spec}`.
+    `{{` and `}}` are literal braces.  A bad template, the wrong number of arguments, or a spec the value doesn't fit gives
+    an `Err` (BAD_FORMAT), never an abort."""
+    vals = list(a[1:])
+    try:
+        items = fmt_parse(a[0])
+        if sum(1 for x in items if x.__class__ is tuple) != len(vals):
+            return err_reserved("BAD_FORMAT", "the template has %s fields than arguments" %
+                                ("more" if sum(1 for x in items if x.__class__ is tuple) > len(vals) else "fewer"))
+        out, k = [], 0
+        for x in items:
+            if x.__class__ is tuple:
+                v = vals[k]; k += 1
+                out.append(apply_spec(v, x[1], I, None) if x[1] else display(v, I))
+            else:
+                out.append(x)
+    except (ValueError, Abort) as e:
+        return err_reserved("BAD_FORMAT", str(e))
+    return Ok("".join(out))
+
+
 @bi("to_utf8")
 def b_to_utf8(I, a, kw, ta):
     """`to_utf8(text)`: the UTF-8 bytes of a String, as an `Array[Byte]`."""
