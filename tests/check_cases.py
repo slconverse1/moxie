@@ -65,4 +65,6 @@ CASES = [
 ("Hashable by hand", 'tuple P:\n  x: Int\nimpl Hashable for P:\n  fn hash() Int:\n    x\n', "can only be derived"),
 ("polymorphic recursion is rejected", 'tuple Pair[A]:\n  a: A\n  b: A\nfn nest[A](x: A, n: Int) Int:\n  if n == 0:\n    0\n  else:\n    1 + nest[Pair[A]](Pair(x, x), n - 1)\nprintln(nest[Int](1, 3))\n', "calls itself with a different type each time"),
 ("ok: recursion with the same or a fixed type", 'fn count[A](xs: List[A], n: Int) Int:\n  if n == 0:\n    0\n  else:\n    1 + count[A](xs, n - 1)\nfn fixed[A](x: A, n: Int) Int:\n  if n == 0:\n    0\n  else:\n    1 + fixed[Int](1, n - 1)\nprintln(count[Int](List(1), 3))\nprintln(fixed[String]("a", 2))\n', None),
+("read needs deriving read", 'tuple P:\n  x: Int\nprintln(read[P]("P(x: 1)"))\n', "doesn't implement `Read`"),
+("ok: read with deriving read", 'tuple P deriving read, show:\n  x: Int\nprintln(read[P]("P(x: 1)"))\n', None),
 ]

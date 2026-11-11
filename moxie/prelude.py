@@ -1210,22 +1210,82 @@ def read_text(self, s, ta):
     name = t.path[-1] if isinstance(t, TName) else None
     s = s.strip()
     if name in self.tuples:
-        info = self.tuples[name]
-        import re
-        m = re.match(r"^" + re.escape(name) + r"\((.*)\)$", s, re.S)
-        if not m:
-            return err_reserved("MISSING", "cannot read")
-        body = m.group(1)
-        vals = []
-        for part in split_top(body):
-            if ":" in part:
-                part = part.split(":", 1)[1].strip()
-            vals.append(self.parse_scalar(part))
-        return Ok(TupleV(vals, info.names, name))
+        try:
+            return Ok(self.read_tuple(name, s))
+        except ValueError as e:
+            return err_reserved("MISSING", f"cannot read {name}: {e}")
     try:
         return Ok(self.parse_scalar(s))
     except Exception:
         return err_reserved("MISSING", "cannot read")
+
+
+def read_tuple(self, name, s):
+    """Parse `Name(f: v, ...)` against the declared fields: labels must be declared fields, none missing or repeated,
+    and a field whose type is a tuple is read the same way, however deep. Raises ValueError with the reason."""
+    import re
+    info = self.tuples[name]
+    m = re.match(r"^" + re.escape(name) + r"\((.*)\)$", s, re.S)
+    if not m:
+        raise ValueError(f"expected `{name}(...)`")
+    parts = split_top(m.group(1))
+    declared = [f.name for f in info.fields]
+    labelled = [(":" in p and re.match(r"^[A-Za-z_]\w*\s*:", p) is not None) for p in parts]
+    if any(labelled) and not all(labelled):
+        raise ValueError("write every field with its name or none of them")
+    if all(labelled) and parts:
+        got = {}
+        for p in parts:
+            k, v = p.split(":", 1)
+            k = k.strip()
+            if k not in declared:
+                raise ValueError(f"`{k}` is not a field (the fields are {', '.join('`' + d + '`' for d in declared)})")
+            if k in got:
+                raise ValueError(f"field `{k}` is given twice")
+            got[k] = v.strip()
+        for d in declared:
+            if d not in got:
+                raise ValueError(f"missing field `{d}`")
+        texts = [got[d] for d in declared]
+    else:
+        if len(parts) < len(declared):
+            raise ValueError(f"missing field `{declared[len(parts)]}`")
+        if len(parts) > len(declared):
+            raise ValueError(f"{len(parts) - len(declared)} more value(s) than the {len(declared)} field(s)")
+        texts = parts
+    vals = []
+    for f, txt in zip(info.fields, texts):
+        ft = f.type
+        fname = ft.path[-1] if isinstance(ft, TName) and len(ft.path) == 1 else None
+        try:
+            if fname in self.tuples:
+                vals.append(self.read_tuple(fname, txt))
+            else:
+                vals.append(self.read_field(fname, txt))
+        except ValueError as e:
+            raise ValueError(f"field `{f.name}`: {e}")
+    return TupleV(vals, info.names, name)
+
+
+_INT_NAMES = ("Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte")
+
+
+def read_field(self, fname, txt):
+    """One scalar field, checked against its declared type when that is a plain scalar type."""
+    try:
+        v = self.parse_scalar(txt)
+    except Exception:
+        raise ValueError(f"cannot read `{txt}`" + (f" as {fname}" if fname else ""))
+    ok = {"Bool": isinstance(v, bool), "String": isinstance(v, str), "Char": isinstance(v, str) and len(v) == 1}
+    if fname in ok and not ok[fname]:
+        raise ValueError(f"`{txt}` is not a {fname}")
+    if fname in _INT_NAMES and (isinstance(v, bool) or not isinstance(v, int)):
+        raise ValueError(f"`{txt}` is not an {fname}")
+    if fname in ("Float", "Double", "LongDouble") and (isinstance(v, (bool, str))):
+        raise ValueError(f"`{txt}` is not a {fname}")
+    if fname in ("Float", "Double", "LongDouble") and isinstance(v, int):
+        v = float(v)
+    return v
 
 
 def split_top(s):
@@ -1259,6 +1319,8 @@ def parse_scalar(self, s):
 
 
 _I.read_text = read_text
+_I.read_tuple = read_tuple
+_I.read_field = read_field
 _I.parse_scalar = parse_scalar
 
 

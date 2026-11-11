@@ -3067,6 +3067,20 @@ class Checker:
         gs = [x for grp in t.groups or [] for x in (grp if isinstance(grp, (list, tuple)) else [grp])]
         return ".".join(t.path) + (f"[{', '.join(self.type_node_text(x) for x in gs)}]" if gs else "")
 
+    def check_read_target(self, n, sc):
+        """`read[T](text)` needs `T` to be a `Read` type: a scalar, or a tuple that says `deriving read` (or has its own impl)."""
+        g = n.fn
+        if g.__class__ is not GenApp or g.base.__class__ is not Name or g.base.name != "read" or "read" in self.fns \
+                or sc.find("read") is not None or not g.groups or not g.groups[0]:
+            return
+        t = g.groups[0][0]
+        if t.__class__ is not TName or len(t.path) != 1 or t.groups:
+            return
+        name = t.path[0]
+        if name in self.tuples or name in self.enums:
+            if self.implements(("named", name), "Read") is False:
+                self.err(n.line, f"`{name}` doesn't implement `Read`, which `read` requires: add `deriving read` to `{name}`")
+
     def check_poly_rec(self, n, sc):
         """Polymorphic recursion: a generic function that calls itself with a type argument that is not its own parameter
         (`nest[Pair, Pair[A]](...)` inside `nest[F[_], A]`). One copy is made per type, so the copies would never end."""
@@ -3087,6 +3101,7 @@ class Checker:
         if n.fn.__class__ is Name and n.fn.name in ("fmt", "try_fmt") and n.fn.name not in self.fns and sc.find(n.fn.name) is None and n.args:
             return self.check_fmt(n, sc)
         self.check_poly_rec(n, sc)
+        self.check_read_target(n, sc)
         n = self.pkg_redirect(n, sc)
         pipe0 = self.pipe_ty
         self.cur_sc = sc
