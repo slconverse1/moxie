@@ -1,4 +1,4 @@
-"""`read[T]` for `deriving read` tuples: names, positions, nested tuples, and an Err (never a silent value or a crash) for a missing, unknown, repeated, or wrongly typed field.  Run: python3 tests/run_read.py"""
+"""`read[T]` for `deriving read` tuples, enums, and Lists: names, positions, nested tuples, and an Err (never a silent value or a crash) for a missing, unknown, repeated, or wrongly typed field.  Run: python3 tests/run_read.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fails = []
@@ -28,6 +28,19 @@ case('a wrong scalar is an Err', DECL + 'println(read[Point]("Point(x: 1, y: abc
 case('a nested tuple reads', DECL + 'println(read[Order]("Order(customer: Customer(name: \\"Ann\\", vip: true), total: 30)"))' + '\n', 0, 'Ok(Order(customer: Customer(name: "Ann", vip: true), total: 30))')
 case('a nested missing field names its path', DECL + 'println(read[Order]("Order(customer: Customer(name: \\"Ann\\"), total: 30)"))' + '\n', 0, 'field `customer`: missing field `vip`')
 case('a nested wrong type names its path', DECL + 'println(read[Order]("Order(customer: Customer(name: \\"Ann\\", vip: 3), total: 30)"))' + '\n', 0, 'field `customer`: field `vip`')
+
+ENUMS = 'enum Shape deriving show, read:\n  Circle(r: Float),\n  Rect(w: Int, h: Int),\n  Dot\ntuple Scene deriving read, show:\n  shapes: List[Shape]\n'
+
+case('an enum unit case reads', ENUMS + 'println(read[Shape]("Dot"))' + '\n', 0, 'Ok(Shape.Dot)')
+case('a qualified case reads', ENUMS + 'println(read[Shape]("Shape.Dot"))' + '\n', 0, 'Ok(Shape.Dot)')
+case('a case with fields reads', ENUMS + 'println(read[Shape]("Circle(r: 1.5)"))' + '\n', 0, 'Ok(Shape.Circle(1.5))')
+case('a case missing a field is an Err', ENUMS + 'println(read[Shape]("Rect(w: 2)"))' + '\n', 0, 'missing field `h`')
+case('an unknown case is an Err', ENUMS + 'println(read[Shape]("Tri"))' + '\n', 0, 'is not a case of Shape')
+case('a List reads', ENUMS + 'println(read[List[Int]]("List(1, 2, 3)"))' + '\n', 0, 'Ok(List(1, 2, 3))')
+case('a bad List item names its index', ENUMS + 'println(read[List[Int]]("List(1, b)"))' + '\n', 0, 'item 1')
+case('a List of enums inside a tuple reads', ENUMS + 'println(read[Scene]("Scene(shapes: List(Dot, Rect(1, 2)))"))' + '\n', 0, 'Ok(Scene(shapes: List(Shape.Dot, Shape.Rect(1, 2))))')
+case('show then read round-trips', ENUMS + 'x = Scene(shapes: List(Dot, Circle(r: 2.0)))\nprintln(read[Scene](show(x)) == Ok(x))' + '\n', 0, 'true')
+case('read of an enum without deriving read is a compile error', 'enum Plain deriving show:\n  A,\n  B\nprintln(read[Plain]("A"))\n', 2, "doesn't implement `Read`")
 
 print(f"{len(fails)} failed" if fails else "all passed")
 sys.exit(1 if fails else 0)

@@ -1209,9 +1209,9 @@ def read_text(self, s, ta):
     t = ta[0][0] if ta and ta[0] else None
     name = t.path[-1] if isinstance(t, TName) else None
     s = s.strip()
-    if name in self.tuples:
+    if name in self.tuples or name in self.enums or (name in ("List", "Array") and t.groups):
         try:
-            return Ok(self.read_tuple(name, s))
+            return Ok(self.read_value(t, s))
         except ValueError as e:
             return err_reserved("MISSING", f"cannot read {name}: {e}")
     try:
@@ -1221,16 +1221,22 @@ def read_text(self, s, ta):
 
 
 def read_tuple(self, name, s):
-    """Parse `Name(f: v, ...)` against the declared fields: labels must be declared fields, none missing or repeated,
-    and a field whose type is a tuple is read the same way, however deep. Raises ValueError with the reason."""
+    """Parse `Name(f: v, ...)` against the declared fields. Raises ValueError with the reason."""
     import re
     info = self.tuples[name]
     m = re.match(r"^" + re.escape(name) + r"\((.*)\)$", s, re.S)
     if not m:
         raise ValueError(f"expected `{name}(...)`")
-    parts = split_top(m.group(1))
-    declared = [f.name for f in info.fields]
-    labelled = [(":" in p and re.match(r"^[A-Za-z_]\w*\s*:", p) is not None) for p in parts]
+    vals = self.read_fields([f.name for f in info.fields], [f.type for f in info.fields], m.group(1))
+    return TupleV(vals, info.names, name)
+
+
+def read_fields(self, declared, types, body):
+    """The text between a constructor's parentheses, read against its declared field names and types: labels must be
+    declared fields, none missing or repeated, and each value is read at its declared type, however deep."""
+    import re
+    parts = split_top(body)
+    labelled = [re.match(r"^[A-Za-z_]\w*\s*:", p) is not None for p in parts]
     if any(labelled) and not all(labelled):
         raise ValueError("write every field with its name or none of them")
     if all(labelled) and parts:
@@ -1239,7 +1245,7 @@ def read_tuple(self, name, s):
             k, v = p.split(":", 1)
             k = k.strip()
             if k not in declared:
-                raise ValueError(f"`{k}` is not a field (the fields are {', '.join('`' + d + '`' for d in declared)})")
+                raise ValueError(f"`{k}` is not a field (the fields are {', '.join('`' + str(d) + '`' for d in declared)})")
             if k in got:
                 raise ValueError(f"field `{k}` is given twice")
             got[k] = v.strip()
@@ -1254,17 +1260,59 @@ def read_tuple(self, name, s):
             raise ValueError(f"{len(parts) - len(declared)} more value(s) than the {len(declared)} field(s)")
         texts = parts
     vals = []
-    for f, txt in zip(info.fields, texts):
-        ft = f.type
-        fname = ft.path[-1] if isinstance(ft, TName) and len(ft.path) == 1 else None
+    for d, ft, txt in zip(declared, types, texts):
         try:
-            if fname in self.tuples:
-                vals.append(self.read_tuple(fname, txt))
-            else:
-                vals.append(self.read_field(fname, txt))
+            vals.append(self.read_value(ft, txt))
         except ValueError as e:
-            raise ValueError(f"field `{f.name}`: {e}")
-    return TupleV(vals, info.names, name)
+            raise ValueError(f"field `{d}`: {e}")
+    return vals
+
+
+def read_value(self, ft, txt):
+    """One value of declared type node `ft`: a tuple, an enum that derives read, a List or Array, or a scalar."""
+    import re
+    txt = txt.strip()
+    fname = ft.path[-1] if isinstance(ft, TName) and len(ft.path) == 1 else None
+    if fname in self.tuples:
+        return self.read_tuple(fname, txt)
+    if fname in self.enums:
+        return self.read_enum(fname, txt)
+    if fname in ("List", "Array") and ft.groups and ft.groups[0]:
+        m = re.match(r"^" + fname + r"(?:\[[^\]]*\])?\((.*)\)$", txt, re.S)
+        if not m:
+            raise ValueError(f"expected `{fname}(...)`")
+        et = ft.groups[0][0]
+        items = []
+        for k, part in enumerate(split_top(m.group(1))):
+            try:
+                items.append(self.read_value(et, part))
+            except ValueError as e:
+                raise ValueError(f"item {k}: {e}")
+        return (ListV if fname == "List" else ArrayV)(items)
+    return self.read_field(fname, txt)
+
+
+def read_enum(self, name, txt):
+    """`Case`, `Enum.Case`, or `Case(...)` for an enum that says `deriving read`."""
+    import re
+    info = self.enums[name]
+    et = info.et if hasattr(info, "et") else info
+    if "read" not in (getattr(et, "derivs", None) or []):
+        raise ValueError(f"`{name}` does not say `deriving read`")
+    if et.header:
+        raise ValueError(f"`{name}` has a header, which `read` does not support")
+    m = re.match(r"^(?:" + re.escape(name) + r"\.)?([A-Za-z_]\w*)(?:\((.*)\))?$", txt, re.S)
+    if not m or m.group(1) not in et.cases:
+        raise ValueError(f"`{txt}` is not a case of {name} (the cases are {', '.join('`' + c + '`' for c in et.order)})")
+    ci = et.cases[m.group(1)]
+    if not ci.fields:
+        if m.group(2):
+            raise ValueError(f"`{ci.name}` has no fields")
+        return self.build_enum(et, ci, [], {}, 0)
+    if m.group(2) is None:
+        raise ValueError(f"`{ci.name}` needs its fields: `{ci.name}(...)`")
+    vals = self.read_fields(list(ci.fields), list(ci.ftypes), m.group(2))
+    return self.build_enum(et, ci, vals, {}, 0)
 
 
 _INT_NAMES = ("Int", "Int8", "Int16", "Int32", "Int64", "UInt", "UInt8", "UInt16", "UInt32", "UInt64", "Byte")
@@ -1320,6 +1368,9 @@ def parse_scalar(self, s):
 
 _I.read_text = read_text
 _I.read_tuple = read_tuple
+_I.read_fields = read_fields
+_I.read_value = read_value
+_I.read_enum = read_enum
 _I.read_field = read_field
 _I.parse_scalar = parse_scalar
 
