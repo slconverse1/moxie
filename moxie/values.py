@@ -488,7 +488,7 @@ class RangeV:
 
 
 class Closure:
-    __slots__ = ("node", "env", "name", "recv", "tparams", "bound", "impl", "owner", "iface_contracts")
+    __slots__ = ("node", "env", "name", "recv", "tparams", "bound", "impl", "owner", "iface_contracts", "priv")
 
     def __init__(self, node, env, name=None):
         self.node = node
@@ -500,6 +500,7 @@ class Closure:
         self.impl = None
         self.owner = None
         self.iface_contracts = None
+        self.priv = None          # the package (or "<main>") that owns this method privately, or None for a public one
 
 
 SUM_ELEM = {}      # id of a `sum`/`product` call node -> the element type's name, filled in by the checker

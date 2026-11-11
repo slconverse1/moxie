@@ -162,28 +162,45 @@ class CallsMixin:
         b.iface_contracts = c.iface_contracts
         return b
 
-    def methods_of(self, v, name):
+    def caller_pkg(self, env):
+        """The package whose code is running at `env` (`"<main>"` for the entry program), or None when no environment is given."""
+        if env is None:
+            return None
+        return self.mod_pkg.get(id(getattr(env, "mod", None) or env), "<main>")
+
+    def visible(self, r, env):
+        """The methods of `r` that code at `env` may use: the public ones, and the private ones its own package wrote."""
+        if not self.has_priv:
+            return r
+        pkg = self.caller_pkg(env)
+        return [c for c in r if c.priv is None or c.priv == pkg]
+
+    def methods_of(self, v, name, env=None):
         tn = type_name(v)
         d = self.impls.get(tn)
         if d is not None:
             r = d.get(name)
             if r:
-                return r
+                r = self.visible(r, env)
+                if r:
+                    return r
         if v.__class__ is str or v.__class__ is Char:
             pass
         return None
 
-    def find_method_for(self, v, name):
-        ms = self.methods_of(v, name)
+    def find_method_for(self, v, name, env=None):
+        ms = self.methods_of(v, name, env)
         if ms:
             return ms[0]
         return None
 
-    def find_op(self, op, l, r):
+    def find_op(self, op, l, r, env=None):
         tn = type_name(l)
         d = self.impls.get(tn)
         if d is not None:
             ms = d.get(op)
+            if ms:
+                ms = self.visible(ms, env)
             if ms:
                 return self.pick_overload(ms, [r])
         if l.__class__ in (int, float, bool, str) or isinstance(l, FixedInt):
@@ -521,7 +538,7 @@ class CallsMixin:
             f = obj.vals[obj.names.index(name)]
             if isinstance(f, (Closure, Builtin, PartialV, ComposeV, PathV)):
                 return f, None, False
-        ms = self.methods_of(obj, name)
+        ms = self.methods_of(obj, name, env)
         if ms:
             c = ms[0]
             if len(ms) > 1:

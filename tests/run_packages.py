@@ -94,11 +94,18 @@ O = make({
     "shapes.mxi": SQ, "talk.mxi": SP,
     "ok.mxi": HEAD + IMPL + 'println(shapes.Square(side: 4).say())\n',
     "twice.mxi": HEAD + IMPL + IMPL,
+    "mid.mxi": HEAD + 'export fn mk() shapes.Square:\n  shapes.Square(side: 2)\n' + IMPL + 'export fn inside() String:\n  mk().say()\n',
+    "mid2.mxi": HEAD + 'export fn inside2() String:\n  shapes.Square(side: 3).say()\n' + IMPL.replace('"side ${self.side}"', '"other ${self.side}"'),
+    "viaimport.mxi": 'import mid\nprintln(mid.mk().say())\n',
+    "inside.mxi": 'import mid\nprintln(mid.inside())\n',
+    "both.mxi": 'import mid\nimport mid2\nprintln(mid.inside())\nprintln(mid2.inside2())\n',
     "owned.mxi": 'import talk\ntuple Sq:\n  side: Int\nimpl talk.Speaker for Sq:\n  fn say(self) String:\n    "mine"\nprintln(Sq(side: 1).say())\n',
-    "mid.mxi": 'import shapes\nimport talk\n' + 'export fn mk() shapes.Square:\n  shapes.Square(side: 2)\n' + IMPL,
    })
 chk("a local impl of a foreign interface for a foreign type works in its own package", O, ["ok.mxi"], 0, "side 4")
 chk("a second local impl of the same pair is an error", O, ["twice.mxi"], 2, "already implements")
+chk("a package can use its own local impl", O, ["inside.mxi"], 0, "side 2")
+chk("an importer does not see another package's local impl", O, ["viaimport.mxi"], 1, "no method or function 'say'", absent=("side 2",))
+chk("two packages can each have their own local impl of the same pair", O, ["both.mxi"], 0, "side 2", "other 3")
 chk("an impl for your own type still works", O, ["owned.mxi"], 0, "mine")
 
 print()

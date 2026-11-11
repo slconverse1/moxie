@@ -307,6 +307,9 @@ class DeclsMixin:
         tname = self.rtype_name(target)
         if tname is None:
             raise Abort("bad impl target", n.line)
+        priv = self.impl_private(n, env)
+        if priv is not None:
+            self.has_priv = True
         # Self inside the block
         table = self.impls.setdefault(tname, {})
         stat = self.statics.setdefault(tname, {})
@@ -332,9 +335,12 @@ class DeclsMixin:
                     else:
                         v = yield from self.ev(tgt, env)
                         c = Closure(FnDecl(name, [], [], None, None, None, set(), None, None), env, name)
-                        table.setdefault(name, []).append(v if isinstance(v, Closure) else c)
+                        cc = v if isinstance(v, Closure) else c
+                        cc.priv = priv
+                        table.setdefault(name, []).append(cc)
                     continue
                 c = Closure(node, env, name)
+                c.priv = priv
                 c.impl = n
                 c.owner = tname
                 idecl = self.ifaces.get(iface_name) if iface_name else None
@@ -355,8 +361,26 @@ class DeclsMixin:
                 pass
         # interface defaults
         if iface_name:
-            self._install_defaults(tname, iface_name, env)
+            self._install_defaults(tname, iface_name, env, priv)
         return UNIT
+
+    def impl_private(self, n, env):
+        """The package (or `"<main>"`) that owns this impl privately, or None when it is public.  An impl of an interface is
+        private when neither the interface nor the type is declared in the package that writes it (Spec 12, local impls)."""
+        if n.iface is None:
+            return None
+        mod = getattr(env, "mod", None)
+        if mod is self.prelude or env is self.prelude:
+            return None             # the prelude's own impls are public
+        decls = self.mod_decls.get(id(mod))
+        if decls is None:
+            return None             # the built-in prelude and anything not loaded as a module: public
+
+        def local(t):
+            return t.__class__ is TName and len(t.path) == 1 and t.path[0] in decls
+        if local(n.iface) or local(n.target):
+            return None
+        return self.mod_pkg.get(id(mod), "<main>")
 
     def _add_embeds(self, tname, iface_name):
         d = self.ifaces.get(iface_name)
@@ -367,7 +391,7 @@ class DeclsMixin:
             self.iface_impls.setdefault(tname, set()).add(en)
             self._add_embeds(tname, en)
 
-    def _install_defaults(self, tname, iface_name, env):
+    def _install_defaults(self, tname, iface_name, env, priv=None):
         d = self.ifaces.get(iface_name)
         if d is None:
             return
@@ -380,9 +404,10 @@ class DeclsMixin:
                 if m.name not in table:
                     c = Closure(node, env, m.name)
                     c.owner = tname
+                    c.priv = priv
                     table[m.name] = [c]
         for e in d.embeds or []:
-            self._install_defaults(tname, self.rtype_name(e), env)
+            self._install_defaults(tname, self.rtype_name(e), env, priv)
 
     # ------------------------------------------------------------ misc declarations
     def ev_UsingDecl(self, n, env):
@@ -433,8 +458,11 @@ class DeclsMixin:
         if folder is not None:                 # a package folder may carry its own Moxie.toml
             from .manifest import package_native
             self.pkg_native[key] = package_native(folder)
-        for path in paths:                     # the files share the package's names, in the manifest's order
-            prog = self.load_source(open(path, encoding="utf-8").read(), path)
+        progs = [self.load_source(open(path, encoding="utf-8").read(), path) for path in paths]
+        from .interp import declared_names
+        for prog in progs:                     # every file's declarations are known before any file runs
+            self.mod_decls.setdefault(id(menv), set()).update(declared_names(prog.stmts))
+        for prog in progs:                     # the files share the package's names, in the manifest's order
             self.run_sync(self.exec_stmts(prog.stmts, menv))
         exp = self.exports.get(id(menv), set())
         pe = Env(None)

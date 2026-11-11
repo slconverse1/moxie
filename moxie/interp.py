@@ -15,6 +15,11 @@ from .places import PlacesMixin
 from .parser import parse_program
 
 
+def declared_names(stmts):
+    """The names of the types, aliases, and interfaces declared at the top level of `stmts`."""
+    return {x.name for x in stmts if x.__class__.__name__ in ("TupleDecl", "EnumDecl", "AliasDecl", "IfaceDecl")}
+
+
 class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def __init__(self, out=None, err=None, search_dir=None, test_mode=False, inp=None):
         self.inp = inp if inp is not None else sys.stdin
@@ -29,6 +34,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.pkg_ceilings = {}        # package name -> Perms (Spec 19d, per-package ceilings)
         self.internals = {}           # id(module env) -> names declared `internal` (hidden from importers)
         self.mod_pkg = {}             # id(module env) -> package name
+        self.mod_decls = {}           # id(module env) -> the names of the types and interfaces the module declares
+        self.has_priv = False         # True once any private impl is registered
         self.pkg_native = {}          # package name -> (has a Moxie.toml, its [native] table or None)
         self.native_dirs = []         # [native] paths of the package whose foreign block is being loaded
         self.cur_mod = None
@@ -695,9 +702,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def ev_Binary(self, n, env):
         l = yield from self.ev(n.l, env)
         r = yield from self.ev(n.r, env)
-        return (yield from self.binop(n.op, l, r, n.line))
+        return (yield from self.binop(n.op, l, r, n.line, env))
 
-    def binop(self, op, l, r, line=0):
+    def binop(self, op, l, r, line=0, env=None):
         tl = l.__class__
         tr = r.__class__
         # primitives fast paths
@@ -716,15 +723,15 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 return Done(l == r)
             if op == "~=":
                 return Done(l != r)
-        return self._binop_slow(op, l, r, line)
+        return self._binop_slow(op, l, r, line, env)
 
-    def _binop_slow(self, op, l, r, line):
+    def _binop_slow(self, op, l, r, line, env=None):
         # user-defined operator?
-        u = self.find_op(op, l, r)
+        u = self.find_op(op, l, r, env)
         if u is not None:
             return (yield from self.apply_method(u, l, [r]))
         if op == "~=":
-            u = self.find_op("==", l, r)
+            u = self.find_op("==", l, r, env)
             if u is not None:
                 v = yield from self.apply_method(u, l, [r])
                 return not v
@@ -732,7 +739,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         if op == "==":
             return self.values_eq(l, r)
         if op in ("<", ">", "<=", ">="):
-            ul = self.find_op("<", l, r)
+            ul = self.find_op("<", l, r, env)
             if ul is not None:
                 if op == "<":
                     return (yield from self.apply_method(ul, l, [r]))
@@ -977,6 +984,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return last
 
     def exec_stmts(self, stmts, e):
+        if getattr(e, "mod", None) is e:
+            self.mod_decls.setdefault(id(e), set()).update(declared_names(stmts))
         last = UNIT
         for s in stmts:
             last = yield from self.exec_stmt(s, e)
