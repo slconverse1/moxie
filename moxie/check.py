@@ -521,10 +521,16 @@ class Checker:
         def bare(e, p):
             return e.__class__ is Name and e.name == p
 
+        fnparams = [set()]          # names of the enclosing function's function-typed parameters: callees the checker cannot see into
+
         def eats(n, p):
             c = n.__class__
             if c is Move and root(n.e) == p:
                 return True
+            if c is Call and n.fn.__class__ is Name and n.fn.name in fnparams[0]:
+                for a in n.args:                    # `f(self.value)`: an unknown function is assumed to keep what it is given
+                    if a.expr.__class__ in (Name, Field) and root(a.expr) == p:
+                        return True
             if c is Return and n.e is not None and bare(n.e, p):
                 return True
             if c is Call:
@@ -540,6 +546,7 @@ class Checker:
             return any(eats(ch, p) for ch in _children(n))
 
         def keeps(fd, p):
+            fnparams[0] = {q.name for q in fd.params or [] if q.name and q.type.__class__ is TFn}
             body = fd.body
             tail = body.stmts[-1] if body.__class__ is Block and body.stmts else body
             if tail.__class__ is ExprStmt:
@@ -556,6 +563,10 @@ class Checker:
         for st in prog.stmts:
             if st.__class__ is ImplDecl and st.target.__class__ is TName and st.target.path:
                 tn = st.target.path[-1]
+                if st.iface is None and tn not in self.tuples and tn not in self.enums and st.target.groups and st.target.groups[0] \
+                        and st.target.groups[0][0].__class__ is TName and st.target.groups[0][0].path \
+                        and st.target.groups[0][0].path[-1] in self.tuples:
+                    tn = st.target.groups[0][0].path[-1]            # `impl Functor[Box]:` is an impl for the constructor `Box`
                 for m in st.members or []:
                     if m.__class__ is not FnDecl or m.body is None:
                         continue
@@ -565,7 +576,8 @@ class Checker:
                         self.err(mine.line, f"`{m.name}` is generated for a property or delegate of `{tn}` whose setter returns a `Result`, so it can't also be written by hand; drop yours, or drop the `Result` from the setter")
                     self.methods[(tn, m.name)] = m
                     ps = m.params or []
-                    if ps and ps[0].name == "self" and ps[0].type is None and self.is_res_type(st.target) and keeps(m, "self"):
+                    generic_target = tn in self.tuples and bool(getattr(self.tuples[tn], "tparams", None))
+                    if ps and ps[0].name == "self" and (ps[0].type is None or generic_target) and (self.is_res_type(st.target) or generic_target) and keeps(m, "self"):
                         self.method_consumes.add((tn, m.name))
         self.add_pkg_methods()
     def add_pkg_methods(self):
@@ -614,7 +626,8 @@ class Checker:
         v = sc.find(x)
         if v is None or not v.resource:
             return False
-        ty = v.ty[1] if v.ty.__class__ is tuple and len(v.ty) == 2 and v.ty[0] == "named" else None
+        ty = v.ty[1] if v.ty.__class__ is tuple and len(v.ty) == 2 and v.ty[0] == "named" else (
+            v.ty[1] if v.ty.__class__ is tuple and len(v.ty) == 3 and v.ty[0] == "app" and v.ty[1] in self.tuples else None)
         if m == "close" or (m in self.consumes and 0 in self.consumes[m]):
             return True
         if ty is not None:

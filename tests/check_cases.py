@@ -72,4 +72,7 @@ CASES = [
 ("generic function copying a resource", 'fn dup[A](x: A) (A, A):\n  (x, x)\nrx, tx = Chan[Int][1]()\np = dup(move tx)\n', "`dup` is checked for `A` = `ChanW[Int]`"),
 ("ok: generic copy of a plain value", 'fn dup[A](x: A) (A, A):\n  (x, x)\nprintln(dup(5))\nprintln(dup("a"))\n', None),
 ("ok: generic function that moves a resource through", 'fn ident[A](x: A) A:\n  x\nrx, tx = Chan[Int][1]()\nt2 = ident(move tx)\nwrite(t2, 1)\nprintln(read(rx))\n', None),
+("a method that passes a resource field to a function takes self", 'tuple Box[A]:\n  value: A\nimpl Functor[Box]:\n  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:\n    Box(f(self.value))\nfn dupb(m: Box[ChanW[Int]]) Int:\n  a = m.map((x): x)\n  b = m.map((x): x)\n  1\n', "use of moved value `m`"),
+("F[_] code that maps a resource container twice", 'tuple Box[A]:\n  value: A\nimpl Functor[Box]:\n  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:\n    Box(f(self.value))\nfn dup[F[_]: Functor, A](m: F[A]) (F[A], F[A]):\n  (m.map((x): x), m.map((x): x))\nrx, tx = Chan[Int][1]()\np = dup(Box(move tx))\n', "`dup` is checked for"),
+("ok: map twice over plain values", 'tuple Box[A]:\n  value: A\nimpl Functor[Box]:\n  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:\n    Box(f(self.value))\nfn dup[F[_]: Functor, A](m: F[A]) (F[A], F[A]):\n  (m.map((x): x), m.map((x): x))\nprintln(dup(Box(1)))\nprintln(dup(List(1, 2)))\n', None),
 ]
