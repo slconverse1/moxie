@@ -28,7 +28,7 @@ def run(cmd, src, toml=None):
     open(os.path.join(d, "main.mxi"), "w").write(src)
     if toml:
         open(os.path.join(d, "Moxie.toml"), "w").write(toml)
-    r = subprocess.run([sys.executable, "-m", "moxie", cmd, os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=400)
+    r = subprocess.run([sys.executable, "-m", "moxie", cmd, os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=120)
     return r.returncode, r.stdout.decode() + r.stderr.decode()
 
 
@@ -57,7 +57,7 @@ def run_pkg(cmd, src):
     os.mkdir(os.path.join(d, "mathx"))
     open(os.path.join(d, "mathx", "mathx.mxi"), "w").write(PKG)
     open(os.path.join(d, "main.mxi"), "w").write(src)
-    r = subprocess.run([sys.executable, "-m", "moxie", cmd, os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=400)
+    r = subprocess.run([sys.executable, "-m", "moxie", cmd, os.path.join(d, "main.mxi")], cwd=ROOT, capture_output=True, timeout=120)
     return r.returncode, r.stdout.decode() + r.stderr.decode()
 
 

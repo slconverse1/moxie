@@ -4,6 +4,7 @@ a guard, and a top-level constant binding.  The result is a Python int, float, b
 import io
 
 DEFAULT_FUEL = 200000
+MAX_DEPTH = 1000                # nested calls the compiler allows while evaluating a call
 
 
 class FuelOut(Exception):
@@ -79,6 +80,8 @@ class CtEval:
                 outer.left -= 1
                 if outer.left < 0:
                     raise FuelOut()
+                if getattr(I, "depth", 0) > MAX_DEPTH:      # resuming nested generators costs time in proportion to the depth
+                    raise RecursionError()
                 return f(n, env)
             return counted
         I.disp = {k: wrap(v) for k, v in I.disp.items()}
