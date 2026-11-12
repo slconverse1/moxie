@@ -18,7 +18,9 @@ class Parser(ExprParser):
         if self.peek().kind != "EOF":
             self.err(f"unexpected {self.describe(self.peek())}")
         stmts = expand_delegates(stmts, self.file)
-        return Block(group_fns(stmts), line=1)
+        from .withs import expand_withs
+        stmts = expand_withs(group_fns(stmts), self.file)
+        return Block(stmts, line=1)
 
     def parse_stmts_until_dedent(self, top=False):
         out = []

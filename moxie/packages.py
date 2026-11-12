@@ -54,4 +54,6 @@ def parse_package(paths):
         src = open(p, encoding="utf-8").read()
         srcs.append(src)
         stmts.extend(parse_program(src, p).stmts)
+    from .withs import expand_withs
+    expand_withs(stmts, paths[0] if paths else "<package>")            # a `with` that names an enum of another file of the package
     return "\n".join(srcs), Block(stmts, line=1)

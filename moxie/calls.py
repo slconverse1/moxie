@@ -248,7 +248,7 @@ class CallsMixin:
                 for et in lst:
                     if et.name == hn:
                         return (et, et.cases[name])
-        et = lst[-1] if len(lst) == 1 else lst[0]
+        et = next((e for e in lst if not e.prelude), lst[0])      # a program's own enum before the prelude's (`Up` is a `Dir`, not a `Key`)
         return (et, et.cases[name])
 
     def enum_instance(self, et, ci, vals):

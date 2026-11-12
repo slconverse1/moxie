@@ -634,6 +634,16 @@ class ExprParser(PBase):
             return self.parse_for()
         if v == "while":
             return self.parse_while()
+        if v == "do" and self.peek(1).kind == "NAME" and self.peek(1).val == "with" and self.peek(2).kind == "NAME" \
+                and (self.at_op(":", 3) or self.at_op(",", 3)):
+            self.next()
+            self.next()
+            names = [self.next().val]
+            while self.at_op(","):
+                self.next()
+                names.append(self.next().val)
+            self.expect_op(":")
+            return WithE(names, self.parse_block_or_inline(), line=line)
         if v == "do" and self.at_op(":", 1):
             self.next()
             self.next()

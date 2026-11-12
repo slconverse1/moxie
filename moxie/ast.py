@@ -83,6 +83,7 @@ def _defs():
         "DaemonE": "body",
         "ScopeE": "name body",         # scope NAME: ... (NAME is the scope's Cancel token, or None)
         "DoE": "body label",
+        "WithE": "enums body",        # with A, B: ... (a block with the cases of enums A and B open; rewritten before checking)
         "DoRecv": "recv kind body",    # kind: do | update
         "UpdLine": "name expr nested",
         "ForM": "lines yield_",        # lines: [(kind, pat, expr, else_)]

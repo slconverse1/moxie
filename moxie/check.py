@@ -435,8 +435,16 @@ class Checker:
         tys.CALLER = self.type_call
         tys.IMPLEMENTS = self.implements
         self.collect_prelude_types()
+        from .withs import expand_withs
+        from .lexer import MoxieSyntaxError
+        try:
+            expand_withs(prog.stmts, getattr(prog, "file", "<input>"), strict=True)       # a `with` naming an enum that is declared nowhere
+        except MoxieSyntaxError as e:
+            self.err(e.line, e.msg)
+            return self.diags
         for st in prog.stmts:
             self.collect(st)
+        self.check_ambiguous_cases(prog)
         self.find_consumers(prog)
         top = Sc()
         self.top = top                    # the top scope, which the REPL reads to show the type of a binding
@@ -2786,6 +2794,15 @@ class Checker:
         return None, None
 
     def e_DoE(self, n, sc):
+        from .withs import UNUSED
+        u = UNUSED.get(id(n))
+        if u is not None:                                  # a `do with A, B:` that never writes a case of one of them
+            line, unused, listed = u
+            if len(listed) == 1:
+                what = f"this `do with {listed[0]}:` block uses none of its cases"
+            else:
+                what = f"`do with {', '.join(listed)}:` never uses a case of " + ", ".join(f"`{x}`" for x in unused)
+            self.diags.append(Diag(line, what + "; the block can do without it", "warning"))
         self.loop([n.body], sc, n.label)
         return None, None
 
@@ -2979,6 +2996,93 @@ class Checker:
     def heads_of(members, head):
         """The members written with type arguments whose type constructor is `head` (`List` for `List[Int]`)."""
         return [m for m in members if m.startswith(head + "[")]
+
+    def check_ambiguous_cases(self, prog):
+        """A bare case name that two of the program's enums share (`Red` in `Light` and `Signal`) is an error wherever nothing says
+        which enum is meant: a declared type, a parameter, a field or a result gives that, and `do with Light:` opens one.  The
+        prelude's `Option` is not counted: its `Some` and `None` give way to a program's own."""
+        amb = {}
+        for cn, ens in self.cases.items():
+            own = [e for e in ens if self.enums.get(e) is not getattr(self, "prelude_option", None)]
+            if len(own) > 1:
+                amb[cn] = own
+        if not amb:
+            return
+        callable_names = set(self.fns) | set(self.tuples) | set(self.cases)
+
+        def say(n, name):
+            a, b = amb[name][0], amb[name][1]
+            self.err(n.line, f"`{name}` could be `{a}.{name}` or `{b}.{name}`: write which one, or open one with `do with {a}:`")
+
+        def walk(x, hinted):
+            if isinstance(x, (list, tuple)):
+                for i in x:
+                    walk(i, hinted)
+                return
+            if not isinstance(x, N):
+                return
+            c = x.__class__
+            if c is Name:
+                if x.name in amb and not hinted:
+                    say(x, x.name)
+                return
+            if c is TName or c is TFn or c is TUnion:
+                return
+            if c is Call:
+                f = x.fn
+                if f.__class__ is Name and f.name in amb:
+                    if not hinted:
+                        say(f, f.name)
+                elif f.__class__ is not Name:
+                    walk(f, False)
+                known = f.__class__ is not Name or f.name in callable_names or f.name not in self.builtin_names()
+                for a in x.args or []:
+                    walk(a.expr, known)
+                walk(x.trailing, True)
+                return
+            if c is Assign:
+                walk(x.value, x.ann is not None)
+                return
+            if c is FnDecl:
+                for st in x.params or []:
+                    walk(getattr(st, "default", None), True)
+                walk(x.body, x.ret is not None)
+                return
+            if c is Lambda or c is Return:
+                walk(getattr(x, "body", None) if c is Lambda else x.e, True)
+                return
+            if c is IfE:
+                for cond, body in x.branches:
+                    walk(cond, False)
+                    walk(body, hinted)
+                walk(x.else_, hinted)
+                return
+            if c is WhenE:
+                walk(x.scrut, False)
+                for a in x.arms:
+                    walk(a.guard, False)
+                    walk(a.body, hinted)
+                return
+            if c is Block:
+                for i, st in enumerate(x.stmts or []):
+                    walk(st, hinted if i == len(x.stmts) - 1 else False)
+                return
+            if c is ExprStmt:
+                walk(x.e, hinted)
+                return
+            if c in (DoE, ScopeE, DaemonE, WhileE, ForE):
+                for f in x._fields:
+                    walk(getattr(x, f), hinted if f == "body" else False)
+                return
+            for f in x._fields:
+                walk(getattr(x, f), hinted)       # anything else keeps the hint of its surroundings
+
+        for st in prog.stmts:
+            walk(st, False)
+
+    def builtin_names(self):
+        """Names the prelude provides as functions: a call to one gives its arguments no declared type."""
+        return {"println", "print", "show", "dbg", "assert", "assert_eq", "len", "min", "max", "ok", "fail", "swap"}
 
     def decl_node(self, e, sc, depth=0):
         """The written type of an expression, where one was written: a parameter or annotated local, the result of a function, a

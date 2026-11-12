@@ -456,6 +456,24 @@ when Planet.value_of("VENUS"):
 
 Output: `3 2`, then `gravity 8.871391908774457`. **Mistakes:** `fn (Shape) area()` (methods live only in `impl` blocks), a bare `union` (use `enum` or `type union`), a default on a non-trailing field, and a `when` that misses a case.
 
+**`do with`: opening an enum's cases.** `do with Light:` makes the case names of `Light` bare inside its block, which is how two enums that share a case name are told apart. `do with A, B:` opens several; a case name that both of them have is a compile error, and so is a case name that is also the name of a function or a type.
+
+```
+enum Light:
+  Red
+  Green
+enum Signal:
+  Red
+  Stop
+do with Light:
+  println(Red)
+do with Signal:
+  println(Red)
+  println(Stop)
+```
+
+Output: `Light.Red`, then `Signal.Red`, then `Signal.Stop`. A `do with` block is a `do:` block, an expression with the value of its last line whose bound names stay inside, that also opens the cases. It rewrites the names in its block to the qualified ones, so patterns work too: inside `do with Shape:`, `Circle(r) ->` means `Shape.Circle(r) ->`.
+
 **Chapter 4: Type aliases, unions, data paths**
 
 An alias is the same type under another name, and an opaque type is a new type over a representation, so mixing them up is an error:

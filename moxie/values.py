@@ -288,6 +288,7 @@ class EnumType:
         self.header = None     # header field names
         self.derivs = []
         self.tparams = []
+        self.prelude = False   # declared by the prelude: its bare case names lose to a program's own enum
 
 
 class CaseInfo:

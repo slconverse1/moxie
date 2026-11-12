@@ -210,6 +210,7 @@ class DeclsMixin:
     def ev_EnumDecl(self, n, env):
         et = EnumType(n.name)
         et.consts = {}
+        et.prelude = env is self.prelude
         et.header = [p.name for p in n.header] if n.header else None
         et.derivs = n.derivs
         info = EnumInfo(et, n)
@@ -459,6 +460,10 @@ class DeclsMixin:
             from .manifest import package_native
             self.pkg_native[key] = package_native(folder)
         progs = [self.load_source(open(path, encoding="utf-8").read(), path) for path in paths]
+        from .withs import expand_withs
+        every = [s for prog in progs for s in prog.stmts]
+        for prog, path in zip(progs, paths):   # a `with` may name an enum declared in another file of the package
+            expand_withs(prog.stmts, path, scope=every)
         from .interp import declared_names
         for prog in progs:                     # every file's declarations are known before any file runs
             self.mod_decls.setdefault(id(menv), set()).update(declared_names(prog.stmts))
