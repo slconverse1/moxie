@@ -468,6 +468,11 @@ class Checker:
         for st in Checker._prelude_types[GC[0]]:
             if st.__class__ in (TupleDecl, EnumDecl):
                 (self.tuples if st.__class__ is TupleDecl else self.enums)[st.name] = st
+                if st.__class__ is EnumDecl and st.name == "Option":
+                    self.prelude_option = st
+                    for cs in st.cases or []:                     # `Some` and `None` are bare names, as `Ok` and `Err` are
+                        self.cases.setdefault(cs.name, []).append(st.name)
+                        self.globals.add(cs.name)
             else:
                 self.collect(st)                  # interfaces and impls, so a bound like `T: Monoid` is checked
         del self.diags[mark:]
@@ -567,7 +572,7 @@ class Checker:
                 tn = st.target.path[-1]
                 if st.iface is None and tn not in self.tuples and tn not in self.enums and st.target.groups and st.target.groups[0] \
                         and st.target.groups[0][0].__class__ is TName and st.target.groups[0][0].path \
-                        and st.target.groups[0][0].path[-1] in self.tuples:
+                        and (st.target.groups[0][0].path[-1] in self.tuples or st.target.groups[0][0].path[-1] in self.enums):
                     tn = st.target.groups[0][0].path[-1]            # `impl Functor[Box]:` is an impl for the constructor `Box`
                 for m in st.members or []:
                     if m.__class__ is not FnDecl or m.body is None:
@@ -654,6 +659,9 @@ class Checker:
             self.globals.add(st.name)
             self.check_derivs(st)
         elif c is EnumDecl:
+            if st.name == "Option" and self.enums.get("Option") is getattr(self, "prelude_option", None):
+                for cn in ("Some", "None"):                       # a program's own `Option` replaces the prelude's, cases and all
+                    self.cases.pop(cn, None)
             self.enums[st.name] = st
             self.globals.add(st.name)
             self.check_derivs(st)
@@ -702,6 +710,9 @@ class Checker:
                     seen.add(key)
                 self.impls.setdefault(tname, set()).add(iname)
             elif tname:
+                g0 = st.target.groups[0][0] if st.target.__class__ is TName and st.target.groups and st.target.groups[0] else None
+                if g0.__class__ is TName and g0.path and (g0.path[-1] in self.enums or g0.path[-1] in self.tuples):
+                    self.impls.setdefault(g0.path[-1], set()).add(tname)      # `impl Monad[Option]:` is an impl of the constructor `Option`
                 # an inherent impl that defines `<` or `==` makes the type Ordered or Equatable
                 for m in st.members or []:
                     nm = getattr(m, "name", None)
@@ -1886,14 +1897,18 @@ class Checker:
         if t.__class__ is tuple and t[0] == "app" and t[1] == "Result" and len(t[2]) == 2 and t[2][0] is not None \
                 and not tys.params_in(t[2][0]):
             return t[2][0], None                  # `spawn("cat")?` is the Child
+        if t.__class__ is tuple and t[0] == "app" and t[1] == "Option" and len(t[2]) == 1 and t[2][0] is not None \
+                and not tys.params_in(t[2][0]):
+            return t[2][0], None
         return None, None
 
     def check_question(self, n, t):
         """`x?` follows a Result, and the enclosing function returns a Result whose error is the same or has a `From` impl."""
         plain = lambda u: u is not None and (u.__class__ is str or (u.__class__ is tuple and u[0] in ("app", "tup")
                                                                      and not (u[0] == "app" and u[1] == "Result")))
-        if t is not None and plain(t) and t not in ("Unit",) or t == "Unit":
-            self.err(n.line, f"`?` follows a `Result`, found `{tshow(t)}`")
+        is_opt = lambda u: u.__class__ is tuple and u[0] == "app" and u[1] == "Option"
+        if t is not None and plain(t) and not is_opt(t) and t not in ("Unit",) or t == "Unit":
+            self.err(n.line, f"`?` follows a `Result` or an `Option`, found `{tshow(t)}`")
             return
         if self.in_fiber and self.fn_ret is None and not self.in_daemon:
             self.err(n.line, "`?` cannot be used in an inline fiber (`run fn`): it has no return type to carry the error; handle it with `when`, or write a `fiber fn` that returns a `Result`")
@@ -1902,6 +1917,13 @@ class Checker:
             self.err(n.line, "`?` cannot be used in a `daemon:` body: handle the error with `when`, so a failure is a decision and not a silent exit")
             return
         fr = self.base(self.fn_ret) if self.fn_ret is not None else None
+        if is_opt(t):                                               # `o?` gives the value, or returns `None` from the function
+            if fr is not None and not self.has_unsettled(fr) and not is_opt(fr):
+                self.err(n.line, f"`?` on an `Option` returns `None` early, but this function returns `{tshow(fr)}`, not an `Option`")
+            return
+        if is_opt(fr) and not self.has_unsettled(fr):
+            self.err(n.line, f"`?` on a `Result` returns the error early, but this function returns `{tshow(fr)}`, not a `Result`")
+            return
         if fr is None or not (t.__class__ is tuple and t[0] == "app" and t[1] == "Result" and len(t[2]) == 2):
             if fr is not None and plain(fr) and not self.has_unsettled(fr):
                 self.err(n.line, f"`?` returns the error early, but this function returns `{tshow(fr)}`, not a `Result`")

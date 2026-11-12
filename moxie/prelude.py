@@ -1500,6 +1500,8 @@ def b_get_or(I, a, kw, ta):
     x = a[0]
     if isinstance(x, EnumV) and x.et is RESULT_T:
         return x.vals[0] if x.case == "Ok" else a[1]
+    if isinstance(x, EnumV) and x.et.name == "Option" and x.case in ("Some", "None"):
+        return x.vals[0] if x.case == "Some" else a[1]
     r = I.index_get_safe(x, a[1])
     return r if r is not MISSING else a[2]
 

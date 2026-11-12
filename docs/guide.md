@@ -2436,6 +2436,27 @@ for t in List("30", "", "ancient"):
 
 Output: `age 30`, then `AppError.Parse(ParseError.Empty)`, then `AppError.TooOld(99)`. In `check_age`, `parse_age(text)?` has the error type `ParseError`, so the compiler wraps it with `AppError.from` before returning. With no matching impl it is a compile error; when both error types are the same, nothing is converted. In the entry file, before `daemon:`, `?` on an `Err` prints the error's diagnostic and exits with a non-zero status. **Mistakes:** `?` in a function that doesn't return a `Result` (or in a fiber or a daemon cycle), matching only `Ok`, and expecting `?` to chain two conversions.
 
+**18a. `Option`: a value or nothing**
+
+Not every miss is an error. The prelude has `Option[T]`, with the cases `Some(value)` and `None`, written bare as `Ok` and `Err` are. `?` works on it the same way: it gives the value of a `Some`, or returns `None` from the function.
+
+```
+fn half(n: Int) Option[Int]:
+  if n % 2 == 0: Some(n / 2) else: None
+fn quarter(n: Int) Option[Int]:
+  h = half(n)?
+  half(h)
+println(quarter(8))
+println(quarter(6))
+println(get_or(quarter(3), -1))
+for o in List(Some(1), None):
+  when o:
+    Some(v) -> println("got $v")
+    None -> println("nothing")
+```
+
+Output: `Some(2)`, then `None`, then `-1`, then `got 1`, then `nothing`. A `when` on an `Option` must cover both cases. `?` on an `Option` in a function that returns a `Result` (or the reverse) is a compile error, since nothing converts silently. The helpers are `is_some(o)`, `is_none(o)`, and `get_or(o, default)`; `map`, `flat_map`, and `|>>` come from its `Monad` impl (chapter 8d), so `half(8) |>> half |>> half` is `Some(1)`. It derives `eq`, `show`, and `read`, so `read[Option[Int]]("Some(7)")` works. The standard library keeps returning `Result`; `Option` is for your own code and new libraries. Use `Result` when the miss is a failure the caller should hear about, and `Option` when absence is normal.
+
 **Chapter 19: Packages**
 
 `Moxie.toml`:

@@ -900,7 +900,14 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             if func is not None and func.is_entry and not func.closure:
                 raise ProgramExit(1, "error: " + self.describe_error(err))
             raise ReturnEx(Err(err))
-        raise Abort("'?' needs a Result", n.line)
+        if isinstance(v, EnumV) and v.et.name == "Option" and v.case in ("Some", "None"):
+            if v.case == "Some":
+                return v.vals[0]
+            func = env.func
+            if func is not None and func.is_entry and not func.closure:
+                raise ProgramExit(1, "error: `?` met `None`")
+            raise ReturnEx(v)
+        raise Abort("'?' needs a Result or an Option", n.line)
 
     def describe_error(self, e):
         if isinstance(e, TupleV) and e.tname == "Error":

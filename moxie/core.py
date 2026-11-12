@@ -463,8 +463,8 @@ def show(v, interp=None):
             s = interp.try_user_show(v)
             if s is not None:
                 return s
-        if v.et.name == "Result":
-            return f"{v.case}({show(v.vals[0], interp)})"
+        if v.et.name == "Result" or (v.et.name == "Option" and v.case in ("Some", "None")):      # bare cases, as the prelude's `Ok` and `Some` are written
+            return f"{v.case}({show(v.vals[0], interp)})" if v.vals else v.case
         if not v.vals:
             return f"{v.et.name}.{v.case}"
         inner = ", ".join(show(x, interp) for x in v.vals)

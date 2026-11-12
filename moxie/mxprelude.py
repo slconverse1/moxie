@@ -152,6 +152,32 @@ impl NonEmpty[T]:
   fn reduce1(self, f): self.tail |> to_stream() |> reduce(self.head, f)
   fn min(self): self.tail |> to_stream() |> reduce(self.head, min)
   fn max(self): self.tail |> to_stream() |> reduce(self.head, max)
+enum Option[T] deriving eq, show, read:
+  Some(value: T)
+  None
+
+impl Monad[Option]:
+  fn map[A, B](self: Option[A], f: (A) -> B) Option[B]:
+    when self:
+      Some(v) -> Option.Some(f(v))
+      None -> Option.None
+  static fn pure[A](a: A) Option[A]:
+    Option.Some(a)
+  fn ap[A, B](self: Option[(A) -> B], x: Option[A]) Option[B]:
+    when self:
+      Some(g) -> x.map(g)
+      None -> Option.None
+  fn flat_map[A, B](self: Option[A], f: (A) -> Option[B]) Option[B]:
+    when self:
+      Some(v) -> f(v)
+      None -> Option.None
+fn is_some[T](o: Option[T]) Bool:
+  when o:
+    Some(_) -> true
+    None -> false
+
+fn is_none[T](o: Option[T]) Bool:
+  not is_some(o)
 '''
 
 from .locales import tuple_source

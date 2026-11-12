@@ -79,6 +79,7 @@ fn get[K, V, E](d: Dict[K, V], k: K) Result[V, E]: 0
 fn get[T, E](xs: List[T], i: Int) Result[T, E]: 0
 fn get[T, E](xs: Array[T], i: Int) Result[T, E]: 0
 fn get_or[T, E](r: Result[T, E], d: T) T: 0
+fn get_or[T](o: Option[T], d: T) T: 0
 fn get_or[K, V](d: Dict[K, V], k: K, d2: V) V: 0
 fn get_or[T](xs: List[T], i: Int, d: T) T: 0
 fn distinct[T](xs: Seq[T]) Stream[T]: 0
