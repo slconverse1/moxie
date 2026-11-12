@@ -1201,6 +1201,10 @@ class CallsMixin:
                     v = yield from self.exec_body(body.stmts, env, hint)
                 else:
                     v = yield from self.exec_stmt(body, env, hint)
+                    if UTAGS and isinstance(v, Seq):
+                        tg = UTAGS.get(id(body.e if body.__class__ is ExprStmt else body))
+                        if tg is not None:
+                            v.tag = tg[1]
             except ReturnEx as r:
                 v = r.value
         finally:

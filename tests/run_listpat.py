@@ -34,6 +34,8 @@ case("an empty List keeps its member through returns and collections", U + 'fn f
 case("a local of a union type must be covered too", U + 'd: Data = List[String]()\nwhen d:\n  List[Int] -> println("ints")\n  Int -> println("one")\n', 2, "`when` does not cover `List[String]`")
 case("a local of a union type is narrowed", U + 'd: Data = List(1, 2)\nwhen d:\n  List[Int] -> println(d(0) + 1)\n  List[String] -> println(len(d(0)))\n  Int -> println(d)\n', 0, "2")
 
+case("an empty List keeps its member through a lambda", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nfn apply(g: (Int) -> Data, n: Int) Data:\n  g(n)\nprintln(f(apply((n): List[String](), 1)))\nprintln(f(apply((n): List[Int](), 1)))\nh: (Int) -> Data = (n):\n  if n > 0:\n    List[String]()\n  else:\n    List[Int]()\nprintln(f(h(1)))\nprintln(f(h(0)))\ng: (Int) -> Data = (n): List[String]()\nprintln(f(g(1)))\n', 0, "strings\nints\nstrings\nints\nstrings")
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)

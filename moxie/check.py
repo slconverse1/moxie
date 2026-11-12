@@ -2310,6 +2310,7 @@ class Checker:
             m = self.union_member_tag(n.ann, t)
             if m is not None:
                 UTAGS[id(n.value)] = (n.value, m)
+            self.tag_lambda(n.value, n.ann)
             if n.ann.__class__ is TName and n.ann.path[-1] in ("List", "Array") and n.ann.groups and n.ann.groups[0] \
                     and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == n.ann.path[-1]:
                 self.tag_ctor_args(n.ann.groups[0][0], n.value)
@@ -3194,6 +3195,20 @@ class Checker:
             if a.expr is not None and not getattr(a, "label", None) and not getattr(a, "mod", None):
                 self.tag_value(a.expr, elem, self.node_ty.get(id(a.expr)))
 
+    def tag_lambda(self, lam, fty):
+        """A lambda given where a function type with a union result is expected: the values its body gives back are tagged
+        with their member, as a named function's are (see `tag_tails`)."""
+        if lam.__class__ is not Lambda or fty.__class__ is not TFn or fty.ret is None or lam.body is None:
+            return
+        ms = self.union_members(fty.ret)
+        if not ms or not any("[" in m for m in ms):
+            return
+        out = []
+        self.tail_nodes(lam.body, out)
+        for e in out:
+            if e.__class__ is not Name:
+                self.tag_value(e, fty.ret, self.node_ty.get(id(e)))
+
     def tag_union_args(self, fd, args, ats):
         """A list passed where a union is expected is tagged with the member its static type names, so an empty list is still
         told apart from another member at run time (the interpreter keeps no other type on a value)."""
@@ -3204,6 +3219,7 @@ class Checker:
             m = self.union_member_tag(q.type, t)
             if m is not None:
                 UTAGS[id(a.expr)] = (a.expr, m)
+            self.tag_lambda(a.expr, q.type)
 
     def check_poly_rec(self, n, sc):
         """Polymorphic recursion: a generic function that calls itself with a type argument that is not its own parameter
