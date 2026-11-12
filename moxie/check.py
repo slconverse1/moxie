@@ -2123,6 +2123,8 @@ class Checker:
             ptypes.append(pty)
             if p.name:
                 inner.vars[p.name] = Var(pty, False, self.loop_depth)
+                if p.type is not None:
+                    self.var_node[inner.vars[p.name]] = p.type
             if p.pat is not None:
                 self.bind_pat(p.pat, inner)
         for nm in n.locals or []:
@@ -3137,14 +3139,23 @@ class Checker:
                 types = [g[1]]
             elif dn.path[-1] == "Option" and name == "Some" and len(g) == 1:
                 types = [g[0]]
-        if types is None and dn.__class__ is TName and len(dn.path) == 1 and not dn.groups:
+        if types is None and dn.__class__ is TName and len(dn.path) == 1:
             en = dn.path[0]
-            if en in self.enums and not getattr(self.enums[en], "tparams", None) and not getattr(self.enums[en], "header", None):
-                cd = next((x for x in self.enums[en].cases or [] if x.name == name), None)
-                if cd is not None:
-                    types = [f.type for f in cd.fields or []]
-            elif en in self.tuples and name == en and not getattr(self.tuples[en], "tparams", None):
-                types = [f.type for f in self.tuples[en].fields or []]
+            decl = self.enums.get(en) or (self.tuples.get(en) if name == en else None)
+            tps = [t.name for t in getattr(decl, "tparams", None) or []]
+            args = dn.groups[0] if dn.groups and dn.groups[0] else []
+            if decl is not None and len(args) == len(tps):
+                if decl.__class__ is EnumDecl:
+                    cd = next((x for x in decl.cases or [] if x.name == name), None)
+                    if cd is not None:
+                        fts = [q.type for q in decl.header] if decl.header else [f.type for f in cd.fields or []]   # a header's fields are every case's
+                        types = fts
+                elif decl.__class__ is TupleDecl:
+                    types = [f.type for f in decl.fields or []]
+                if types is not None and tps:                            # `Box[V]`: a field written `T` is a `V`
+                    sub = dict(zip(tps, args))
+                    types = [sub.get(t.path[0], t) if t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in sub else
+                             (None if t.__class__ is TName and any(self.mentions_type(t, tps) for _ in (0,)) else t) for t in types]
         if types is None:
             return
         for i, (lbl, sub) in enumerate(p.args):
@@ -3223,6 +3234,9 @@ class Checker:
                     if r is not None:
                         return r
             return None
+        if c is Field and e.obj.__class__ is Name and sc.find(e.obj.name) is None and e.obj.name in self.enums \
+                and any(x.name == e.name for x in self.enums[e.obj.name].cases or []):
+            return TName([e.obj.name], [])                                      # `Level.Low`, a case that takes no fields
         if c is Field:
             ot = self.node_ty.get(id(e.obj))
             if ot is None and e.obj.__class__ is Name:

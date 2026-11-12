@@ -84,6 +84,12 @@ case('a name bound by a destructuring assignment knows its union', 'type union V
 case('a name bound by an is test knows its union', 'type union V = Int | String\nfn mk() Result[V, Error]:\n  Ok(1)\nfn mo() Option[V]:\n  Some(1)\nenum Box:\n  Full(v: V)\n  Empty\ntuple P:\n  a: V\nfn f(b: Box) Int:\n  if b is Full(v):\n    when v:\n      Int -> 1\n  else: 0\nprintln(f(Box.Empty))\n', 2, '`when` does not cover `String`')
 case('a payload name covered in full is accepted', 'type union V = Int | String\nfn mk() Result[V, Error]:\n  Ok(1)\nfn mo() Option[V]:\n  Some(1)\nenum Box:\n  Full(v: V)\n  Empty\ntuple P:\n  a: V\nwhen mk():\n  Ok(v) ->\n    when v:\n      Int -> println("n")\n      String -> println("s")\n  Err(e) -> println("e")\n', 0, 'n')
 
+case('a when on a typed lambda parameter must cover the union', 'type union V = Int | String\nenum Box[T]:\n  Full(v: T)\n  Empty\nenum Level(code: V):\n  Low(1)\n  High("h")\nf = (v: V):\n  when v:\n    Int -> 1\nprintln(f(2))\n', 2, '`when` does not cover `String`')
+case('a typed lambda parameter covered in full is accepted', 'type union V = Int | String\nenum Box[T]:\n  Full(v: T)\n  Empty\nenum Level(code: V):\n  Low(1)\n  High("h")\nf = (v: V):\n  when v:\n    Int -> 1\n    String -> 2\nprintln(f(2))\n', 0, '1')
+case('a name bound by a generic enum knows its union', 'type union V = Int | String\nenum Box[T]:\n  Full(v: T)\n  Empty\nenum Level(code: V):\n  Low(1)\n  High("h")\nb: Box[V] = Box.Full(1)\nwhen b:\n  Full(v) ->\n    when v:\n      Int -> println("n")\n  Empty -> println("e")\n', 2, '`when` does not cover `String`')
+case('a generic enum payload covered in full is accepted', 'type union V = Int | String\nenum Box[T]:\n  Full(v: T)\n  Empty\nenum Level(code: V):\n  Low(1)\n  High("h")\nb: Box[V] = Box.Full(1)\nwhen b:\n  Full(v) ->\n    when v:\n      Int -> println("n")\n      String -> println("s")\n  Empty -> println("e")\n', 0, 'n')
+case('a name bound by a header enum case knows its union', 'type union V = Int | String\nenum Box[T]:\n  Full(v: T)\n  Empty\nenum Level(code: V):\n  Low(1)\n  High("h")\nwhen Level.Low:\n  Low(c) ->\n    when c:\n      Int -> println("n")\n  High(c) -> println("h")\n', 2, '`when` does not cover `String`')
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)
