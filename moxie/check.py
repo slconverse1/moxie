@@ -264,6 +264,7 @@ class Checker:
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
+        self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
         self.union_vars = {}             # Var of a parameter typed with a `type union` -> the names of its members
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
@@ -2515,6 +2516,10 @@ class Checker:
                     dn = self.decl_node(n.value, sc)           # `x = mk()` is written as `mk` says
                     if dn is not None:
                         self.var_node[sc.vars[tgt.name]] = dn
+                    elif n.value.__class__ is Lambda:
+                        ln = self.body_node(n.value.body, sc, call_only=True)
+                        if ln is not None:
+                            self.lam_ret[sc.vars[tgt.name]] = ln
                 um = self.union_members(n.ann) if n.ann is not None else (
                     self.union_members(TName([t[1]], [])) if t.__class__ is tuple and len(t) == 2 and t[0] == "named" and t[1] in self.aliases else None)
                 if um and not res:
@@ -3172,6 +3177,35 @@ class Checker:
         if c is Name:
             v = sc.find(e.name)
             return self.var_node.get(v) if v is not None else None
+        if c is Pipe and e.stage.__class__ is Call:                            # `xs |> f(a)` is `f(xs, a)`
+            return self.decl_node(Call(e.stage.fn, [Arg(None, e.l, None)] + list(e.stage.args or []), e.stage.trailing), sc, depth + 1)
+        if c is IfE or c is WhenE:                                             # every branch is written the same
+            bodies = [b for _, b in e.branches] + ([e.else_] if e.else_ is not None else []) if c is IfE else [a.body for a in e.arms]
+            nodes = [self.body_node(b, sc, depth + 1) for b in bodies]
+            if nodes and all(x is not None for x in nodes) and len({self.type_node_text(x) for x in nodes}) == 1:
+                return nodes[0]
+            return None
+        if c is Call and e.fn.__class__ is Name and sc.find(e.fn.name) is None and e.fn.name not in self.fns:
+            nm, args = e.fn.name, e.args or []
+            if nm in ("List", "Array", "Set") and args and all(a.label is None and a.expr is not None and not a.mod for a in args):
+                ns = [self.decl_node(a.expr, sc, depth + 1) for a in args]          # `List(mk(1), mk(2))`
+                if all(x is not None for x in ns) and len({self.type_node_text(x) for x in ns}) == 1:
+                    return TName([nm], [[ns[0]]])
+            if nm == "Dict" and args and all(a.label.__class__ is tuple and a.expr is not None for a in args):
+                ns = [self.decl_node(a.expr, sc, depth + 1) for a in args]
+                if all(x is not None for x in ns) and len({self.type_node_text(x) for x in ns}) == 1:
+                    return TName(["Dict"], [[TName(["Any"], []), ns[0]]])
+            if nm in ("get", "map", "filter", "reverse", "take", "drop") and args and args[0].label is None and args[0].expr is not None:
+                dn = self.decl_node(args[0].expr, sc, depth + 1)
+                if dn.__class__ is TName and dn.path[-1] in ("List", "Array") and dn.groups and len(dn.groups[0]) == 1:
+                    if nm == "get" and len(args) == 2:
+                        return TName(["Result"], [[dn.groups[0][0], TName(["String"], [])]])
+                    if nm in ("filter", "reverse", "take", "drop"):
+                        return TName(["List"], dn.groups)
+                if nm == "map" and len(args) == 2 and args[1].expr.__class__ is Lambda:
+                    ln = self.body_node(args[1].expr.body, sc, depth + 1, call_only=True)
+                    if ln is not None:
+                        return TName(["List"], [[ln]])
         if c is Q:                                                              # `mk()?` of a `Result[V, E]` or an `Option[V]` is a `V`
             dn = self.decl_node(e.e, sc, depth + 1)
             if dn.__class__ is TName and dn.path[-1] in ("Result", "Option") and dn.groups and dn.groups[0]:
@@ -3204,6 +3238,8 @@ class Checker:
             return None
         if c is Call and e.fn.__class__ is Name:
             v = sc.find(e.fn.name)
+            if v is not None and v in self.lam_ret:
+                return self.lam_ret[v]                                       # a lambda bound to a name
             if v is not None:
                 dn = self.decl_node(e.fn, sc, depth + 1)                     # `xs(i)`: an element
                 if dn.__class__ is TName and dn.path[-1] in ("List", "Array") and dn.groups and len(dn.groups[0]) == 1 and len(e.args or []) == 1:
@@ -3247,6 +3283,17 @@ class Checker:
                     if f.name == e.name:
                         return f.type
         return None
+
+    def body_node(self, b, sc, depth=0, call_only=False):
+        """The written type of a branch or lambda body: the value of its last expression.  A lambda body may name its own
+        parameters, so only a call is read there."""
+        if b.__class__ is Block:
+            b = b.stmts[-1] if b.stmts else None
+        if b.__class__ is not ExprStmt:
+            return None
+        if call_only and b.e.__class__ not in (Call, Pipe):
+            return None
+        return self.decl_node(b.e, sc, depth)
 
     def union_cover(self, n, sc, st=None):
         """A `when` on a value typed with a `type union` (a parameter, a local, a call, a field, a list element) must name every
