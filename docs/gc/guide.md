@@ -1918,7 +1918,7 @@ Output: `Not Found 10`. A clause can carry an `if` guard before its body, and `t
 
 ```
 fn classify(n: Int) String if n < 0 = "neg"
-fn classify(n) if n == 0 then "zero"
+fn classify(n) if n == 0 = "zero"
 fn classify(n) = "pos"
 tailrec fn count_up(0, acc: Int) Int = acc
 tailrec fn count_up(n, acc) = count_up(n - 1, acc + n)

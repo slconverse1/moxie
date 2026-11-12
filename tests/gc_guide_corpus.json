@@ -953,7 +953,7 @@ null
 ],
 [
 1920,
-"fn classify(n: Int) String if n < 0 then \"neg\"\nfn classify(n) if n == 0 then \"zero\"\nfn classify(n) = \"pos\"\ntailrec fn count_up(0, acc: Int) Int = acc\ntailrec fn count_up(n, acc) = count_up(n - 1, acc + n)\nprintln(\"${classify(-1)} ${classify(0)} ${classify(5)} ${count_up(100, 0)}\")\n",
+"fn classify(n: Int) String if n < 0 = \"neg\"\nfn classify(n) if n == 0 = \"zero\"\nfn classify(n) = \"pos\"\ntailrec fn count_up(0, acc: Int) Int = acc\ntailrec fn count_up(n, acc) = count_up(n - 1, acc + n)\nprintln(\"${classify(-1)} ${classify(0)} ${classify(5)} ${count_up(100, 0)}\")\n",
 [
 "neg zero pos 5050"
 ]

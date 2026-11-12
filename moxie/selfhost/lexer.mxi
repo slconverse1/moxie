@@ -310,12 +310,6 @@ fn bracket_delta(t: Token) Int
 fn depth_after(depth: Int, row: List[Token]) Int
   depth + (row |> to_stream() |> map(bracket_delta) |> sum())
 
-fn allowed_indent(sx: Sx, row: List[Token]) Bool
-  first = row(0)
-  sx.opens or (first.kind == "NAME" and (first.text == "requires" or first.text == "ensures") and len(row) > 1) \
-    or (first.kind == "NAME" and has(accessors, first.text) and len(sx.prev) > 0 \
-        and (sx.prev |> take(3) |> any((t) -> t.kind == "NAME" and t.text == "property")))
-
 fn step_line(sx: Sx, row: List[Token]) Sx
   first = row(0)
   cont = continues(sx, row)
@@ -328,10 +322,7 @@ fn step_line(sx: Sx, row: List[Token]) Sx
     ind = first.col - 1
     with_nl = if sx.have_line then Sx(...sx, out: sx.out + mk("NL", first.line)) else sx
     if ind > top_of(with_nl.stack)
-      if allowed_indent(sx, row)
-        Sx(...with_nl, stack: with_nl.stack + ind, stmt_indent: ind, out: with_nl.out + mk("INDENT", first.line))
-      else
-        Sx(...with_nl, stmt_indent: ind, out: with_nl.out + Token(kind: "ERR", text: "unexpected indent", line: first.line, col: ind + 1))
+      Sx(...with_nl, stack: with_nl.stack + ind, stmt_indent: ind, out: with_nl.out + mk("INDENT", first.line))
     elif ind < top_of(with_nl.stack)
       back = dedent_to(with_nl, ind, first.line)
       Sx(...back, stmt_indent: ind)
@@ -339,8 +330,7 @@ fn step_line(sx: Sx, row: List[Token]) Sx
       Sx(...with_nl, stmt_indent: ind)
   d = st.depth + depth_after(0, row)
   last = last_of(row)
-  Sx(...st, depth: d, prev: row, have_line: true, opens: d == 0 and last.kind == "OP" and (last.text == ":" or last.text == "->"),
-     out: st.out + row)
+  Sx(...st, depth: d, prev: row, have_line: true, opens: false, out: st.out + row)
 
 // The tokens with NL, INDENT, and DEDENT in place, ending with EOF on line `last_line`.
 export fn structure(toks: List[Token], last_line: Int) List[Token]

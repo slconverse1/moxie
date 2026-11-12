@@ -305,7 +305,7 @@ class ExprParser(PBase):
                     self.next()
                     self.next()
                     name = nt.val
-                    if (name == "do" and self.at_block()) or (name == "update" and (self.at_block() or (self.peek().kind == "NAME" and self.at_op(":", 1)))):
+                    if (name == "do" and (self.at_block() or self.at_op("->"))) or (name == "update" and (self.at_block() or (self.peek().kind == "NAME" and self.at_op(":", 1)))):
                         e = self.parse_recv_block(e, name, nt.line)
                     else:
                         e = Field(e, name, line=nt.line)
@@ -1206,8 +1206,12 @@ class ExprParser(PBase):
 
     def parse_recv_block(self, recv, kind, line):
         if kind == "do":
-            self.expect_nl_indent_block()
-            body = self.parse_block()
+            if self.at_op("->"):
+                self.next()
+                body = self.parse_block_or_inline()
+            else:
+                self.expect_nl_indent_block()
+                body = self.parse_block()
             return DoRecv(recv, "do", body, line=line)
         lines = self.parse_upd_lines()
         return DoRecv(recv, "update", lines, line=line)
