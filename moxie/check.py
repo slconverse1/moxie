@@ -1755,6 +1755,10 @@ class Checker:
                 and (p.path[0] in self.tuples or p.path[0] in self.enums or p.path[0] in self.SCAL or p.path[0] in INTS) \
                 and p.path[0] not in self.aliases:
             return p.path[0]
+        if p.__class__ is PCon and len(p.path) == 1 and p.args is not None and p.path[0] in self.tuples and p.path[0] not in self.cases \
+                and p.path[0] not in self.enums and p.path[0] not in self.aliases \
+                and all(ap.__class__ is PWild or ap.__class__ is PBind for _l, ap in p.args):
+            return p.path[0]               # `Dog(name)`: a tuple pattern whose parts take any value says only that the value is a `Dog`
         return None
 
     def check_constant_is(self, n, sc):
@@ -2504,6 +2508,10 @@ class Checker:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
                 if n.ann is not None:
                     self.var_node[sc.vars[tgt.name]] = n.ann
+                else:
+                    dn = self.decl_node(n.value, sc)           # `x = mk()` is written as `mk` says
+                    if dn is not None:
+                        self.var_node[sc.vars[tgt.name]] = dn
                 um = self.union_members(n.ann) if n.ann is not None else (
                     self.union_members(TName([t[1]], [])) if t.__class__ is tuple and len(t) == 2 and t[0] == "named" and t[1] in self.aliases else None)
                 if um and not res:
@@ -2757,6 +2765,11 @@ class Checker:
         if n.pat.__class__ is PBind and dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring", "Set") and dn.groups \
                 and len(dn.groups[0]) == 1 and n.pat.name in inner.vars:
             self.var_node[inner.vars[n.pat.name]] = dn.groups[0][0]      # the loop variable is written as the elements are
+        if n.pat.__class__ is PTuple and len(n.pat.items) == 2 and dn.__class__ is TName and dn.path[-1] == "Dict" and dn.groups \
+                and len(dn.groups[0]) == 2:
+            for (_l, ip), vt in zip(n.pat.items, dn.groups[0]):                # `for k, v in d`: each is written as the Dict says
+                if ip.__class__ is PBind and ip.name in inner.vars:
+                    self.var_node[inner.vars[ip.name]] = vt
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], inner, n.label)
         self.else_names.pop()
@@ -3094,6 +3107,22 @@ class Checker:
         if c is Name:
             v = sc.find(e.name)
             return self.var_node.get(v) if v is not None else None
+        if c is Call and e.fn.__class__ is Field:                              # a method: `s.shape()`, or `Shape.make()`
+            f = e.fn
+            tn = None
+            if f.obj.__class__ is Name and sc.find(f.obj.name) is None and (f.obj.name in self.tuples or f.obj.name in self.enums):
+                tn = f.obj.name
+            else:
+                ot = self.node_ty.get(id(f.obj))
+                if ot is None and f.obj.__class__ is Name:
+                    v = sc.find(f.obj.name)
+                    ot = v.ty if v is not None else None
+                if ot.__class__ is tuple and len(ot) == 2 and ot[0] == "named":
+                    tn = ot[1]
+            m = self.methods.get((tn, f.name)) if tn is not None else None
+            if m is not None and not m.tparams and m.ret is not None:
+                return m.ret
+            return None
         if c is Call and e.fn.__class__ is Name:
             v = sc.find(e.fn.name)
             if v is not None:
@@ -3104,6 +3133,27 @@ class Checker:
             fds = self.fns.get(e.fn.name)
             if fds and len(fds) == 1 and not fds[0].tparams and fds[0].alias is None:
                 return fds[0].ret
+            if fds and len(fds) == 1 and fds[0].alias is None and fds[0].ret.__class__ is TName and len(fds[0].ret.path) == 1 \
+                    and not fds[0].ret.groups and fds[0].ret.path[0] in [t.name for t in fds[0].tparams or []]:
+                fd, tname = fds[0], fds[0].ret.path[0]             # `first[T](xs: List[T]) T` called with a `List[V]` gives a `V`
+
+                def bind(pt, an):
+                    if pt.__class__ is not TName or an.__class__ is not TName:
+                        return None
+                    if len(pt.path) == 1 and pt.path[0] == tname and not pt.groups:
+                        return an
+                    if pt.path[-1] == an.path[-1] and pt.groups and an.groups and len(pt.groups) == len(an.groups):
+                        for pg, ag in zip(pt.groups, an.groups):
+                            for a, b in zip(pg, ag):
+                                r = bind(a, b)
+                                if r is not None:
+                                    return r
+                    return None
+                for prm, a in zip([q for q in fd.params or [] if q.name != "self"], e.args or []):
+                    an = self.decl_node(a.expr, sc, depth + 1) if a.expr is not None and not a.label else None
+                    r = bind(prm.type, an) if prm.type is not None and an is not None else None
+                    if r is not None:
+                        return r
             return None
         if c is Field:
             ot = self.node_ty.get(id(e.obj))

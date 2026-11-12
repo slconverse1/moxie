@@ -81,4 +81,8 @@ CASES = [
 ("is against a type outside the union", 'type union D = Int | String\nfn f(d: D) Bool:\n  d is Bool\nprintln(f(1))\n', "never a `Bool`"),
 ("ok: is on a union member", 'type union D = Int | String\nfn f(d: D) Bool:\n  d is Int\nprintln(f(1))\n', None),
 ("ok: is on a type parameter", 'fn f[T](x: T) Bool:\n  x is Int\nprintln(f(1))\n', None),
+('is with a tuple pattern that is always true', 'tuple Dog:\n  name: String\ntuple Cat:\n  name: String\ntype union Pet = Dog | Cat\nfn f(d: Dog) Bool:\n  d is Dog(n)\nprintln(f(Dog(name: "r")))\n', 'this `is` test is always true'),
+('is with a tuple pattern that is always false', 'tuple Dog:\n  name: String\ntuple Cat:\n  name: String\ntype union Pet = Dog | Cat\nfn f(d: Dog) Bool:\n  d is Cat(n)\nprintln(f(Dog(name: "r")))\n', 'this `is` test is always false'),
+('ok: is with a tuple pattern on a union member', 'tuple Dog:\n  name: String\ntuple Cat:\n  name: String\ntype union Pet = Dog | Cat\nfn f(p: Pet) Bool:\n  p is Dog(n)\nprintln(f(Dog(name: "r")))\n', None),
+('ok: is with a literal inside the pattern varies', 'tuple Dog:\n  name: String\ntuple Cat:\n  name: String\ntype union Pet = Dog | Cat\nfn f(d: Dog) Bool:\n  d is Dog("r")\nprintln(f(Dog(name: "r")))\n', None),
 ]

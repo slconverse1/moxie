@@ -68,6 +68,13 @@ case('an annotated union binding takes branches of different members', 'type uni
 case('branches that are not members of the union are still an error', 'type union W = Int | Bool\nfn g(n: Int) W:\n  if n > 0: n else: "neg"\nprintln(g(1))\n', 2, 'have different types')
 case('branches of different types where no union is expected are still an error', 'fn g(n: Int) Int:\n  if n > 0: n else: "neg"\nprintln(g(1))\n', 2, 'have different types')
 
+case('a when on a method result must cover the union', 'type union V = Int | String\ntuple W:\n  v: V\nimpl W:\n  fn get(self) V:\n    self.v\n  static fn make() V:\n    3\nw = W(v: 1)\nwhen w.get():\n  Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a when on a static call result must cover the union', 'type union V = Int | String\ntuple W:\n  v: V\nimpl W:\n  fn get(self) V:\n    self.v\n  static fn make() V:\n    3\nwhen W.make():\n  Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a when on a Dict value in a for must cover the union', 'type union V = Int | String\ntuple W:\n  v: V\nimpl W:\n  fn get(self) V:\n    self.v\n  static fn make() V:\n    3\nd: Dict[String, V] = Dict("a": 1, "b": "x")\nfor k, v in d:\n  when v:\n    Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a when on a Dict value in a for, covered', 'type union V = Int | String\ntuple W:\n  v: V\nimpl W:\n  fn get(self) V:\n    self.v\n  static fn make() V:\n    3\nd: Dict[String, V] = Dict("a": 1, "b": "x")\nfor k, v in d:\n  when v:\n    Int -> println("n")\n    String -> println("s")\n', 0, 'n\ns')
+case('a when on a local bound to a union call must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nimpl W:\n  fn get(self) V:\n    self.v\n  static fn make() V:\n    3\nfn mk() V:\n  3\nx = mk()\nwhen x:\n  Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a when on a generic result of a union list must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nimpl W:\n  fn get(self) V:\n    self.v\n  static fn make() V:\n    3\nfn first[T](xs: List[T]) T:\n  xs(0)\nvs: List[V] = List(1)\nwhen first(vs):\n  Int -> println("n")\n', 2, '`when` does not cover `String`')
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)

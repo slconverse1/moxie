@@ -438,7 +438,7 @@ unit: Shape = Circle(radius: 1.0)
 println("${c.area()} ${r.area()} ${unit.area()}")
 ```
 
-Output: `12.56636 12.0 3.14159`. With an expected type, a bare case name works (`unit` above). Values shared by every case sit in a header:
+Output: `12.56636 12.0 3.14159`. A bare case name works wherever only one enum has it (`unit` above); when two enums share a case name it is an error unless a declared type says which, and `do with` (below) opens one enum's cases for a block. Values shared by every case sit in a header:
 
 ```
 enum Planet(mass: Double, radius: Double):
