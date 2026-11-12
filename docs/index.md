@@ -1587,7 +1587,8 @@ go(0)    // where go calls withdraw(acct, n) with n = 0 at run time
 
 - **Blame.** A failed `requires` is a caller bug. A failed `ensures` or `invariant` is a supplier bug.
 - **Caught early when it can be.** A `requires` whose arguments are all constants and that fails is a compile error, the same way a constant index out of range is.
-- **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them.
+- **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them: put `keep_in_release = true` under `[contracts]` in `Moxie.toml` to leave them on in a release build.
+- **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a: Array[T][N]) T:` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e: Array[Int][3]`, so the check can happen at compile time instead.
 - **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
 - **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
 - **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
