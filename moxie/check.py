@@ -263,6 +263,7 @@ class Checker:
         self.in_tfun = False
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
+        self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
         self.union_vars = {}             # Var of a parameter typed with a `type union` -> the names of its members
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
         self.consts = {}                 # top-level constant bindings the compiler could evaluate
@@ -2468,6 +2469,8 @@ class Checker:
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
                 sc.vars[tgt.name] = Var(ann or t, res, self.loop_depth)
+                if n.ann is not None:
+                    self.var_node[sc.vars[tgt.name]] = n.ann
                 um = self.union_members(n.ann) if n.ann is not None else (
                     self.union_members(TName([t[1]], [])) if t.__class__ is tuple and len(t) == 2 and t[0] == "named" and t[1] in self.aliases else None)
                 if um and not res:
@@ -2689,6 +2692,10 @@ class Checker:
         elif it is not None and (it in INTS or it in ("Bool", "Float", "Decimal", "Char")):
             self.err(n.line, f"`for` needs a collection, a range, or a stream, found `{tshow(it)}`")
         self.bind_pat(n.pat, inner, el)
+        dn = self.decl_node(n.iter, sc)
+        if n.pat.__class__ is PBind and dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring", "Set") and dn.groups \
+                and len(dn.groups[0]) == 1 and n.pat.name in inner.vars:
+            self.var_node[inner.vars[n.pat.name]] = dn.groups[0][0]      # the loop variable is written as the elements are
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], inner, n.label)
         self.else_names.pop()
@@ -2837,7 +2844,7 @@ class Checker:
         self.moved = base
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
-            self.union_cover(n, sc)
+            self.union_cover(n, sc, st)
             self.exhaustive(n, st)
         if n.scrut is not None:
             self.check_branch_types(arm_ts, n.line, "`when`")
@@ -2920,13 +2927,51 @@ class Checker:
         """The members written with type arguments whose type constructor is `head` (`List` for `List[Int]`)."""
         return [m for m in members if m.startswith(head + "[")]
 
-    def union_cover(self, n, sc):
-        """A `when` on a parameter typed with a `type union` must name every member (or have a `_` or binding arm). A pattern
-        this does not recognize ends the check without an error, so a union holding an enum may be covered by its cases."""
-        if n.scrut.__class__ is not Name:
-            return
-        v = sc.find(n.scrut.name)
-        members = self.union_vars.get(v) if v is not None else None
+    def decl_node(self, e, sc, depth=0):
+        """The written type of an expression, where one was written: a parameter or annotated local, the result of a function, a
+        field of a tuple, an element of a declared List or Array.  The type system does not carry `type union` types, so this
+        is how a `when` finds the union its value has."""
+        c = e.__class__
+        if depth > 4:
+            return None
+        if c is Name:
+            v = sc.find(e.name)
+            return self.var_node.get(v) if v is not None else None
+        if c is Call and e.fn.__class__ is Name:
+            v = sc.find(e.fn.name)
+            if v is not None:
+                dn = self.decl_node(e.fn, sc, depth + 1)                     # `xs(i)`: an element
+                if dn.__class__ is TName and dn.path[-1] in ("List", "Array") and dn.groups and len(dn.groups[0]) == 1 and len(e.args or []) == 1:
+                    return dn.groups[0][0]
+                return None
+            fds = self.fns.get(e.fn.name)
+            if fds and len(fds) == 1 and not fds[0].tparams and fds[0].alias is None:
+                return fds[0].ret
+            return None
+        if c is Field:
+            ot = self.node_ty.get(id(e.obj))
+            if ot is None and e.obj.__class__ is Name:
+                v = sc.find(e.obj.name)
+                ot = v.ty if v is not None else None
+            if ot.__class__ is tuple and len(ot) == 2 and ot[0] == "named" and ot[1] in self.tuples and not self.tuples[ot[1]].tparams:
+                for f in self.tuples[ot[1]].fields or []:
+                    if f.name == e.name:
+                        return f.type
+        return None
+
+    def union_cover(self, n, sc, st=None):
+        """A `when` on a value typed with a `type union` (a parameter, a local, a call, a field, a list element) must name every
+        member (or have a `_` or binding arm). A pattern this does not recognize ends the check without an error, so a union
+        holding an enum may be covered by its cases."""
+        members = None
+        if n.scrut.__class__ is Name:
+            v = sc.find(n.scrut.name)
+            members = self.union_vars.get(v) if v is not None else None
+        if not members:
+            dn = self.decl_node(n.scrut, sc)
+            members = self.union_members(dn) if dn is not None else None
+        if not members and st.__class__ is tuple and len(st) == 2 and st[0] == "named":
+            members = self.union_members(TName([st[1]], []))      # the static type of any other expression
         if not members:
             return
         names = set(self.cases) | {"Ok", "Err"}
@@ -5028,6 +5073,8 @@ class Checker:
                     inner.vars[p.name].inttype = p.type.path[0]
                 if self.any_params.get(p.name, (None,))[0] == "any":
                     self.any_vars[inner.vars[p.name]] = self.any_params[p.name]
+                if p.type is not None:
+                    self.var_node[inner.vars[p.name]] = p.type
                 um = self.union_members(p.type)
                 if um is not None and not res:
                     self.union_vars[inner.vars[p.name]] = um

@@ -55,6 +55,13 @@ case("a typed parameter's empty List keeps its member into a field", U + 'fn f(d
 case("a typed field's empty List keeps its member", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\ntuple C:\n  w: List[String]\nc = C(w: List())\nprintln(f(B(v: c.w).v))\n', 0, 'strings')
 case('empty Lists nested in a typed List keep their members', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\nxss: List[List[String]] = List(List(), List())\nfor xs in xss:\n  println(f(B(v: xs).v))\n', 0, 'strings\nstrings')
 
+case('a when on a call that gives a union must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nwhen mk():\n  Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a when on a call that gives a union, covered', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nwhen mk():\n  Int -> println("n")\n  String -> println("s")\n', 0, 'n')
+case('a when on a field of a union type must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nw = W(v: 1)\nwhen w.v:\n  Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a when on a list element of a union type must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nvs: List[V] = List(1, "a")\nwhen vs(0):\n  String -> println("s")\n', 2, '`when` does not cover `Int`')
+case('a when on a loop variable over a union list must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nvs: List[V] = List(1, "a")\nfor x in vs:\n  when x:\n    Int -> println("n")\n', 2, '`when` does not cover `String`')
+case('a binding arm covers the rest of a union call', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nwhen mk():\n  n@Int -> println(n)\n  other -> println("o")\n', 0, '3')
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)
