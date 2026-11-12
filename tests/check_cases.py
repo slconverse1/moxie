@@ -75,4 +75,10 @@ CASES = [
 ("a method that passes a resource field to a function takes self", 'tuple Box[A]:\n  value: A\nimpl Functor[Box]:\n  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:\n    Box(f(self.value))\nfn dupb(m: Box[ChanW[Int]]) Int:\n  a = m.map((x): x)\n  b = m.map((x): x)\n  1\n', "use of moved value `m`"),
 ("F[_] code that maps a resource container twice", 'tuple Box[A]:\n  value: A\nimpl Functor[Box]:\n  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:\n    Box(f(self.value))\nfn dup[F[_]: Functor, A](m: F[A]) (F[A], F[A]):\n  (m.map((x): x), m.map((x): x))\nrx, tx = Chan[Int][1]()\np = dup(Box(move tx))\n', "`dup` is checked for"),
 ("ok: map twice over plain values", 'tuple Box[A]:\n  value: A\nimpl Functor[Box]:\n  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:\n    Box(f(self.value))\nfn dup[F[_]: Functor, A](m: F[A]) (F[A], F[A]):\n  (m.map((x): x), m.map((x): x))\nprintln(dup(Box(1)))\nprintln(dup(List(1, 2)))\n', None),
+("is that is always true", 'fn f(n: Int) Bool:\n  n is Int\nprintln(f(1))\n', "this `is` test is always true"),
+("is that is always false", 'fn f(n: Int) Bool:\n  n is String\nprintln(f(1))\n', "this `is` test is always false"),
+("is on a List type that cannot match", 'fn f(x: List[String]) Bool:\n  x is List[Int]\nprintln(f(List("a")))\n', "never a `List[Int]`"),
+("is against a type outside the union", 'type union D = Int | String\nfn f(d: D) Bool:\n  d is Bool\nprintln(f(1))\n', "never a `Bool`"),
+("ok: is on a union member", 'type union D = Int | String\nfn f(d: D) Bool:\n  d is Int\nprintln(f(1))\n', None),
+("ok: is on a type parameter", 'fn f[T](x: T) Bool:\n  x is Int\nprintln(f(1))\n', None),
 ]

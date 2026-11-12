@@ -1709,8 +1709,61 @@ class Checker:
             return ("named", nm)
         return None
 
+    def concrete_ty(self, t, depth=0):
+        """True for a static type with no type parameter, hole or unsettled part in it."""
+        if depth > 6 or t is None:
+            return False
+        if isinstance(t, str):
+            return t in self.SCAL or t in INTS
+        if t.__class__ is tuple and len(t) == 2 and t[0] == "named":
+            d = self.tuples.get(t[1]) or self.enums.get(t[1])
+            return d is not None and not getattr(d, "tparams", None) and t[1] not in self.aliases
+        if t.__class__ is tuple and len(t) == 3 and t[0] == "app" and t[1] in ("List", "Array", "Set"):
+            return all(self.concrete_ty(x, depth + 1) for x in t[2])
+        return False
+
+    def pattern_type_text(self, p):
+        """The type a pattern names and nothing more (`Int`, `Dog`, `List[Int]`, `x@Int`), else None."""
+        while p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is PTyped and p.pat.__class__ is PWild and p.type.__class__ is TName:
+            return self.type_node_text(p.type)
+        if p.__class__ is PCon and len(p.path) == 1 and p.args is None and p.path[0] not in self.cases \
+                and (p.path[0] in self.tuples or p.path[0] in self.enums or p.path[0] in self.SCAL or p.path[0] in INTS) \
+                and p.path[0] not in self.aliases:
+            return p.path[0]
+        return None
+
+    def check_constant_is(self, n, sc):
+        """`x is T` where the static type of `x` already settles it is a test that cannot vary: a warning."""
+        if n.e.__class__ is not Name:
+            return
+        v = sc.find(n.e.name)
+        if v is None or v in self.any_vars:
+            return
+        want = self.pattern_type_text(n.pat)
+        if v in self.union_vars:
+            ms = {m.replace(" ", "") for m in self.union_vars[v]}
+            if want is not None and want.replace(" ", "") not in ms:
+                art = "an" if want[:1] in "AEIOU" else "a"
+                self.diags.append(Diag(n.line, f"`{n.e.name}` is never {art} `{want}` (its members are {', '.join('`' + m + '`' for m in self.union_vars[v])}), so this `is` test is always false", "warning"))
+            return
+        if v.ty is None:
+            return
+        t = self.base(v.ty)
+        if want is None or not self.concrete_ty(t):
+            return
+        have = tshow(t).replace(" ", "")
+        if have == want.replace(" ", ""):
+            art = "an" if want[:1] in "AEIOU" else "a"
+            self.diags.append(Diag(n.line, f"`{n.e.name}` is always {art} `{want}`, so this `is` test is always true", "warning"))
+        else:
+            art = "an" if want[:1] in "AEIOU" else "a"
+            self.diags.append(Diag(n.line, f"`{n.e.name}` is {'an' if have[:1] in 'AEIOU' else 'a'} `{have}`, never {art} `{want}`, so this `is` test is always false", "warning"))
+
     def e_IsOp(self, n, sc):
         self.ev(n.e, sc)
+        self.check_constant_is(n, sc)
         nt = self.narrowed_type(sc.find(n.e.name), n.pat) if n.e.__class__ is Name else None
         for nm in self.pat_names(n.pat):
             sc.vars[nm] = Var(nt if (nt is not None and n.pat.__class__ is PAs and n.pat.name == nm) else None, False, self.loop_depth)
