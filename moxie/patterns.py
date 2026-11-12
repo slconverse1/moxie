@@ -247,6 +247,8 @@ class PatternsMixin:
             if args is None and name in self.aliases:
                 return self.type_matches(v, TName([name], []), env)
             return False
+        if name in ("List", "Array") and isinstance(v, Seq) and args is None and not qual:
+            return type_name(v) == name                 # a bare `List ->` is a type pattern: any list
         if name in ("List", "Array") and isinstance(v, Seq):
             if name == "Array" and v.kind == "List" and False:
                 return False

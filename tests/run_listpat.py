@@ -36,6 +36,10 @@ case("a local of a union type is narrowed", U + 'd: Data = List(1, 2)\nwhen d:\n
 
 case("an empty List keeps its member through a lambda", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nfn apply(g: (Int) -> Data, n: Int) Data:\n  g(n)\nprintln(f(apply((n): List[String](), 1)))\nprintln(f(apply((n): List[Int](), 1)))\nh: (Int) -> Data = (n):\n  if n > 0:\n    List[String]()\n  else:\n    List[Int]()\nprintln(f(h(1)))\nprintln(f(h(0)))\ng: (Int) -> Data = (n): List[String]()\nprintln(f(g(1)))\n', 0, "strings\nints\nstrings\nints\nstrings")
 
+case("a bare List arm against two List members is ambiguous", U + 'fn f(d: Data) String:\n  when d:\n    List -> "a list"\n    Int -> "one"\nprintln(f(List(1)))\n', 2, "`List` could be `List[Int]` or `List[String]` here: write the full type")
+case("a bare List arm names the only List member", 'type union D = List[Int] | Int\nfn f(d: D) String:\n  when d:\n    List -> "a list"\n    Int -> "one"\nprintln(f(List(1)))\nprintln(f(List[Int]()))\nprintln(f(3))\n', 0, "a list\na list\none")
+case("a bare is List against two List members is ambiguous", U + 'fn f(d: Data) Bool:\n  d is List\nprintln(f(List(1)))\n', 2, "`List` could be")
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)

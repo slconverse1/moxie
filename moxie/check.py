@@ -1743,6 +1743,14 @@ class Checker:
             return
         want = self.pattern_type_text(n.pat)
         if v in self.union_vars:
+            p0 = n.pat
+            while p0.__class__ is PAs:
+                p0 = p0.pat
+            if p0.__class__ is PCon and len(p0.path) == 1 and p0.args is None:
+                hs = self.heads_of(self.union_vars[v], p0.path[0])
+                if len(hs) > 1:
+                    self.err(n.line, f"`{p0.path[0]}` could be {' or '.join('`' + h + '`' for h in hs)} here: write the full type")
+                    return
             ms = {m.replace(" ", "") for m in self.union_vars[v]}
             if want is not None and want.replace(" ", "") not in ms:
                 art = "an" if want[:1] in "AEIOU" else "a"
@@ -2904,6 +2912,11 @@ class Checker:
             return False
         return False
 
+    @staticmethod
+    def heads_of(members, head):
+        """The members written with type arguments whose type constructor is `head` (`List` for `List[Int]`)."""
+        return [m for m in members if m.startswith(head + "[")]
+
     def union_cover(self, n, sc):
         """A `when` on a parameter typed with a `type union` must name every member (or have a `_` or binding arm). A pattern
         this does not recognize ends the check without an error, so a union holding an enum may be covered by its cases."""
@@ -2931,6 +2944,12 @@ class Checker:
                     covered.add(q.path[0])
                 elif q.__class__ is PCon and len(q.path) == 1 and q.path[0] in members:
                     continue                                    # `Dog("Rex")` may not match every Dog
+                elif q.__class__ is PCon and len(q.path) == 1 and q.args is None and self.heads_of(members, q.path[0]):
+                    hs = self.heads_of(members, q.path[0])
+                    if len(hs) > 1:
+                        self.err(getattr(q, "line", 0) or n.line, f"`{q.path[0]}` could be {' or '.join('`' + h + '`' for h in hs)} here: write the full type")
+                        return
+                    covered.add(hs[0])                          # the union has one `List[...]` member, so `List` names it
                 else:
                     return                                      # not a plain member pattern: do not guess
         miss = [m for m in members if m not in covered]
