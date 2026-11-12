@@ -72,7 +72,7 @@ class Parser(ExprParser):
                 d = self.try_decl()
                 if d is not None:
                     return d
-            if v == "foreign" and self.peek(1).kind == "STR" and self.at_op(":", 2):
+            if v == "foreign" and self.peek(1).kind == "STR" and self.nl_indent_at(2):
                 return self.parse_foreign()
             if v == "import":
                 return self.parse_import()
@@ -80,8 +80,7 @@ class Parser(ExprParser):
                 return self.parse_type_decl([])
             if v == "test" and self.peek(1).kind == "STR":
                 return self.parse_test()
-            if v == "init" and self.at_op(":", 1) and self.peek(2).kind == "NL":
-                self.next()
+            if v == "init" and self.nl_indent_at(1):
                 self.next()
                 return InitDecl(self.parse_block(), line=line)
             if v == "using" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2)):
@@ -234,9 +233,9 @@ class Parser(ExprParser):
             while self.eat_op(","):
                 items.append((None, self.parse_expr(), False))
             value = TupleE(items, line=line)
-        if self.at_name("else") and self.at_op(":", 1) and op == "=":
+        if self.at_name("else") and op == "=":
             self.next()
-            self.next()
+            self.no_block_colon()
             el = self.parse_block_or_inline()
             return ElseLet(pat, value, el, line=line)
         return Assign(pat, value, ann, op, vis, line=line)
@@ -292,14 +291,14 @@ class Parser(ExprParser):
             binds.append((name, self.parse_type()))
             if not self.eat_op(","):
                 break
-        self.expect_op(":")
-        return ForAll(binds, self.parse_block_or_inline(), line=line)
+        self.expect_nl_indent_block()
+        return ForAll(binds, self.parse_block(), line=line)
 
     def parse_test(self):
         line = self.next().line
         name = "".join(p for p in self.next().val if isinstance(p, str))
-        self.expect_op(":")
-        return TestDecl(name, self.parse_block_or_inline(), line=line)
+        self.expect_nl_indent_block()
+        return TestDecl(name, self.parse_block(), line=line)
 
     def parse_type_decl(self, mods):
         line = self.next().line  # type
@@ -332,7 +331,7 @@ class Parser(ExprParser):
         """`when T:` and then, indented, `pattern -> type` arms: a type function that looks at the shape of a type."""
         line = self.next().line
         scrut = self.parse_type()
-        self.expect_op(":")
+        self.no_block_colon()
         self.expect_nl_indent()
         arms = []
         while True:
@@ -390,7 +389,7 @@ class Parser(ExprParser):
                 # receiver declaration: fn (ref Self) name(...)
                 m = self.matching(i + 1)
                 after = self.toks[m + 1] if m is not None else None
-                if after is not None and not (after.kind == "OP" and after.val in (":", "(")) and after.kind != "NL":
+                if after is not None and not (after.kind == "OP" and after.val in ("->", "(")) and after.kind != "NL":
                     pass
                 else:
                     return None
@@ -445,7 +444,7 @@ class Parser(ExprParser):
             return FnDecl(name, tparams, [], None, None, None, flags, None, target, line=line)
         params = self.parse_params()
         ret = None
-        if not self.at_op(":") and self.peek().kind != "NL" and not self.at_op("=") and not self.at_name("if"):
+        if self.peek().kind != "NL" and not self.at_op("=") and not self.at_name("if"):
             ret = self.parse_type()
         locals_ = None
         if self.at_op("("):
@@ -456,29 +455,27 @@ class Parser(ExprParser):
             guard = self.parse_expr()
         body = None
         contracts = []
-        if self.at_op(":"):
+        self.no_block_colon()
+        if self.at_op("="):
             self.next()
-            if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
-                bline = self.peek().line
-                self.expect_nl_indent()
-                contracts = self.parse_contract_lines(("requires", "ensures"))
+            body = self.parse_block_or_inline()
+        elif self.at_block():
+            bline = self.peek().line
+            self.expect_nl_indent()
+            contracts = self.parse_contract_lines(("requires", "ensures"))
+            if self.peek().kind in ("DEDENT", "EOF"):
+                self.expect_dedent()          # contracts only: a bodyless member (interface)
+            else:
                 stmts = self.parse_stmts_until_dedent()
                 self.expect_dedent()
                 body = Block(stmts, line=bline)
-            else:
-                body = self.parse_block_or_inline_body()
-        elif self.peek().kind == "NL" and self.peek(1).kind == "INDENT" and self.peek(2).kind == "NAME" \
-                and self.peek(2).val in ("requires", "ensures"):
-            self.expect_nl_indent()          # contracts on a bodyless member (interface)
-            contracts = self.parse_contract_lines(("requires", "ensures"))
-            self.expect_dedent()
         return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, contracts, line=line)
 
     def parse_foreign(self):
         """foreign "lib": a block of body-less function declarations (Spec 19a)."""
         line = self.next().line
         lib = "".join(x for x in self.next().val if isinstance(x, str))
-        self.expect_op(":")
+        self.no_block_colon()
         self.expect_nl_indent()
         fns = []
         handles = []
@@ -560,8 +557,8 @@ class Parser(ExprParser):
         fields = []
         invariants = []
         props = []
-        if self.at_op(":"):
-            self.next()
+        self.no_block_colon()
+        if self.at_block():
             self._invariants = invariants
             self._props = props
             fields = self.parse_field_decls()
@@ -632,10 +629,10 @@ class Parser(ExprParser):
                 if which == "get":
                     if get is not None:
                         self.err(f"`{name}` has two getters", t)
-                    if self.at_op(":"):
-                        self.next()
-                        get = self.parse_block_or_inline()
+                    if self.at_block() or self.at_op("->"):
+                        get = self.parse_body("->", "a getter")
                     else:
+                        self.no_block_colon()
                         get = "default"
                 elif which == "set":
                     if set_ is not None:
@@ -650,15 +647,14 @@ class Parser(ExprParser):
                         self.expect_op(")")
                         named = True
                     rtype = None
-                    if named and not self.at_op(":"):
+                    if named and not (self.at_block() or self.at_op("->")):
                         rtype = self.parse_type()
                         if not (rtype.__class__ is TName and rtype.path == ["Result"]):
-                            self.err(f"a setter that can fail returns a `Result`, as in `set(value) Result[Unit, Error]:`", t)
-                    if self.at_op(":"):
-                        self.next()
-                        set_ = (pname, ptype, self.parse_block_or_inline(), rtype)
+                            self.err(f"a setter that can fail returns a `Result`, as in `set(value) Result[Unit, Error]`", t)
+                    if self.at_block() or self.at_op("->"):
+                        set_ = (pname, ptype, self.parse_body("->", "a setter"), rtype)
                     elif named:
-                        self.err("a setter with a parameter needs a body: `set(value):`", t)
+                        self.err("a setter with a parameter needs a body: `set(value)` and an indented block", t)
                     else:
                         set_ = "default"
                 elif which == "will_set":
@@ -667,16 +663,14 @@ class Parser(ExprParser):
                     self.expect_op("(")
                     pname = self.expect_ident("the name of the new value").val
                     self.expect_op(")")
-                    self.expect_op(":")
-                    will = (pname, self.parse_block_or_inline())
+                    will = (pname, self.parse_body("->", "`will_set`"))
                 elif which == "did_set":
                     if did is not None:
                         self.err(f"`{name}` has two `did_set` blocks", t)
                     self.expect_op("(")
                     pname = self.expect_ident("the name of the old value").val
                     self.expect_op(")")
-                    self.expect_op(":")
-                    did = (pname, self.parse_block_or_inline())
+                    did = (pname, self.parse_body("->", "`did_set`"))
                 else:
                     self.err(f"expected `get`, `set`, `will_set`, or `did_set` in a property, not `{which}`", t)
                 self.end_line()
@@ -775,7 +769,7 @@ class Parser(ExprParser):
         if self.at_op("(") and not self.peek().sp:
             header = self.parse_params()
         derivs = self.parse_derivs()
-        self.expect_op(":")
+        self.no_block_colon()
         self.expect_nl_indent()
         cases = []
         while True:
@@ -816,7 +810,7 @@ class Parser(ExprParser):
         tparams = []
         if self.at_op("["):
             tparams = self.parse_tparams_v2()
-        self.expect_op(":")
+        self.no_block_colon()
         members, embeds = self.parse_members(iface=True)
         vis = None
         for m in mods:
@@ -836,9 +830,9 @@ class Parser(ExprParser):
             self.next()
             iface = first
             target = self.parse_type()
-        if self.peek().kind in ("NL", "EOF", "DEDENT"):
+        self.no_block_colon()
+        if not self.at_block():
             return ImplDecl(iface, target, tparams, [], True, line=line)
-        self.expect_op(":")
         members, _ = self.parse_members(iface=False)
         return ImplDecl(iface, target, tparams, members, False, line=line)
 

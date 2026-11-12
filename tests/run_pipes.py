@@ -28,14 +28,14 @@ def chk(name, res, rc_want, *wants, absent=(), under=None):
     print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}, {dt:.1f}s) {out[:300]!r}"))
     if not ok: fails.append(name)
 
-ECHO = '''fiber fn serve(l: Listener) Result[Unit, Error]:
+ECHO = '''fiber fn serve(l: Listener) Result[Unit, Error]
   c = accept(l)?
-  for line in lines(c):
+  for line in lines(c)
     println(c, "echo $line")
   close(c)
   Ok(())
 
-init:
+init
   l = listen_unix("@SOCK@")?
   _ = run serve(move l)
   c = connect_unix("@SOCK@")?
@@ -46,17 +46,17 @@ init:
   close(c)
 '''
 chk("a Unix socket echoes", run(ECHO), 0, "echo hi\necho again")
-chk("closing the Listener removes the socket file", run('init:\n  l = listen_unix("@SOCK@")?\n  println(path_exists("@SOCK@")?)\n  close(l)\n  println(path_exists("@SOCK@")?)\n'), 0, "true\nfalse")
-chk("a Listener left open removes it at exit", run('init:\n  l = listen_unix("@SOCK@")?\n  println(path_exists("@SOCK@")?)\n  println("done")\n'), 0, "true\ndone")
+chk("closing the Listener removes the socket file", run('init\n  l = listen_unix("@SOCK@")?\n  println(path_exists("@SOCK@")?)\n  close(l)\n  println(path_exists("@SOCK@")?)\n'), 0, "true\nfalse")
+chk("a Listener left open removes it at exit", run('init\n  l = listen_unix("@SOCK@")?\n  println(path_exists("@SOCK@")?)\n  println("done")\n'), 0, "true\ndone")
 subprocess.run(["sh", "-c", f"test ! -e {SOCK}"], check=True)
-chk("listening where a file exists is IO_ERROR", run('init:\n  write_file("@SOCK@", "x")?\n  println(listen_unix("@SOCK@"))\n'), 0, "code: 11")
-chk("connecting to nothing is NOT_FOUND", run('init:\n  println(connect_unix("@SOCK@"))\n'), 0, "code: 9")
-chk("a Unix socket needs fs.write (denied)", run('init:\n  println(listen_unix("@SOCK@"))\n', ("--allow-read", "--allow-write=/nonexistent")), 0, "code: 10", "fs.write")
-chk("a Unix socket needs fs (static)", run('init:\n  println(listen_unix("@SOCK@"))\n', ("--allow-env",)), 2, "needs fs")
-chk("a Unix socket works under a write grant", run('init:\n  l = listen_unix("@SOCK@")?\n  close(l)\n  println("ok")\n', ("--allow-write=" + D,)), 0, "ok")
-chk("the browser has no Unix sockets", run('init:\n  println(listen_unix("@SOCK@"))\n', ("--platform=browser",)), 0, "not available here", "code: 4")
+chk("listening where a file exists is IO_ERROR", run('init\n  write_file("@SOCK@", "x")?\n  println(listen_unix("@SOCK@"))\n'), 0, "code: 11")
+chk("connecting to nothing is NOT_FOUND", run('init\n  println(connect_unix("@SOCK@"))\n'), 0, "code: 9")
+chk("a Unix socket needs fs.write (denied)", run('init\n  println(listen_unix("@SOCK@"))\n', ("--allow-read", "--allow-write=/nonexistent")), 0, "code: 10", "fs.write")
+chk("a Unix socket needs fs (static)", run('init\n  println(listen_unix("@SOCK@"))\n', ("--allow-env",)), 2, "needs fs")
+chk("a Unix socket works under a write grant", run('init\n  l = listen_unix("@SOCK@")?\n  close(l)\n  println("ok")\n', ("--allow-write=" + D,)), 0, "ok")
+chk("the browser has no Unix sockets", run('init\n  println(listen_unix("@SOCK@"))\n', ("--platform=browser",)), 0, "not available here", "code: 4")
 
-READ = '''init:
+READ = '''init
   make_fifo("@FIFO@")?
   p = spawn("sh", List("-c", "printf 'one\\\\ntwo\\\\n' > @FIFO@"))?
   r = open_file("@FIFO@", ReadOnly)?
@@ -68,7 +68,7 @@ READ = '''init:
   close(p)
 '''
 chk("a named pipe reads what another program wrote", run(READ), 0, "one\ntwo\nErr(", "code: 1", "\n0")
-WRITE = '''init:
+WRITE = '''init
   make_fifo("@FIFO@")?
   p = spawn("sh", List("-c", "head -n 2 < @FIFO@"))?
   w = open_file("@FIFO@", Create)?
@@ -82,38 +82,38 @@ WRITE = '''init:
   close(p)
 '''
 chk("a named pipe writes to another program", run(WRITE), 0, "alpha\nbeta\n0")
-chk("make_fifo twice is IO_ERROR", run('init:\n  make_fifo("@FIFO@")?\n  println(make_fifo("@FIFO@"))\n'), 0, "code: 11")
-chk("a named pipe opens one way only", run('init:\n  make_fifo("@FIFO@")?\n  println(open_file("@FIFO@", ReadWrite))\n'), 0, "code: 11", "reading or for writing")
-chk("make_fifo needs fs.write", run('init:\n  println(make_fifo("@FIFO@"))\n', ("--allow-read", "--allow-write=/nonexistent")), 0, "code: 10")
-chk("the browser has no named pipes", run('init:\n  println(make_fifo("@FIFO@"))\n', ("--platform=browser",)), 0, "not available here")
-HELD = '''fiber fn reader(path: String) Result[Unit, Error]:
+chk("make_fifo twice is IO_ERROR", run('init\n  make_fifo("@FIFO@")?\n  println(make_fifo("@FIFO@"))\n'), 0, "code: 11")
+chk("a named pipe opens one way only", run('init\n  make_fifo("@FIFO@")?\n  println(open_file("@FIFO@", ReadWrite))\n'), 0, "code: 11", "reading or for writing")
+chk("make_fifo needs fs.write", run('init\n  println(make_fifo("@FIFO@"))\n', ("--allow-read", "--allow-write=/nonexistent")), 0, "code: 10")
+chk("the browser has no named pipes", run('init\n  println(make_fifo("@FIFO@"))\n', ("--platform=browser",)), 0, "not available here")
+HELD = '''fiber fn reader(path: String) Result[Unit, Error]
   r = open_file(path, ReadOnly)?
   println(read_line(r))
   Ok(())
 
-init:
+init
   make_fifo("@FIFO@")?
   p = spawn("sh", List("-c", "exec sleep 30 > @FIFO@"))?
   _ = run reader("@FIFO@")
   println("main done")
 '''
 chk("a read still waiting does not hold up exit", run(HELD), 0, "main done", under=10)
-chk("a fiber waiting on a named pipe leaves the others running", run('''fiber fn other() Unit:
+chk("a fiber waiting on a named pipe leaves the others running", run('''fiber fn other() Unit
   println("other ran")
 
-init:
+init
   make_fifo("@FIFO@")?
   _ = run other()
   p = spawn("sh", List("-c", "sleep 0.3; echo hi > @FIFO@"))?
   r = open_file("@FIFO@", ReadOnly)?
   println(read_line(r)?)
 '''), 0, "other ran\nhi")
-WATCH = '''fiber fn watchdog() Unit:
+WATCH = '''fiber fn watchdog() Unit
   sleep(300ms)
   println("timed out")
   exit(3)
 
-init:
+init
   make_fifo("@FIFO@")?
   p = spawn("sh", List("-c", "exec sleep 30 > @FIFO@"))?
   _ = run watchdog()
@@ -121,28 +121,28 @@ init:
   println(read_line(r))
 '''
 chk("a timeout fires while another fiber waits on a pipe", run(WATCH), 3, "timed out", under=10)
-chk("sleeping fibers keep time while another waits on a child", run('''fiber fn ticker() Unit:
-  for i in 1..=3:
+chk("sleeping fibers keep time while another waits on a child", run('''fiber fn ticker() Unit
+  for i in 1..=3
     sleep(50ms)
     println("tick $i")
 
-init:
+init
   _ = run ticker()
   p = spawn("sleep", List("0.5"))?
   println(wait_child(p)?)
   close(p)
 '''), 0, "tick 1\ntick 2\ntick 3\n0")
-chk("an accept with a timeout fiber", run('''fiber fn watchdog() Unit:
+chk("an accept with a timeout fiber", run('''fiber fn watchdog() Unit
   sleep(300ms)
   println("nobody came")
   exit(4)
 
-init:
+init
   l = listen_unix("@SOCK@")?
   _ = run watchdog()
   println(accept(l))
 '''), 4, "nobody came", under=10)
-chk("the pool tally counts a Listener", run('init:\n  l = listen_unix("@SOCK@")?\n  close(l)\n', (), cmd="pools"), 0, "Listener")
+chk("the pool tally counts a Listener", run('init\n  l = listen_unix("@SOCK@")?\n  close(l)\n', (), cmd="pools"), 0, "Listener")
 os.rmdir(D) if not os.listdir(D) else None
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)

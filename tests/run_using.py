@@ -2,44 +2,44 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-CTX = '''tuple Context:
+CTX = '''tuple Context
   user: String
-fn send(url: String, using ctx: Context) Unit:
+fn send(url: String, using ctx: Context) Unit
   println("${url} ${ctx.user}")
 '''
 
 # (name, source, how, text): how is "run" (exit 0 and text in output) or "fail" (nonzero exit and text in output)
 CASES = [
  ("a call that leaves out using, with nothing in scope, is a compile error",
-  'tuple Context:\n  name: String\nfn greet(msg: String, using ctx: Context) String:\n  "$(ctx.name): $msg"\nprintln(greet("hi"))\n', "fail", "no `using` value of type `Context` in scope"),
+  'tuple Context\n  name: String\nfn greet(msg: String, using ctx: Context) String\n  "$(ctx.name): $msg"\nprintln(greet("hi"))\n', "fail", "no `using` value of type `Context` in scope"),
  ("a top-level using is found by type, whatever the names",
   CTX + 'using c = Context(user: "ann")\nsend("u", using)\n', "run", "u ann"),
  ("a using declared inside a function body is found at the call",
-  CTX + 'fn go() Unit:\n  using c = Context(user: "ann")\n  send("u", using)\ngo()\n', "run", "u ann"),
+  CTX + 'fn go() Unit\n  using c = Context(user: "ann")\n  send("u", using)\ngo()\n', "run", "u ann"),
  ("the innermost scope wins",
-  CTX + 'using c = Context(user: "outer")\nfn go() Unit:\n  using d = Context(user: "inner")\n  send("u", using)\ngo()\nsend("v", using)\n', "run", "u inner\nv outer"),
+  CTX + 'using c = Context(user: "outer")\nfn go() Unit\n  using d = Context(user: "inner")\n  send("u", using)\ngo()\nsend("v", using)\n', "run", "u inner\nv outer"),
  ("two values of the type in one scope are ambiguous",
   CTX + 'using a = Context(user: "ann")\nusing b = Context(user: "bob")\nsend("u", using)\n', "fail", "ambiguous"),
  ("two in one function scope are ambiguous too",
-  CTX + 'fn go() Unit:\n  using a = Context(user: "ann")\n  using b = Context(user: "bob")\n  send("u", using)\ngo()\n', "fail", "ambiguous"),
+  CTX + 'fn go() Unit\n  using a = Context(user: "ann")\n  using b = Context(user: "bob")\n  send("u", using)\ngo()\n', "fail", "ambiguous"),
  ("values of different types don't clash",
-  CTX + 'tuple Other:\n  n: Int\nusing a = Context(user: "ann")\nusing b = Other(n: 1)\nsend("u", using)\n', "run", "u ann"),
+  CTX + 'tuple Other\n  n: Int\nusing a = Context(user: "ann")\nusing b = Other(n: 1)\nsend("u", using)\n', "run", "u ann"),
  ("a using parameter is a candidate for calls in the body",
-  'tuple Context:\n  user: String\nfn inner(using ctx: Context) Unit:\n  println("inner ${ctx.user}")\nfn outer(n: Int, using ctx: Context) Unit:\n  inner(using)\nfn go() Unit:\n  using c = Context(user: "zed")\n  outer(1, using)\ngo()\n', "run", "inner zed"),
+  'tuple Context\n  user: String\nfn inner(using ctx: Context) Unit\n  println("inner ${ctx.user}")\nfn outer(n: Int, using ctx: Context) Unit\n  inner(using)\nfn go() Unit\n  using c = Context(user: "zed")\n  outer(1, using)\ngo()\n', "run", "inner zed"),
  ("no value in scope is an error",
   CTX + 'send("u", using)\n', "fail", "no `using` value of type `Context`"),
  ("a using of another type doesn't count",
-  CTX + 'tuple Other:\n  n: Int\nusing b = Other(n: 1)\nsend("u", using)\n', "fail", "no `using` value of type `Context`"),
+  CTX + 'tuple Other\n  n: Int\nusing b = Other(n: 1)\nsend("u", using)\n', "fail", "no `using` value of type `Context`"),
  ("a using declared later at the top level still serves a function body",
-  CTX + 'fn go() Unit:\n  send("u", using)\nusing c = Context(user: "late")\ngo()\n', "run", "u late"),
+  CTX + 'fn go() Unit\n  send("u", using)\nusing c = Context(user: "late")\ngo()\n', "run", "u late"),
  ("a using in an enclosing function serves a lambda",
-  CTX + 'fn go() Unit:\n  using c = Context(user: "ann")\n  f = fn (): send("u", using)\n  f()\ngo()\n', "run", "u ann"),
+  CTX + 'fn go() Unit\n  using c = Context(user: "ann")\n  f = fn () -> send("u", using)\n  f()\ngo()\n', "run", "u ann"),
  ("a using parameter needs a name",
-  CTX + 'fn outer(using Context) Unit:\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
+  CTX + 'fn outer(using Context) Unit\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
  ("`using _` is not a name either",
-  CTX + 'fn outer(using _: Context) Unit:\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
+  CTX + 'fn outer(using _: Context) Unit\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
  ("a named using parameter is passed along",
-  CTX + 'fn outer(n: Int, using ctx: Context) Unit:\n  send("u", using)\n  println("outer ${n}")\nusing c = Context(user: "ann")\nouter(1, using)\n', "run", "u ann\nouter 1"),
+  CTX + 'fn outer(n: Int, using ctx: Context) Unit\n  send("u", using)\n  println("outer ${n}")\nusing c = Context(user: "ann")\nouter(1, using)\n', "run", "u ann\nouter 1"),
 ]
 
 fails = []

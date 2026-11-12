@@ -1,6 +1,6 @@
 // Pipes, UFCS, and a function made from a partial call.
-fn multiply(a: Int, b: Int) Int: a * b
-fn add_one(n: Int) Int: n + 1
+fn multiply(a: Int, b: Int) Int = a * b
+fn add_one(n: Int) Int = n + 1
 fn times10 = multiply(_, 10)
 
 println("${4 |> add_one |> times10}")

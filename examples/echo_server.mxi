@@ -4,7 +4,7 @@
 l = listen(7000)?
 println("listening on port ${port_of(l)}")
 c = accept(l)?
-for line in lines(c):
+for line in lines(c)
   println(c, "echo: ${line}")
 close(c)
 close(l)

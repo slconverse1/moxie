@@ -47,18 +47,29 @@ def strip_contracts(src):
 
 
 def header_text(lines, start):
-    """Source header from line `start` (1-based) up to the line that ends with ':'."""
-    out, i = [], start - 1
+    """Source header from line `start` (1-based): the declaration up to its body (a block below it, or `= body` on the line)."""
+    out, i, depth = [], start - 1, 0
     while i < len(lines):
         t = lines[i].rstrip()
         out.append(t.strip())
-        if t.endswith(":") or not t.strip():
-            break
-        if i + 1 < len(lines) and indent_of(lines[i + 1]) <= indent_of(lines[i]) and not t.endswith(("(", ",")):
+        for c in t:
+            if c in "([{":
+                depth += 1
+            elif c in ")]}":
+                depth -= 1
+        if depth <= 0 or not t.strip():
             break
         i += 1
     h = " ".join(out)
-    h = re.sub(r"\s*:$", "", h)
+    d = 0
+    for k, c in enumerate(h):
+        if c in "([{":
+            d += 1
+        elif c in ")]}":
+            d -= 1
+        elif c == "=" and d == 0 and k > 0 and h[k - 1] == " " and h[k + 1:k + 2] == " ":
+            h = h[:k].rstrip()
+            break
     return h
 
 

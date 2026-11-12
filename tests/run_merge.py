@@ -6,7 +6,7 @@ DECL = 'a = Set[Int][8](1, 2)\nb = Set[Int][8](2, 3)\nd = Dict[String, Int][4]("
 CASES = [
  ("union", DECL + 'println(union(a, b))\n', "Ok(Set(1, 2, 3))", "Set(1, 2, 3)"),
  ("merge, the right value wins", DECL + 'println(merge(d, e))\n', 'Ok(Dict("a": 1, "b": 9, "c": 3))', 'Dict("a": 1, "b": 9, "c": 3)'),
- ("merge_with combines a shared key", DECL + 'println(merge_with((x, y): x + y, d, e))\n', 'Ok(Dict("a": 1, "b": 11, "c": 3))', 'Dict("a": 1, "b": 11, "c": 3)'),
+ ("merge_with combines a shared key", DECL + 'println(merge_with((x, y) -> x + y, d, e))\n', 'Ok(Dict("a": 1, "b": 11, "c": 3))', 'Dict("a": 1, "b": 11, "c": 3)'),
  ("union overflow is NO_SLOT", 'a = Set[Int][3](1, 2)\nb = Set[Int][3](3, 4)\nprintln(union(a, b))\n', 'Err(Error(code: 5, message: "Set is full"))', "Set(1, 2, 3, 4)"),
  ("merge overflow is NO_SLOT", 'd = Dict[String, Int][2]("a": 1)\ne = Dict[String, Int][2]("b": 1, "c": 2)\nprintln(merge(d, e))\n', 'Err(Error(code: 5, message: "Dict is full"))', 'Dict("a": 1, "b": 1, "c": 2)'),
  ("the result keeps the left capacity", DECL + 'r = union(a, b)?\nprintln(len(r))\n', "3", None),

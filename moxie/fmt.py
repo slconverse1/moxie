@@ -76,10 +76,8 @@ def _space_line(text, toks):
             if v == "(":
                 want(gap_before(p), " ")    # an inline fiber is always written `run fn (`
             continue                        # fn +(other: Money) names an operator; leave it as written
-        if v == ":" and i > 0 and toks[i - 1].kind == "OP" and toks[i - 1].val == ")" \
-                and i + 1 < len(toks) and toks[i + 1].kind != "SQL":
-            want(gap_before(p), "")         # `(x): body`, `f(a)(x): body`: no space before the colon, one after
-            want(gap_after(e), " ")
+        if False:
+            pass
         elif v == ",":
             want(gap_before(p), "")
             g = gap_after(e)
@@ -220,7 +218,7 @@ def _once(src, file, spacing=True):
         for k, text in enumerate(res):
             word = text.split(" ", 1)[0].split("(", 1)[0] if text else ""
             if (word in DECL_WORDS and not text.startswith(" ") and fin and fin[-1] != ""
-                    and not fin[-1].lstrip().startswith(("//", "/*", "#")) and (fin[-1].startswith(" ") or text.endswith(":"))
+                    and not fin[-1].lstrip().startswith(("//", "/*", "#")) and (fin[-1].startswith(" ") or (k + 1 < len(res) and res[k + 1].startswith(" ")))
                     and k not in prot_idx):
                 fin.append("")
             fin.append(text)
@@ -252,7 +250,7 @@ def _break(text, marks, indent):
         return [text]
     hit = [g for g in groups if g[0] < WIDTH <= g[1]]
     before = [g for g in groups if g[0] < WIDTH]
-    if _DECL.match(text) and text.rstrip().endswith(":"):
+    if _DECL.match(text):
         o, c = groups[0]                        # a declaration breaks its parameter list first
     else:
         o, c = (hit or before or groups)[-1 if not hit else 0]

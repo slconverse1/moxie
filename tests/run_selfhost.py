@@ -70,7 +70,7 @@ def main():
     py = python_tokens(corpus)
     lib = open(os.path.join(ROOT, "moxie", "selfhost", "lexer.mxi"), encoding="utf-8").read()
     driver = lib + '''
-when read_all():
+when read_all()
   Ok(s) -> println(lex_lines(s) |> to_stream() |> map(show_token) |> join("\\n"))
   Err(e) -> println("no input")
 '''

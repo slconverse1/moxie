@@ -32,12 +32,12 @@ Welcome to Moxie 101
 ## Step 2. A function that decides
 
 ```moxie
-fn letter(score: Int) String:
-  when score:
+fn letter(score: Int) String
+  when score
     >= 90 -> "A"
     >= 80 -> "B"
     >= 70 -> "C"
-    else: "F"
+    else "F"
 
 println("${letter(95)} ${letter(83)} ${letter(41)}")
 ```
@@ -49,14 +49,14 @@ A B F
 
 Three things to notice:
 
-- **The shape of a function.** `fn name(parameters) ReturnType:` then an indented block. The block's last line is its value, so there is no `return` to write. (You may write one, and a guard like `return x if n < 0` can be handy.)
+- **The shape of a function.** `fn name(parameters) ReturnType` then an indented block. The block's last line is its value, so there is no `return` to write. (You may write one, and a guard like `return x if n < 0` can be handy.)
 - **Indentation is the structure.** Two spaces open a block, and there are no braces.
 - **`when` picks the first arm that matches.** The patterns can be literals, ranges such as `80..=89`, or comparisons such as `>= 90`. The last arm, `_`, matches anything, and the compiler insists you have one when it can't tell that every value is covered. If you remove the `_` arm, the program won't run.
 
 ## Step 3. Data with names
 
 ```moxie
-tuple Student deriving show, eq:
+tuple Student deriving show, eq
   name: String,
   score: Int
 
@@ -87,13 +87,13 @@ roster = List(
   Student(name: "Cy", score: 71),
   Student(name: "Di", score: 58)
 )
-total = roster |> to_stream() |> map((s): s.score) |> sum()
+total = roster |> to_stream() |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
 passing: List[Student][4] = roster
   |> to_stream()
-  |> filter((s): s.score >= 60)
+  |> filter((s) -> s.score >= 60)
   |> collect()
-for s in passing:
+for s in passing
   println("${s.name}: ${s.score} ${letter(s.score)}")
 ```
 
@@ -118,16 +118,16 @@ Two moxie-specific details:
 ## Step 5. When things go wrong
 
 ```moxie
-fn parse_score(text: String) Result[Int, Error]:
+fn parse_score(text: String) Result[Int, Error]
   n = read[Int](text)?
-  if n < 0 or n > 100: fail(1, "score out of range") else: Ok(n)
+  if n < 0 or n > 100 then fail(1, "score out of range") else Ok(n)
 
-fn make_student(name: String, text: String) Result[Student, Error]:
+fn make_student(name: String, text: String) Result[Student, Error]
   score = parse_score(text)?
   Ok(Student(name: name, score: score))
 
-for (name, text) in List(("Eve", "88"), ("Fay", "abc"), ("Gus", "140")):
-  when make_student(name, text):
+for (name, text) in List(("Eve", "88"), ("Fay", "abc"), ("Gus", "140"))
+  when make_student(name, text)
     Ok(s) -> println("added ${s.name} with ${s.score}")
     Err(e) -> println("skipped $name: ${e.message}")
 ```
@@ -153,11 +153,11 @@ The `?` is the shortcut. `read[Int](text)?` means: "if this failed, return the e
 ## Step 6. Code that works for any type
 
 ```moxie
-fn best[T: Ordered](a: T, b: T) T:
-  if a < b: b else: a
+fn best[T: Ordered](a: T, b: T) T
+  if a < b then b else a
 
-impl Ordered for Student:
-  fn <(other: Student) Bool:
+impl Ordered for Student
+  fn <(other: Student) Bool
     score < other.score
 
 println("${best(3, 9)} ${best("pear", "fig")} ${best(ada, bob).name}")
@@ -187,7 +187,7 @@ The compiler builds one specialized copy of `best` for each type it's used with,
 ## Step 7. Doing several things at once
 
 ```moxie
-fiber fn grader(s: Student, out: ChanW[Int]) Unit:
+fiber fn grader(s: Student, out: ChanW[Int]) Unit
   \write(out, s.score)
 
 rx, tx = Chan[Int][3]()
@@ -221,7 +221,7 @@ A channel end belongs to one fiber at a time. `clone(tx)` makes another handle t
 ## Step 8. Tests
 
 ```moxie
-test "letter grades":
+test "letter grades"
   assert_eq(letter(90), "A")
   assert_eq(letter(89), "B")
   assert_eq(letter(12), "F")
@@ -245,20 +245,20 @@ Each test runs in its own fiber, and a failed `assert_eq` stops that test with a
 So far the roster was written into the program. A real gradebook reads it, and the same function can read it from anywhere, because the keyboard, a file, and a network connection are all an `Io`:
 
 ```moxie
-fn parse_line(line: String) Result[Student, Error]:
+fn parse_line(line: String) Result[Student, Error]
   parts = split(line, ",")
   name = get(parts, 0)?
   text = get(parts, 1)?
   make_student(name, text)
 
-fn report(input: Io) Result[Unit, Error]:
-  for line in lines(input):
-    when parse_line(line):
+fn report(input: Io) Result[Unit, Error]
+  for line in lines(input)
+    when parse_line(line)
       Ok(s) -> println("${s.name}: ${s.score} ${letter(s.score)}")
       Err(e) -> eprintln("skipped '$line': ${e.message}")
   Ok(())
 
-with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", fn (): report(stdin))?
+with_stdin("Ada,95\nBob,83\nEve,abc\nCy,71\n", fn () -> report(stdin))?
 write_file("roster.csv", "Di,58\nEd,77\n")?
 f = open_file("roster.csv", ReadOnly)?
 report(f)?
@@ -284,7 +284,7 @@ You have now used most of the language. Here is where each idea goes deeper:
 - **Patterns** reach far past `>= 90`. You can take apart enums, lists, nested tuples, and dictionaries, add `if` guards, and pin a value with `^name`. The Guide's chapter 12 has an example of each.
 - **Enums** (sum types) let you say "a `Shape` is a `Circle` or a `Rect`," and `when` then insists you handle every case.
 - **Pipelines** have more stages: `scan`, `windows`, `chunks`, `group_by`, and more (chapter 13).
-- **`for:` comprehensions** chain steps that each might fail, or that each yield several values (chapter 24).
+- **`for` comprehensions** chain steps that each might fail, or that each yield several values (chapter 24).
 - **Interfaces** (`interface`, `impl`) are moxie's version of typeclasses and traits, and the prelude gives you `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, and `Numeric` to build on.
 - **Daemons, timers, `select`, and futures** are the rest of the concurrency story (chapters 16 and 17).
 - **SQL** is checked against your schema when you write `sql(conn):` (chapter 22).

@@ -10,20 +10,20 @@ def check(src):
     return r.stdout.decode() + r.stderr.decode()
 
 WARN = [
- ("+= in a loop", "total = 0\nfor i in List(1, 2):\n  total += i\nprintln(total)\n"),
- ("= in a loop", "total = 0\nfor i in List(1, 2):\n  total = total + i\nprintln(total)\n"),
- ("= in an if", "j = 0\nif true:\n  j = 9\nprintln(j)\n"),
- ("= in a when arm", "i = 0\nwhen 1:\n  1 -> i = 2\n  _ -> i = 5\nprintln(i)\n"),
- ("shadowing a parameter", "fn f(n: Int) Int:\n  if n > 0:\n    n = 1\n  n\n"),
+ ("+= in a loop", 'total = 0\nfor i in List(1, 2)\n  total += i\nprintln(total)\n'),
+ ("= in a loop", 'total = 0\nfor i in List(1, 2)\n  total = total + i\nprintln(total)\n'),
+ ("= in an if", 'j = 0\nif true\n  j = 9\nprintln(j)\n'),
+ ("= in a when arm", 'i = 0\nwhen 1\n  1 -> i = 2\n  _ -> i = 5\nprintln(i)\n'),
+ ("shadowing a parameter", 'fn f(n: Int) Int\n  if n > 0\n    n = 1\n  n\n'),
 ]
 QUIET = [
  ("rebinding in the same block", "x = 1\nx = x + 1\nprintln(x)\n"),
- ("gimme reaches the outer name", "total = 0\nfor i in List(1, 2):\n  gimme.1.total += i\nprintln(total)\n"),
- ("a function local named like a global", "n = 1\nfn f() Int:\n  n = 2\n  n\nprintln(f() + n)\n"),
- ("a lambda local named like an outer name", "n = 1\nf = (a): a + 1\nprintln(f(n))\n"),
- ("a parameter rebound at the top of its function", "fn f(xs: List[Int]) List[Int]:\n  xs += 1\n  xs\nprintln(f(List(1)))\n"),
- ("a while loop whose else reads the carried name", "fn count(n: Int) Int:\n  j = 0\n  while j < n:\n    j = j + 1\n  else:\n    j\nprintln(count(3))\n"),
- ("an underscore name", "_t = 0\nfor i in List(1):\n  _t = i\nprintln(1)\n"),
+ ("gimme reaches the outer name", 'total = 0\nfor i in List(1, 2)\n  gimme.1.total += i\nprintln(total)\n'),
+ ("a function local named like a global", 'n = 1\nfn f() Int\n  n = 2\n  n\nprintln(f() + n)\n'),
+ ("a lambda local named like an outer name", 'n = 1\nf = (a) -> a + 1\nprintln(f(n))\n'),
+ ("a parameter rebound at the top of its function", 'fn f(xs: List[Int]) List[Int]\n  xs += 1\n  xs\nprintln(f(List(1)))\n'),
+ ("a while loop whose else reads the carried name", 'fn count(n: Int) Int\n  j = 0\n  while j < n\n    j = j + 1\n  else\n    j\nprintln(count(3))\n'),
+ ("an underscore name", '_t = 0\nfor i in List(1)\n  _t = i\nprintln(1)\n'),
 ]
 fails = []
 for name, src in WARN:

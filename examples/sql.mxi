@@ -1,12 +1,12 @@
-tuple Telemetry:
+tuple Telemetry
   id: Int,
   value: Double
-inline fn fetch_active_telemetry(conn: Connection, min_value: Double) Result[Stream[Telemetry], Error]:
+inline fn fetch_active_telemetry(conn: Connection, min_value: Double) Result[Stream[Telemetry], Error]
   sql(conn):
     SELECT id, value FROM telemetry
     WHERE value >= $min_value AND active = true
     ORDER BY id
-fn move_funds(tx: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]:
+fn move_funds(tx: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]
   debit = sql(tx):
     UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
   _ = debit?
@@ -14,7 +14,7 @@ fn move_funds(tx: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit
     UPDATE accounts SET balance = balance + $amount WHERE id = $to_id
   _ = credit?
   Ok(())
-fn transfer(conn: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]:
+fn transfer(conn: Connection, from_id: Int, to_id: Int, amount: Int) Result[Unit, Error]
   transaction(conn, move_funds(_, from_id, to_id, amount))
 conn = Connection.memory()?
 _ = sql(conn):
@@ -27,12 +27,12 @@ println("inserted ${n}")
 _ = sql(conn):
   INSERT INTO accounts VALUES (1, 100), (2, 50)
 rows = fetch_active_telemetry(conn, 0.5)?
-for t in rows:
+for t in rows
   println("${t.id}: ${t.value}")
 println(transfer(conn, 1, 2, 30))
 bal = sql(conn):
   SELECT id, balance FROM accounts ORDER BY id
-for r in bal?:
+for r in bal?
   println("${r.id} ${r.balance}")
 bad = sql(conn):
   SELEKT nonsense

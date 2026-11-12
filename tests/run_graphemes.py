@@ -33,7 +33,7 @@ def run(src):
 
 rc, out = run('s = "e\\u{0301}\U0001F1FA\U0001F1F8\U0001F468\\u{200d}\U0001F469\\u{200d}\U0001F467a"\nprintln(len(s))\nprintln(char_count(s))\nprintln(grapheme_count(s))\nprintln(s |> graphemes() |> count())\n')
 ok("the three lengths differ", rc == 0 and out.split() == ["30", "10", "4", "4"], out)
-rc, out = run('for g in graphemes("e\\u{0301}!"):\n  println(len(g))\n')
+rc, out = run('for g in graphemes("e\\u{0301}!")\n  println(len(g))\n')
 ok("graphemes gives one String per cluster", rc == 0 and out.split() == ["3", "1"], out)
 print()
 print("FAILURES: " + ", ".join(fails) if fails else "all grapheme tests passed")

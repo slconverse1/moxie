@@ -3,7 +3,7 @@
 host = args(0)
 port = read[Int](args(1))?
 conn = connect(host, port)?
-for line in lines(stdin):
+for line in lines(stdin)
   println(conn, line)
   reply = read_line(conn)?
   println("sent '${line}', got '${reply}'")

@@ -22,7 +22,7 @@ def chk(name, got, rc, *words):
 
 
 chk("make_dir makes parents and list_dir sorts", run('println(make_dir("a/b/c"))\nprintln(make_dir("a/b/c"))\nprintln(write_file("a/z.txt", "1"))\nprintln(list_dir("a"))\n'), 0, 'Ok(())\nOk(())\nOk(())\nOk(Array("b", "z.txt"))')
-chk("file_info gives kind and size", run('write_file("f", "hello")\nprintln(file_info("f"))\nmake_dir("d")\nwhen file_info("d"):\n  Ok(i) -> println("${i.kind} ${i.is_dir()} ${i.is_file()}")\n  Err(e) -> println(e)\n'), 0, 'FileInfo(kind: "file", size: 5)', "dir true false")
+chk("file_info gives kind and size", run('write_file("f", "hello")\nprintln(file_info("f"))\nmake_dir("d")\nwhen file_info("d")\n  Ok(i) -> println("${i.kind} ${i.is_dir()} ${i.is_file()}")\n  Err(e) -> println(e)\n'), 0, 'FileInfo(kind: "file", size: 5)', "dir true false")
 chk("path_exists", run('println(path_exists("nope"))\nwrite_file("x", "")\nprintln(path_exists("x"))\n'), 0, "Ok(false)\nOk(true)")
 chk("rename_path moves a file", run('write_file("x", "hi")\nprintln(rename_path("x", "y"))\nprintln(read_file("y"))\nprintln(path_exists("x"))\n'), 0, 'Ok(())\nOk("hi")\nOk(false)')
 chk("remove_file and remove_dir", run('make_dir("d")\nwrite_file("d/f", "")\nprintln(remove_dir("d"))\nprintln(remove_file("d/f"))\nprintln(remove_dir("d"))\nprintln(path_exists("d"))\n'), 0, "code: 11", "Ok(())\nOk(false)")

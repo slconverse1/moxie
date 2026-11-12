@@ -768,7 +768,6 @@ class Lexer:
         stmt_indent = 0
         prev_last = None       # last token of the current logical line
         prev_toks = None       # all tokens of the previous physical line (a `property` header may be followed by accessors)
-        prev_opens_block = False
         have_line = False
         # split raw into physical lines
         lines = []
@@ -817,12 +816,6 @@ class Lexer:
                 ind = L["indent"]
                 top = stack[-1]
                 if ind > top:
-                    if not prev_opens_block and not (first.kind == "NAME" and first.val in ("requires", "ensures")
-                                                     and len(toks) > 1) \
-                            and not (first.kind == "NAME" and first.val in ("get", "set", "priv", "did_set", "will_set")
-                                     and prev_toks is not None
-                                     and any(t.kind == "NAME" and t.val == "property" for t in prev_toks[:3])):
-                        raise MoxieSyntaxError("unexpected indent", first.line, ind + 1, self.file)
                     stack.append(ind)
                     out.append(Tok("INDENT", None, first.line, 1))
                 elif ind < top:
@@ -846,11 +839,6 @@ class Lexer:
             last = toks[-1]
             prev_last = last
             prev_toks = toks
-            # does the logical line (so far) end with a block opener?
-            prev_opens_block = (depth == 0 and (
-                (last.kind == "OP" and last.val in (":", "->")) or last.kind == "SQL"))
-            if last.kind == "SQL":
-                prev_opens_block = False
         if have_line:
             out.append(Tok("NL", None, self.line, 1))
         while len(stack) > 1:

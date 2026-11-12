@@ -216,10 +216,18 @@ class Session:
 
 
 def needs_more(text):
-    """True while the input is unfinished: it ends in `:` or `->`, a backslash, or has an open bracket."""
+    """True while the input is unfinished: it ends in `->`, `=` or a backslash, has an open bracket, or is a block header whose
+    indented body has not been typed yet."""
     t = text.rstrip()
-    if t.endswith((":", "->", "\\")):
+    if t.endswith(("->", "=", "\\")):
         return True
+    try:
+        parse_program(dollars(t), "<repl>")
+    except MoxieSyntaxError as e:
+        if "indented" in e.msg:
+            return True
+    except Exception:
+        pass
     depth = 0
     in_str = False
     prev = ""

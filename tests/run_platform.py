@@ -5,7 +5,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES = [
  ("signals is refused in the browser", "check", 'rx = signals()\n', 1, "'signals' is not available in the browser"),
  ("signals is fine on a real system", None, 'rx = signals()\nprintln("ok")\n', 0, "ok"),
- ("a call reached through a function is refused too", "check", 'fn f() Unit:\n  _ = signals()\nf()\n', 1, "not available in the browser"),
+ ("a call reached through a function is refused too", "check", 'fn f() Unit\n  _ = signals()\nf()\n', 1, "not available in the browser"),
  ("connect needs net, which the browser lacks", "check", 'println(connect("example.com", 80))\n', 1, "not granted (the browser)"),
  ("lookup_host needs net", "check", 'println(lookup_host("example.com"))\n', 1, "not granted (the browser)"),
  ("a listener needs net", "check", 'println(listen(8080))\n', 1, "not granted (the browser)"),

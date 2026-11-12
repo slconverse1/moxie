@@ -2,13 +2,13 @@
 import json, os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fails = []
-PROG = '''fiber[2] fn w(tx: ChanW[Int]) Unit:
+PROG = '''fiber[2] fn w(tx: ChanW[Int]) Unit
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
 println(read(rx)?)
 '''
-NOLIMIT = '''fiber fn w(tx: ChanW[Int]) Unit:
+NOLIMIT = '''fiber fn w(tx: ChanW[Int]) Unit
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
@@ -96,12 +96,12 @@ d = project(PROG)
 moxie(d, "pools", "main.mxi", "--header", "h.json")
 chk("moxie/gc has no pool header", moxie(d, "--gc", "--header=h.json", "run", "main.mxi"), 2, "moxie/gc has neither")
 # ---- packages
-LIB = '''export fn mk() ChanW[Int]:
+LIB = '''export fn mk() ChanW[Int]
   rx, tx = Chan[Int][1]()
   tx
-fiber[2] fn work(tx: ChanW[Int]) Unit:
+fiber[2] fn work(tx: ChanW[Int]) Unit
   \\write(tx, 7)
-export fn go(tx: ChanW[Int]) Unit:
+export fn go(tx: ChanW[Int]) Unit
   run work(tx)
 '''
 MAIN = '''import lib
@@ -121,19 +121,19 @@ open(os.path.join(d, "lib.mxi"), "w").write(LIB.replace("Chan[Int][1]", "Chan[In
 chk("changing a package makes the header stale", moxie(d, "--header=h.json", "run", "main.mxi"), 2, "other source text")
 d = project("import lib (mk)\ntx = mk()\nprintln(1)\n", files={"lib.mxi": LIB})
 chk("a function imported by name is followed", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
-d = project("import lib\nprintln(1)\n", files={"lib.mxi": "rx, tx = Chan[Int][1]()\nexport fn f() Int: 1\n"})
+d = project("import lib\nprintln(1)\n", files={"lib.mxi": 'rx, tx = Chan[Int][1]()\nexport fn f() Int = 1\n'})
 chk("a package's top level is counted once it is imported", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
-d = project("import lib\nfor i in 0..3:\n  t = lib.mk()\nprintln(1)\n", files={"lib.mxi": LIB})
+d = project('import lib\nfor i in 0..3\n  t = lib.mk()\nprintln(1)\n', files={"lib.mxi": LIB})
 chk("a kept resource from a package in a loop is an error naming the package", moxie(d, "pools", "main.mxi"), 1, "lib.mk' creates a Chan that outlives the call")
-d = project("fiber[3] fn w(tx: ChanW[Int]) Unit:\n  \\write(tx, 2)\nfn start(tx: ChanW[Int]) Unit:\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n")
+d = project('fiber[3] fn w(tx: ChanW[Int]) Unit\n  \\write(tx, 2)\nfn start(tx: ChanW[Int]) Unit\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n')
 chk("fibers started by a helper function are counted", moxie(d, "pools", "main.mxi"), 0, "largest possible fiber count: 4")
-BOXLIB = '''export tuple Box:
+BOXLIB = '''export tuple Box
   n: Int
-impl Box:
-  fn chan(self) ChanW[Int]:
+impl Box
+  fn chan(self) ChanW[Int]
     rx, tx = Chan[Int][1]()
     tx
-export fn new_box() Box: Box(1)
+export fn new_box() Box = Box(1)
 '''
 d = project("import lib\nb = lib.new_box()\nt1 = b.chan()\nprintln(1)\n", files={"lib.mxi": BOXLIB})
 chk("a package method called as x.method() is followed (UFCS)", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
@@ -152,7 +152,7 @@ chk("pools and fibers that exactly fit start", moxie(d, "run", "main.mxi"), 0, "
 d = project(PB, FM.format(t="2199"))
 chk("one byte less is refused, with the pools named", moxie(d, "run", "main.mxi"), 2, "needs 2200 bytes", "152 for pools")
 chk("the pool report gives the pool memory", moxie(d, "pools", "main.mxi"), 0, "pool memory: 152 bytes")
-TUP = '''tuple Point:
+TUP = '''tuple Point
   x: Double
   y: Float
 rx, tx = Chan[Point][3]()
@@ -164,7 +164,7 @@ d = project("rx, tx = Chan[String]()\nprintln(1)\n", FM.format(t="4KiB"))
 chk("a pool whose size is not known cannot be budgeted", moxie(d, "run", "main.mxi"), 2, "the size of the pools is not known", "line 1", "Chan")
 d = project("a = Atom(7)\nb = Atom(\"x\")\nprintln(1)\n", FM.format(t="4KiB"))
 chk("an Atom with no type argument is sized from a literal, else it is not known", moxie(d, "run", "main.mxi"), 2, "write the type of the Atom")
-FP = '''fiber[2] fn w(tx: ChanW[Int]) Unit:
+FP = '''fiber[2] fn w(tx: ChanW[Int]) Unit
   rx2, tx2 = Chan[Int][1]()
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()

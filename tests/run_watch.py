@@ -28,7 +28,7 @@ def fresh():
     os.makedirs(D)
 
 fresh()
-chk("a directory reports created, modified, and deleted", run('''init:
+chk("a directory reports created, modified, and deleted", run('''init
   rx = watch("@D@")?
   write_file("@D@/a.txt", "one")?
   c = read(rx)?
@@ -44,7 +44,7 @@ chk("a directory reports created, modified, and deleted", run('''init:
 
 fresh()
 write = open(D + "/f.txt", "w"); write.write("x"); write.close()
-chk("a file reports modified, deleted, then created", run('''init:
+chk("a file reports modified, deleted, then created", run('''init
   rx = watch("@D@/f.txt")?
   write_file("@D@/f.txt", "longer text")?
   println(read(rx)?.kind)
@@ -56,7 +56,7 @@ chk("a file reports modified, deleted, then created", run('''init:
 '''), 0, "#modified\n#deleted\n#created")
 
 fresh()
-chk("a directory is watched one level deep", run('''init:
+chk("a directory is watched one level deep", run('''init
   rx = watch("@D@")?
   make_dir("@D@/sub")?
   c = read(rx)?
@@ -68,14 +68,14 @@ chk("a directory is watched one level deep", run('''init:
   close(rx)
 '''), 0, "#created true\n#created true")
 
-chk("watching nothing is NOT_FOUND", run('init:\n  println(watch("@D@/nothing-here"))\n'), 0, "code: 9")
-chk("watch needs fs.read (denied)", run('init:\n  println(watch("@D@"))\n', ("--allow-read=/nonexistent",)), 0, "code: 10", "fs.read")
-chk("watch needs fs (static)", run('init:\n  println(watch("@D@"))\n', ("--allow-env",)), 2, "needs fs")
-chk("the browser cannot watch", run('init:\n  println(watch("@D@"))\n', ("--platform=browser",)), 0, "not available here", "code: 4")
-chk("pure code cannot watch", run('pure fn f() Int:\n  _ = watch("@D@")\n  1\n', ("--allow-all",), cmd="check"), 1, "uses the system")
+chk("watching nothing is NOT_FOUND", run('init\n  println(watch("@D@/nothing-here"))\n'), 0, "code: 9")
+chk("watch needs fs.read (denied)", run('init\n  println(watch("@D@"))\n', ("--allow-read=/nonexistent",)), 0, "code: 10", "fs.read")
+chk("watch needs fs (static)", run('init\n  println(watch("@D@"))\n', ("--allow-env",)), 2, "needs fs")
+chk("the browser cannot watch", run('init\n  println(watch("@D@"))\n', ("--platform=browser",)), 0, "not available here", "code: 4")
+chk("pure code cannot watch", run('pure fn f() Int\n  _ = watch("@D@")\n  1\n', ("--allow-all",), cmd="check"), 1, "uses the system")
 
 fresh()
-chk("closing the reader ends the wait, so a real deadlock is still found", run('''init:
+chk("closing the reader ends the wait, so a real deadlock is still found", run('''init
   rx = watch("@D@")?
   close(rx)
   r, w = Chan[Int][1]()
@@ -83,12 +83,12 @@ chk("closing the reader ends the wait, so a real deadlock is still found", run('
 ''', t=20), 1, "deadlock", under=15)
 
 fresh()
-chk("sleepers keep time while a fiber waits for a change", run('''fiber fn ticker() Unit:
-  for i in 1..=3:
+chk("sleepers keep time while a fiber waits for a change", run('''fiber fn ticker() Unit
+  for i in 1..=3
     sleep(50ms)
     println("tick $i")
 
-init:
+init
   rx = watch("@D@")?
   _ = run ticker()
   p = spawn("sh", List("-c", "sleep 0.6; echo hi > @D@/late.txt"))?
@@ -98,16 +98,16 @@ init:
 '''), 0, "tick 1\ntick 2\ntick 3\n#created")
 
 fresh()
-chk("a burst the reader does not keep up with is dropped with a warning", run('''init:
+chk("a burst the reader does not keep up with is dropped with a warning", run('''init
   rx = watch("@D@")?
-  for i in 1..=40:
+  for i in 1..=40
     write_file("@D@/f${i}.txt", "x")?
   sleep(600ms)
   println("done")
 '''), 0, "done", "were dropped")
 
 fresh()
-chk("the pool tally counts the channel", run('init:\n  rx = watch("@D@")?\n  close(rx)\n', (), cmd="pools"), 0, "Chan")
+chk("the pool tally counts the channel", run('init\n  rx = watch("@D@")?\n  close(rx)\n', (), cmd="pools"), 0, "Chan")
 shutil.rmtree(D, ignore_errors=True)
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)

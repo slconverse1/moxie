@@ -17,7 +17,7 @@ CASES = [
  ("a spawned program streams both ways", 'c = spawn("sh", List("-c", "while read x; do echo got \\$x; done"))?\ntx = child_stdin(c)\nrx = child_stdout(c)\nprintln(tx, "one")\nprintln(tx, "two")\nclose(tx)\nprintln(read_line(rx)?)\nprintln(read_line(rx)?)\nprintln(wait_child(c)?)\nclose(c)\n', [], 0, "got one\ngot two\n0"),
  ("kill_child ends it", 'k = spawn("sleep", List("30"))?\nkill_child(k)\nprintln(wait_child(k)?)\nclose(k)\n', [], 0, "137"),
  ("a Child left open is cleaned up at exit", 'k = spawn("sleep", List("30"))?\nprintln("done")\n', [], 0, "done"),
- ("a fiber waiting on a child does not stop the others", 'fiber fn waiter(c: Child, done: ChanW[Int]) Unit:\n  _ = wait_child(c)\n  _ = write(done, 1)\n\nc = spawn("sleep", List("1"))?\nd_r, d_w = Chan[Int][1]()\n_ = run waiter(move c, d_w)\nprintln("main goes on")\nprintln(read(d_r)?)\n', [], 0, "main goes on\n1"),
+ ("a fiber waiting on a child does not stop the others", 'fiber fn waiter(c: Child, done: ChanW[Int]) Unit\n  _ = wait_child(c)\n  _ = write(done, 1)\n\nc = spawn("sleep", List("1"))?\nd_r, d_w = Chan[Int][1]()\n_ = run waiter(move c, d_w)\nprintln("main goes on")\nprintln(read(d_r)?)\n', [], 0, "main goes on\n1"),
  ("process is checked against the programs granted", 'println(run_command("echo", List("hi")))\n', ["--allow-run=ls"], 0, "code: 10"),
  ("a granted program runs", 'println(run_command("echo", List("hi")))\n', ["--allow-run=echo"], 0, "stdout: \"hi\\n\""),
  ("process needs a grant (static)", 'println(run_command("echo"))\n', ["--allow-read"], 2, "needs process"),

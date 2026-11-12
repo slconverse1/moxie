@@ -108,24 +108,25 @@ class ExprParser(PBase):
         pass
 
     def parse_pipe_stage(self):
-        if self.at_name("seq") and self.at_op(":", 1):
+        if self.at_name("seq") and self.nl_indent_at(1):
             line = self.next().line
-            self.next()
             self.expect_nl_indent()
             arms = []
             while self.peek().kind != "DEDENT":
                 self.skip_nl()
                 if self.peek().kind == "DEDENT":
                     break
-                if self.at_name("else") and self.at_op(":", 1):              # `else: stage` runs only when no earlier arm applied
+                if self.at_name("else"):                                     # `else stage` runs only when no earlier arm applied
                     self.next()
+                    self.no_block_colon()
                     pred = None
                 else:
                     save = self.no_trailing
                     self.no_trailing = True
                     pred = self.parse_expr()
                     self.no_trailing = save
-                self.expect_op(":" if pred is None else "->")
+                if pred is not None:
+                    self.expect_op("->")
                 save = self.stop_bol
                 self.stop_bol += 1
                 stage = self.parse_pipe_stage_inner()
@@ -304,7 +305,7 @@ class ExprParser(PBase):
                     self.next()
                     self.next()
                     name = nt.val
-                    if name in ("do", "update") and self.at_op(":") and name != "":
+                    if (name == "do" and self.at_block()) or (name == "update" and (self.at_block() or (self.peek().kind == "NAME" and self.at_op(":", 1)))):
                         e = self.parse_recv_block(e, name, nt.line)
                     else:
                         e = Field(e, name, line=nt.line)
@@ -362,29 +363,22 @@ class ExprParser(PBase):
             t = self.peek()
             if t.kind == "OP" and t.val == "(" and not t.sp:
                 m = self.matching(0)
-                if m is not None and self.toks[m + 1].kind == "OP" and self.toks[m + 1].val == ":":
+                if m is not None and self.toks[m + 1].kind == "OP" and self.toks[m + 1].val == "->":
                     params = self.parse_params()
-                    self.expect_op(":")
+                    self.expect_op("->")
                     body = self.parse_lambda_body()
                     lam = Lambda(params, body, None, None, None, line=line)
                     call.trailing = lam
                     continue
                 call = self.parse_call(call)
                 return call
-            if t.kind == "OP" and t.val == ":" and not self._colon_is_other():
+            if t.kind == "OP" and t.val == "->":
                 self.next()
                 body = self.parse_lambda_body()
                 call.trailing = ph_lambda(body, line)
                 continue
             break
         return call
-
-    def _colon_is_other(self):
-        # a ':' that follows a call is a trailing placeholder lambda only when something follows on the line
-        nt = self.peek(1)
-        if nt.kind in ("NL", "EOF"):
-            return nt.kind == "NL" and not (self.peek(2).kind == "INDENT")
-        return False
 
     def parse_lambda_body(self):
         if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
@@ -634,32 +628,27 @@ class ExprParser(PBase):
             return self.parse_for()
         if v == "while":
             return self.parse_while()
-        if v == "do" and self.peek(1).kind == "NAME" and self.peek(1).val == "with" and self.peek(2).kind == "NAME" \
-                and (self.at_op(":", 3) or self.at_op(",", 3)):
+        if v == "do" and self.peek(1).kind == "NAME" and self.peek(1).val == "with" and self.peek(2).kind == "NAME":
             self.next()
             self.next()
             names = [self.next().val]
             while self.at_op(","):
                 self.next()
                 names.append(self.next().val)
-            self.expect_op(":")
-            return WithE(names, self.parse_block_or_inline(), line=line)
-        if v == "do" and self.at_op(":", 1):
+            self.no_block_colon()
+            return WithE(names, self.parse_block(), line=line)
+        if v == "do" and self.nl_indent_at(1):
             self.next()
+            return DoE(self.parse_block(), None, line=line)
+        if v == "scope" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
             self.next()
-            body = self.parse_block_or_inline()
-            return DoE(body, None, line=line)
-        if v == "scope" and (self.at_op(":", 1) or (self.peek(1).kind == "NAME" and self.at_op(":", 2))):
-            self.next()
-            name = self.next().val if not self.at_op(":") else None
-            self.next()
-            return ScopeE(name, self.parse_block_or_inline(), line=line)
-        if v == "select" and self.at_op(":", 1):
+            name = self.next().val if self.peek().kind == "NAME" else None
+            return ScopeE(name, self.parse_block(), line=line)
+        if v == "select" and self.nl_indent_at(1):
             return self.parse_select()
-        if v == "daemon" and self.at_op(":", 1):
+        if v == "daemon" and self.nl_indent_at(1):
             self.next()
-            self.next()
-            return DaemonE(self.parse_block_or_inline(), line=line)
+            return DaemonE(self.parse_block(), line=line)
         if v == "run":
             return self.parse_run()
         if v == "fn":
@@ -707,20 +696,30 @@ class ExprParser(PBase):
 
     _NOT_RET = ("if", "else", "and", "or", "in", "is", "not", "for", "while", "when", "elif", "as")
 
+    def parse_ret_type(self):
+        """A lambda's result type, `(x) Int -> body`: no unparenthesized function type, since its `->` would be the lambda's."""
+        t = self.parse_type_prim()
+        if self.at_op("|"):
+            members = [t]
+            while self.eat_op("|"):
+                members.append(self.parse_type_prim())
+            return TUnion(members, line=t.line)
+        return t
+
     def _bare_lambda_ahead(self):
         """`(params): body` or `(params) Ret: body` where an expression may start."""
         m = self.matching(0)
         if m is None or m + 1 >= len(self.toks):
             return False
         after = self.toks[m + 1]
-        if after.kind == "OP" and after.val == ":":
+        if after.kind == "OP" and after.val == "->":
             return True
         if (after.kind == "NAME" and after.val not in self._NOT_RET) or (after.kind == "OP" and after.val == "("):
             save = self.p
             self.p = m + 1
             try:
-                self.parse_type()
-                return self.at_op(":")
+                self.parse_ret_type()
+                return self.at_op("->")
             except Exception:
                 return False
             finally:
@@ -731,9 +730,9 @@ class ExprParser(PBase):
         line = self.peek().line
         params = self.parse_params()
         ret = None
-        if not self.at_op(":"):
-            ret = self.parse_type()
-        self.expect_op(":")
+        if not self.at_op("->"):
+            ret = self.parse_ret_type()
+        self.expect_op("->")
         body = self.parse_lambda_body()
         return Lambda(params, body, None, None, ret, line=line)
 
@@ -799,15 +798,15 @@ class ExprParser(PBase):
 
     # ------------------------------------------------------------ lambda
     def parse_anon_fn(self):
-        """`fn (params) [Ret]: body`: an anonymous function that may have effects (a lambda, `(params): body`, is pure)."""
+        """`fn (params) [Ret] -> body`: an anonymous function that may have effects (a lambda, `(params): body`, is pure)."""
         t = self.next()   # fn
         if not self.at_op("("):
-            self.err("'fn' here begins an anonymous function, `fn (params): body`; a named function is a declaration", t)
+            self.err("'fn' here begins an anonymous function, `fn (params) -> body`; a named function is a declaration", t)
         params = self.parse_params()
         ret = None
-        if not self.at_op(":"):
-            ret = self.parse_type()
-        self.expect_op(":")
+        if not self.at_op("->"):
+            ret = self.parse_ret_type()
+        self.expect_op("->")
         body = self.parse_lambda_body()
         lam = Lambda(params, body, None, None, ret, line=t.line)
         lam.fiber = True        # effects allowed (the flag also marks an inline fiber)
@@ -824,16 +823,16 @@ class ExprParser(PBase):
             if t2 is not None and t2.kind == "OP" and t2.val == "(" and not t2.sp:
                 m2 = self.matching(m + 1 - self.p)
                 t3 = self.toks[m2 + 1] if m2 is not None else None
-                if t3 is not None and t3.kind == "OP" and t3.val == ":":
+                if t3 is not None and t3.kind == "OP" and t3.val == "->":
                     args = self.parse_args()
                     params = self.parse_params()
-                    self.expect_op(":")
+                    self.expect_op("->")
                     body = self.parse_lambda_body()
                     lam = Lambda(params, body, None, None, None, line=line)
                     lam.fiber = True
                     return Call(lam, args, None, line=line)
         params = self.parse_params()
-        self.expect_op(":")
+        self.expect_op("->")
         body = self.parse_lambda_body()
         lam = Lambda(params, body, None, None, None, line=line)
         lam.fiber = True
@@ -935,14 +934,47 @@ class ExprParser(PBase):
         self.expect_dedent()
         return Block(stmts, line=line)
 
+    def no_block_colon(self):
+        if self.at_op(":"):
+            self.err("a block does not begin with a colon: delete the `:` (a one-line body follows `then`, `do`, `->` or `=`)")
+
+    def at_block(self):
+        return self.peek().kind == "NL" and self.peek(1).kind == "INDENT"
+
+    def nl_indent_at(self, k):
+        """An indented block starts after the next `k` tokens."""
+        return self.peek(k).kind == "NL" and self.peek(k + 1).kind == "INDENT"
+
+    def expect_nl_indent_block(self):
+        self.no_block_colon()
+        if not self.at_block():
+            self.err("expected an indented block")
+
     def parse_block_or_inline(self):
-        if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
+        """The body after a header: an indented block, or a one-line statement."""
+        if self.at_block():
             return self.parse_block()
         save = (self.no_trailing,)
         self.no_trailing = False
         e = self.parse_stmt_inline()
         self.no_trailing = save[0]
         return e
+
+    def expect_sep(self, sep, what):
+        """The word or arrow between a header and a one-line body."""
+        t = self.peek()
+        ok = (t.kind == "NAME" and t.val == sep) if sep.isalpha() else (t.kind == "OP" and t.val == sep)
+        if not ok:
+            self.err(f"write `{sep}` before the one-line body of {what}, or put the body on an indented line", t)
+        self.next()
+
+    def parse_body(self, sep, what):
+        """After a header: an indented block, or on the same line `sep` and one statement."""
+        self.no_block_colon()
+        if self.at_block():
+            return self.parse_block()
+        self.expect_sep(sep, what)
+        return self.parse_block_or_inline()
 
     # ------------------------------------------------------------ control
     def parse_header_expr(self):
@@ -955,25 +987,37 @@ class ExprParser(PBase):
     def parse_if(self):
         line = self.next().line
         branches = []
-        cond = self.parse_header_expr()
-        self.expect_op(":")
-        body = self.parse_block_or_inline()
-        branches.append((cond, body))
         else_ = None
+        kinds = []
+        cond = self.parse_header_expr()
+        body = self.parse_body("then", "an `if`")
+        kinds.append(body.__class__ is Block)
+        branches.append((cond, body))
         while True:
+            self.check_if_continues(kinds)
             if self.at_name("elif"):
                 self.next()
                 cond = self.parse_header_expr()
-                self.expect_op(":")
-                body = self.parse_block_or_inline()
+                body = self.parse_body("then", "an `elif`")
+                kinds.append(body.__class__ is Block)
                 branches.append((cond, body))
                 continue
             if self.at_name("else"):
                 self.next()
-                self.expect_op(":")
+                self.no_block_colon()
                 else_ = self.parse_block_or_inline()
+                kinds.append(else_.__class__ is Block)
             break
+        if len(set(kinds)) > 1:
+            self.err_at(line, "an `if` is written all on one line or all with indented blocks, not a mix of the two")
         return IfE(branches, else_, line=line)
+
+    def check_if_continues(self, kinds):
+        """After a one-line branch, `elif` and `else` stay on that line."""
+        if kinds and not kinds[-1] and self.peek().kind == "NL":
+            nt = self.peek(1)
+            if nt.kind == "NAME" and nt.val in ("elif", "else"):
+                self.err(f"`{nt.val}` goes on the same line as a one-line `if`, or write every branch as an indented block", nt)
 
     def after_else_arm(self):
         """`else:` is the last arm: another arm after it is an error."""
@@ -984,9 +1028,9 @@ class ExprParser(PBase):
     def parse_when(self):
         line = self.next().line
         scrut = None
-        if not self.at_op(":"):
+        if self.peek().kind != "NL":
             scrut = self.parse_header_expr()
-        self.expect_op(":")
+        self.no_block_colon()
         self.expect_nl_indent()
         arms = []
         while True:
@@ -994,9 +1038,9 @@ class ExprParser(PBase):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             aline = self.peek().line
-            if self.at_name("else") and self.at_op(":", 1):           # `else: body` is `_ -> body`
+            if self.at_name("else"):                                   # `else body` is `_ -> body`
                 self.next()
-                self.next()
+                self.no_block_colon()
                 body = self.parse_block_or_inline()
                 if scrut is None:
                     arms.append(Arm(None, PH(1, line=aline), body, line=aline))
@@ -1034,7 +1078,7 @@ class ExprParser(PBase):
 
     def parse_for(self):
         line = self.next().line
-        if self.at_op(":"):
+        if self.peek().kind == "NL":
             return self.parse_for_monad(line)
         pats = [self.parse_pattern()]
         while self.eat_op(","):
@@ -1042,30 +1086,27 @@ class ExprParser(PBase):
         pat = pats[0] if len(pats) == 1 else PTuple([(None, p) for p in pats], line=line)
         self.expect_name("in")
         it = self.parse_header_expr()
-        self.expect_op(":")
-        body = self.parse_block_or_inline()
+        body = self.parse_body("do", "a `for`")
         else_ = self.parse_loop_else()
         return ForE(pat, it, body, else_, None, line=line)
 
     def parse_loop_else(self):
-        if self.at_name("else") and self.at_op(":", 1):
+        if self.at_name("else"):
             self.next()
-            self.next()
+            self.no_block_colon()
             return self.parse_block_or_inline()
         return None
 
     def parse_while(self):
         line = self.next().line
         cond = None
-        if not self.at_op(":"):
+        if self.peek().kind != "NL":
             cond = self.parse_header_expr()
-        self.expect_op(":")
-        body = self.parse_block_or_inline()
+        body = self.parse_body("do", "a `while`")
         else_ = self.parse_loop_else()
         return WhileE(cond, body, else_, None, line=line)
 
     def parse_for_monad(self, line):
-        self.expect_op(":")
         self.expect_nl_indent()
         lines = []
         yield_ = None
@@ -1096,9 +1137,9 @@ class ExprParser(PBase):
                 kind = "="
             ex = self.parse_expr()
             else_ = None
-            if self.at_name("else") and self.at_op(":", 1):
+            if self.at_name("else"):
                 self.next()
-                self.next()
+                self.no_block_colon()
                 else_ = self.parse_block_or_inline()
             lines.append((kind, pat, ex, else_))
             self.end_line()
@@ -1107,7 +1148,6 @@ class ExprParser(PBase):
 
     def parse_select(self):
         line = self.next().line
-        self.next()
         self.expect_nl_indent()
         arms = []
         while True:
@@ -1115,7 +1155,7 @@ class ExprParser(PBase):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             aline = self.peek().line
-            used_else = self.at_name("else") and self.at_op(":", 1)    # `else: body` is `case _ -> body`
+            used_else = self.at_name("else")                            # `else body` is `case _ -> body`
             if not used_else:
                 self.expect_name("case")
             kind = "read"
@@ -1144,8 +1184,11 @@ class ExprParser(PBase):
                     # tuple binding or pattern
                     bind = self.parse_pattern()
                     self.expect_op("=")
-                ex = self.parse_expr()
-            self.expect_op(":" if used_else else "->")
+                ex = self.parse_header_expr()
+            if not used_else:
+                self.expect_op("->")
+            else:
+                self.no_block_colon()
             body = self.parse_block_or_inline()
             arms.append(SelArm(kind, bind, ex, body, line=aline))
             self.end_line()
@@ -1163,9 +1206,9 @@ class ExprParser(PBase):
         return RunE(target, None, line=line)
 
     def parse_recv_block(self, recv, kind, line):
-        self.expect_op(":")
         if kind == "do":
-            body = self.parse_block_or_inline()
+            self.expect_nl_indent_block()
+            body = self.parse_block()
             return DoRecv(recv, "do", body, line=line)
         lines = self.parse_upd_lines()
         return DoRecv(recv, "update", lines, line=line)

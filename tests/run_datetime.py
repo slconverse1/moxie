@@ -34,8 +34,8 @@ CASES = [
  ("date arithmetic goes through instants", 'd = DateTime(2026, 12, 30)\nlater = (to_instant(d)? + 3 * 24h).to_utc()\nprintln(iso(later))\n', 0, "2027-01-02T00:00:00"),
  ("to_local gives a DateTime", 'println(to_local(now()).year >= 2026)\n', 0, "true"),
  ("a Duration is required", 'println(to_utc(5))\n', 2, "`to_utc` can't take (Int); it takes (Duration)"),
- ("to_local is not pure", 'pure fn f() Int: to_local(now()).year\n', 2, "uses the system"),
- ("to_utc is pure", 'pure fn f(t: Duration) Int: to_utc(t).year\nprintln(f(0s))\n', 0, "1970"),
+ ("to_local is not pure", 'pure fn f() Int = to_local(now()).year\n', 2, "uses the system"),
+ ("to_utc is pure", 'pure fn f(t: Duration) Int = to_utc(t).year\nprintln(f(0s))\n', 0, "1970"),
 ]
 fails = []
 for name, src, rc_want, out_w in CASES:

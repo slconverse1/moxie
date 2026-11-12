@@ -104,11 +104,11 @@ chk("a writable buffer becomes ref Array[Byte]", "fn mini_fill(ref buf: Array[By
 
 # end to end: wrappers over the generated bindings, called from moxie
 prog = text + '''
-export pure fn add(a: Int32, b: Int32) Int32: mini_add(a, b)
-export fn parse_count(s: String) Result[Int32, Error]:
+export pure fn add(a: Int32, b: Int32) Int32 = mini_add(a, b)
+export fn parse_count(s: String) Result[Int32, Error]
   n = 0i32
   code = mini_parse(cstr(s), ref n)
-  if code ~= 0i32:
+  if code ~= 0i32
     return fail(22, "not a number")
   Ok(n)
 println("${add(2i32, 3i32)} ${mini_sum(7u32, b"abc")} ${mini_dist(MiniPoint(0.0, 0.0), MiniPoint(3.0, 4.0))}")
@@ -120,17 +120,17 @@ k = mini_connect(cstr("db"))?
 println("connected ${mini_hits(k)}")
 mini_close(k)
 println(mini_connect(cstr("x")))
-fn show(v: Int32) Unit:
+fn show(v: Int32) Unit
   println("item $v")
 println("each ${mini_each(show)}")
-println("feed ${mini_feed(b\"abc\", (d): len(d))}")
-println("apply ${mini_apply((v): v * 7i32, 6i32)}")
+println("feed ${mini_feed(b"abc", (d) -> len(d))}")
+println("apply ${mini_apply((v) -> v * 7i32, 6i32)}")
 println("mean ${mini_mean(Array(1.0, 2.0, 6.0))}")
 nums = Array(1i32, 2i32, 3i32)
 mini_double_all(ref nums)
 println("doubled $nums")
-println("rows ${mini_rows(nums, (r): len(r))}")
-println("pick ${mini_pick((x, y): x - y, 9i32, 4i32)}")
+println("rows ${mini_rows(nums, (r) -> len(r))}")
+println("pick ${mini_pick((x, y) -> x - y, 9i32, 4i32)}")
 ctx = mini_open(cstr("A"))?
 println("hits ${mini_hits(ctx)}")
 mini_close(ctx)
@@ -154,10 +154,10 @@ println("${add(2i32, 3i32)} ${parse("42")} ${parse("x")}")
 c = connect_("db")?
 println("hits ${hits(c)}")
 close_(move c)
-fn show2(v: Int32) Unit:
+fn show2(v: Int32) Unit
   println("item $v")
 println("each ${each(show2)}")
-println("feed ${feed(b"abcd", (data): len(data))}")
+println("feed ${feed(b"abcd", (data) -> len(data))}")
 '''
 p2 = os.path.join(d, "wrapped.mxi")
 open(p2, "w").write(prog2)

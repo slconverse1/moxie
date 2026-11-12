@@ -41,10 +41,10 @@ int h_now(h_t cb, int x) { return cb(x); }
 '''
 open(os.path.join(D, "hd.c"), "w").write(HC)
 subprocess.check_call(["gcc", "-shared", "-fPIC", "-pthread", "-o", os.path.join(D, "libhd.so"), os.path.join(D, "hd.c")])
-HDR = '''tuple Pt:
+HDR = '''tuple Pt
   x: Double
   y: Double
-foreign "cb":
+foreign "cb"
   pure fn apply_n(f: (Double) -> Double, x: Double, n: Int32) Double
   pure fn count_if(pred: (Int32) -> Int32, lo: Int32, hi: Int32) Int32
   pure fn combine(f: (Pt) -> Double, a: Double, b: Double) Double
@@ -57,47 +57,47 @@ foreign "cb":
   parks fn slow(f: (Int32) -> Int32, n: Int32) Int32
 '''
 CASES = [
- ("a closure is called from C", 'println(apply_n((v): v * 2.0, 1.0, 10i32))\n', 0, "1024.0"),
- ("the closure sees captured values", 'k = 3.0\nprintln(apply_n((v): v + k, 0.0, 4i32))\n', 0, "12.0"),
- ("an integer predicate", 'println(count_if((v): if v % 3 == 0i32: 1i32 else: 0i32, 0i32, 10i32))\n', 0, "4"),
- ("a tuple argument", 'println(combine((p): p.x + p.y * 10.0, 1.0, 2.0))\n', 0, "21.0"),
- ("a function name works too", 'fn half(v: Double) Double: v / 2.0\nprintln(apply_n(half, 64.0, 3i32))\n', 0, "8.0"),
- ("user data is not passed to the closure", 'fn show(v: Int32) Unit:\n  println(v)\nfor_each(4i32, show)\n', 0, "0\n1\n4\n9"),
- ("a buffer arrives as one array", 'println(chunks(b"abcdefg", (d): len(d) * 10i64))\n', 0, "70"),
- ("the buffer holds the bytes C passed", 'fn show(d: Array[Byte]) Int64:\n  println(d)\n  0i64\nprintln(chunks(b"hi there", show))\n', 0, "Array(104, 105, 32, 116)\nArray(104, 101, 114, 101)"),
- ("a buffer callback may not park", 'fn bad(d: Array[Byte]) Int64:\n  sleep(1ms)\n  0i64\nprintln(chunks(b"abcd", bad))\n', 2, "may park"),
- ("an abort in the callback ends the program", 'println(count_if((v): 1i32 / (v - v), 0i32, 3i32))\nprintln("not reached")\n', 1, "abort"),
- ("a callback may not park", 'fn bad(v: Double) Double:\n  sleep(1ms)\n  v\nprintln(apply_n(bad, 1.0, 2i32))\n', 2, "may park"),
- ("a callback-taking function cannot be parks", 'foreign "cb":\n  parks fn apply_n(f: (Double) -> Double, x: Double, n: Int32) Double\n', 2, "callback"),
+ ("a closure is called from C", 'println(apply_n((v) -> v * 2.0, 1.0, 10i32))\n', 0, "1024.0"),
+ ("the closure sees captured values", 'k = 3.0\nprintln(apply_n((v) -> v + k, 0.0, 4i32))\n', 0, "12.0"),
+ ("an integer predicate", 'println(count_if((v) -> if v % 3 == 0i32 then 1i32 else 0i32, 0i32, 10i32))\n', 0, "4"),
+ ("a tuple argument", 'println(combine((p) -> p.x + p.y * 10.0, 1.0, 2.0))\n', 0, "21.0"),
+ ("a function name works too", 'fn half(v: Double) Double = v / 2.0\nprintln(apply_n(half, 64.0, 3i32))\n', 0, "8.0"),
+ ("user data is not passed to the closure", 'fn show(v: Int32) Unit\n  println(v)\nfor_each(4i32, show)\n', 0, "0\n1\n4\n9"),
+ ("a buffer arrives as one array", 'println(chunks(b"abcdefg", (d) -> len(d) * 10i64))\n', 0, "70"),
+ ("the buffer holds the bytes C passed", 'fn show(d: Array[Byte]) Int64\n  println(d)\n  0i64\nprintln(chunks(b"hi there", show))\n', 0, "Array(104, 105, 32, 116)\nArray(104, 101, 114, 101)"),
+ ("a buffer callback may not park", 'fn bad(d: Array[Byte]) Int64\n  sleep(1ms)\n  0i64\nprintln(chunks(b"abcd", bad))\n', 2, "may park"),
+ ("an abort in the callback ends the program", 'println(count_if((v) -> 1i32 / (v - v), 0i32, 3i32))\nprintln("not reached")\n', 1, "abort"),
+ ("a callback may not park", 'fn bad(v: Double) Double\n  sleep(1ms)\n  v\nprintln(apply_n(bad, 1.0, 2i32))\n', 2, "may park"),
+ ("a callback-taking function cannot be parks", 'foreign "cb"\n  parks fn apply_n(f: (Double) -> Double, x: Double, n: Int32) Double\n', 2, "callback"),
 ]
 NUMCASES = [
  ("an array of doubles goes in", 'println(sum_d(Array(1.5, 2.5, 4.0)))\n', 0, "8.0"),
  ("a ref array of numbers is written back", 'xs = Array(1i32, 2i32, 3i32)\nscale_i(ref xs, 10i32)\nprintln(xs)\n', 0, "Array(10, 20, 30)"),
- ("an array and its length arrive in a callback", 'println(rows(Array(1i32, 2i32, 3i32, 4i32, 5i32, 6i32), (r): r(0) * r(1)))\n', 0, "44"),
- ("Ptr[T] gives the callback the number", 'xs = Array(3.5, 1.5, 2.5)\nsort_d(ref xs, (a, b): if a < b: -1i32 elif a > b: 1i32 else: 0i32)\nprintln(xs)\n', 0, "Array(1.5, 2.5, 3.5)"),
- ("size_of needs an array of numbers", 'foreign "cb":\n  impure fn sort_d(n: Int32, sz: UInt = size_of(n), cmp: (Ptr[Double], Ptr[Double]) -> Int32)\nsort_d(1i32, (a, b): 0i32)\n', 1, "size_of"),
+ ("an array and its length arrive in a callback", 'println(rows(Array(1i32, 2i32, 3i32, 4i32, 5i32, 6i32), (r) -> r(0) * r(1)))\n', 0, "44"),
+ ("Ptr[T] gives the callback the number", 'xs = Array(3.5, 1.5, 2.5)\nsort_d(ref xs, (a, b) -> if a < b then -1i32 elif a > b then 1i32 else 0i32)\nprintln(xs)\n', 0, "Array(1.5, 2.5, 3.5)"),
+ ("size_of needs an array of numbers", 'foreign "cb"\n  impure fn sort_d(n: Int32, sz: UInt = size_of(n), cmp: (Ptr[Double], Ptr[Double]) -> Int32)\nsort_d(1i32, (a, b) -> 0i32)\n', 1, "size_of"),
 ]
-EVH = '''foreign "ev":
+EVH = '''foreign "ev"
   impure fn ev_start(cb: Events[(Int32, Double)], n: Int32)
   impure fn ev_finish()
 '''
 EVCASES = [
- ("a C thread's callbacks arrive as channel messages", EVH + 'rx, tx = Chan[(Int32, Double)][16]()\nev_start(move tx, 3i32)\nfor i in 1..=3:\n  println(read(rx)?)\nev_finish()\n', 0, "(0, 0.0)\n(1, 1.5)\n(2, 3.0)"),
- ("a waiting fiber is not a deadlock while events can come", EVH + 'fiber fn consumer(rx: ChanR[(Int32, Double)], out: ChanW[Int]) Result[Unit, Error]:\n  for i in 1..=4:\n    r = read(rx)?\n    \\write(out, i)\n  Ok(())\nrx, tx = Chan[(Int32, Double)][2]()\ndone_r, done_w = Chan[Int][1]()\nrun consumer(rx, done_w)\nev_start(move tx, 4i32)\nfor i in 1..=4:\n  println(read(done_r)?)\nev_finish()\n', 0, "1\n2\n3\n4"),
+ ("a C thread's callbacks arrive as channel messages", EVH + 'rx, tx = Chan[(Int32, Double)][16]()\nev_start(move tx, 3i32)\nfor i in 1..=3\n  println(read(rx)?)\nev_finish()\n', 0, "(0, 0.0)\n(1, 1.5)\n(2, 3.0)"),
+ ("a waiting fiber is not a deadlock while events can come", EVH + 'fiber fn consumer(rx: ChanR[(Int32, Double)], out: ChanW[Int]) Result[Unit, Error]\n  for i in 1..=4\n    r = read(rx)?\n    \\write(out, i)\n  Ok(())\nrx, tx = Chan[(Int32, Double)][2]()\ndone_r, done_w = Chan[Int][1]()\nrun consumer(rx, done_w)\nev_start(move tx, 4i32)\nfor i in 1..=4\n  println(read(done_r)?)\nev_finish()\n', 0, "1\n2\n3\n4"),
  ("the library keeps the channel end, so move is required", EVH + 'rx, tx = Chan[(Int32, Double)][4]()\nev_start(tx, 1i32)\n', 2, "kept by the library"),
  ("a full channel drops events and says so", EVH + 'rx, tx = Chan[(Int32, Double)][1]()\nev_start(move tx, 50i32)\nev_finish()\nprintln(read(rx)?)\n', 0, "were dropped because the channel was full"),
 ]
-HH = '''foreign "hd":
+HH = '''foreign "hd"
   impure fn h_start(cb: Handler[(Int32) -> Int32], n: Int32)
   parks fn h_wait() Int64
   impure fn h_now(cb: Handler[(Int32) -> Int32], x: Int32) Int32
 '''
 HCASES = [
- ("C answers from its own thread through a handler", HH + 'h_start((v): v * 2i32, 4i32)\nprintln(h_wait())\n', 0, "12"),
- ("a handler may park", HH + 'fn slow(v: Int32) Int32:\n  sleep(1ms)\n  v + 1i32\nh_start(slow, 3i32)\nprintln(h_wait())\n', 0, "6"),
- ("a handler sees captured values", HH + 'k = 5i32\nh_start((v): v + k, 3i32)\nprintln(h_wait())\n', 0, "18"),
- ("on the scheduler's thread a handler runs at once", HH + 'println(h_now((v): v * 3i32, 5i32))\n', 0, "15"),
- ("an abort in a handler ends the program", HH + 'h_start((v): 1i32 / (v - v), 2i32)\nprintln(h_wait())\n', 1, "abort"),
+ ("C answers from its own thread through a handler", HH + 'h_start((v) -> v * 2i32, 4i32)\nprintln(h_wait())\n', 0, "12"),
+ ("a handler may park", HH + 'fn slow(v: Int32) Int32\n  sleep(1ms)\n  v + 1i32\nh_start(slow, 3i32)\nprintln(h_wait())\n', 0, "6"),
+ ("a handler sees captured values", HH + 'k = 5i32\nh_start((v) -> v + k, 3i32)\nprintln(h_wait())\n', 0, "18"),
+ ("on the scheduler's thread a handler runs at once", HH + 'println(h_now((v) -> v * 3i32, 5i32))\n', 0, "15"),
+ ("an abort in a handler ends the program", HH + 'h_start((v) -> 1i32 / (v - v), 2i32)\nprintln(h_wait())\n', 1, "abort"),
 ]
 fails = []
 for name, body, rc_want, word in CASES + NUMCASES + EVCASES + HCASES:

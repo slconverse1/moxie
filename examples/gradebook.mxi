@@ -1,16 +1,16 @@
 class_name = "Moxie 101"
 println("Welcome to $class_name")
 
-fn letter(score: Int) String:
-  when score:
+fn letter(score: Int) String
+  when score
     >= 90 -> "A"
     >= 80 -> "B"
     >= 70 -> "C"
-    else: "F"
+    else "F"
 
 println("${letter(95)} ${letter(83)} ${letter(41)}")
 
-tuple Student deriving show, eq:
+tuple Student deriving show, eq
   name: String,
   score: Int
 
@@ -21,35 +21,35 @@ curved = Student(...bob, score: bob.score + 5)
 println("${curved.name} ${curved.score} ${bob == curved}")
 
 roster = List(ada, bob, Student(name: "Cy", score: 71), Student(name: "Di", score: 58))
-total = roster |> to_stream() |> map((s): s.score) |> sum()
+total = roster |> to_stream() |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
-passing: List[Student][4] = roster |> to_stream() |> filter((s): s.score >= 60) |> collect()
-for s in passing:
+passing: List[Student][4] = roster |> to_stream() |> filter((s) -> s.score >= 60) |> collect()
+for s in passing
   println("${s.name}: ${s.score} ${letter(s.score)}")
 
-fn parse_score(text: String) Result[Int, Error]:
+fn parse_score(text: String) Result[Int, Error]
   n = read[Int](text)?
-  if n < 0 or n > 100: fail(1, "score out of range") else: Ok(n)
+  if n < 0 or n > 100 then fail(1, "score out of range") else Ok(n)
 
-fn make_student(name: String, text: String) Result[Student, Error]:
+fn make_student(name: String, text: String) Result[Student, Error]
   score = parse_score(text)?
   Ok(Student(name: name, score: score))
 
-for (name, text) in List(("Eve", "88"), ("Fay", "abc"), ("Gus", "140")):
-  when make_student(name, text):
+for (name, text) in List(("Eve", "88"), ("Fay", "abc"), ("Gus", "140"))
+  when make_student(name, text)
     Ok(s) -> println("added ${s.name} with ${s.score}")
     Err(e) -> println("skipped $name: ${e.message}")
 
-fn best[T: Ordered](a: T, b: T) T:
-  if a < b: b else: a
+fn best[T: Ordered](a: T, b: T) T
+  if a < b then b else a
 
-impl Ordered for Student:
-  fn <(other: Student) Bool:
+impl Ordered for Student
+  fn <(other: Student) Bool
     score < other.score
 
 println("${best(3, 9)} ${best("pear", "fig")} ${best(ada, bob).name}")
 
-fiber fn grader(s: Student, out: ChanW[Int]) Unit:
+fiber fn grader(s: Student, out: ChanW[Int]) Unit
   _ = write(out, s.score)
 
 rx, tx = Chan[Int][3]()
@@ -59,7 +59,7 @@ _ = run grader(Student(name: "Cy", score: 71), move tx)
 points = read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)
 println("points $points")
 
-test "letter grades":
+test "letter grades"
   assert_eq(letter(90), "A")
   assert_eq(letter(89), "B")
   assert_eq(letter(12), "F")

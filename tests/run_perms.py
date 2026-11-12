@@ -53,9 +53,9 @@ chk("connect checks host and port", run('println(connect("127.0.0.1", 1))\n', "-
 chk("a connect pattern can use a wildcard", run('println(connect("127.0.0.1", 1))\n', "--allow-connect=127.0.0.1:*"), 0, "code: 11")
 chk("listen is by port", run('println(listen(7))\n', "--allow-listen=8000-8010"), 0, "code: 10")
 chk("net not granted at all is a compile error", run('println(connect("127.0.0.1", 1))\n', "--allow-read"), 2, "needs net")
-chk("a foreign library needs ffi", run('foreign "m":\n  pure fn cos(x: Double) Double\nprintln(cos(0.0))\n', "--deny-all"), 2, "ffi for 'm'")
-chk("a granted library loads", run('foreign "m":\n  pure fn cos(x: Double) Double\nprintln(cos(0.0))\n', "--allow-ffi=m"), 0, "1.0")
-chk("a call through a function is still seen", run('fn grab(p: String) Result[String, Error]: read_file(p)\nprintln(grab("data/a.txt"))\n', "--deny-all"), 2, "needs fs")
+chk("a foreign library needs ffi", run('foreign "m"\n  pure fn cos(x: Double) Double\nprintln(cos(0.0))\n', "--deny-all"), 2, "ffi for 'm'")
+chk("a granted library loads", run('foreign "m"\n  pure fn cos(x: Double) Double\nprintln(cos(0.0))\n', "--allow-ffi=m"), 0, "1.0")
+chk("a call through a function is still seen", run('fn grab(p: String) Result[String, Error] = read_file(p)\nprintln(grab("data/a.txt"))\n', "--deny-all"), 2, "needs fs")
 chk("flags after the file go to the program", run('println(args)\n', extra=("--allow-all",)), 0, "--allow-all")
 chk("Connection.open checks files", run('c = Connection.open("data/x.db")\nprintln(c)\n', "--allow-read=data"), 0, "code: 10")
 
@@ -85,7 +85,7 @@ def runp(main, pkgs, manifest, *flags, cmd="run"):
     return r.returncode, r.stdout + r.stderr
 
 
-READER = 'export fn slurp(p: String) Result[String, Error]: read_file(p)\nexport fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error]: f(p)\n'
+READER = 'export fn slurp(p: String) Result[String, Error] = read_file(p)\nexport fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error] = f(p)\n'
 MAIN = 'import reader\nprintln(read_file("data/a.txt"))\nprintln(reader.slurp("data/a.txt"))\nprintln(reader.slurp("other/b.txt"))\n'
 ALL = '[permissions]\nall = true\n'
 chk("a package with an empty table cannot read (static)", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\n'), 2, "package 'reader' (reader.mxi:1): 'read_file' needs fs.read or fs.write")
@@ -96,13 +96,13 @@ chk("the denial names the package", runp(MAIN, {"reader": READER}, ALL + '[permi
 chk("the ceiling still allows what it grants", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "Ok(\"hello\")")
 chk("the program itself is not limited by a package ceiling", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n'), 0, "Ok(\"hello\")\nOk(\"hello\")")
 chk("the program's grants limit the package too", runp(MAIN, {"reader": READER}, '[permissions]\nfs.read = ["data"]\n[permissions.packages.reader]\nfs.read = ["data", "other"]\n'), 0, "code: 10")
-CB = 'import applier\nfn rd(p: String) Result[String, Error]: read_file(p)\nprintln(applier.apply(rd, "other/b.txt"))\n'
-APPLIER = 'export fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error]: f(p)\n'
+CB = 'import applier\nfn rd(p: String) Result[String, Error] = read_file(p)\nprintln(applier.apply(rd, "other/b.txt"))\n'
+APPLIER = 'export fn apply(f: (String) -> Result[String, Error], p: String) Result[String, Error] = f(p)\n'
 chk("a function written in the program keeps the program's rights", runp(CB, {"applier": APPLIER}, ALL + '[permissions.packages.applier]\n'), 0, "Ok(\"secret\")")
 chk("a ceiling for a package nobody imports is a warning", runp('println(1)\n', {}, ALL + '[permissions.packages.ghost]\n', cmd="check"), 0, "warning: no imported package is named 'ghost'")
 chk("a package table with an unknown kind is an error", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfiles = true\n'), 2, "unknown permission")
 chk("flags replace the program's grants but not the ceilings", runp(MAIN, {"reader": READER}, ALL + '[permissions.packages.reader]\nfs.read = ["data"]\n', "--allow-all"), 0, "code: 10")
-chk("a package that needs ffi is checked against its ceiling", runp('import m\nprintln(m.f())\n', {"m": 'foreign "m":\n  pure fn cos(x: Double) Double\nexport fn f() Double: cos(0.0)\n'}, ALL + '[permissions.packages.m]\n'), 2, "ffi for 'm'")
+chk("a package that needs ffi is checked against its ceiling", runp('import m\nprintln(m.f())\n', {"m": 'foreign "m"\n  pure fn cos(x: Double) Double\nexport fn f() Double = cos(0.0)\n'}, ALL + '[permissions.packages.m]\n'), 2, "ffi for 'm'")
 
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)

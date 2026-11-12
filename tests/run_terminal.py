@@ -61,26 +61,26 @@ def run_pty(src, keys=(), flags=(), settle=0.3):
     return p.returncode, out.decode(errors="replace"), lflag
 
 ECHO = termios.ECHO | termios.ICANON | termios.ISIG
-LOOP = 'init:\n  t = raw_terminal()?\n  while:\n    k = read_key(t)?\n    when k:\n      Typed(c) -> println("typed $c")\n      Ctrl(c) -> println("ctrl $c")\n      Escape -> break\n      other -> println(other)\n  close(t)\n  println("bye")\n'
+LOOP = 'init\n  t = raw_terminal()?\n  while\n    k = read_key(t)?\n    when k\n      Typed(c) -> println("typed $c")\n      Ctrl(c) -> println("ctrl $c")\n      Escape -> break\n      other -> println(other)\n  close(t)\n  println("bye")\n'
 
 rc, out, lf = run_pty(LOOP, [b"a", b"\x03", b"\x1b[A", b"\x1b"])
 check("keys arrive one at a time", rc == 0 and "typed a" in out and "ctrl c" in out and "Key.Up" in out and "bye" in out, (rc, out))
 check("typed keys are not echoed", "a" not in out.replace("typed a", ""), out)
 check("close puts the terminal back", rc == 0 and (lf & ECHO) == ECHO, lf)
 
-ABORT = 'init:\n  t = raw_terminal()?\n  x = read_key(t)?\n  assert(false, "boom")\n'
+ABORT = 'init\n  t = raw_terminal()?\n  x = read_key(t)?\n  assert(false, "boom")\n'
 rc, out, lf = run_pty(ABORT, [b"q"])
 check("an abort still restores the terminal", rc != 0 and (lf & ECHO) == ECHO, (rc, lf, out))
 
-OPEN = 'init:\n  t = raw_terminal()?\n  println("raw")\n'
+OPEN = 'init\n  t = raw_terminal()?\n  println("raw")\n'
 rc, out, lf = run_pty(OPEN)
 check("a Terminal left open is restored at exit", rc == 0 and "raw" in out and (lf & ECHO) == ECHO, (rc, lf))
 
-TWICE = 'init:\n  a = raw_terminal()?\n  b = raw_terminal()?\n'
+TWICE = 'init\n  a = raw_terminal()?\n  b = raw_terminal()?\n'
 rc, out, lf = run_pty(TWICE)
 check("a second Terminal is refused", rc != 0 and "already open" in out, out)
 
-rc, out, lf = run_pty('init:\n  println(raw_terminal())\n', flags=["--platform=browser"])
+rc, out, lf = run_pty('init\n  println(raw_terminal())\n', flags=["--platform=browser"])
 check("the browser has no terminal key input", "not a terminal" in out or "MISSING" in out or "code: 4" in out, out)
 
 def plain(src, flags=(), stdin=None):
@@ -90,13 +90,13 @@ def plain(src, flags=(), stdin=None):
     os.unlink(f.name)
     return r.returncode, r.stdout.decode() + r.stderr.decode()
 
-rc, out = plain('init:\n  println(raw_terminal())\n', stdin=b"")
+rc, out = plain('init\n  println(raw_terminal())\n', stdin=b"")
 check("piped input is not a terminal", rc == 0 and "not a terminal" in out and "code: 4" in out, (rc, out))
-rc, out = plain('init:\n  println(raw_terminal())\n', flags=["--allow-read"])
+rc, out = plain('init\n  println(raw_terminal())\n', flags=["--allow-read"])
 check("raw_terminal needs stdin (static)", rc == 2 and "needs stdin" in out, (rc, out))
-rc, out = plain('pure fn f() Int:\n  t = raw_terminal()\n  1\n', flags=["--allow-all"])
+rc, out = plain('pure fn f() Int\n  t = raw_terminal()\n  1\n', flags=["--allow-all"])
 check("pure code cannot open a terminal", rc != 0 and "uses the system" in out, (rc, out))
-rc, out, lf = run_pty('init:\n  t = raw_terminal()?\n  close(t)\n  println(read_key(t))\n')
+rc, out, lf = run_pty('init\n  t = raw_terminal()?\n  close(t)\n  println(read_key(t))\n')
 check("reading a closed Terminal is a compile error", rc != 0 and "use of moved value `t`" in out, (rc, out))
 
 import re

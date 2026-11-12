@@ -10,7 +10,7 @@
 /// 212
 /// > to_f(0)
 /// 32
-export pure fn to_f(c: Int) Int:
+export pure fn to_f(c: Int) Int
   requires c >= -273
   ensures result >= -459
   c * 9 / 5 + 32
@@ -18,18 +18,18 @@ export pure fn to_f(c: Int) Int:
 /// A reading from a sensor.
 ///
 /// See [`to_f`] for conversion.
-export tuple Reading:
+export tuple Reading
   celsius: Int
   label: String
   invariant celsius >= -273
 
 /// Where a reading came from.
-export enum Source:
+export enum Source
   Indoor
   Outdoor
 
 /// Something that can be summarised.
-export interface Summary:
+export interface Summary
   /// One line description.
   fn summary(self) String
     ensures len(result) > 0
@@ -38,16 +38,16 @@ export interface Summary:
 ///
 /// > describe(Reading(20, "lab"))
 /// "lab: 20C"
-export pure fn describe(r: Reading) String:
+export pure fn describe(r: Reading) String
   "${r.label}: ${r.celsius}C"
 
 /// Returns one.
 ///
 /// > to_f(10)
 /// 50
-export pure fn one() Int:
+export pure fn one() Int
   1
 
 /// Prints a greeting.
-export prints fn greet(name: String) Unit:
+export prints fn greet(name: String) Unit
   println("hello $name")

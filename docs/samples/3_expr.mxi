@@ -1,11 +1,11 @@
 // A recursive type and a function defined case by case.
-enum Expr:
+enum Expr
   Num(n: Int),
   Add(l: Expr, r: Expr),
   Mul(l: Expr, r: Expr)
 
-fn eval(e: Expr) Int:
-  when e:
+fn eval(e: Expr) Int
+  when e
     Num(n) -> n
     Add(l, r) -> eval(l) + eval(r)
     Mul(l, r) -> eval(l) * eval(r)

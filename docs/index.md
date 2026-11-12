@@ -68,25 +68,25 @@ In the following, we show why moxie is a language FPers will love. After some in
 ## A moxie appetizer
 
 ```
-tuple TrafficLight:
+tuple TrafficLight
   status: String
 
-fn handle_light(light: TrafficLight) Unit:
-  when light.status:
+fn handle_light(light: TrafficLight) Unit
+  when light.status
     "red" ->    println("Stop")
     "yellow" -> println("Caution")
     "green" ->  println("Go")
-    else: println("Unknown state")
+    else println("Unknown state")
 
 colors = Array("red", "yellow", "green")
-for color in colors:
+for color in colors
   light = TrafficLight(color)
   handle_light(light)
 ```
 
 Output: `Stop`, `Caution`, `Go`.
 
-Assume this code lives in its own file. Notice the two-space moxie indentation. The colon after `when light.status` opens a "code block," an independent sequence of code. Here, the block is a sequence of patterns, each with a code block of its own (a single line, in this case).
+Assume this code lives in its own file. Notice the two-space moxie indentation. The indented lines under `when light.status` are a "code block," an independent sequence of code. Here, the block is a sequence of patterns, each with a code block of its own (a single line, in this case).
 
 ## Our debts
 
@@ -94,7 +94,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 
 - **Go:** interfaces, goroutines, channels, and `select`, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
-- **Kotlin:** scoped receiver blocks (`x.do:` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), field delegates (`level: Int delegate(Percent)` is Kotlin's `by`), Domain-Specific Languages, and labeled `break` and `continue`.
+- **Kotlin:** scoped receiver blocks (`x.do` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value), field delegates (`level: Int delegate(Percent)` is Kotlin's `by`), Domain-Specific Languages, and labeled `break` and `continue`.
 - **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
@@ -142,7 +142,7 @@ The Moxie Runtime is the small piece of machinery that starts your program, sche
 Beyond that, the Runtime is small, and it hates surprises:
 
 - **Memory is one fixed block, allocated at startup.** The compiler tallies everything your program can need (atoms, channels, timers, futures, connections, and one stack per possible fiber) and writes that into the program. At startup the Runtime checks that they all fit in memory and *refuses to start* if they don't. After that, creating those things can't fail, and there's no heap to fragment or run out of.
-- **Strings and temporaries live on stacks.** Each fiber has an S-space (for strings built at run time and recursive values) and a T-space (for temporaries from things like `collect()`). Both are released in bulk at fixed points, such as the end of a `daemon:` cycle, which is how a program can run forever in constant memory with no GC.
+- **Strings and temporaries live on stacks.** Each fiber has an S-space (for strings built at run time and recursive values) and a T-space (for temporaries from things like `collect()`). Both are released in bulk at fixed points, such as the end of a `daemon` cycle, which is how a program can run forever in constant memory with no GC.
 - **An abort ends the program.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, drops the fiber's resources, and ends the program with a non-zero exit, whichever fiber it was. A fault means a bug, so there's little reason to carry on.
 - **Everything is linked statically from source,** Go style, with unreachable code pruned and a link report of what each package contributed. No code is loaded at run time.
 
@@ -151,30 +151,30 @@ Beyond that, the Runtime is small, and it hates surprises:
 You'll see a lot of function declarations from here on, so here's how to read one. The shape is:
 
 ```
-fn name[generics](parameters) ReturnType:
+fn name[generics](parameters) ReturnType
   body
 ```
 
-The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then a colon that opens the body. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations:
+The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then the body, indented on the lines below. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations:
 
 ```
-fn add(x: Int, y: Int) Int:
+fn add(x: Int, y: Int) Int
   x + y
 
-fn greet(name: String, greeting: String = "Hello") String:
+fn greet(name: String, greeting: String = "Hello") String
   "$greeting, $name!"
 
-fn announce(msg: String) Unit:
+fn announce(msg: String) Unit
   println(msg)
 
-fn largest[T: Ordered](a: T, b: T) T:
-  if a < b: b else: a
+fn largest[T: Ordered](a: T, b: T) T
+  if a < b then b else a
 
-fn apply_twice(f: (Int) -> Int, x: Int) Int:
+fn apply_twice(f: (Int) -> Int, x: Int) Int
   f(f(x))
 
-fn make_adder(n: Int) (Int) -> Int:
-  (x): x + n
+fn make_adder(n: Int) (Int) -> Int
+  (x) -> x + n
 ```
 
 - **Parameters** are written `name: Type`, with the same colon a tuple field uses, and they're separated by commas with none after the last. A default (`greeting: String = "Hello"`) must come after the parameters without one.
@@ -182,7 +182,7 @@ fn make_adder(n: Int) (Int) -> Int:
 - **The return type is required.** A function that returns nothing says `Unit`, as `announce` does.
 - **Generics** go in the brackets after the function name. `[T: Ordered]` says "any type `T` that has an ordering," which is what lets `largest` use `<`. The bound after the colon names an interface (`Ordered` in this case), and size parameters such as `N` live in the same brackets.
 - **Modifiers** go in front of a parameter (`ref n: Int`, `lazy x: Int`, `using who: String`) or in front of `fn` (`pure fn`, `inline fn`, `fiber fn`, `export fn`).
-- **Short bodies** can sit on the same line as the colon: `fn double(x: Int) Int: x * 2`.
+- **Short bodies** can sit on the same line after `=`: `fn double(x: Int) Int = x * 2`.
 - **Multi-clause function definitions** make one function that matches on its arguments.
 
 **Signatures.** Every declaration has a signature, which is the function's type. Take away the name, the parameter names, and the body, and what's left is the signature, written with an arrow: the parameter types in parentheses, then `->`, then the result type. The arrow appears only in signatures, never in a declaration's own return type. Here are four declarations and their signatures:
@@ -197,26 +197,26 @@ make_adder    (Int) -> (Int) -> Int
 Signatures matter because they are the type of a parameter that is itself a function. `apply_twice` is a declaration that takes a function. Its parameter `f` has the signature `(Int) -> Int`, which says "any function that takes an `Int` and returns an `Int`":
 
 ```
-fn apply_twice(f: (Int) -> Int, x: Int) Int:
+fn apply_twice(f: (Int) -> Int, x: Int) Int
   f(f(x))
 
-fn run_it(g: ((Int) -> Int, Int) -> Int) Int:
-  g((n): n + 3, 10)
+fn run_it(g: ((Int) -> Int, Int) -> Int) Int
+  g((n) -> n + 3, 10)
 
-println("${apply_twice((n): n * 2, 5)} ${run_it(apply_twice)}")
+println("${apply_twice((n) -> n * 2, 5)} ${run_it(apply_twice)}")
 ```
 
-Output: `20 16`. In the first call, `f` is `(n): n * 2`, so `5` becomes `10` and then `20`. `run_it` takes a parameter `g` whose signature, `((Int) -> Int, Int) -> Int`, is exactly `apply_twice`'s own signature, so `run_it(apply_twice)` is legal: `g` adds `3` to `10` twice, giving `16`.
+Output: `20 16`. In the first call, `f` is `(n) -> n * 2`, so `5` becomes `10` and then `20`. `run_it` takes a parameter `g` whose signature, `((Int) -> Int, Int) -> Int`, is exactly `apply_twice`'s own signature, so `run_it(apply_twice)` is legal: `g` adds `3` to `10` twice, giving `16`.
 
-**Anonymous functions.** `(n): n * 2` is a function with no name, and the missing name is what makes it anonymous. Other languages call this a lambda, and in these pages the two words mean the same thing. Size has nothing to do with it: an anonymous function can be one expression or an indented block of many lines, it can have typed parameters and a return type, and it is a value like any other, so it can be passed, returned, or bound to a name. A function written without `fn` is a lambda and is pure; write `fn (x): ...` for an anonymous function that may print, park, or touch a file, a socket, a channel, or SQL. Two shorter forms cover the common cases: a placeholder (`_ * 2`, section 9) and a function written after a call (`map()(x): x * 3`).
+**Anonymous functions.** `(n) -> n * 2` is a function with no name, and the missing name is what makes it anonymous. Other languages call this a lambda, and in these pages the two words mean the same thing. Size has nothing to do with it: an anonymous function can be one expression or an indented block of many lines, it can have typed parameters and a return type, and it is a value like any other, so it can be passed, returned, or bound to a name. A function written without `fn` is a lambda and is pure; write `fn (x) = ...` for an anonymous function that may print, park, or touch a file, a socket, a channel, or SQL. Two shorter forms cover the common cases: a placeholder (`_ * 2`, section 9) and a function written after a call (`map()(x) -> x * 3`).
 
 **A function that returns a function.** A function can give back another function as its result, and its signature shows it. The arrow reads right to left, so `(Int) -> (Int) -> Int` is "takes an `Int` and returns a function that takes an `Int` and returns an `Int`." The signature describes such a function: you give it one `Int`, and what you get back is not a final answer but a function still waiting for a second `Int`. Only when you supply that one do you get the final `Int`. `make_adder`, declared above, is such a function, and `add_curried` is another:
 
 ```
-fn add_curried(a: Int) (Int) -> Int:
-  (b): a + b
+fn add_curried(a: Int) (Int) -> Int
+  (b) -> a + b
 
-fn apply_curried(f: (Int) -> (Int) -> Int, a: Int, b: Int) Int:
+fn apply_curried(f: (Int) -> (Int) -> Int, a: Int, b: Int) Int
   f(a)(b)
 
 add5 = make_adder(5)
@@ -241,14 +241,14 @@ Anyone who has written code where every step can fail knows the pyramid of doom.
 Here's that shape in moxie, with three lookups that each return a `Result`:
 
 ```
-fn pay_nested(id: Int) Result[Int, Error]:
-  when find_user(id):
+fn pay_nested(id: Int) Result[Int, Error]
+  when find_user(id)
     Err(e) -> Err(e)
     Ok(user) ->
-      when find_rate(user):
+      when find_rate(user)
         Err(e) -> Err(e)
         Ok(rate) ->
-          when find_hours(user):
+          when find_hours(user)
             Err(e) -> Err(e)
             Ok(hours) -> Ok(rate * hours)
 ```
@@ -258,19 +258,19 @@ It works, but it's the pyramid. Moxie gives you several ways to flatten it, and 
 - **`?` hands the failure back for you.** A `?` after a call means "if this failed, return the error to my caller; otherwise give me the value." The same function becomes four flat lines, and every error still reaches the caller:
 
   ```
-  fn pay_flat(id: Int) Result[Int, Error]:
+  fn pay_flat(id: Int) Result[Int, Error]
     user = find_user(id)?
     rate = find_rate(user)?
     hours = find_hours(user)?
     Ok(rate * hours)
   ```
 
-- **Let-else is a guard clause for a pattern.** When the value has to have a particular shape, `Active(_, rank) = acct else: fail(7, "account closed")` binds the pieces and bails out on the spot if the shape is wrong, so the rest of the function stays at the left margin (see the section on expressions above).
-- **A `for:` comprehension chains steps that depend on each other.** Each line can use the names bound above it, and the first failure ends the chain:
+- **Let-else is a guard clause for a pattern.** When the value has to have a particular shape, `Active(_, rank) = acct else fail(7, "account closed")` binds the pieces and bails out on the spot if the shape is wrong, so the rest of the function stays at the left margin (see the section on expressions above).
+- **A `for` comprehension chains steps that depend on each other.** Each line can use the names bound above it, and the first failure ends the chain:
 
   ```
-  fn pay_for(id: Int) Result[Int, Error]:
-    for:
+  fn pay_for(id: Int) Result[Int, Error]
+    for
       user in find_user(id)
       and rate in find_rate(user)
       and hours in find_hours(user)
@@ -290,10 +290,10 @@ These two names look alike but do different jobs, and you'll meet both in nearly
 **`Error` is a built-in tuple** that is the standard moxie error type, `Error(code: Int, message: String)`, where the message is a fixed string known at compile time. The function `fail(code, message)` is shorthand for building an `Err` that holds one:
 
 ```
-fn check_age(age: Int) Result[Int, Error]:
-  if age < 0: fail(1, "negative age") else: Ok(age)
+fn check_age(age: Int) Result[Int, Error]
+  if age < 0 then fail(1, "negative age") else Ok(age)
 
-when check_age(-5):
+when check_age(-5)
   Ok(a) -> println("age $a")
   Err(e) -> println("error ${e.code}: ${e.message}")
 ```
@@ -303,17 +303,17 @@ Output: `error 1: negative age`. So `fail(1, "negative age")` is the same as `Er
 When the caller needs to know *what* went wrong, use your own enum as the error type instead of `Error`. The `Err` wrapper is the same either way:
 
 ```
-enum AgeError:
+enum AgeError
   Negative,
   TooOld(limit: Int)
 
-fn check_age2(age: Int) Result[Int, AgeError]:
-  if age < 0:
+fn check_age2(age: Int) Result[Int, AgeError]
+  if age < 0
     Err(AgeError.Negative)
-  else:
-    if age > 99: Err(AgeError.TooOld(99)) else: Ok(age)
+  else
+    if age > 99 then Err(AgeError.TooOld(99)) else Ok(age)
 
-when check_age2(120):
+when check_age2(120)
   Ok(a) -> println("age $a")
   Err(AgeError.TooOld(limit)) -> println("over $limit")
   Err(AgeError.Negative) -> println("negative")
@@ -383,10 +383,10 @@ Because every construct in an expression-based language produces a value, you ca
 ```
 // The 'when' block evaluates to a string,
 // which is immediately assigned.
-user_role = when user.clearance:
+user_role = when user.clearance
   1 -> "Admin"
   2 -> "Manager"
-  else: "Guest"
+  else "Guest"
 ```
 
 **Elimination of temporary mutable state**
@@ -410,7 +410,7 @@ Expression-based:
 
 ```
 // No mutation, no temporaries. The block evaluates to the value.
-discount = if is_member: 0.2 else: 0.0
+discount = if is_member then 0.2 else 0.0
 ```
 
 By making everything an expression, you drastically reduce the surface area for bugs caused by variables being accidentally modified or read before they’re initialized.
@@ -421,30 +421,30 @@ In FP, a core goal is referential transparency—the idea that you can replace a
 
 In a statement-based language, moving code around is dangerous because statements often rely on when and where they change the surrounding environment (side effects). In an expression-based language, code behaves cleanly like mathematics: `f(x)` simply yields a result, making it incredibly easy to reason about, refactor, and test. Moxie doesn't promise purity everywhere, though: a function can still print, read a channel, or swap an atom, and the compiler works out which functions do. Mark a function `pure fn` and the compiler enforces it.
 
-**Specifically:** bindings, `if`, `when`, `select`, `do:` blocks, and loops all have a value in moxie, and the last line of a block *is* its value:
+**Specifically:** bindings, `if`, `when`, `select`, `do` blocks, and loops all have a value in moxie, and the last line of a block *is* its value:
 
 ```
-label = if area > 50:
+label = if area > 50
   "big"
-else:
+else
   "small"
 ```
 
-A loop can have a value, too. `break(x)` leaves with one, and `else:` supplies one when the loop runs dry. Labels like `#outer` let you break out of nested loops, and a labeled `do:` gives you an early exit with a value. A `return` in the middle of a function is the usual guard clause, and a let-else is a guard clause in one line.
+A loop can have a value, too. `break(x)` leaves with one, and `else` supplies one when the loop runs dry. Labels like `#outer` let you break out of nested loops, and a labeled `do` gives you an early exit with a value. A `return` in the middle of a function is the usual guard clause, and a let-else is a guard clause in one line.
 
-**What's a let-else?** It's a binding that's allowed to fail, with the "what then?" written right next to it. On the left you write the pattern you expect the value to have, and after `else:` you say what to do if it doesn't:
+**What's a let-else?** It's a binding that's allowed to fail, with the "what then?" written right next to it. On the left you write the pattern you expect the value to have, and after `else` you say what to do if it doesn't:
 
 ```
-enum Account:
+enum Account
   Active(name: String, rank: Int),
   Closed
 
-fn rank_of(acct: Account) Result[Int, Error]:
-  Active(_, rank) = acct else: fail(7, "account closed")
+fn rank_of(acct: Account) Result[Int, Error]
+  Active(_, rank) = acct else fail(7, "account closed")
   Ok(rank * 10)
 ```
 
-If `acct` is `Active`, then `rank` is bound and the function carries on to the next line, so `rank_of(Account.Active("ada", 3))` is `Ok(30)`. If it's `Closed`, the function stops right there and returns the `else:` value, so `rank_of(Account.Closed)` is an `Err`. The pattern can be anything `when` accepts, and the names it binds are in scope for the rest of the block. (Without let-else, you'd write a `when` with one useful arm and one bail-out arm, and indent everything after it.) In the entry file, the `else:` value ends the program (an `Err` prints its diagnostic and exits with a non-zero status). In addition, if a let-else pattern can never fail, as in `(a, b) = pair` where `pair` is always a two-part tuple, the `else:` could never run, so the compiler warns you that it's pointless.
+If `acct` is `Active`, then `rank` is bound and the function carries on to the next line, so `rank_of(Account.Active("ada", 3))` is `Ok(30)`. If it's `Closed`, the function stops right there and returns the `else` value, so `rank_of(Account.Closed)` is an `Err`. The pattern can be anything `when` accepts, and the names it binds are in scope for the rest of the block. (Without let-else, you'd write a `when` with one useful arm and one bail-out arm, and indent everything after it.) In the entry file, the `else` value ends the program (an `Err` prints its diagnostic and exits with a non-zero status). In addition, if a let-else pattern can never fail, as in `(a, b) = pair` where `pair` is always a two-part tuple, the `else` could never run, so the compiler warns you that it's pointless.
 
 ## 5. No null
 
@@ -471,7 +471,7 @@ A path like `/User/firm/name` names a spot inside nested tuples, and it's an ord
 
 ```
 b = replace(a, /User/firm/name, "Acme")
-c = modify(a, /User/firm/name, (s): "$s Ltd")
+c = modify(a, /User/firm/name, (s) -> "$s Ltd")
 ```
 
 You never write the nested-copy boilerplate, and the original `a` is untouched.
@@ -496,7 +496,7 @@ add(...pair)       // or spread it
 ```
 
 ```
-fn sum_squares(x: Double, y: Double) Double:
+fn sum_squares(x: Double, y: Double) Double
   x * x + y * y
 pt = (x: 3.0, y: 4.0)
 println("${sum_squares(pt)} ${sum_squares(...pt)}")
@@ -512,12 +512,12 @@ Here's some of what unification buys you:
 - **Pattern matching comes along for free.** Functions can have several clauses, and the first clause whose parameters match the arguments runs. A parameter can be a pattern instead of a name, such as the literal `0`, and a lambda's parameter can be a pattern too. Here's a factorial in two clauses:
 
   ```
-  fn factorial(0, acc: BigInt[128]) BigInt[128]: acc
-  fn factorial(n, acc: BigInt[128]) BigInt[128]: factorial(n - 1, acc * n)
+  fn factorial(0, acc: BigInt[128]) BigInt[128] = acc
+  fn factorial(n, acc: BigInt[128]) BigInt[128] = factorial(n - 1, acc * n)
   println("${factorial(5, 1)}")
   ```
 
-  The text after each colon is that clause's body. The trick is that `acc` (short for "accumulator") is the running answer, and the multiplying happens on the way *down*, in the second clause's call, not in the first clause. The first clause only fires at the very end, when the countdown hits `0`, and its job is to hand back the finished answer. Here's `factorial(3, 1)` step by step:
+  The text after each `=` is that clause's body. The trick is that `acc` (short for "accumulator") is the running answer, and the multiplying happens on the way *down*, in the second clause's call, not in the first clause. The first clause only fires at the very end, when the countdown hits `0`, and its job is to hand back the finished answer. Here's `factorial(3, 1)` step by step:
 
   ```
   factorial(3, 1)   // n is 3, not 0, so clause 2 runs: factorial(3 - 1, 1 * 3)
@@ -527,20 +527,20 @@ Here's some of what unification buys you:
   ```
 
   Each pass multiplies `acc` by the current `n` and counts `n` down by one. By the time `n` reaches `0`, `acc` is already 3 × 2 × 1 = 6, so returning it is the whole job. Start the accumulator at `1` (the "do nothing" value for multiplication), and `factorial(5, 1)` prints `120`. The `BigInt[128]` type just means the product can grow far past the size of an ordinary `Int`.
-- **Uniform higher-order code.** A stream of tuples feeds a lambda with two or more parameters (`zip(xs, ys) |> map()(x, y): x * y`), so no special adapters are needed.
-- **Compiler economy.** The compiler checks escapes and carries state forward with one set of rules. For example, the bindings a `daemon:` cycle hands to its next cycle are treated as one unit, like any other tuple.
+- **Uniform higher-order code.** A stream of tuples feeds a lambda with two or more parameters (`zip(xs, ys) |> map()(x, y) -> x * y`), so no special adapters are needed.
+- **Compiler economy.** The compiler checks escapes and carries state forward with one set of rules. For example, the bindings a `daemon` cycle hands to its next cycle are treated as one unit, like any other tuple.
 - **Pipes just work.** When a stage returns a tuple and the next stage's parameter list matches it, the value slides straight in:
 
 ```
-fn fetch_sensor_data(id: Int) (Float, Float, Float):
+fn fetch_sensor_data(id: Int) (Float, Float, Float)
   (12.5, 45.0, 0.8)
 fn calculate_velocity(
   x: Float,
   y: Float,
   z: Float
-) (speed: Float, angle: Float):
+) (speed: Float, angle: Float)
   (95.2, 14.6)
-fn update_physics(speed: Float, angle: Float) Unit:
+fn update_physics(speed: Float, angle: Float) Unit
   println("Physics vector updated: speed $speed, angle $angle")
 1042
   |> fetch_sensor_data()
@@ -553,15 +553,15 @@ Output: `Physics vector updated: speed 95.2, angle 14.6`. There are no intermedi
 **Splatting and gathering.** Other languages use two common terms. *Splatting* spreads one bundle out into separate slots, and *gathering* collects separate values back into one bundle. Moxie does both with the same `...`, and a tuple makes most of it automatic:
 
 ```
-fn add(x: Int, y: Int) Int: x + y
-fn total(base: Int, numbers: ...Int) Int:
+fn add(x: Int, y: Int) Int = x + y
+fn total(base: Int, numbers: ...Int) Int
   numbers |> to_stream() |> reduce(base, _1 + _2)
 pair = (3, 5)
 values = Array(10, 20, 30)
 print("${add(...pair)} ${total(100, 1, 2, 3)} ${total(100, ...values)} ")
 println("${total(100)}")
-fn describe(xs: Array[Int][3]) String:
-  when xs:
+fn describe(xs: Array[Int][3]) String
+  when xs
     Array(first, ...rest) -> "first $first, then ${len(rest)} more"
 println(describe(values))
 p = (x: 1, y: 2)
@@ -581,13 +581,13 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 A field is a name in a tuple that holds a value. A *property* looks exactly like one from the outside, `r.area` and `r.area = 12.0`, but it can run code when it is read or written. That lets you start with a plain field and add a rule later without touching a single caller.
 
 ```
-tuple Rect:
+tuple Rect
   width: Double
   height: Double
   property area: Double
-    get:
+    get
       width * height
-    set(v):
+    set(v)
       width = v / height
 
 r = Rect(width: 3.0, height: 2.0)
@@ -604,18 +604,18 @@ If you want one rule on many fields, such as "keep this between 0 and 100", writ
 
 ## 10. Pattern matching
 
-A pattern describes the shape of a value. Matching a value against patterns tests that shape, takes the value apart, binds names to the pieces, and runs the code for the first pattern that fits, all in one step. Instead of nesting `if` and `else` tests, you say what the data looks like. In moxie it's `when value:`, and the arms are tried from top to bottom.
+A pattern describes the shape of a value. Matching a value against patterns tests that shape, takes the value apart, binds names to the pieces, and runs the code for the first pattern that fits, all in one step. Instead of nesting `if` and `else` tests, you say what the data looks like. In moxie it's `when value`, and the arms are tried from top to bottom.
 
 **Sum types made safe.** Enums are moxie's algebraic data types: a value is exactly one of several cases (an OR), and each case can carry fields. A `when` is how you open one up safely:
 
 ```
-enum Shape:
+enum Shape
   Circle(radius: Double),
   Rect(w: Double, h: Double),
   Dot
 
-fn area(s: Shape) Double:
-  when s:
+fn area(s: Shape) Double
+  when s
     Circle(r) -> 3.0 * r * r
     Rect(w, h) -> w * h
     Dot -> 0.0
@@ -626,11 +626,11 @@ println("${area(Shape.Dot)}")
 
 Output: `12.0 6.0 0.0`. Each arm names its case and binds its fields in the same step, so there's no cast and no null check. That is also how moxie handles "absent": a missing value is just another case, such as a `Missing` case of your own enum, that you match.
 
-**The compiler checks that you covered everything.** Every `when` must cover every case, and `else:` is the fallback. If an enum has three cases and the `when` handles two, the program won't compile (the message is approximate):
+**The compiler checks that you covered everything.** Every `when` must cover every case, and `else` is the fallback. If an enum has three cases and the `when` handles two, the program won't compile (the message is approximate):
 
 ```
-fn area(s: Shape) Double:
-  when s:
+fn area(s: Shape) Double
+  when s
     Circle(r) -> 3.0 * r * r
     Rect(w, h) -> w * h      // error: `when` does not cover `Dot`
 ```
@@ -640,12 +640,12 @@ The payoff comes later. Add a case to `Shape` six months from now, and the compi
 **Deep destructuring.** Patterns nest to any depth, so one arm can check a case, look inside a tuple, and test a literal at the same time:
 
 ```
-enum Response:
+enum Response
   Success(user: (Int, String)),
   Failure(code: Int)
 
-fn handle(r: Response) String:
-  when r:
+fn handle(r: Response) String
+  when r
     Response.Success((user_id, token)) -> "log in $user_id with $token"
     Response.Failure(404) -> "not found"
     Response.Failure(_) -> "generic error"
@@ -660,9 +660,9 @@ Output: `log in 7 with abc`, then `not found`, then `generic error`. Without pat
 **It reads like a definition.** A function can have several clauses whose parameters are patterns, so the code mirrors the mathematical definition:
 
 ```
-fn fib(0) Int: 0
-fn fib(1) Int: 1
-fn fib(n) Int: fib(n - 1) + fib(n - 2)
+fn fib(0) Int = 0
+fn fib(1) Int = 1
+fn fib(n) Int = fib(n - 1) + fib(n - 2)
 println("${fib(10)}")
 ```
 
@@ -671,20 +671,20 @@ Output: `55`. That is the textbook definition, not the fast one; the caching rec
 **Patterns in a parameter list.** A parameter doesn't have to be a name. It can be a pattern that takes the argument apart before the body runs, so the body starts with the pieces already bound. Here `area` is written as one clause per case, and `describe` unpacks a tuple right in its parameter list:
 
 ```
-enum Shape:
+enum Shape
   Circle(radius: Double),
   Rect(w: Double, h: Double),
   Dot
 
-fn area(Shape.Circle(r)) Double: 3.0 * r * r
-fn area(Shape.Rect(w, h)) Double: w * h
-fn area(Shape.Dot) Double: 0.0
+fn area(Shape.Circle(r)) Double = 3.0 * r * r
+fn area(Shape.Rect(w, h)) Double = w * h
+fn area(Shape.Dot) Double = 0.0
 
-tuple Player:
+tuple Player
   name: String,
   score: Int
 
-fn describe(Player(name, score)) String:
+fn describe(Player(name, score)) String
   "$name has $score"
 
 print("${area(Shape.Circle(2.0))} ${area(Shape.Rect(2.0, 3.0))} ")
@@ -697,12 +697,12 @@ Output: `12.0 6.0 0.0`, then `Ann has 250`. The clauses are tried from top to bo
 **Guards.** An arm can add an `if` condition. When it's false, matching falls through to the next arm, and the logic stays flat instead of drifting to the right in nested blocks:
 
 ```
-tuple Player:
+tuple Player
   name: String,
   score: Int
 
-fn rank(p: Player) String:
-  when p:
+fn rank(p: Player) String
+  when p
     Player(name, score) if score > 200 -> "$name: top tier"
     Player(name, score) if score > 100 -> "$name: elite"
     Player(name, _) -> "$name: standard"
@@ -717,27 +717,27 @@ Output: `Ann: top tier`, `Bob: elite`, `Cy: standard`. A guarded arm doesn't cou
 **Ranges and literals.** A pattern can also be a literal, a range, or a comparison like `>= 500`, so a whole family of values reads as a table:
 
 ```
-fn describe(status: Int) String:
-  when status:
+fn describe(status: Int) String
+  when status
     200 -> "Success"
     400..=499 -> "Client Error"
     >= 500 -> "Server Error"
-    else: "Unknown"
+    else "Unknown"
 
 println("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)}")
 ```
 
 Output: `Success Client Error Server Error Unknown`. The subject is named once, on the `when` line, and each arm only says which values it takes. Use `..=` for a closed band such as `400..=499`, and `>=`, `>`, `<=` or `<` when one end is open. A comparison works on any ordered type, so `>= 90.0` is fine for a `Double`, and its operand is a literal or a pin like `^limit`. The compiler can't tell whether comparisons alone cover every value, so a `when` like this one keeps its `_ ->` arm.
 
-**Conditions, not just shapes.** A plain `when` is a chain of Boolean tests: the first arm that is true wins, and the chain must end with an `else:` arm. It's the right tool when the tests involve different things:
+**Conditions, not just shapes.** A plain `when` is a chain of Boolean tests: the first arm that is true wins, and the chain must end with an `else` arm. It's the right tool when the tests involve different things:
 
 ```
-fn advice(temp: Int, raining: Bool) String:
-  when:
+fn advice(temp: Int, raining: Bool) String
+  when
     raining and temp < 5 -> "Bring a coat and an umbrella"
     raining -> "Bring an umbrella"
     temp < 5 -> "Bring a coat"
-    else: "Enjoy the day"
+    else "Enjoy the day"
 
 println(advice(3, true))
 println(advice(10, true))
@@ -747,19 +747,19 @@ println(advice(20, false))
 
 Output: `Bring a coat and an umbrella`, `Bring an umbrella`, `Bring a coat`, then `Enjoy the day`. The arms are tried from top to bottom, so the most specific test goes first.
 
-**Looking inside an object.** `x.do:` runs a block with `x` as its receiver, which puts the fields of `x` in scope as bare names. Combine that with a value-less `when` and the tests can be written in terms of the object's own fields:
+**Looking inside an object.** `x.do` runs a block with `x` as its receiver, which puts the fields of `x` in scope as bare names. Combine that with a value-less `when` and the tests can be written in terms of the object's own fields:
 
 ```
-tuple User:
+tuple User
   is_admin: Bool,
   is_manager: Bool
 
-fn access(user: User) String:
-  user.do:
-    when:
+fn access(user: User) String
+  user.do
+    when
       is_admin -> "Full Access"
       is_manager -> "Limited Access"
-      else: "No Access"
+      else "No Access"
 
 print("${access(User(is_admin: false, is_manager: true))} ")
 print("${access(User(is_admin: true, is_manager: false))} ")
@@ -771,19 +771,19 @@ Output: `Limited Access Full Access No Access`.
 **A whole shape at once.** A pattern can describe a nested structure down to its literals, so one arm can recognize a particular value outright:
 
 ```
-tuple Point:
+tuple Point
   x: Int,
   y: Int
 
-tuple Rectangle:
+tuple Rectangle
   origin: Point,
   w: Int,
   h: Int
 
-fn message(r: Rectangle) String:
-  when r:
+fn message(r: Rectangle) String
+  when r
     Rectangle(Point(0, 0), 10, 10) -> "Standard square at origin"
-    else: "Unknown"
+    else "Unknown"
 
 println(message(Rectangle(origin: Point(x: 0, y: 0), w: 10, h: 10)))
 println(message(Rectangle(origin: Point(x: 1, y: 0), w: 10, h: 10)))
@@ -812,19 +812,19 @@ final_score = 10
   |> multiply(2, &)
 ```
 
-A `seq:` stage runs every step whose condition holds, in order, each seeing the result of the one before. Each line is a condition, an arrow, and a step, and it works like a row of "if this, then do that" gates that the value passes through, with no `if`, no `else`, and no temporary variables:
+A `seq` stage runs every step whose condition holds, in order, each seeing the result of the one before. Each line is a condition, an arrow, and a step, and it works like a row of "if this, then do that" gates that the value passes through, with no `if`, no `else`, and no temporary variables:
 
 ```
-fn is_big(n: Int) Bool:
+fn is_big(n: Int) Bool
   n > 100
-fn is_even(n: Int) Bool:
+fn is_even(n: Int) Bool
   n % 2 == 0
-fn halve(n: Int) Int:
+fn halve(n: Int) Int
   n / 2
-fn bump(n: Int) Int:
+fn bump(n: Int) Int
   n + 1
-fn tidy(n: Int) Int:
-  n |> seq:
+fn tidy(n: Int) Int
+  n |> seq
     is_big -> halve()
     is_even -> bump()
     is_big -> halve()
@@ -848,10 +848,10 @@ That one line makes a plain, storable function out of `log`.
 **Pipelines read left to right.** Nested calls read inside out: `make_header(make_alert(raw))` runs `make_alert` first, but you meet it last. With UFCS the same chain reads in the order things happen, and a line that starts with `.name` continues the statement, so a long chain stacks neatly:
 
 ```
-fn add_prefix(text: String, prefix: String) String:
+fn add_prefix(text: String, prefix: String) String
   "$prefix$text"
 
-fn wrap_in_tags(text: String, tag: String) String:
+fn wrap_in_tags(text: String, tag: String) String
   "<$tag>$text</$tag>"
 
 fn make_alert = add_prefix(_, "[ALERT] ")
@@ -880,11 +880,11 @@ The output is the same. The two differ in where the value may land: the dot alwa
 **Open-world extensibility.** In a strict object-oriented language, adding a method to a class means editing its source or subclassing it. In moxie, write a plain function anywhere and call it as if it were a method. Suppose `User` is declared in a package you can't change:
 
 ```
-tuple User:
+tuple User
   name: String,
   role: String
 
-fn to_profile_card(user: User, theme: String) String:
+fn to_profile_card(user: User, theme: String) String
   "[${user.role}] ${user.name} (Theme: $theme)"
 
 user = User(name: "Alice", role: "Developer")
@@ -907,7 +907,7 @@ With UFCS:
 
 ## 13. DSLs, and why moxie has no macros
 
-Let's be clear about what DSLs are and aren't. A DSL can't alter the grammar or invent new keywords, and it doesn't generate code; it only structures ordinary calls. Macros do those things, and Kotlin, which has no macros of its own, hands code generation to compiler plugins and a symbol-processing API. Moxie has neither macros nor plugins, so we had to ask how much we'd miss them. For builder-style problems (HTML, configuration, test descriptions), not much, because the DSL tools below cover them. For generating boilerplate, moxie leans on the compiler itself (`deriving`, `test` blocks, `for:` comprehensions, and SQL that's checked against your schema). And there's a plain reason moxie can't have macros: the grammar is fixed and context-free so the compiler can parse and type-check in one pass, and a macro would rewrite the grammar in the middle of the parse.
+Let's be clear about what DSLs are and aren't. A DSL can't alter the grammar or invent new keywords, and it doesn't generate code; it only structures ordinary calls. Macros do those things, and Kotlin, which has no macros of its own, hands code generation to compiler plugins and a symbol-processing API. Moxie has neither macros nor plugins, so we had to ask how much we'd miss them. For builder-style problems (HTML, configuration, test descriptions), not much, because the DSL tools below cover them. For generating boilerplate, moxie leans on the compiler itself (`deriving`, `test` blocks, `for` comprehensions, and SQL that's checked against your schema). And there's a plain reason moxie can't have macros: the grammar is fixed and context-free so the compiler can parse and type-check in one pass, and a macro would rewrite the grammar in the middle of the parse.
 
 A builder is just a set of ordinary functions, and nesting is nested calls. Variadic parameters let a parent take any number of children, and nominal tuples make it type-safe:
 
@@ -923,7 +923,7 @@ page = html(
 )
 ```
 
-That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing blocks, receiver blocks (`x.do:` and `x.update:`), named arguments and defaults, contextual `using` parameters, user-defined operators, and infix functions in backticks (`100 `calculate_yield` 5`). You can extend types you don't own by writing your own `impl` for them.
+That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing blocks, receiver blocks (`x.do` and `x.update`), named arguments and defaults, contextual `using` parameters, user-defined operators, and infix functions in backticks (`100 `calculate_yield` 5`). You can extend types you don't own by writing your own `impl` for them.
 
 One thing moxie doesn't have is Kotlin's lambda-with-receiver, where a block sees an implicit parent and children register themselves as they're created. In moxie, children are returned values, not side effects. Whether we need a dedicated child-collection mechanism is still an open question.
 
@@ -932,7 +932,7 @@ One thing moxie doesn't have is Kotlin's lambda-with-receiver, where a block see
 Failure is a value. A function that can fail returns a `Result`, and `?` propagates it:
 
 ```
-fn fetch_total(id: Int) Result[Int, Error]:
+fn fetch_total(id: Int) Result[Int, Error]
   a = fetch_first(id)?
   b = fetch_first(id + 1)?
   Ok(a + b)
@@ -942,22 +942,22 @@ No exceptions flying over your head, and no hidden control flow. Not bad! Your e
 
 ## 15. Iterators, generators, and comprehensions
 
-**Iterators.** Any collection is a loop source: `for x in numbers:`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `Range(3..=1, -1)` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
+**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `Range(3..=1, -1)` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
 
 **Generators.** A generator is a function that returns an `unfold` stream. The step takes the current state and returns a value together with the next state, or an `Err` to stop:
 
 ```
-tuple Fib:
+tuple Fib
   a: Int,
   b: Int
-fn fibonacci() Stream[Int]:
-  unfold(Fib(a: 0, b: 1))(state):
+fn fibonacci() Stream[Int]
+  unfold(Fib(a: 0, b: 1))(state) ->
     Ok((state.a, Fib(a: state.b, b: state.a + state.b)))
-for n in fibonacci() |> take(6):
+for n in fibonacci() |> take(6)
   println("$n")
 ```
 
-Output: `0`, `1`, `1`, `2`, `3`, `5`. The sequence is infinite, and `take(6)` is why the loop ends. Where does `state` come from? `unfold(Fib(a: 0, b: 1))(state):` is a call with a trailing function, and `state` is that function's one parameter, so `unfold` supplies its value, not you. The first time `unfold` runs the function it passes the seed, `Fib(a: 0, b: 1)`. Each time after that it passes whatever `next_state` the previous pass returned. The function returns `Ok((value, next_state))`: `value` is the next number the stream hands out, and `next_state` is what the following pass will receive. Here's the trace:
+Output: `0`, `1`, `1`, `2`, `3`, `5`. The sequence is infinite, and `take(6)` is why the loop ends. Where does `state` come from? `unfold(Fib(a: 0, b: 1))(state) ->` is a call with a trailing function, and `state` is that function's one parameter, so `unfold` supplies its value, not you. The first time `unfold` runs the function it passes the seed, `Fib(a: 0, b: 1)`. Each time after that it passes whatever `next_state` the previous pass returned. The function returns `Ok((value, next_state))`: `value` is the next number the stream hands out, and `next_state` is what the following pass will receive. Here's the trace:
 
 ```
 state = Fib(a: 0, b: 1)   // the seed:  emit 0, next state Fib(a: 1, b: 1)
@@ -980,17 +980,17 @@ println("${len(squares)} ${squares(0)} ${lens(cde)}")
 
 Output: `3 4 Ok(3)`. The squares are 4, 9, and 16, and a Dict lookup returns a `Result` (`ab` and `cde` have lengths 2 and 3). `Set(...)` is built the same way.
 
-**`for:` comprehensions.** The block form comes from Scala's `for`/`yield`, widened with ideas from F# computation expressions. It chains steps that can each fail or come up empty, and stops at the first one that does:
+**`for` comprehensions.** The block form comes from Scala's `for`/`yield`, widened with ideas from F# computation expressions. It chains steps that can each fail or come up empty, and stops at the first one that does:
 
 ```
-good = for:
+good = for
   a in Box.Full(20)
   b in half(a)
   c in half(b)
   yield a + c
 ```
 
-`Box` and `half` are defined by the mixer, as the functional programming section explains. Here, we use `Box.Full(25)`, but start from 10 and you get `Box.Empty`, because 5 is odd. A `for:` comprehension works for `Box`, `Result`, streams, and anything else with the right interfaces (more in the interfaces section). A line `name = expr` binds a value, and a line that can fail to match uses a let-else (`Active(_, rank) = user else: Err(NotFound(id: id))`, explained in the "Everything is an expression" section). Independent generators joined with `and` run side by side and need less from the type *(the exact `and` parse rule is an assumption)*.
+`Box` and `half` are defined by the mixer, as the functional programming section explains. Here, we use `Box.Full(25)`, but start from 10 and you get `Box.Empty`, because 5 is odd. A `for` comprehension works for `Box`, `Result`, streams, and anything else with the right interfaces (more in the interfaces section). A line `name = expr` binds a value, and a line that can fail to match uses a let-else (`Active(_, rank) = user else Err(NotFound(id: id))`, explained in the "Everything is an expression" section). Independent generators joined with `and` run side by side and need less from the type *(the exact `and` parse rule is an assumption)*.
 
 ## 16. Laziness
 
@@ -1001,7 +1001,7 @@ Moxie is eager by default, so laziness is something you ask for, in two places.
 ```
 total = Range(1..)
   |> filter(_ % 3 == 0)
-  |> map((n): n * n)
+  |> map((n) -> n * n)
   |> take(4)
   |> sum()
 ```
@@ -1011,11 +1011,11 @@ That's 9 + 36 + 81 + 144, or `270`, and it never builds a list. The vertical sta
 **`lazy` parameters.** Mark a parameter `lazy` and the argument isn't evaluated until the function reads it, which makes call-by-name a one-word feature:
 
 ```
-fn costly() Int:
+fn costly() Int
   println("computing")
   7
-fn maybe(use_it: Bool, lazy x: Int) Int:
-  if use_it: x else: 0
+fn maybe(use_it: Bool, lazy x: Int) Int
+  if use_it then x else 0
 println("skipped: ${maybe(false, costly())}")
 ```
 
@@ -1029,15 +1029,15 @@ Output: `skipped: 0`, with no "computing" line, because `x` is never read. Be aw
 **A caching recipe.** The simplest one threads a `Dict` through the recursion as a `ref` parameter, so every call can see what earlier calls learned, and wraps it in a plain function that starts the table empty:
 
 ```
-fn fib_memo(n: Int, ref seen: Dict[Int, Int][100]) Int:
+fn fib_memo(n: Int, ref seen: Dict[Int, Int][100]) Int
   known = get_or(seen, n, -1)
-  if known >= 0:
+  if known >= 0
     return known
-  v = if n < 2: n else: fib_memo(n - 1, ref seen) + fib_memo(n - 2, ref seen)
+  v = if n < 2 then n else fib_memo(n - 1, ref seen) + fib_memo(n - 2, ref seen)
   seen($n) = v
   v
 
-fn fib(n: Int) Int:
+fn fib(n: Int) Int
   seen = Dict[Int, Int][100]()
   fib_memo(n, ref seen)
 
@@ -1053,17 +1053,17 @@ Go shipped without generics in 2009 and didn't get them until version 1.18, in 2
 A generic declaration lists its type parameters in square brackets, ahead of the ordinary parameters in parentheses. The compiler works the types out from the arguments, so you rarely write them at a call:
 
 ```
-fn bigger[T: Ordered](a: T, b: T) T:
-  if a < b: b else: a
+fn bigger[T: Ordered](a: T, b: T) T
+  if a < b then b else a
 
-tuple Pair[A, B]:
+tuple Pair[A, B]
   first: A,
   second: B
 
-fn swap[A, B](p: Pair[A, B]) Pair[B, A]:
+fn swap[A, B](p: Pair[A, B]) Pair[B, A]
   Pair(first: p.second, second: p.first)
 
-fn first_of[T, N where N > 0](a: Array[T][N]) T:
+fn first_of[T, N where N > 0](a: Array[T][N]) T
   a(0)
 
 println("${bigger(3, 9)} ${bigger("pear", "apple")}")
@@ -1078,14 +1078,14 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 - **Bounds are checked at the call.** Here's a bound with an interface of your own:
 
   ```
-  interface Speaker:
+  interface Speaker
     fn speak() String
-  tuple Dog:
+  tuple Dog
     name: String
-  impl Speaker for Dog:
-    fn speak() String:
+  impl Speaker for Dog
+    fn speak() String
       "${name} says woof"
-  fn announce[S: Speaker](s: S) Unit:
+  fn announce[S: Speaker](s: S) Unit
     println(s.speak())
   announce(Dog(name: "Rex"))
   ```
@@ -1095,13 +1095,13 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 - **A type parameter can be a whole argument list.** A function type is just its parameter types in order, so `(A) -> R` matches `(Int, Int) -> Int` with `A` as `(Int, Int)`, and `(String) -> String` with `A` as `String`. That means one definition covers every number of arguments:
 
   ```
-  fn add(x: Int, y: Int) Int:
+  fn add(x: Int, y: Int) Int
     x + y
-  fn shout(s: String) String:
+  fn shout(s: String) String
     "${s}!"
-  fn call_with[A, R](f: (A) -> R, args: A) R:
+  fn call_with[A, R](f: (A) -> R, args: A) R
     f(args)
-  fn twice[A](f: (A) -> A, args: A) A:
+  fn twice[A](f: (A) -> A, args: A) A
     f(f(args))
   println("${call_with(add, (3, 4))} ${call_with(shout, "hi")} ${twice(shout, "yo")}")
   ```
@@ -1113,21 +1113,21 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 **Higher-kinded types.** `List[Int]` is a type. `List` by itself is a *type constructor*: give it a type and it makes a type. Most languages let you write a function over any type. Moxie also lets you write one over any type constructor, by writing the constructor as a parameter, `F[_]`:
 
 ```
-tuple Box[A]:
+tuple Box[A]
   value: A
 
-impl Functor[Box]:
-  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:
+impl Functor[Box]
+  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]
     Box(f(self.value))
 
-fn twice[F[_]: Functor](m: F[Int]) F[Int]:
-  m.map((x): x * 2).map((x): x + 1)
+fn twice[F[_]: Functor](m: F[Int]) F[Int]
+  m.map((x) -> x * 2).map((x) -> x + 1)
 
 println(twice(Box(3)))
 println(twice(List(1, 2, 3)))
 ```
 
-Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works on every container in the `Functor` club (the set of constructors that can be mapped over). Without this you would write `twice` again for `Box`, for `List`, and for every other container. `Functor`, `Applicative`, and `Monad` are ordinary interfaces over type constructors, which is why `for:` comprehensions work on any type with a `Monad` impl. A call with no receiver goes through the parameter: write `F.pure(x)`, not a bare `pure(x)`.
+Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works on every container in the `Functor` club (the set of constructors that can be mapped over). Without this you would write `twice` again for `Box`, for `List`, and for every other container. `Functor`, `Applicative`, and `Monad` are ordinary interfaces over type constructors, which is why `for` comprehensions work on any type with a `Monad` impl. A call with no receiver goes through the parameter: write `F.pure(x)`, not a bare `pure(x)`.
 
 There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which has no GC, as well as in moxie/gc.
 
@@ -1141,30 +1141,30 @@ An `interface` says what a type can do, and an `impl` says that a type does it. 
 There is no type hierarchy and no inheritance. An interface works like a club (a set, in mathematical terms), and an `impl` says a type belongs to it. A type can join one club or a hundred, and joining adds nothing to the type: no fields, no hidden pointer, no parent. A generic function can say which clubs its type must belong to, and any member can be used, related or not. Membership can be added after the fact, and by someone else, so even a built-in like `Int` can join. A class language would need a common base class or a wrapper for that. A non-member is a compile error ("`Dog` doesn't implement `Describable`, which `describe_all` requires of `T`").
 
 ```
-interface Speaker:
+interface Speaker
   fn speak(self) String
-interface Describable:
+interface Describable
   fn describe(self) String
-tuple Dog deriving eq, ord:
+tuple Dog deriving eq, ord
   name: String
-tuple Car:
+tuple Car
   model: String
-impl Speaker for Dog:
-  fn speak(self) String:
+impl Speaker for Dog
+  fn speak(self) String
     "${self.name} says Woof"
-impl Describable for Dog:
-  fn describe(self) String:
+impl Describable for Dog
+  fn describe(self) String
     "a dog called ${self.name}"
-impl Describable for Car:
-  fn describe(self) String:
+impl Describable for Car
+  fn describe(self) String
     "a ${self.model}"
-impl Describable for Int:
-  fn describe(self) String:
+impl Describable for Int
+  fn describe(self) String
     "the number ${self}"
-fn describe_all[T: Describable](items: List[T]) String:
-  items |> to_stream() |> map((x): x.describe()) |> join(", ")
-fn same_voice[T: Speaker + Equatable](a: T, b: T) String:
-  if a == b: a.speak() else: "two different voices"
+fn describe_all[T: Describable](items: List[T]) String
+  items |> to_stream() |> map((x) -> x.describe()) |> join(", ")
+fn same_voice[T: Speaker + Equatable](a: T, b: T) String
+  if a == b then a.speak() else "two different voices"
 println(describe_all(List(Dog(name: "Rex"), Dog(name: "Ann"))))
 println(describe_all(List(Car(model: "Mini"))))
 println(describe_all(List(1, 2, 3)))
@@ -1177,7 +1177,7 @@ When you want a mixed bag of types, say `any Voice`:
 
 ```
 crowd = List[any Voice][4](Dog(name: "Rex"), Robot(serial: 7))
-for s in crowd:
+for s in crowd
   println(s.speak())
 ```
 
@@ -1201,22 +1201,22 @@ Output: `3 4`.
 
 **Functions compose:** `(inc ~> twice)(5)` is `12`.
 
-**Comprehensions** with `for:` work for any type with a `Monad` impl.
+**Comprehensions** with `for` work for any type with a `Monad` impl.
 
 **Monad sequences read left to right, with operators.** Three operators from Haskell do the work: `|>>` is bind (run the next step on the value inside, and stop at the first failure), `<$>` maps a plain function over the value inside, and `<*>` applies a function that is itself inside a container to a value inside another. Here's `|>>` on the prelude's `Result`, which needs no setup:
 
 ```
-fn half(n: Int) Result[Int, Error]:
-  if n % 2 == 0: Ok(n / 2) else: fail(1, "odd")
+fn half(n: Int) Result[Int, Error]
+  if n % 2 == 0 then Ok(n / 2) else fail(1, "odd")
 
 a = Ok(20) |>> half |>> half    // Ok(5)
 b = Ok(10) |>> half |>> half    // an Err, because 5 is odd
 ```
 
-The `?` form of the same chain, and the `for:` form, say the same thing, just differently:
+The `?` form of the same chain, and the `for` form, say the same thing, just differently:
 
 ```
-fn quarter(n: Int) Result[Int, Error]:
+fn quarter(n: Int) Result[Int, Error]
   a = half(n)?
   half(a)
 ```
@@ -1233,13 +1233,13 @@ inc <$> Box.Full(4)                                  // Box.Full(5)
 
 Here `half` returns a `Box`, and `<$>` and `<*>` get parentheses when mixed with other operators. Use `|>>` when each step needs the previous result, and `<$>` with `<*>` when the inputs are independent and you just want them combined, with the first failure winning.
 
-**These types aren't part of moxie.** `Maybe`, `Option`, `Either`, `Validation`, `State`, a parser type, and so on, are not built into the language or its library. What the prelude gives you is the `Functor`, `Applicative`, and `Monad` interfaces, plus ready-made instances for `Result`, `Stream`, `List`, and `Array`. For any other type, the mixer defines the type and writes its `impl Monad[...]`, and then `|>>`, `<$>`, `<*>`, and `for:` work on it. Chapter 24 of the Mixer's Guide has the full `Box` definition and its impl, with working examples.
+**These types aren't part of moxie.** `Maybe`, `Option`, `Either`, `Validation`, `State`, a parser type, and so on, are not built into the language or its library. What the prelude gives you is the `Functor`, `Applicative`, and `Monad` interfaces, plus ready-made instances for `Result`, `Stream`, `List`, and `Array`. For any other type, the mixer defines the type and writes its `impl Monad[...]`, and then `|>>`, `<$>`, `<*>`, and `for` work on it. Chapter 24 of the Mixer's Guide has the full `Box` definition and its impl, with working examples.
 
 **You can write code once for every monad:**
 
 ```
-fn double_in[F[_]: Monad](m: F[Int]) F[Int]:
-  m.flat_map((x): F.pure(x * 2))
+fn double_in[F[_]: Monad](m: F[Int]) F[Int]
+  m.flat_map((x) -> F.pure(x * 2))
 ```
 
 That works for `Box.Full(21)` and `Ok(21)` alike.
@@ -1258,17 +1258,17 @@ That works for `Box.Full(21)` and `Ok(21)` alike.
 ```
 factor = 5
 ops = Dict[String, (Int) -> Int][4]()
-ops(double) = (n): n * 2        // fine: captures nothing
-ops(scale) = (n): n * factor    // error: closure captures `factor`, and only
+ops(double) = (n) -> n * 2        // fine: captures nothing
+ops(scale) = (n) -> n * factor    // error: closure captures `factor`, and only
                                    // plain functions can be stored
 
-fn pick(flag: Bool, a: Int, b: Double) (Int) -> Int:
-  if flag:
-    (n): n + a                  // captures an Int
-  else:
-    (n): n + cast[Int](b)       // error: a different closure type
+fn pick(flag: Bool, a: Int, b: Double) (Int) -> Int
+  if flag
+    (n) -> n + a                  // captures an Int
+  else
+    (n) -> n + cast[Int](b)       // error: a different closure type
 
-pure fn noisy(w: Int) Int:
+pure fn noisy(w: Int) Int
   println("w is $w")               // error: pure fn calls println
   w
 ```
@@ -1280,7 +1280,7 @@ The first two are the price of having no heap: a closure's size depends on what 
 A fiber is started for the entry file and with `run`. Here's a complete run routine:
 
 ```
-fiber fn greeter(tx: ChanW[String]) Unit:
+fiber fn greeter(tx: ChanW[String]) Unit
   \write(tx, "hello from a fiber")
 
 rx, tx = Chan[String][1]()
@@ -1293,7 +1293,7 @@ Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element t
 **Who runs when.** Starting a fiber doesn't pause the one that started it. The starter keeps going until it parks, and only then does another fiber get a turn:
 
 ```
-fiber fn worker(tx: ChanW[String]) Unit:
+fiber fn worker(tx: ChanW[String]) Unit
   println("worker: started")
   \write(tx, "worker: done")
 
@@ -1320,15 +1320,15 @@ The worker doesn't start until the main fiber reaches `read` and parks. Fibers i
 **Futures.** A channel carries a stream of values. A future carries exactly one, delivered at some point. `Future[T]()` returns two handles, a read end and a write end, just as a channel does. One fiber completes the future through the write end, and anyone holding the read end can look at it:
 
 ```
-fiber fn compute(w: FutureW[Int]) Unit:
+fiber fn compute(w: FutureW[Int]) Unit
   sleep(10ms)
   resolve(w, 6 * 7)
 
-fiber fn fail(w: FutureW[Int]) Unit:
+fiber fn fail(w: FutureW[Int]) Unit
   reject(w, Error(7, "no luck"))
 
-fn show(label: String, f: FutureR[Int]) Unit:
-  when @f:
+fn show(label: String, f: FutureR[Int]) Unit
+  when @f
     Pending -> println("$label: pending")
     Resolved(v) -> println("$label: resolved $v")
     Rejected(e) -> println("$label: rejected ${e.message}")
@@ -1358,18 +1358,18 @@ fail: rejected no luck
 - **A write end that goes away rejects.** If the write end is dropped without ever being completed (say its owner finished without completing it), the future becomes `Rejected` with the reserved error `ABANDONED`, so a reader is never left looking at `Pending` forever.
 - **Futures aren't atoms.** An Atom is a cell you can keep replacing, while a future is filled once and then frozen. Like atoms, channels, and timers, futures are counted by the compiler at startup, so they can't be created in loops or recursion.
 
-Servers don't end, so moxie has a place for that—`daemon:` is the server program's main cycle. Strings built inside a cycle are freed at the end of it, so a program can run for years without growing.
+Servers don't end, so moxie has a place for that—`daemon` is the server program's main cycle. Strings built inside a cycle are freed at the end of it, so a program can run for years without growing.
 
 ```
-daemon:
-  counter = select:
+daemon
+  counter = select
     case msg = read(inbox) ->
       println("got: $msg")
       break daemon
     case read(timeout) ->
       println("timed out")
       break daemon
-    else:
+    else
       sleep(100ms)
       counter + 1
 ```
@@ -1383,7 +1383,7 @@ In most FP languages, starting concurrent work takes machinery. In Haskell you r
 In moxie, you write `run` and that's it. Here are three fibers computing squares at once, each writing its answer to the same channel:
 
 ```
-fiber fn square(n: Int, out: ChanW[Int]) Unit:
+fiber fn square(n: Int, out: ChanW[Int]) Unit
   \write(out, n * n)
 
 rx, tx = Chan[Int][3]()
@@ -1402,10 +1402,10 @@ A short fiber can also be written inline, right where you start it. The full for
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
 // short form: parameter tx gets the variable tx
-\run fn (tx):
+\run fn (tx) ->
   \write(tx, "short form")
 // full form: arguments, then parameters
-\run fn ("long form", tx2)(msg, out):
+\run fn ("long form", tx2)(msg, out) ->
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
@@ -1428,10 +1428,10 @@ Moxie programs read, write, and call C, and every one of those goes through a va
 **Standard streams are values.** `stdin`, `stdout`, and `stderr` can be passed to functions, so code that prints can be tested with something else, and `with_stdin` feeds a test its input:
 
 ```
-fn greet(out: Io, name: String) Unit:
+fn greet(out: Io, name: String) Unit
   println(out, "hello, $name")
 greet(stdout, "mixer")
-name = with_stdin("Ada\n", fn (): read_line().get_or("nobody"))
+name = with_stdin("Ada\n", fn () -> read_line().get_or("nobody"))
 println("hi $name")
 ```
 
@@ -1448,7 +1448,7 @@ net.connect = ["example.com:443"]
 **C libraries are a declaration away.** A `foreign` block gives the signatures, each marked `pure`, `parks`, or `impure`, and the call looks like any other. Arrays of numbers, out-parameters, text, callbacks (even `qsort`'s comparator), handles that must be closed, and callbacks that C keeps and calls from its own thread are all covered, and `moxie bindgen` writes the declarations from a C header:
 
 ```
-foreign "c":
+foreign "c"
   impure fn qsort(
     ref base: Array[Int32],
     n: UInt = len(base),
@@ -1456,7 +1456,7 @@ foreign "c":
     cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
-qsort(ref xs, (a, b): a - b)
+qsort(ref xs, (a, b) -> a - b)
 println(xs)
 ```
 
@@ -1467,10 +1467,10 @@ The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees
 A channel end, a timer, a future, a file, a socket, a child process, a terminal, or a handle from a C library is a resource: a value with an identity, not just a number or a piece of text. You can't copy a file the way you copy an `Int`, so moxie doesn't try. A resource has exactly one owner at a time, it moves rather than copies, and a tuple that holds one is a resource too. Where a language with a collector would tidy up later, moxie closes things at a place you can see, and the compiler checks it. There's no borrow checker to feed with lifetimes and no `&` to write. There is one rule, with two cases:
 
 ```
-fn put_one(out: ChanW[Int]) Unit:
+fn put_one(out: ChanW[Int]) Unit
   \write(out, 1)
 
-fn finish(out: ChanW[Int]) Unit:
+fn finish(out: ChanW[Int]) Unit
   close(out)
 
 rx, tx = Chan[Int][4]()
@@ -1490,7 +1490,7 @@ finish(tx)   // error: `finish` takes ownership of `tx` (it closes it, moves it,
 **Loops are where it bites.** A loop runs its body again, and a resource that moved the first time round isn't there the second time. So the compiler refuses a move that could be followed by another trip round:
 
 ```
-for i in 1..=3:
+for i in 1..=3
   finish(move tx)   // error: `tx` is moved inside a loop; a resource may be
                     // moved only on an exiting path
 ```
@@ -1498,11 +1498,11 @@ for i in 1..=3:
 A move is fine on a path that leaves the loop (a `break`, a `return`, a `?`). The same goes for a fiber: `run worker(tx, i)` always moves `tx` to the new fiber, which closes it when it ends, so doing that inside a loop is an error too ("handed to the new fiber inside a loop"). The way through is `clone`, which makes another handle for the same channel, and it's allowed in a loop only to feed a `run` whose fiber function has a declared limit:
 
 ```
-fiber[3] fn worker(out: ChanW[Int], n: Int) Unit:
+fiber[3] fn worker(out: ChanW[Int], n: Int) Unit
   \write(out, n)
 
 rx, tx = Chan[Int][4]()
-for i in 1..=3:
+for i in 1..=3
   \run worker(clone(tx), i)
 close(tx)
 println("${read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)}")
@@ -1517,17 +1517,17 @@ None of this costs anything at run time. It's all decided by the compiler, so th
 Haskell tracks effects by putting them in the type: an `IO` function can't hide inside a pure one. Koka and Scala's effect libraries do something similar with more machinery. Moxie tracks them too, but you don't write them, and nothing threads through your types. The compiler works out what each function does: it prints, it waits (parks) on a channel or a timer, it uses a resource, or it uses the system (`cwd()`, `hostname()`). A caller inherits what its callees do, all the way up:
 
 ```
-fiber fn square(n: Int) Int:
+fiber fn square(n: Int) Int
   n * n
 
-fn log_square(n: Int) Int:
+fn log_square(n: Int) Int
   println("squaring ${n}")
   square(n)
 
-fn report(n: Int) Unit:
+fn report(n: Int) Unit
   println(log_square(n))
 
-pure fn area(w: Int, h: Int) Int:
+pure fn area(w: Int, h: Int) Int
   w * h
 
 report(3)
@@ -1537,13 +1537,13 @@ println(area(2, 5))
 Output: `squaring 3`, `9`, and then `10`. Nothing above declares an effect, and adding a `println` while you debug never means editing a caller. When you *want* the compiler to hold you to something, you say so before `fn`: `pure`, `prints`, `parks`, or `impure` for "does something". A declaration is an agreement checked in both directions:
 
 ```
-pure fn total(n: Int) Int:
+pure fn total(n: Int) Int
   log_square(n)        // error: pure fn 'total' prints (calls 'println')
 
-prints fn quiet(n: Int) Int:
+prints fn quiet(n: Int) Int
   n * 2                // error: fn 'quiet' is declared prints but never does
 
-pure fn peek(a: Atom[Int]) Int:
+pure fn peek(a: Atom[Int]) Int
   @a                   // error: pure fn 'peek' uses a resource (calls '@')
 ```
 
@@ -1558,12 +1558,12 @@ Effects say what code *does*. Permissions (superpower 22) say what a program is 
 A contract states what a function needs and what it promises, in the code instead of a comment. `requires` is a precondition the caller must meet, `ensures` is a postcondition the function guarantees (it may name `result`), and `invariant` is a condition every value of a tuple type must satisfy:
 
 ```
-tuple Account:
+tuple Account
   owner: String
   balance: Int
   invariant balance >= 0
 
-fn withdraw(a: Account, amt: Int) Account:
+fn withdraw(a: Account, amt: Int) Account
   requires amt > 0
   ensures result.balance == a.balance - amt
   Account(owner: a.owner, balance: a.balance - amt)
@@ -1588,7 +1588,7 @@ go(0)    // where go calls withdraw(acct, n) with n = 0 at run time
 - **Blame.** A failed `requires` is a caller bug. A failed `ensures` or `invariant` is a supplier bug.
 - **Caught early when it can be.** A `requires` whose arguments are all constants and that fails is a compile error, the same way a constant index out of range is.
 - **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them: put `keep_in_release = true` under `[contracts]` in `Moxie.toml` to leave them on in a release build.
-- **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a: Array[T][N]) T:` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e: Array[Int][3]`, so the check can happen at compile time instead.
+- **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a: Array[T][N]) T` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e: Array[Int][3]`, so the check can happen at compile time instead.
 - **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
 - **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
 - **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
@@ -1600,30 +1600,30 @@ Eiffel made contracts famous. In moxie they sit beside the types, and the checke
 Most languages let you write functions on values. Moxie also lets you write functions on *types*, and run them while the compiler checks your program. A type alias whose body is a `when` is a function that takes a type apart and builds another, with an arm for each shape:
 
 ```
-type alias Elem[T] = when T:
+type alias Elem[T] = when T
   List[X] -> X
   Array[X][N] -> X
 
-type alias Concat[A, B] = when A:
+type alias Concat[A, B] = when A
   () -> B
   (H, ...T) -> (H, ...Concat[T, B])
 
-type alias Length[T] = when T:
+type alias Length[T] = when T
   () -> 0
   (H, ...Rest) -> 1 + Length[Rest]
 
-tuple User:
+tuple User
   id: Int
   name: String
 
-type alias Get[R, K] = when R:
+type alias Get[R, K] = when R
   (K: T, ...Rest) -> T
   (_: _, ...Rest) -> Get[Rest, K]
 
-fn big(n: Int) Bool:
+fn big(n: Int) Bool
   n > 3
 
-type alias Pad[N] = when N:
+type alias Pad[N] = when N
   M if big(M) -> Array[Int][M]
   M -> Array[Int][3]
 
@@ -1653,8 +1653,8 @@ Moxie keeps type information at run time only for values whose type is chosen at
 
 ```
 type union Value = Int | String
-fn describe(v: Value) String:
-  when v:
+fn describe(v: Value) String
+  when v
     n@Int -> "the number ${n + 1}"
     s@String -> "the text ${s}"
 println(describe(41))
@@ -1695,7 +1695,7 @@ These come with the territory, and we don't mind them.
 - **Views and streams can't be returned.** They borrow storage that ends with the function. (`inline fn` is the escape hatch for streams.)
 - **No atoms, channels, timers, or futures created in loops or recursion.** The compiler has to count them before the program starts.
 - **Capacities are fixed.** Lists, Dicts, and channels are declared with a size.
-- **A runtime string or temporary lasts until the next reset,** so it can't be carried through a `daemon:` cycle.
+- **A runtime string or temporary lasts until the next reset,** so it can't be carried through a `daemon` cycle.
 - **No import cycles,** and names must be declared before they're used (with `forward fn` for mutual recursion). A single pass needs definitions first.
 - **State monads over runtime-length data aren't possible,** for the same closure-size reason.
 - **A function passed to `swap` can't park or block.**
@@ -1714,7 +1714,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 - **Operators aren't values, and there are no operator sections.** Write a lambda or a placeholder call instead; it's clearer and needs no new rules.
 - **No mixing `_` and `_1` in one partial call.** The two numbering schemes together read like a puzzle.
 - **Unused imports and module-level rebinding are errors.** The link report stays honest, and a program's top-level names stay stable.
-- **A fiber abort still ends the whole program.** `scope:` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
+- **A fiber abort still ends the whole program.** `scope` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
 - **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..=100]` values can leave the range, so you say when to narrow it again.
 - **Transactions don't nest.** It keeps the commit-or-roll-back rule simple to state.
 - **Delegates apply only to declared tuple fields.** The field's layout has to be known.

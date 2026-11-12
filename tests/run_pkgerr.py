@@ -3,7 +3,7 @@ import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 d = tempfile.mkdtemp()
 os.mkdir(os.path.join(d, "lib"))
-open(os.path.join(d, "lib", "lib.mxi"), "w").write("fn broken(x: Int) Int:\n  x +\n")
+open(os.path.join(d, "lib", "lib.mxi"), "w").write('fn broken(x: Int) Int\n  x +\n')
 main = os.path.join(d, "main.mxi")
 open(main, "w").write("import lib\nprintln(lib.broken(1))\n")
 fails = []

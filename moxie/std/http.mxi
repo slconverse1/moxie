@@ -4,40 +4,40 @@
 //! `net.listen`; neither runs in the browser.
 
 /// One header line: `Content-Type: text/plain` is `Header(name: "Content-Type", value: "text/plain")`.
-export tuple Header:
+export tuple Header
   name: String,
   value: String
 
 /// A request as the server sees it, with the path including any query (`/search?q=moxie`).
-export tuple Request:
+export tuple Request
   method: String,
   path: String,
   headers: List[Header],
   body: String
 
 /// A response, as a handler returns it and as a client receives it.
-export tuple Response:
+export tuple Response
   status: Int,
   headers: List[Header],
   body: String
 
-fn crlf() String:
+fn crlf() String
   "\r\n"
 
-fn lower_eq(a: String, b: String) Bool:
+fn lower_eq(a: String, b: String) Bool
   lower(a) == lower(b)
 
 /// The value of the first header called `name` (names compare without regard to case), or an `Err` (MISSING).
-export fn header_value(headers: List[Header], name: String) Result[String, Error]:
-  hits = headers |> to_stream() |> filter((h): lower_eq(h.name, name)) |> collect()
-  if len(hits) == 0:
+export fn header_value(headers: List[Header], name: String) Result[String, Error]
+  hits = headers |> to_stream() |> filter((h) -> lower_eq(h.name, name)) |> collect()
+  if len(hits) == 0
     Err(Error(code: MISSING, message: "no such header"))
-  else:
+  else
     Ok(hits(0).value)
 
 /// The text for a status code (`200` is `OK`).
-export fn reason(status: Int) String:
-  when status:
+export fn reason(status: Int) String
+  when status
     200 -> "OK"
     201 -> "Created"
     204 -> "No Content"
@@ -49,53 +49,53 @@ export fn reason(status: Int) String:
     404 -> "Not Found"
     405 -> "Method Not Allowed"
     500 -> "Internal Server Error"
-    else: "Status"
+    else "Status"
 
 /// A response with a plain-text body.
-export fn text(status: Int, body: String) Response:
+export fn text(status: Int, body: String) Response
   Response(status: status, headers: List(Header(name: "Content-Type", value: "text/plain; charset=utf-8")), body: body)
 
-fn parse_header(line: String) Header:
+fn parse_header(line: String) Header
   parts = split(line, ":")
   rest = parts(1..) |> to_stream() |> join(":")
   Header(name: trim(parts(0)), value: trim(rest))
 
 // Header lines up to the blank line that ends them.
-fn read_headers(c: Io, acc: List[Header]) Result[List[Header], Error]:
+fn read_headers(c: Io, acc: List[Header]) Result[List[Header], Error]
   line = trim(read_line(c)?)
-  if line == "":
+  if line == ""
     Ok(acc)
-  else:
+  else
     read_headers(c, acc + parse_header(line))
 
-fn read_body(c: Io, headers: List[Header]) Result[String, Error]:
+fn read_body(c: Io, headers: List[Header]) Result[String, Error]
   n = header_value(headers, "Content-Length")
-  when n:
+  when n
     Ok(s) ->
       count = parse_number(s)
-      when count:
-        Ok(k) -> if k == 0: Ok("") else: from_utf8(read_bytes(c, k)?)
+      when count
+        Ok(k) -> if k == 0 then Ok("") else from_utf8(read_bytes(c, k)?)
         Err(e) -> Err(Error(code: BAD_ENCODING, message: "bad Content-Length"))
     Err(e) -> Ok("")
 
 /// Reads one request from a connection.
-export fn read_request(c: Io) Result[Request, Error]:
+export fn read_request(c: Io) Result[Request, Error]
   first = trim(read_line(c)?)
   parts = split(first, " ")
-  if len(parts) < 2:
+  if len(parts) < 2
     return Err(Error(code: BAD_ENCODING, message: "bad request line"))
   headers = read_headers(c, List[Header]())?
   body = read_body(c, headers)?
   Ok(Request(method: parts(0), path: parts(1), headers: headers, body: body))
 
-fn header_lines(headers: List[Header]) String:
-  headers |> to_stream() |> map((h): "${h.name}: ${h.value}${crlf()}") |> join("")
+fn header_lines(headers: List[Header]) String
+  headers |> to_stream() |> map((h) -> "${h.name}: ${h.value}${crlf()}") |> join("")
 
-fn length_of(body: String) Int:
+fn length_of(body: String) Int
   len(to_utf8(body))
 
 /// Writes a response and the request that goes with it. `Content-Length` and `Connection: close` are added for you.
-fn write_message(c: Io, start: String, headers: List[Header], body: String) Result[Unit, Error]:
+fn write_message(c: Io, start: String, headers: List[Header], body: String) Result[Unit, Error]
   eol = crlf()
   print(c, "${start}${eol}${header_lines(headers)}Content-Length: ${length_of(body)}${eol}Connection: close${eol}${eol}")
   write_bytes(c, to_utf8(body))?
@@ -103,14 +103,14 @@ fn write_message(c: Io, start: String, headers: List[Header], body: String) Resu
   Ok(())
 
 /// Sends a response on a connection.
-export fn write_response(c: Io, r: Response) Result[Unit, Error]:
+export fn write_response(c: Io, r: Response) Result[Unit, Error]
   write_message(c, "HTTP/1.1 ${r.status} ${reason(r.status)}", r.headers, r.body)
 
 /// Waits for one connection, reads its request, calls `handler`, sends the response, and closes the connection. A request
 /// that cannot be read gets a 400 reply.
-export fn serve_one(l: Listener, handler: (Request) -> Response) Result[Unit, Error]:
+export fn serve_one(l: Listener, handler: (Request) -> Response) Result[Unit, Error]
   c = accept(l)?
-  reply = when read_request(c):
+  reply = when read_request(c)
     Ok(req) -> handler(req)
     Err(e) -> text(400, "bad request\n")
   sent = write_response(c, reply)
@@ -118,36 +118,36 @@ export fn serve_one(l: Listener, handler: (Request) -> Response) Result[Unit, Er
   sent
 
 /// Serves `count` connections, one after the other, and then returns. Useful in tests.
-export fn serve_n(l: Listener, count: Int, handler: (Request) -> Response) Unit:
-  if count > 0:
+export fn serve_n(l: Listener, count: Int, handler: (Request) -> Response) Unit
+  if count > 0
     _ = serve_one(l, handler)
     serve_n(l, count - 1, handler)
 
 /// Serves connections one after the other, forever.
-export fn serve(l: Listener, handler: (Request) -> Response) Unit:
+export fn serve(l: Listener, handler: (Request) -> Response) Unit
   _ = serve_one(l, handler)
   serve(l, handler)
 
-fn read_status(line: String) Result[Int, Error]:
+fn read_status(line: String) Result[Int, Error]
   parts = split(trim(line), " ")
-  if len(parts) < 2:
+  if len(parts) < 2
     Err(Error(code: BAD_ENCODING, message: "bad status line"))
-  else:
-    when parse_number(parts(1)):
+  else
+    when parse_number(parts(1))
       Ok(n) -> Ok(n)
       Err(e) -> Err(Error(code: BAD_ENCODING, message: "bad status code"))
 
-fn read_response_body(c: Io, headers: List[Header]) Result[String, Error]:
-  when header_value(headers, "Content-Length"):
+fn read_response_body(c: Io, headers: List[Header]) Result[String, Error]
+  when header_value(headers, "Content-Length")
     Ok(s) -> read_body(c, headers)
     Err(e) -> read_all(c)
 
 /// Sends a request to `host:port` and returns the response. `body` may be empty, and `headers` are sent as given.
-export fn request(host: String, port: Int, method: String, path: String, headers: List[Header], body: String) Result[Response, Error]:
+export fn request(host: String, port: Int, method: String, path: String, headers: List[Header], body: String) Result[Response, Error]
   c = connect(host, port)?
   extra = List(Header(name: "Host", value: host)) + headers
   sent = write_message(c, "${method} ${path} HTTP/1.1", extra, body)
-  if is_err(sent):
+  if is_err(sent)
     close(c)
     return Err(Error(code: IO_ERROR, message: "could not send the request"))
   status = read_status(read_line(c)?)?
@@ -157,9 +157,9 @@ export fn request(host: String, port: Int, method: String, path: String, headers
   Ok(Response(status: status, headers: hs, body: reply))
 
 /// A GET request.
-export fn get(host: String, port: Int, path: String) Result[Response, Error]:
+export fn get(host: String, port: Int, path: String) Result[Response, Error]
   request(host, port, "GET", path, List[Header](), "")
 
 /// A POST request with a text body.
-export fn post(host: String, port: Int, path: String, body: String) Result[Response, Error]:
+export fn post(host: String, port: Int, path: String, body: String) Result[Response, Error]
   request(host, port, "POST", path, List(Header(name: "Content-Type", value: "text/plain; charset=utf-8")), body)

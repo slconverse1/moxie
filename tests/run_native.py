@@ -23,7 +23,7 @@ def chk(name, d, rc_want, *wants, cmd="run", entry="main.mxi"):
     shutil.rmtree(d, ignore_errors=True)
 
 
-FOREIGN = 'foreign "m":\n  pure fn cos(x: Double) Double\n'
+FOREIGN = 'foreign "m"\n  pure fn cos(x: Double) Double\n'
 MAIN = FOREIGN + 'println(cos(0.0))\n'
 
 chk("the error is found by check, before anything runs", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n'}), 2, "no [native] section", cmd="check")
@@ -37,7 +37,7 @@ chk("[native] without libs lists nothing to check", project({"main.mxi": MAIN, "
 chk("an unknown [native] key is an error", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n[native]\nlibraries = ["m"]\n'}), 2, "unknown key 'libraries' in [native]")
 chk("libs must be a list of strings", project({"main.mxi": MAIN, "Moxie.toml": 'name = "t"\n[native]\nlibs = "m"\n'}), 2, "[native] libs must be a list of strings")
 
-PKG = 'export fn root(x: Double) Double: cos(x)\n'
+PKG = 'export fn root(x: Double) Double = cos(x)\n'
 USE = 'import nat\nprintln(nat.root(0.0))\n'
 chk("an imported package with [native] may declare foreign functions",
     project({"main.mxi": USE, "nat/nat.mxi": FOREIGN + PKG, "nat/Moxie.toml": 'name = "nat"\nfiles = ["nat.mxi"]\n[native]\nlibs = ["m"]\n'}), 0, "1.0")
@@ -52,12 +52,12 @@ chk("a package file with no manifest is as lenient as a script", project({"main.
 # paths: a library found only through [native] paths
 lib = subprocess.run(["bash", "-c", "command -v cc gcc | head -1"], capture_output=True, text=True).stdout.strip()
 if lib:
-    d = project({"main.mxi": 'foreign "tw":\n  pure fn twice(x: Int32) Int32\nprintln(twice(21i32))\n',
+    d = project({"main.mxi": 'foreign "tw"\n  pure fn twice(x: Int32) Int32\nprintln(twice(21i32))\n',
                  "native/tw.c": "int twice(int x) { return 2 * x; }\n",
                  "Moxie.toml": 'name = "t"\n[native]\nlibs = ["tw"]\npaths = ["native"]\n'})
     subprocess.run([lib, "-shared", "-fPIC", "-o", os.path.join(d, "native", "libtw.so"), os.path.join(d, "native", "tw.c")], check=True)
     chk("paths are searched for a library", d, 0, "42")
-    d = project({"main.mxi": 'foreign "tw":\n  pure fn twice(x: Int32) Int32\nprintln(twice(21i32))\n',
+    d = project({"main.mxi": 'foreign "tw"\n  pure fn twice(x: Int32) Int32\nprintln(twice(21i32))\n',
                  "native/tw.c": "int twice(int x) { return 2 * x; }\n",
                  "Moxie.toml": 'name = "t"\n[native]\nlibs = ["tw"]\n'})
     subprocess.run([lib, "-shared", "-fPIC", "-o", os.path.join(d, "native", "libtw.so"), os.path.join(d, "native", "tw.c")], check=True)

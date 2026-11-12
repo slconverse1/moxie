@@ -18,7 +18,7 @@ Together they give tuple concatenation, `Flatten`, element-type extraction (`Ele
 ## A design that fits moxie, if it were built
 
 ```
-type alias Elem[T] = when T:
+type alias Elem[T] = when T
   Array[X][N] -> X
   List[X] -> X
 ```
@@ -96,7 +96,7 @@ Signatures (2026-11-05): finished for the prelude functions whose types are the 
 
 ## Status (2026-11-06): matching, recursion, tuple patterns, and numbers are built
 
-Decided with the designer: moxie should be first class for type-level programming with no restriction on recursion. Built: type functions (`type alias F[T] = when T:` arms), the first matching arm wins, recursion, `(H, ...T)` tuple patterns and `...T` in results (so tuple types can be split and joined, reversing the earlier "no variadic generics" decision), numbers and arithmetic as types, a number computed by a type function as an array size, fuel (64) plus a size limit, and a lint for a self-call that does not shrink. Next on the list: guards on arms, literal types for strings, implicit search and derivation, and `inline`-style compile-time evaluation. See INTERPRETER.md for the design and tests/run_typefun.py for the cases.
+Decided with the designer: moxie should be first class for type-level programming with no restriction on recursion. Built: type functions (`type alias F[T] = when T` arms), the first matching arm wins, recursion, `(H, ...T)` tuple patterns and `...T` in results (so tuple types can be split and joined, reversing the earlier "no variadic generics" decision), numbers and arithmetic as types, a number computed by a type function as an array size, fuel (64) plus a size limit, and a lint for a self-call that does not shrink. Next on the list: guards on arms, literal types for strings, implicit search and derivation, and `inline`-style compile-time evaluation. See INTERPRETER.md for the design and tests/run_typefun.py for the cases.
 
 ## Labels and singleton inference (done)
 Tuple types keep field names; `(K: T, ...Rest)` looks a field up by name, a bare label variable binds the name as a string type; declared tuples unfold to their fields; literal arguments to a parameter used inside a type function keep their own type. `get(user, "name")` is `String`.

@@ -2,11 +2,11 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES = [
- ("gimme updates names bound before a loop", 'total = 0\ncount = 0\nfor score in List(70, 85, 90):\n  gimme.1.total += score\n  gimme.1.count += 1\nprintln("$total $count")\n', 0, "245 3"),
- ("reduce carries the state with no outer write", 'total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s): acc + s)\nprintln(total)\n', 0, "245"),
- ("a plain rebinding in a loop does not leave it", 'total = 0\nfor s in List(1, 2, 3):\n  total += s\nprintln(total)\n', 0, "0"),
- ("gimme in a nested if", 'n = 1\nif true:\n  n = 2\n  gimme.1.n = 10\n  println("${n} ${gimme.1.n}")\nprintln("$n")\n', 0, "2 10\n10"),
- ("gimme with nothing to reach is an error", 'fn f() Int:\n  gimme.1.x = 5\n  1\nprintln(f())\n', 2, "no enclosing block binds"),
+ ("gimme updates names bound before a loop", 'total = 0\ncount = 0\nfor score in List(70, 85, 90)\n  gimme.1.total += score\n  gimme.1.count += 1\nprintln("$total $count")\n', 0, "245 3"),
+ ("reduce carries the state with no outer write", 'total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s) -> acc + s)\nprintln(total)\n', 0, "245"),
+ ("a plain rebinding in a loop does not leave it", 'total = 0\nfor s in List(1, 2, 3)\n  total += s\nprintln(total)\n', 0, "0"),
+ ("gimme in a nested if", 'n = 1\nif true\n  n = 2\n  gimme.1.n = 10\n  println("${n} ${gimme.1.n}")\nprintln("$n")\n', 0, "2 10\n10"),
+ ("gimme with nothing to reach is an error", 'fn f() Int\n  gimme.1.x = 5\n  1\nprintln(f())\n', 2, "no enclosing block binds"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

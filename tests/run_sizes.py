@@ -2,22 +2,22 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PAIR = '''fn pair[N](a: Array[Int][N], b: Array[Int][N]) Int:
+PAIR = '''fn pair[N](a: Array[Int][N], b: Array[Int][N]) Int
   len(a) + len(b)
 '''
 
 # (name, source, how, text): how is "run" (exit 0 and text in output) or "fail" (nonzero exit and text in output)
 CASES = [
  ("an unknown size is a warning that says how to check it at compile time",
-  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nfn make(n: Int) Array[Int]:\n  List(1, 2, 3, 4) |> to_stream() |> take(n) |> collect()\nx = make(2)\nprintln(big(x))\n', "fail", "to check this at compile time instead of runtime"),
+  'fn big[N where N > 2](e: Array[Int][N]) Int\n  e(0)\nfn make(n: Int) Array[Int]\n  List(1, 2, 3, 4) |> to_stream() |> take(n) |> collect()\nx = make(2)\nprintln(big(x))\n', "fail", "to check this at compile time instead of runtime"),
  ("and the constraint is checked at run time, not silently",
-  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nfn make(n: Int) Array[Int]:\n  List(1, 2, 3, 4) |> to_stream() |> take(n) |> collect()\nx = make(2)\nprintln(big(x))\n', "fail", "fails the `where` constraint"),
+  'fn big[N where N > 2](e: Array[Int][N]) Int\n  e(0)\nfn make(n: Int) Array[Int]\n  List(1, 2, 3, 4) |> to_stream() |> take(n) |> collect()\nx = make(2)\nprintln(big(x))\n', "fail", "fails the `where` constraint"),
  ("a where constraint on a size is checked at the call",
-  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nx: Array[Int] = (1, 2)\nprintln(big(x))\n', "fail", "gives `N` the size 2, which fails its `where` constraint"),
+  'fn big[N where N > 2](e: Array[Int][N]) Int\n  e(0)\nx: Array[Int] = (1, 2)\nprintln(big(x))\n', "fail", "gives `N` the size 2, which fails its `where` constraint"),
  ("a where constraint on a literal array is checked",
-  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nprintln(big((1, 2)))\n', "fail", "gives `N` the size 2"),
+  'fn big[N where N > 2](e: Array[Int][N]) Int\n  e(0)\nprintln(big((1, 2)))\n', "fail", "gives `N` the size 2"),
  ("a where constraint that holds is accepted",
-  'fn big[N where N > 2](e: Array[Int][N]) Int:\n  e(0)\nprintln(big((5, 2, 3)))\n', "run", "5"),
+  'fn big[N where N > 2](e: Array[Int][N]) Int\n  e(0)\nprintln(big((5, 2, 3)))\n', "run", "5"),
  ("arrays of different sizes, annotated without a size, are an error",
   PAIR + 'x: Array[Int] = (1, 2, 3)\ny: Array[Int] = (1, 2)\nprintln(pair(x, y))\n', "fail", "where `Array[Int][3]` was fixed by another argument"),
  ("arrays of different sizes, annotated with sizes, are an error",
@@ -27,9 +27,9 @@ CASES = [
  ("arrays of the same size are fine",
   PAIR + 'x: Array[Int] = (1, 2, 3)\ny: Array[Int] = (4, 5, 6)\nprintln(pair(x, y))\n', "run", "6"),
  ("a size used once may differ between calls",
-  'fn count[N](a: Array[Int][N]) Int:\n  len(a)\nx: Array[Int] = (1, 2, 3)\ny: Array[Int] = (1, 2)\nprintln("${count(x)} ${count(y)}")\n', "run", "3 2"),
+  'fn count[N](a: Array[Int][N]) Int\n  len(a)\nx: Array[Int] = (1, 2, 3)\ny: Array[Int] = (1, 2)\nprintln("${count(x)} ${count(y)}")\n', "run", "3 2"),
  ("a variadic call is unaffected",
-  'fn total(base: Int, numbers: ...Int) Int:\n  base + len(numbers)\nprintln("${total(10, 1, 2, 3)} ${total(10, 1)}")\n', "run", "13 11"),
+  'fn total(base: Int, numbers: ...Int) Int\n  base + len(numbers)\nprintln("${total(10, 1, 2, 3)} ${total(10, 1)}")\n', "run", "13 11"),
 ]
 
 fails = []

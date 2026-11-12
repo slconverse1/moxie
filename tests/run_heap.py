@@ -2,24 +2,24 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fails = []
-GROW = '''fn main() Unit:
-  xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i): acc + i)
+GROW = '''fn main() Unit
+  xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i) -> acc + i)
   println(len(xs))
 main()
 '''
-GARBAGE = '''fn main() Unit:
-  n = 0..400 |> to_stream() |> reduce(0, (acc, i): len(List(1, 2, 3) * 1000))
+GARBAGE = '''fn main() Unit
+  n = 0..400 |> to_stream() |> reduce(0, (acc, i) -> len(List(1, 2, 3) * 1000))
   println(n)
 main()
 '''
-FIBER = '''fiber fn hold(done: ChanW[Int]) Unit:
-  xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i): acc + i)
+FIBER = '''fiber fn hold(done: ChanW[Int]) Unit
+  xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i) -> acc + i)
   \\write(done, len(xs))
 rx, tx = Chan[Int][1]()
 run hold(tx)
 println(read(rx)?)
 '''
-SMALL = '''xs = 0..100 |> to_stream() |> reduce(List[Int](), (acc, i): acc + i)
+SMALL = '''xs = 0..100 |> to_stream() |> reduce(List[Int](), (acc, i) -> acc + i)
 println(len(xs))
 '''
 
