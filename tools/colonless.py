@@ -27,7 +27,83 @@ class Unhandled(Exception):
     pass
 
 
+def fix_mixed(src):
+    """An `if` is all on one line or all indented: where a chain mixes the two, write the one-line branches as blocks."""
+    try:
+        toks = tokenize(src, "<fix>")
+    except MoxieSyntaxError:
+        return src
+    lines, cur = [], None
+    for i, t in enumerate(toks):
+        if t.kind in ("NL", "INDENT", "DEDENT", "EOF"):
+            if t.kind == "NL":
+                cur = None
+            continue
+        if cur is None:
+            cur = {"indent": t.col - 1, "idx": []}
+            lines.append(cur)
+        cur["idx"].append(i)
+    chains = {}                 # indent -> list of (line number, inline?, cut token index)
+    done = []
+    for n, L in enumerate(lines):
+        for ind in [k for k in chains if k > L["indent"]]:
+            done.append(chains.pop(ind))
+        first = toks[L["idx"][0]]
+        if first.kind != "NAME" or first.val not in ("if", "elif", "else"):
+            if L["indent"] in chains and first.kind == "NAME" and first.val in ("for", "while"):
+                done.append(chains.pop(L["indent"]))
+            for ind in [k for k in chains if k >= L["indent"]]:
+                if ind == L["indent"]:
+                    done.append(chains.pop(ind))
+            continue
+        depth, cut, inline = 0, None, False
+        if first.val == "else":
+            if len(L["idx"]) > 1:
+                cut, inline = L["idx"][1], True
+        else:
+            for j in L["idx"][1:]:
+                t = toks[j]
+                if t.kind == "OP" and t.val in OPEN:
+                    depth += 1
+                elif t.kind == "OP" and t.val in CLOSE:
+                    depth -= 1
+                elif depth == 0 and t.kind == "NAME" and t.val == "then":
+                    inline = True
+                    cut = j + 1
+                    break
+        if first.val == "if":
+            if L["indent"] in chains:
+                done.append(chains.pop(L["indent"]))
+            chains[L["indent"]] = []
+        elif L["indent"] not in chains:
+            continue
+        chains[L["indent"]].append((n, inline, cut, first.val))
+    done.extend(chains.values())
+    splits = []
+    for ch in done:
+        if len({c[1] for c in ch}) > 1:
+            splits.extend((n, cut, kind) for n, inline, cut, kind in ch if inline and cut is not None)
+    if not splits:
+        return src
+    src_lines = src.split("\n")
+    for n, cut, kind in sorted(splits, reverse=True):
+        t = toks[cut]
+        ln = t.line - 1
+        text = src_lines[ln]
+        col = t.col - 1
+        head = text[:col].rstrip()
+        if kind != "else":
+            head = head[:-4].rstrip() if head.endswith("then") else head
+        indent = " " * (len(text) - len(text.lstrip()))
+        src_lines[ln:ln + 1] = [head, indent + "  " + text[col:]]
+    return "\n".join(src_lines)
+
+
 def convert(src, report=None):
+    return fix_mixed(_convert(src, report))
+
+
+def _convert(src, report=None):
     """Return the colonless text of `src` (or `src` itself when it has no block colon)."""
     toks = tokenize(src, "<convert>")
     # logical lines: (indent, [token index...]) so an `else:` can find its parent
@@ -174,7 +250,9 @@ def convert(src, report=None):
                     pending.append({"kind": "recvupdate", "depth": depth, "idx": i})
                 continue
             if v in ("if", "elif"):
-                pending.append({"kind": "if", "depth": depth, "idx": i})
+                guard = any(p["kind"] == "fn" and p["depth"] == depth and toks[p["idx"] + 1].kind == "NAME" for p in pending)
+                if not guard:                                        # `fn f(n) String if n < 0:` the guard belongs to the fn
+                    pending.append({"kind": "if", "depth": depth, "idx": i})
             elif v in ("for", "while"):
                 pending.append({"kind": v, "depth": depth, "idx": i})
             elif v == "fn":
@@ -229,7 +307,7 @@ def _encode(seg, text):
     return prefix.replace("r", "").replace("R", "") + r
 
 
-def convert_py(text, report=None, oneline_ok=False):
+def convert_py(text, report=None, oneline_ok=False, fix_only=False):
     """Convert the moxie source held in the string literals of a Python file."""
     import ast
     import re
@@ -254,14 +332,14 @@ def convert_py(text, report=None, oneline_ok=False):
                 docs.add(id(sub))                                    # the pieces of an f-string are not literals of their own
     reps = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str) and ":" in node.value and id(node) not in docs:
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and (":" in node.value or "if " in node.value) and id(node) not in docs:
             val = node.value
             if "\n" not in val and not oneline_ok:
                 continue
             if re.search(r"\)\s*\{|#include", val):
                 continue                                             # C source, not moxie
             try:
-                new = convert(val)
+                new = fix_mixed(val) if fix_only else convert(val)
             except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError):
                 continue
             if new == val:
@@ -279,7 +357,7 @@ def convert_py(text, report=None, oneline_ok=False):
     return b.decode("utf-8")
 
 
-def convert_md(text, report=None):
+def convert_md(text, report=None, fix_only=False):
     """Convert the fenced code blocks of a Markdown file and the one-line code spans in its prose."""
     import re
     lines = text.split("\n")
@@ -307,7 +385,7 @@ def convert_md(text, report=None):
             block = "\n".join(b[len(ind):] if b.startswith(ind) else b for b in body)
             try:
                 rep = []
-                new = convert(block, rep)
+                new = fix_mixed(block) if fix_only else convert(block, rep)
                 for k, msg in rep:
                     if report is not None:
                         report.append((i + 1 + k, msg))
@@ -322,19 +400,23 @@ def convert_md(text, report=None):
                 out.append(lines[j])
             i = j + 1
         else:
-            out.append(span.sub(fix, ln))
+            out.append(ln if fix_only else span.sub(fix, ln))
             i += 1
     return "\n".join(out)
 
 
 def main(argv):
     check = "--check" in argv
+    fix_only = "--fix-mixed" in argv
     files = [a for a in argv if not a.startswith("--")]
     for f in files:
         old = open(f, encoding="utf-8").read()
         rep = []
         try:
-            new = convert_py(old, rep) if f.endswith(".py") else convert_md(old, rep) if f.endswith(".md") else convert(old, rep)
+            if fix_only:
+                new = convert_py(old, rep, fix_only=True) if f.endswith(".py") else convert_md(old, rep, fix_only=True) if f.endswith(".md") else fix_mixed(old)
+            else:
+                new = convert_py(old, rep) if f.endswith(".py") else convert_md(old, rep) if f.endswith(".md") else convert(old, rep)
         except (MoxieSyntaxError, Unhandled) as e:
             print(f"{f}: skipped ({e})")
             continue
