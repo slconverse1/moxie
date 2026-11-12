@@ -1127,8 +1127,32 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
   ```
 
   Output: `7 hi! yo!!`. Other languages handle this with a family of types or overloads (Scala's function types come as `Function1` through `Function22`, with a catch-all for longer lists, and Scala 3 dropped the old 22-argument limit), or with a feature like C++'s variadic templates. In moxie it falls out of tuple and parameter-list unification. The limit is that a wrapper can pass an argument list along but can't add or remove an argument, because moxie has no way to take a tuple type apart.
-- **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `Result`, so `fn double_in[F[_]: Monad](m: F[Int])` works for any monad without being written twice.
+- **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `List`, so one function works for any of them without being written twice. These are what Haskell and Scala call higher-kinded types; see the next section.
 - **No cost at run time.** The compiler builds one specialized copy of the function for each set of types it's actually used with. There's no boxing, no run-time type information on ordinary values (see superpower 27), and no call through a table. The price is code size, and that's the trade moxie makes on purpose, in keeping with FCFX.
+
+**Higher-kinded types.** `List[Int]` is a type. `List` by itself is a *type constructor*: give it a type and it makes a type. Most languages let you write a function over any type. Moxie also lets you write one over any type constructor, by writing the constructor as a parameter, `F[_]`:
+
+```
+tuple Box[A]:
+  value: A
+
+impl Functor[Box]:
+  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]:
+    Box(f(self.value))
+
+fn twice[F[_]: Functor](m: F[Int]) F[Int]:
+  m.map((x): x * 2).map((x): x + 1)
+
+println(twice(Box(3)))
+println(twice(List(1, 2, 3)))
+```
+
+Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works on every container in the `Functor` club (the set of constructors that can be mapped over). Without this you would write `twice` again for `Box`, for `List`, and for every other container. `Functor`, `Applicative`, and `Monad` are ordinary interfaces over type constructors, which is why `for:` comprehensions work on any type with a `Monad` impl. A call with no receiver goes through the parameter: write `F.pure(x)`, not a bare `pure(x)`.
+
+There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which has no GC, as well as in moxie/gc.
+
+The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. Ownership is not tracked through a type parameter yet (see the Spec, section 24a).
+
 
 ## 18. Interfaces and impls (a.k.a. typeclasses)
 

@@ -1355,7 +1355,7 @@ Output: `bob`. A type has exactly one impl of each interface, so `C.Item` is nev
 
 **3. Constructor classes**
 
-A class over a type constructor takes `F[_]`, and an instance names the constructor itself. With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and `impl Monad[Box]` from chapter 24, you can write code that works for any monad:
+A class over a type constructor takes `F[_]`, and an instance names the constructor itself. (`List` by itself is a type constructor, and a parameter that stands for one is what Haskell and Scala call a higher-kinded type. Without it, `double_in` below would be written again for every container.) With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and `impl Monad[Box]` from chapter 24, you can write code that works for any monad:
 
 ```
 fn double_in[F[_]: Monad](m: F[Int]) F[Int]:
