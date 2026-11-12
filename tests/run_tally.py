@@ -32,9 +32,9 @@ chk("sites are counted", ["pools"], 'rx, tx = Chan[Int][1]()\na = Atom(1)\nb = A
 chk("callees are included", ["pools"], 'fn make() ChanW[Int]\n  rx, tx = Chan[Int][1]()\n  tx\na = make()\nb = make()\n', "re:Chan\\s+2\\n")
 chk("a loop gives N+", ["pools"], 'for i in 1..=3\n  t = after(1ms)\n', "Timer", "1+", "created in a loop", want=1)
 chk("a call in a loop gives N+", ["pools"], 'fiber fn one() Atom[Int] = Atom(1)\nfor i in 1..=3\n  a = one()\n', "Atom", "1+", "created in a loop", want=1)
-chk("recursion gives N+", ["pools"], 'fn go(n: Int) Int\n  a = Atom(n)\n  if n == 0 then 0 else go(n - 1)\nprintln(go(2))\n', "created in recursion", want=1)
-chk("a fiber function with no limit has an unknown count", ["pools"], 'fiber fn w(tx: ChanW[Int]) Unit\n  f = Future[Int]()\n  \\write(tx, 1)\nrx, tx = Chan[Int][1]()\n_ = run w(tx)\n', "re:Future\\s+1\\+", "no limit", "warning: fiber function 'w'")
-FB = 'fiber[3] fn feed(tx: ChanW[Int]) Unit\n  f = Future[Int]()\n  \\write(tx, 1)\nrx, tx = Chan[Int][8]()\n_ = run feed(tx)\n'
+chk("recursion gives N+", ["pools"], 'fn go(n Int) Int\n  a = Atom(n)\n  if n == 0 then 0 else go(n - 1)\nprintln(go(2))\n', "created in recursion", want=1)
+chk("a fiber function with no limit has an unknown count", ["pools"], 'fiber fn w(tx ChanW[Int]) Unit\n  f = Future[Int]()\n  \\write(tx, 1)\nrx, tx = Chan[Int][1]()\n_ = run w(tx)\n', "re:Future\\s+1\\+", "no limit", "warning: fiber function 'w'")
+FB = 'fiber[3] fn feed(tx ChanW[Int]) Unit\n  f = Future[Int]()\n  \\write(tx, 1)\nrx, tx = Chan[Int][8]()\n_ = run feed(tx)\n'
 chk("fiber[n] multiplies what the fiber creates", ["pools"], FB, "re:Future\\s+3\\n", "re:Chan\\s+1\\n", "largest possible fiber count: 4", absent=("warning",))
 chk("the manifest limit is the default", ["pools"], FB.replace("fiber[3] fn", "fn"), "re:Future\\s+2\\n", "largest possible fiber count: 3", manifest="[fibers]\nlimit = 2\n", absent=("warning",))
 chk("an annotation beats the manifest default", ["pools"], FB, "re:Future\\s+3\\n", manifest="[fibers]\nlimit = 2\n")
@@ -42,13 +42,13 @@ chk("fibers started by fibers are counted from their own limits", ["pools"], 'fi
 chk("a bad manifest limit is an error", ["pools"], FB, "limit", manifest="[fibers]\nlimit = 0\n", want=2)
 chk("an unknown manifest key is an error", ["pools"], FB, "unknown key", manifest="[fibers]\nlimits = 2\n", want=2)
 chk("the header is written", ["pools"], FB, "Future", after=("--header", "h.json"))
-chk("run gives NO_SLOT when all of a function's slots are alive", ["run"], 'fiber[1] fn one(rx: ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(rx)))\nprintln(run one(clone(rx)))\n\\write(tx, 1)\n', "Ok(())", "code: 5")
-chk("a slot is free again when the fiber ends", ["run"], 'fiber[1] fn one(rx: ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(rx)))\n\\write(tx, 1)\nsleep(1ms)\nprintln(run one(clone(rx)))\n\\write(tx, 1)\n', "Ok(())\nOk(())")
-chk("a run that fails with NO_SLOT releases the resources it was given", ["run"], 'fiber[1] fn one(done: ChanR[Int], out: ChanW[Int]) Unit\n  _ = read(done)\n  _ = write(out, 1)\ndr, dw = Chan[Int][1]()\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(dr), clone(tx)))\nprintln(run one(dr, tx))\n_ = write(dw, 1)\nprintln(read(rx))\nprintln(read(rx))\n', "code: 5", "Ok(1)", "channel closed", absent=("deadlock",))
-chk("the manifest limit applies to run", ["run"], 'fiber fn one(rx: ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(rx)))\nprintln(run one(clone(rx)))\n\\write(tx, 1)\n\\write(tx, 1)\n', "code: 5", manifest="[fibers]\nlimit = 1\n")
+chk("run gives NO_SLOT when all of a function's slots are alive", ["run"], 'fiber[1] fn one(rx ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(rx)))\nprintln(run one(clone(rx)))\n\\write(tx, 1)\n', "Ok(())", "code: 5")
+chk("a slot is free again when the fiber ends", ["run"], 'fiber[1] fn one(rx ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(rx)))\n\\write(tx, 1)\nsleep(1ms)\nprintln(run one(clone(rx)))\n\\write(tx, 1)\n', "Ok(())\nOk(())")
+chk("a run that fails with NO_SLOT releases the resources it was given", ["run"], 'fiber[1] fn one(done ChanR[Int], out ChanW[Int]) Unit\n  _ = read(done)\n  _ = write(out, 1)\ndr, dw = Chan[Int][1]()\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(dr), clone(tx)))\nprintln(run one(dr, tx))\n_ = write(dw, 1)\nprintln(read(rx))\nprintln(read(rx))\n', "code: 5", "Ok(1)", "channel closed", absent=("deadlock",))
+chk("the manifest limit applies to run", ["run"], 'fiber fn one(rx ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][4]()\nprintln(run one(clone(rx)))\nprintln(run one(clone(rx)))\n\\write(tx, 1)\n\\write(tx, 1)\n', "code: 5", manifest="[fibers]\nlimit = 1\n")
 chk("files, sockets, and listeners", ["pools"], 'f = open_file("a", Create)?\nl = listen(0)?\nc = connect("127.0.0.1", port_of(l))?\ns = accept(l)?\n', "Io file", "re:Io socket\\s+2", "Listener")
 chk("a connection", ["pools"], 'c = Connection.memory()\n', "Connection")
-chk("foreign handles", ["pools"], 'foreign "c"\n  handle File closes fclose\n  impure fn fopen(path: CString, mode: CString) Result[File, Error]\n  impure fn fclose(f: File)\nf = fopen(cstr("/dev/null"), cstr("r"))?\nfclose(move f)\n', "handle File")
+chk("foreign handles", ["pools"], 'foreign "c"\n  handle File closes fclose\n  impure fn fopen(path CString, mode CString) Result[File, Error]\n  impure fn fclose(f File)\nf = fopen(cstr("/dev/null"), cstr("r"))?\nfclose(move f)\n', "handle File")
 chk("--pools run compares with the observed use", ["--pools", "run"], 'a = Atom(1)\nrx, tx = Chan[Int][1]()\nprintln("x")\n', "pool report (observed)", "pool tally (static)", absent=("warning",))
 # the closing rule
 chk("a file closed in its iteration counts once", ["pools"], 'for i in 1..=3\n  f = open_file("a", Create)?\n  close(f)\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+",))
@@ -59,8 +59,8 @@ chk("a callee that opens and closes may be called in a loop", ["pools"], 'fn pee
 chk("a callee that returns its file is fine when the caller closes it", ["pools"], 'fn opened() Result[Io, Error] = open_file("a", Create)\nfor i in 1..=3\n  f = opened()?\n  close(f)\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
 chk("a callee that returns its file is an error when the caller keeps it", ["pools"], 'fn opened() Result[Io, Error] = open_file("a", Create)\nrx, tx = Chan[Io][4]()\nfor i in 1..=3\n  f = opened()?\n  \\write(tx, move f)\n', "outlives the call", want=1)
 chk("a returned file counts for the caller, not as a loop", ["pools"], 'fn opened() Result[Io, Error] = open_file("a", Create)\nf = opened()?\nclose(f)\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
-chk("recursion that keeps a resource is an error", ["pools"], 'fn go(n: Int) Int\n  a = Atom(n)\n  if n == 0 then 0 else go(n - 1)\nprintln(go(2))\n', "is recursive", want=1)
-chk("recursion that closes its file is exact", ["pools"], 'fn go(n: Int) Int\n  f = open_file("a", Create)?\n  close(f)\n  if n == 0 then 0 else go(n - 1)\nprintln(go(2))\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
+chk("recursion that keeps a resource is an error", ["pools"], 'fn go(n Int) Int\n  a = Atom(n)\n  if n == 0 then 0 else go(n - 1)\nprintln(go(2))\n', "is recursive", want=1)
+chk("recursion that closes its file is exact", ["pools"], 'fn go(n Int) Int\n  f = open_file("a", Create)?\n  close(f)\n  if n == 0 then 0 else go(n - 1)\nprintln(go(2))\n', "re:Io file\\s+1\\n", absent=("re:\\d\\+", "error"))
 chk("moxie/gc has no pools, so no rule", ["--gc", "run"], 'for i in 1..=3\n  t = after(1ms)\nprintln("ok")\n', "ok")
 # the exact static count is never below what a run observes
 for name in sorted(os.listdir(os.path.join(ROOT, "examples"))):

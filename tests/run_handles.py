@@ -24,11 +24,11 @@ def run(src, *flags, cmd="run"):
 
 HDR = '''foreign "cnt"
   handle Counter closes counter_close
-  impure fn counter_open(start: Int32) Result[Counter, Error]
-  impure fn counter_bump(c: Counter) Int32
-  impure fn counter_close(c: Counter) Int32
-  impure fn counter_open2(start: Int32, ref c: Counter) Result[Counter, Error]
-  impure fn counter_make(start: Int32, ref c: Counter) Counter
+  impure fn counter_open(start Int32) Result[Counter, Error]
+  impure fn counter_bump(c Counter) Int32
+  impure fn counter_close(c Counter) Int32
+  impure fn counter_open2(start Int32, ref c Counter) Result[Counter, Error]
+  impure fn counter_make(start Int32, ref c Counter) Counter
 '''
 CASES = [
  ("open, use, close", 'c = counter_open(5)?\nprintln(counter_bump(c))\ncounter_close(c)\nprintln("done")\n', 0, "6\nclosed\ndone"),
@@ -43,13 +43,13 @@ CASES = [
  ("a handle from a failing call is still closed", 'println(counter_open2(99i32))\n', 0, "closed\nErr(Error(code: 21"),
  ("void out-handle returns the handle", 'c = counter_make(3i32)\nprintln(counter_bump(c))\ncounter_close(c)\n', 0, "4\nclosed"),
  ("out-handle use after close is an error", 'c = counter_open2(5i32)?\ncounter_close(c)\nprintln(counter_bump(c))\n', 2, "use of moved"),
- ("closer missing", 'foreign "cnt"\n  handle Counter closes nope\n  impure fn counter_bump(c: Counter) Int32\nprintln("x")\n', 1, "closing function"),
+ ("closer missing", 'foreign "cnt"\n  handle Counter closes nope\n  impure fn counter_bump(c Counter) Int32\nprintln("x")\n', 1, "closing function"),
 ]
 LIBC = '''foreign "c"
   handle File closes fclose
-  impure fn fopen(path: CString, mode: CString) Result[File, Error]
-  impure fn fputs(s: CString, f: File) Int32
-  impure fn fclose(f: File) Int32
+  impure fn fopen(path CString, mode CString) Result[File, Error]
+  impure fn fputs(s CString, f File) Int32
+  impure fn fclose(f File) Int32
 f = fopen(cstr("%s/out.txt"), cstr("w"))?
 fputs(cstr("hello"), f)
 fclose(move f)

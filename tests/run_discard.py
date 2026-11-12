@@ -2,13 +2,13 @@
 import sys, io, contextlib, subprocess
 sys.path.insert(0, ".")
 GOOD = r'''
-fn f(x: Int) Int
+fn f(x Int) Int
   x + 1
 \f(1)
 \f(2) if true
 rx, tx = Chan[Int][2]()
 \write(tx, 1)
-fiber fn w(t: ChanW[Int]) Unit
+fiber fn w(t ChanW[Int]) Unit
   \write(t, 5)
 \run w(tx)
 println("ok ${read(rx).get_or(0)}")
@@ -33,8 +33,8 @@ for flags in ((), ("--gc",)):
 print("discard: FAIL" if fails else "discard: ok")
 
 # Err(fail(...)) double wrap is a compile error
-bad = 'fn a(x: Int) Result[Int, Error]\n  Err(fail(1, "x"))\n'
-good = 'fn a(x: Int) Result[Int, Error]\n  fail(1, "x")\nfn b(x: Int) Result[Int, Error]\n  Err(Error(1, "x"))\nprintln(a(1).is_err())\n'
+bad = 'fn a(x Int) Result[Int, Error]\n  Err(fail(1, "x"))\n'
+good = 'fn a(x Int) Result[Int, Error]\n  fail(1, "x")\nfn b(x Int) Result[Int, Error]\n  Err(Error(1, "x"))\nprintln(a(1).is_err())\n'
 for flags in ((), ("--gc",)):
     r = run(bad, *flags)
     if "wraps an `Err` in an `Err`" not in r.stdout + r.stderr:
@@ -45,7 +45,7 @@ for flags in ((), ("--gc",)):
 print("double wrap: FAIL" if fails else "double wrap: ok")
 
 # a trailing backslash is still a line continuation, and a discard can follow one
-cont = 'fn f(x: Int) Int\n  x + 1\ny = 1 + \\\n  2\n\\f(y)\nprintln(y)\n'
+cont = 'fn f(x Int) Int\n  x + 1\ny = 1 + \\\n  2\n\\f(y)\nprintln(y)\n'
 for flags in ((), ("--gc",)):
     r = run(cont, *flags)
     if r.stdout.strip() != "3":

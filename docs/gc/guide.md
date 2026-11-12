@@ -65,7 +65,7 @@ Output: `B zero`. Without a final `else`, every branch must be `Unit`. **Mistake
 `return value` leaves the function at once (a bare `return` leaves a `Unit` function). It is the usual guard clause:
 
 ```
-fn grade_of(score: Int) String
+fn grade_of(score Int) String
   if score < 0
     return "invalid"
   if score >= 90 then "A" else "B"
@@ -75,7 +75,7 @@ println("${grade_of(-1)} ${grade_of(95)} ${grade_of(70)}")
 Output: `invalid A B`. A `Unit` statement can take a trailing `if` instead, which reads well for guard clauses and means exactly the same thing:
 
 ```
-fn grade_of(score: Int) String
+fn grade_of(score Int) String
   return "invalid" if score < 0
   if score >= 90 then "A" else "B"
 ```
@@ -155,7 +155,7 @@ Output: `1`, `3`, `4`. Inside a `select`, a bare `break` leaves the select, so l
 (a sketch, no output). A label cannot cross a function or lambda boundary, and `return` inside a lambda leaves that lambda, which is the moxie form of Kotlin's `return@forEach`:
 
 ```
-clamp = (n: Int) ->
+clamp = (n Int) ->
   if n < 0
     return 0
   n
@@ -226,7 +226,7 @@ A `//` comment runs to the end of the line, and it is the one to use almost ever
 
 ```
 // The total, with tax.
-fn total(price: Int, tax: Int) Int
+fn total(price Int, tax Int) Int
   price + tax  // tax is in cents
 /* println("not run")
    /* nested comments are fine */
@@ -336,7 +336,7 @@ Output: `true true`. `==` on floats gets a warning, and `finite(x)` returns a `R
 
 ```
 type alias Percent = Int[0..=100]
-fn describe(p: Percent) String
+fn describe(p Percent) String
   when p
     0 -> "empty"
     1..=99 -> "partial"
@@ -352,8 +352,8 @@ println(describe(100))
 Output: `partial`, `out of range`, `full`. `BigInt[n]` (n bits, a multiple of 64) is stored inline, in the frame or array that holds it **[gc]**:
 
 ```
-fn factorial(0, acc: BigInt[128]) BigInt[128] = acc
-fn factorial(n, acc: BigInt[128]) BigInt[128] = factorial(n - 1, acc * n)
+fn factorial(0, acc BigInt[128]) BigInt[128] = acc
+fn factorial(n, acc BigInt[128]) BigInt[128] = factorial(n - 1, acc * n)
 println("${factorial(25, 1)}")
 ```
 
@@ -369,8 +369,8 @@ println("$total $tax ${total + tax}")
 Output: `59.97 4.95 64.92`. A pure function with constant arguments runs at compile time where a constant is required, such as a size:
 
 ```
-fn pow2(0, acc: Int) Int = acc
-fn pow2(n, acc: Int) Int = pow2(n - 1, acc * 2)
+fn pow2(0, acc Int) Int = acc
+fn pow2(n, acc Int) Int = pow2(n - 1, acc * 2)
 limit = pow2(10, 1)
 ages = Dict[String, Int][limit]()
 println("$limit")
@@ -382,11 +382,11 @@ Output: `1024`. **Mistakes:** assigning a wider integer to a narrower type witho
 
 ```
 tuple Point
-  x: Float,
-  y: Float
+  x Float,
+  y Float
 tuple Player
-  id: Int,
-  tag: String
+  id Int,
+  tag String
 p = Point(x: 1.5, y: 2.0)
 q = Point(...p, y: 9.0)
 hero = Player(id: 1, tag: "Ada")
@@ -397,8 +397,8 @@ Output: `9.0 Ada 4.5`. A tuple holds any type; a tuple that holds a resource (a 
 
 ```
 tuple Product deriving show, eq, read
-  name: String,
-  price: Int
+  name String,
+  price Int
 item = Product(name: "Mechanical Keyboard", price: 120)
 other = Product(...item, price: 120)
 println("$item")
@@ -409,10 +409,10 @@ Output: `Product(name: "Mechanical Keyboard", price: 120)`, then `true`. Trailin
 
 ```
 tuple UploadOptions
-  host: String = "localhost",
-  port: Int = 4000,
-  retries: Int = 3
-fn upload(file: String, opts: UploadOptions) Unit
+  host String = "localhost",
+  port Int = 4000,
+  retries Int = 3
+fn upload(file String, opts UploadOptions) Unit
   println("$file -> ${opts.host}:${opts.port} retries ${opts.retries}")
 prod = UploadOptions(host: "production.server", retries: 5)
 upload("payload.bin", prod)
@@ -424,8 +424,8 @@ Output: `payload.bin -> production.server:4000 retries 5`, then `backup.tar -> l
 
 ```
 enum Shape
-  Circle(radius: Double),
-  Rect(w: Double, h: Double),
+  Circle(radius Double),
+  Rect(w Double, h Double),
   Empty
 impl Shape
   fn area() Double
@@ -442,7 +442,7 @@ println("${c.area()} ${r.area()} ${unit.area()}")
 Output: `12.56636 12.0 3.14159`. A bare case name works wherever only one enum has it (`unit` above); when two enums share a case name it is an error unless a declared type says which, and `do with` (below) opens one enum's cases for a block. Values shared by every case sit in a header:
 
 ```
-enum Planet(mass: Double, radius: Double)
+enum Planet(mass Double, radius Double)
   MERCURY(mass: 3.303e23, radius: 2.4397e6),
   VENUS(mass: 4.869e24, radius: 6.0518e6),
   EARTH(mass: 5.976e24, radius: 6.3781e6)
@@ -482,7 +482,7 @@ An alias is the same type under another name, and an opaque type is a new type o
 ```
 type alias Meters = Double
 type opaque Feet = Double
-fn to_feet(m: Meters) Feet
+fn to_feet(m Meters) Feet
   Feet(m * 3.28084)
 println("${to_feet(100.0)}")
 ```
@@ -491,7 +491,7 @@ Output: `328.084`. A generic tuple infers its parameters:
 
 ```
 tuple Container[T]
-  item: T
+  item T
 a = Container(item: 5.59)
 b = Container(item: "hello")
 println("${a.item} ${b.item}")
@@ -501,7 +501,7 @@ Output: `5.59 hello`. A union type holds one of several types, converts in impli
 
 ```
 type union Identifier = Int | String
-fn describe(id: Identifier) String
+fn describe(id Identifier) String
   when id
     Int -> "numeric id $id"
     String -> "text id $id"
@@ -519,21 +519,21 @@ for x in xs
   when x
     Int -> println("number $x")
     String -> println("text $x")
-settings: Dict[String, Int | Bool] = Dict("retries": 3, "verbose": true)
+settings: Dict[String, Int | Bool] = Dict("retries" -> 3, "verbose" -> true)
 println(len(settings))
 ```
 
-Output: `number 1`, `text a`, `number 2`, then `2`. The union can also come from a parameter, a return type, or a tuple field (`fn take(xs: List[Int | String])`), and an unannotated `mixed = List(1, "a")` is the error.
+Output: `number 1`, `text a`, `number 2`, then `2`. The union can also come from a parameter, a return type, or a tuple field (`fn take(xs List[Int | String])`), and an unannotated `mixed = List(1, "a")` is the error.
 
 A **data path** names a spot inside nested tuples. It is a plain function, so it can be stored, passed, and composed:
 
 ```
 tuple Firm
-  name: String,
-  floor: Int
+  name String,
+  floor Int
 tuple User
-  id: Int,
-  firm: Firm
+  id Int,
+  firm Firm
 a = User(id: 1, firm: Firm(name: "Initech", floor: 2))
 firm_name = /User/firm/name
 b = replace(a, /User/firm/name, "Acme")
@@ -640,13 +640,13 @@ Output: `start 2`. Values can be any storable type, including functions and clos
 a = Set[Int][8](1, 2)
 b = Set[Int][8](2, 3)
 println(union(a, b))
-d = Dict[String, Int][4]("a": 1, "b": 2)
-e = Dict[String, Int][4]("b": 9, "c": 3)
+d = Dict[String, Int][4]("a" -> 1, "b" -> 2)
+e = Dict[String, Int][4]("b" -> 9, "c" -> 3)
 println(merge(d, e))
 println(merge_with((x, y) -> x + y, d, e))
 ```
 
-Output: `Set(1, 2, 3)`, `Dict("a": 1, "b": 9, "c": 3)`, then `Dict("a": 1, "b": 11, "c": 3)`.
+Output: `Set(1, 2, 3)`, `Dict("a" -> 1, "b" -> 9, "c" -> 3)`, then `Dict("a" -> 1, "b" -> 11, "c" -> 3)`.
 
 **5e. MultiArrays and their slices**
 
@@ -679,7 +679,7 @@ println("${voxels(1, 0, 1)} ${layer(1, 2)} ${line(2)}")
 Output: `8 12 9`. A function can take a grid of any shape with generic sizes:
 
 ```
-fn row_sum[R, C](grid: MultiArray[Int][R, C], r: Int) Int
+fn row_sum[R, C](grid MultiArray[Int][R, C], r Int) Int
   grid(r, ..) |> to_stream() |> reduce(0, _1 + _2)
 println("${row_sum(grid, 1)}")
 ```
@@ -724,13 +724,13 @@ Output: `5 3`, then `3`, `8`, `1`. The accent is a second scalar, the flag is tw
 **Chapter 6: Functions**
 
 ```
-fn add(x: Int, y: Int) Int
+fn add(x Int, y Int) Int
   x + y
-fn make_scaler(factor: Int) (Int) -> Int
+fn make_scaler(factor Int) (Int) -> Int
   (n) -> n * factor
-fn bump(ref counter: Int) Unit
+fn bump(ref counter Int) Unit
   counter++
-fn pick(use_it: Bool, lazy costly: Int) Int
+fn pick(use_it Bool, lazy costly Int) Int
   if use_it
     costly
   else
@@ -746,7 +746,7 @@ An anonymous function is a function with no name, written `(n) -> n * factor` (m
 Output: `5 15 2 0`. Every function states its return type. A call may be positional, named, or positional followed by named (named arguments in any order, each parameter supplied once), trailing parameters can have defaults, and a list after the return type renames parameters inside the body:
 
 ```
-fn transfer(source: Int, dest: Int, count: Int = 10) Int (src, dst, n)
+fn transfer(source Int, dest Int, count Int = 10) Int (src, dst, n)
   src - dst + n
 print("${transfer(100, 40)} ${transfer(count: 5, dest: 40, source: 100)} ")
 println("${transfer(100, dest: 40)}")
@@ -755,7 +755,7 @@ println("${transfer(100, dest: 40)}")
 Output: `70 65 70`. A tuple can fill a parameter list:
 
 ```
-fn sum_squares(x: Double, y: Double) Double
+fn sum_squares(x Double, y Double) Double
   x * x + y * y
 pt = (x: 3.0, y: 4.0)
 println("${sum_squares(pt)} ${sum_squares(...pt)}")
@@ -789,14 +789,14 @@ println("$dot ${show(named)}")
 Output: `32 Ada is 36`. A lambda built and called in the same place goes in parentheses, followed by the arguments:
 
 ```
-double = ((x: Int) -> x * 2)(21)
+double = ((x Int) -> x * 2)(21)
 println("$double")
 ```
 
 Output: `42`. A variadic parameter takes any number of trailing arguments. **[gc]** Inside the function it is an ordinary `List[Int]`, and the function is compiled once, not once per argument count. Spread any array or list, whatever its length, or name it in a named call:
 
 ```
-fn total(base: Int, numbers: ...Int) Int
+fn total(base Int, numbers ...Int) Int
   numbers |> to_stream() |> reduce(base, _1 + _2)
 values = Array(10, 20, 30)
 println("${total(100, 10, 20, 30)} ${total(100, ...values)} ${total(100)}")
@@ -805,23 +805,23 @@ println("${total(100, 10, 20, 30)} ${total(100, ...values)} ${total(100)}")
 Output: `160 160 100`. A **contextual parameter** is filled from the surrounding scope, and a caller may override it:
 
 ```
-fn greet(msg: String, using who: String) Unit
+fn greet(msg String, using who String) Unit
   println("$who: $msg")
 using who = "ada"
 greet("hello", using)
 greet("hi", "bob")
 ```
 
-Output: `ada: hello`, then `bob: hi`. A `using` value can't be a channel end, a timer, or a file, because a callee could read or close it out of sight; an `Atom` is fine, so a shared counter can be injected the same way (`fn bump(using hits: Atom[Int])`).
+Output: `ada: hello`, then `bob: hi`. A `using` value can't be a channel end, a timer, or a file, because a callee could read or close it out of sight; an `Atom` is fine, so a shared counter can be injected the same way (`fn bump(using hits Atom[Int])`).
 
 Scala's `summon[T]` fetches the contextual value of type `T` from the scope, which it needs because a parameter written `(using Config)` has no name. Moxie has no `summon`, and every `using` parameter has a name, so a function that wants the value uses the name, and a call that writes `using` passes it along:
 
 ```
 tuple Config
-  url: String
-fn connect(using cfg: Config) String
+  url String
+fn connect(using cfg Config) String
   "connecting to ${cfg.url}"
-fn retry(attempts: Int, using cfg: Config) String
+fn retry(attempts Int, using cfg Config) String
   connect(using)
 using c = Config(url: "example.com")
 println(retry(2, using))
@@ -833,18 +833,18 @@ Output: `connecting to example.com`, then `connecting to example.com`. `retry` h
 A `todo` stands in for any expression you haven't written yet. The compiler warns and lists it, and running it aborts the fiber:
 
 ```
-fn later(x: Int) Int
+fn later(x Int) Int
   todo "finish later"
 ```
 
-**Mistakes:** `bump(n)` without `ref`, a tuple spread into a `ref` parameter, `transfer(100, source: 5)` (a parameter supplied twice), a function with no return type or an untyped parameter, `fn f(x: Int) Unit` ending in `x + 1`, a variadic with a default, spreading a `List` of unknown length, and a trailing lambda on a call that writes the stream out.
+**Mistakes:** `bump(n)` without `ref`, a tuple spread into a `ref` parameter, `transfer(100, source: 5)` (a parameter supplied twice), a function with no return type or an untyped parameter, `fn f(x Int) Unit` ending in `x + 1`, a variadic with a default, spreading a `List` of unknown length, and a trailing lambda on a call that writes the stream out.
 
 **6a. Generics**
 
 A generic function lists type and size parameters in brackets. The compiler fills them in from the arguments and builds one specialized copy per use:
 
 ```
-fn swap_pair[A, B](p: (A, B)) (B, A)
+fn swap_pair[A, B](p (A, B)) (B, A)
   (p(1), p(0))
 s = swap_pair((1, "one"))
 println("${s(0)} ${s(1)}")
@@ -853,7 +853,7 @@ println("${s(0)} ${s(1)}")
 Output: `one 1`. Inference runs in argument order, so a literal takes its types from what is already known:
 
 ```
-fn apply_twice[T](x: T, f: (T) -> T) T
+fn apply_twice[T](x T, f (T) -> T) T
   f(f(x))
 println("${apply_twice(3, (n) -> n * 2)} ${apply_twice(5, (n) -> n + 8)}")
 ```
@@ -861,14 +861,14 @@ println("${apply_twice(3, (n) -> n * 2)} ${apply_twice(5, (n) -> n + 8)}")
 Output: `12 21`. A size parameter is a number that sizes a collection, and it can be read as an `Int`. A `where` clause limits the sizes allowed:
 
 ```
-fn sum_all[N](a: Array[Int][N]) Int
+fn sum_all[N](a Array[Int][N]) Int
   a |> to_stream() |> reduce(0, _1 + _2)
-fn size_of[N](a: Array[Int][N]) Int
+fn size_of[N](a Array[Int][N]) Int
   N
-fn dot[N](a: Array[Int][N], b: Array[Int][N]) Int
+fn dot[N](a Array[Int][N], b Array[Int][N]) Int
   zip(a, b) |> map()(x, y) -> x * y
   |> reduce(0, _1 + _2)
-fn first_of[T, N where N > 0](a: Array[T][N]) T
+fn first_of[T, N where N > 0](a Array[T][N]) T
   a(0)
 x: Array[Int] = (1, 2, 3)
 y: Array[Int] = (1, 2, 3, 4, 5)
@@ -878,7 +878,7 @@ println("${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}")
 Output: `6 15 14 5 1`. A call with an empty array to `first_of` is a compile error: "`first_of` requires `N > 0`, but `N` is 0 here". A bound limits a parameter to types with an `impl`, and a bare interface name is shorthand for a bounded parameter:
 
 ```
-fn bigger[T: Ordered](a: T, b: T) T
+fn bigger[T Ordered](a T, b T) T
   if a < b then b else a
 println("${bigger(3, 9)} ${bigger("pear", "apple")}")
 ```
@@ -886,7 +886,7 @@ println("${bigger(3, 9)} ${bigger("pear", "apple")}")
 Output: `9 pear`. A parameter may have several bounds, joined with `+`:
 
 ```
-fn show_max[T: Ordered + Equatable](a: T, b: T) String
+fn show_max[T Ordered + Equatable](a T, b T) String
   if a == b then "same" else "max is ${if a < b then b else a}"
 println("${show_max(3, 9)} ${show_max(4, 4)}")
 ```
@@ -896,13 +896,13 @@ Output: `max is 9 same`. When nothing in the arguments fixes a parameter, write 
 A type parameter can also stand for a whole argument list. A function type is its parameter types in order, so `(A) -> R` matches `(Int, Int) -> Int` with `A` as `(Int, Int)`, and `(String) -> String` with `A` as `String`. One definition then works for every number of arguments:
 
 ```
-fn add(x: Int, y: Int) Int
+fn add(x Int, y Int) Int
   x + y
-fn shout(s: String) String
+fn shout(s String) String
   "${s}!"
-fn call_with[A, R](f: (A) -> R, args: A) R
+fn call_with[A, R](f (A) -> R, args A) R
   f(args)
-fn twice[A](f: (A) -> A, args: A) A
+fn twice[A](f (A) -> A, args A) A
   f(f(args))
 print("${call_with(add, (3, 4))} ${call_with(shout, "hi")} ")
 println("${twice(shout, "yo")}")
@@ -914,15 +914,15 @@ The prelude has bounds for the things generic code most often needs: `Equatable`
 
 ```
 tuple Pixel deriving show, eq, hash
-  x: Int,
-  y: Int
-fn total[T: Numeric](xs: Array[T][3]) T
+  x Int,
+  y Int
+fn total[T Numeric](xs Array[T][3]) T
   xs(0) + xs(1) * xs(2)
-fn unit_of[T: Numeric](x: T) T
+fn unit_of[T Numeric](x T) T
   T.one()
-fn parse[T: Read](text: String) Result[T, Error]
+fn parse[T Read](text String) Result[T, Error]
   T.read(text)
-fn label[T: Show + Hashable](x: T) String
+fn label[T Show + Hashable](x T) String
   "${x.show()} ${x.hash() == x.hash()}"
 print("${total(Array(1, 2, 3))} ${total(Array(1.5, 2.0, 3.0))} ${unit_of(7)} ")
 println("${unit_of(2.5)}")
@@ -940,19 +940,19 @@ Output: `7 7.5 1 1.0`, then `Ok(42) Ok(true)`, then `Pixel(x: 1, y: 2) true`, th
 fn costly() Int
   println("computing")
   10
-fn by_value(x: Int) Int
+fn by_value(x Int) Int
   x + x
-fn by_name(lazy x: Int) Int
+fn by_name(lazy x Int) Int
   x + x
-fn by_need(lazy x: Int) Int
+fn by_need(lazy x Int) Int
   once = x
   once + once
-fn maybe(use_it: Bool, lazy x: Int) Int
+fn maybe(use_it Bool, lazy x Int) Int
   if use_it then x else 0
-fn by_ref(ref n: Int) Int
+fn by_ref(ref n Int) Int
   n += 5
   n * 2
-fn by_copy(n: Int) Int
+fn by_copy(n Int) Int
   n += 5
   n * 2
 println("value: ${by_value(costly())}")
@@ -979,13 +979,13 @@ Output, in order:
 
 ```
 tuple Player
-  name: String,
-  score: Int,
-  level: Int
-fn level_up(ref p: Player) Unit
+  name String,
+  score Int,
+  level Int
+fn level_up(ref p Player) Unit
   p.level += 1
   p.score = 0
-fn add_points(ref p: Player, points: Int) Int
+fn add_points(ref p Player, points Int) Int
   p = Player(...p, score: p.score + points)
   p.score
 hero = Player(name: "Ada", score: 40, level: 1)
@@ -1002,8 +1002,8 @@ A function literal may use the locals around it. **[gc]** Captured values are sh
 
 ```
 factor = 5
-scale = (n: Int) -> n * factor
-fn make_adder(k: Int) (Int) -> Int
+scale = (n Int) -> n * factor
+fn make_adder(k Int) (Int) -> Int
   (n) -> n + k
 add_n = make_adder(10)
 println("${scale(6)} ${add_n(5)}")
@@ -1013,9 +1013,9 @@ Output: `30 15`. The prelude has `curry(f)`, which works for a function of any n
 
 ```
 curried = curry(add)
-add40 = (y: Int) -> add(40, y)
+add40 = (y Int) -> add(40, y)
 print("${add(40, 60)} ${curried(40)(60)} ${add40(60)} ${60 |> add(40, &)} ")
-println("${((x: Int, y: Int) -> x + y)(40, 60)}")
+println("${((x Int, y Int) -> x + y)(40, 60)}")
 ```
 
 Output: `100 100 100 100 100`.
@@ -1023,7 +1023,7 @@ Output: `100 100 100 100 100`.
 A call with a `_` where an argument goes is a **partial call**, which is a function literal. The parameter types come from the callee's signature:
 
 ```
-fn log(level: String, message: String) Unit
+fn log(level String, message String) Unit
   println("[$level] $message")
 fn log_error = log("ERROR", _)
 fn log_info = log("INFO", _)
@@ -1031,9 +1031,9 @@ handlers = Dict[String, (String) -> Unit]()
 handlers(info) = log_info
 handlers(error) = log_error
 fn dispatch(
-  table: Dict[String, (String) -> Unit],
-  kind: String,
-  msg: String
+  table Dict[String, (String) -> Unit],
+  kind String,
+  msg String
 ) Unit
   when table($kind)
     Ok(h) -> h(msg)
@@ -1047,8 +1047,8 @@ Output: `[INFO] Application started.` then `[ERROR] Database connection timed ou
 Functions compose with `~>` (left to right) and `<~` (right to left):
 
 ```
-fn inc(x: Int) Int = x + 1
-fn twice(x: Int) Int = x * 2
+fn inc(x Int) Int = x + 1
+fn twice(x Int) Int = x * 2
 print("${(inc ~> twice)(5)} ${(twice <~ inc)(5)} ${(twice ~> inc)(5)} ")
 println("${5 |> (inc ~> twice)()}")
 ```
@@ -1057,7 +1057,7 @@ Output: `12 12 11 12`. A tuple field of function type is called like a method:
 
 ```
 tuple Op
-  apply: (Int) -> Int
+  apply (Int) -> Int
 op = Op(apply: (n) -> n * 2)
 println("${op.apply(21)}")
 ```
@@ -1065,17 +1065,17 @@ println("${op.apply(21)}")
 Output: `42`. A Dict can hold functions **[gc]** and closures alike, which makes a dispatch table:
 
 ```
-fn sub(x: Int, y: Int) Int = x - y
-fn mul(x: Int, y: Int) Int = x * y
+fn sub(x Int, y Int) Int = x - y
+fn mul(x Int, y Int) Int = x * y
 ops = Dict[String, (Int, Int) -> Int]()
 ops(plus) = add
 ops(minus) = sub
 ops(times) = mul
 fn run_op(
-  table: Dict[String, (Int, Int) -> Int],
-  name: String,
-  a: Int,
-  b: Int
+  table Dict[String, (Int, Int) -> Int],
+  name String,
+  a Int,
+  b Int
 ) Unit
   when table($name)
     Ok(f) -> println("$name: ${f(a, b)}")
@@ -1090,7 +1090,7 @@ run_op(ops, "times", 2, 8)
 Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14). **[gc]** Because a closure can go anywhere, the next example, which no-GC moxie rejects, is fine:
 
 ```
-fn pick(flag: Bool, k: Int) (Int) -> Int
+fn pick(flag Bool, k Int) (Int) -> Int
   when flag
     true -> (n) -> n + k
     false -> (n) -> n * k
@@ -1105,24 +1105,24 @@ Output: `13 30`. The two branches return different closures, and they sit side b
 ```
 interface Speaker[T]
   fn speak() String,
-  fn update(new_value: T) Self
+  fn update(new_value T) Self
 tuple Dog
-  name: String
+  name String
 tuple Robot
-  serial: Int
+  serial Int
 impl Speaker[String] for Dog
   fn speak() String
     "Woof! My name is ${name}"
-  fn update(new_name: String) Dog
+  fn update(new_name String) Dog
     Self(..., name: new_name)
 impl Speaker[Int] for Robot
   fn speak() String
     "Beep Boep! Serial count is ${serial}"
-  fn update(new_serial: Int) Robot
+  fn update(new_serial Int) Robot
     Self(..., serial: new_serial)
-fn make_them_speak(item: Speaker) Unit
+fn make_them_speak(item Speaker) Unit
   println(item.speak())
-fn update_speaker[T, S: Speaker[T]](item: S, new_value: T) S
+fn update_speaker[T, S Speaker[T]](item S, new_value T) S
   item.update(new_value)
 my_dog = Dog(name: "Rover")
 my_robot = Robot(serial: 101)
@@ -1147,8 +1147,8 @@ Output: `Woof! My name is Rex`, then `Beep Boep! Serial count is 7`. An inherent
 
 ```
 tuple Counter
-  count: Int,
-  label: String
+  count Int,
+  label String
 impl Counter
   fn (ref Self) increment() Unit
     count += 1
@@ -1165,15 +1165,15 @@ Output: `1 2`. An interface says which methods change their receiver, and a gene
 ```
 interface ProfileManager
   fn age() Int,
-  fn (ref Self) set_age(new_age: Int) Unit
+  fn (ref Self) set_age(new_age Int) Unit
 tuple Profile
-  years: Int
+  years Int
 impl ProfileManager for Profile
   fn age() Int
     years
-  fn (ref Self) set_age(new_age: Int) Unit
+  fn (ref Self) set_age(new_age Int) Unit
     years = new_age
-fn birthday[P: ProfileManager](ref p: P) Unit
+fn birthday[P ProfileManager](ref p P) Unit
   ref p.set_age(p.age() + 1)
 me = Profile(years: 30)
 birthday(ref me)
@@ -1199,12 +1199,12 @@ A block can run with a value as its receiver, so its fields are in scope without
 
 ```
 tuple Limits
-  retries: Int,
-  timeout: Int
+  retries Int,
+  timeout Int
 tuple Config
-  host: String,
-  port: Int,
-  limits: Limits
+  host String,
+  port Int,
+  limits Limits
 base = Config(
   host: "localhost",
   port: 80,
@@ -1222,7 +1222,7 @@ println("${secure.limits.timeout} ${base.port}")
 Output: `localhost:80 localhost 443 6 30 80`. `base` is unchanged, `retries` inside the nested block is the old `3`, and `timeout` is carried over. Every right-hand side sees the original value, so the order of the lines doesn't matter. A function can take a receiver function and call it on a value:
 
 ```
-fn apply(base: Config, change: Config.() -> Config) Config
+fn apply(base Config, change Config.() -> Config) Config
   base.change()
 bumped = apply(base)() -> Config(...self, port: port + 1)
 println("${bumped.port}")
@@ -1238,21 +1238,21 @@ An interface may embed others by name, and one `impl` supplies all the members:
 interface Speaker
   fn speak() String
 interface Mover
-  fn move_by(dx: Int) Self
+  fn move_by(dx Int) Self
 interface Actor
   Speaker,
   Mover
 tuple Robot2
-  name: String,
-  x: Int
+  name String,
+  x Int
 impl Actor for Robot2
   fn speak() String
     "$name at $x"
-  fn move_by(dx: Int) Robot2
+  fn move_by(dx Int) Robot2
     Self(..., x: x + dx)
-fn announce(s: Speaker) Unit
+fn announce(s Speaker) Unit
   println(s.speak())
-fn step[A: Actor](a: A) String
+fn step[A Actor](a A) String
   a.move_by(5).speak()
 r = Robot2(name: "R2", x: 1)
 announce(r)
@@ -1276,16 +1276,16 @@ An interface may also require a **property**, a read-only field. A type satisfie
 
 ```
 interface Named
-  name: String
+  name String
 tuple User
-  id: Int,
-  name: String
+  id Int,
+  name String
 tuple Pet
-  name: String,
-  owner: String
+  name String,
+  owner String
 impl Named for User
 impl Named for Pet
-fn greet[T: Named](x: T) String
+fn greet[T Named](x T) String
   "Hello, ${x.name}"
 print("${greet(User(id: 1, name: "Ada"))} / ")
 println("${greet(Pet(name: "Rex", owner: "Bo"))}")
@@ -1299,20 +1299,20 @@ Interfaces are compile-time only, so a mock is just another `impl`, and the call
 
 ```
 interface Mailer
-  fn (ref Self) notify(user_id: Int, amount: Int) Unit
+  fn (ref Self) notify(user_id Int, amount Int) Unit
 tuple FakeMailer
-  calls: Int,
-  last_user: Int
+  calls Int,
+  last_user Int
 impl Mailer for FakeMailer
-  fn (ref Self) notify(user_id: Int, amount: Int) Unit
+  fn (ref Self) notify(user_id Int, amount Int) Unit
     calls += 1
     last_user = user_id
 tuple SmtpMailer
-  outbox: ChanW[Int]
+  outbox ChanW[Int]
 impl Mailer for SmtpMailer
-  fn (ref Self) notify(user_id: Int, amount: Int) Unit
+  fn (ref Self) notify(user_id Int, amount Int) Unit
     \write(outbox, user_id)
-fn charge[M: Mailer](ref mailer: M, user_id: Int, amount: Int) Int
+fn charge[M Mailer](ref mailer M, user_id Int, amount Int) Int
   fee = amount / 100
   ref mailer.notify(user_id, amount - fee)
   fee
@@ -1321,7 +1321,7 @@ fee = charge(ref mock, 7, 500)
 println("$fee ${mock.calls} ${mock.last_user}")
 ```
 
-Output: `5 1 7`. Production code passes an `SmtpMailer` to the same `charge`, and the compiler specializes it for each type, so the choice costs nothing at run time. (`SmtpMailer.notify` never rebinds `self`, but the interface requires the `ref`, so there is no warning.) The other two styles are a `using` parameter for read-only services such as clocks and configuration (`fn charge(user_id: Int, amount: Int, using clock: Clock) Int`; it can't inject a resource), and a fiber behind a channel that a test replaces with a fake fiber speaking the same protocol.
+Output: `5 1 7`. Production code passes an `SmtpMailer` to the same `charge`, and the compiler specializes it for each type, so the choice costs nothing at run time. (`SmtpMailer.notify` never rebinds `self`, but the interface requires the `ref`, so there is no warning.) The other two styles are a `using` parameter for read-only services such as clocks and configuration (`fn charge(user_id Int, amount Int, using clock Clock) Int`; it can't inject a resource), and a fiber behind a channel that a test replaces with a fake fiber speaking the same protocol.
 
 **8d. Typeclasses**
 
@@ -1331,23 +1331,23 @@ The Guide's `interface` and `impl` chapters already cover typeclasses, but this 
 
 ```
 interface Semigroup
-  fn combine(other: Self) Self
+  fn combine(other Self) Self
 interface Monoid
   Semigroup
   static fn empty() Self
 impl Monoid for Int
-  fn combine(other: Int) Int
+  fn combine(other Int) Int
     self + other
   static fn empty() Int
     0
 tuple Max
-  value: Int
+  value Int
 impl Monoid for Max
-  fn combine(other: Max) Max
+  fn combine(other Max) Max
     if value > other.value then self else other
   static fn empty() Max
     Max(value: -1000000)
-fn mconcat[T: Monoid, N](xs: Array[T][N]) T
+fn mconcat[T Monoid, N](xs Array[T][N]) T
   xs |> to_stream() |> reduce(T.empty(), (a, b) -> a.combine(b))
 nums: Array[Int] = (1, 2, 3)
 maxes: Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
@@ -1363,17 +1363,17 @@ An interface can name a type that each impl chooses, so there is no need for an 
 ```
 interface Container
   type Item
-  fn get(i: Int) Result[Item, Error]
+  fn get(i Int) Result[Item, Error]
   fn size() Int
 tuple Names
-  items: List[String]
+  items List[String]
 impl Container for Names
   type Item = String
-  fn get(i: Int) Result[String, Error]
+  fn get(i Int) Result[String, Error]
     get(items, i)
   fn size() Int
     len(items)
-fn last_of[C: Container](c: C) Result[C.Item, Error]
+fn last_of[C Container](c C) Result[C.Item, Error]
   c.get(c.size() - 1)
 names = Names(items: List("ada", "bob"))
 when last_of(names)
@@ -1388,7 +1388,7 @@ Output: `bob`. A type has exactly one impl of each interface, so `C.Item` is nev
 A class over a type constructor takes `F[_]`, and an instance names the constructor itself. (`List` by itself is a type constructor, and a parameter that stands for one is what Haskell and Scala call a higher-kinded type. Without it, `double_in` below would be written again for every container.) With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and `impl Monad[Box]` from chapter 24, you can write code that works for any monad:
 
 ```
-fn double_in[F[_]: Monad](m: F[Int]) F[Int]
+fn double_in[F[_] Monad](m F[Int]) F[Int]
   m.flat_map((x) -> F.pure(x * 2))
 r: Result[Int, Error] = Ok(21)
 println("${double_in(Box.Full(21))} ${double_in(r)}")
@@ -1397,7 +1397,7 @@ println("${double_in(Box.Full(21))} ${double_in(r)}")
 Output: `Box.Full(42) Ok(42)`. And an applicative lift:
 
 ```
-fn lift2[F[_]: Applicative, A, B, C](f: (A, B) -> C, a: F[A], b: F[B]) F[C]
+fn lift2[F[_] Applicative, A, B, C](f (A, B) -> C, a F[A], b F[B]) F[C]
   a.map(curry(f)).ap(b)
 none: Box[Int] = Box.Empty
 print("${lift2(add, Box.Full(2), Box.Full(3))} ")
@@ -1409,7 +1409,7 @@ Output: `Box.Full(5) Box.Empty`. Return-type polymorphism needs an explicit type
 **Type lambdas.** A hole fixes only the first argument of a type, so `Result[_, String]` cannot say "a `Result` whose error comes first". A **type lambda** can: `[A] -> Result[String, A]` is a function from a type to a type, written with the brackets, the arrow, and the result. Hand one to a constructor parameter and it becomes the constructor it names:
 
 ```
-fn one[M[_]: Monad]() M[Int]
+fn one[M[_] Monad]() M[Int]
   M.pure(1)
 type alias Fail[A] = Result[A, String]
 println("${one[[A] -> Result[A, String]]()} ${one[Fail]()}")
@@ -1434,14 +1434,14 @@ type alias Length[T] = when T
   () -> 0
   (H, ...Rest) -> 1 + Length[Rest]
 
-fn head_of(xs: Array[Int][3]) Elem[Array[Int][3]]
+fn head_of(xs Array[Int][3]) Elem[Array[Int][3]]
   xs(0)
 joined: Concat[(Int, String), (Bool,)] = (1, "a", true)
 sized: Array[Int][Length[(Int, String)]] = Array(1, 2)
 println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
 ```
 
-**Field names at the type level.** Tuple types keep their field names, and an arm can look a field up by name: with `type alias Get[R, K] = when R` and the arms `(K: T, ...Rest) -> T` and `(_: _, ...Rest) -> Get[Rest, K]`, a function `fn get[R, K](row: R, key: K) Get[R, K]` called as `get(user, "name")` returns `String` and as `get(user, "zip")` returns `Int`, and `get(user, "nope")` is an error because no arm matches. A literal argument keeps its own type (`"name"`, `3`) when its parameter is used inside a type function; otherwise it is widened to `String` or `Int` as before.
+**Field names at the type level.** Tuple types keep their field names, and an arm can look a field up by name: with `type alias Get[R, K] = when R` and the arms `(K T, ...Rest) -> T` and `(_ _, ...Rest) -> Get[Rest, K]`, a function `fn get[R, K](row R, key K) Get[R, K]` called as `get(user, "name")` returns `String` and as `get(user, "zip")` returns `Int`, and `get(user, "nope")` is an error because no arm matches. A literal argument keeps its own type (`"name"`, `3`) when its parameter is used inside a type function; otherwise it is widened to `String` or `Int` as before.
 
 **Asking what a type can do.** An arm may use a bound as its pattern: `X: Named -> String` matches any type that implements `Named` and binds it to `X`, so `type alias Label[T] = when T` with the arms `X: Named -> String` and `else Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T: Named]`, and it reuses the `impl` and `deriving` you already wrote.
 
@@ -1463,8 +1463,8 @@ impl Describable for Int
   fn describe() String
     "int $self"
 tuple Crate[A]
-  value: A
-impl[A: Describable] Describable for Crate[A]
+  value A
+impl[A Describable] Describable for Crate[A]
   fn describe() String
     "crate(${self.value.describe()})"
 println(Crate(7).describe())
@@ -1480,9 +1480,9 @@ When you need a mixed collection and don't control the set of types, `any Voice`
 interface Voice
   fn speak() String
 tuple Dog
-  name: String
+  name String
 tuple Robot
-  serial: Int
+  serial Int
 impl Voice for Dog
   fn speak() String
     "Woof! My name is ${name}"
@@ -1506,9 +1506,9 @@ interface Greeter
   fn greet() String
     "Hello, ${self.name()}"
 tuple Pal
-  id: String
+  id String
 tuple Boss
-  title: String
+  title String
 impl Greeter for Pal
   fn name() String
     id
@@ -1537,21 +1537,21 @@ A delegate adds behavior to a field's reads and writes, with no cost at runtime.
 
 ```
 tuple Percent
-  value: Int
+  value Int
 impl FieldHandler[Int] for Percent
   fn get_value() Int
     value
-  fn (ref Self) set_value(new_value: Int) Unit
+  fn (ref Self) set_value(new_value Int) Unit
     value = if new_value < 0 then 0 elif new_value > 100 then 100 else new_value
 tuple Gauge
-  level: Int delegate(Percent)
+  level Int delegate(Percent)
 g = Gauge(level: 150)
 println("${g.level}")
 g.level = -20
 println("${g.level}")
 ```
 
-Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value: Int) Result[Unit, Error]`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because an assignment has nowhere to put a failure. Moxie generates `g.set_level(x)` instead, which returns the changed `Gauge` or the `Err`, as for a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
+Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value Int) Result[Unit, Error]`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because an assignment has nowhere to put a failure. Moxie generates `g.set_level(x)` instead, which returns the changed `Gauge` or the `Err`, as for a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
 **Chapter 9b: Properties**
 
@@ -1559,15 +1559,15 @@ A property reads and writes like a field (`a.balance`, `a.balance = 5`), but it 
 
 ```
 tuple Account
-  owner: String,
-  property balance: Int = 0
+  owner String,
+  property balance Int = 0
     priv set(value)
       assert(value >= 0)
       field = value
     did_set(old)
       println("balance ${old} -> ${field}")
 impl Account
-  fn (ref Self) deposit(n: Int) Unit
+  fn (ref Self) deposit(n Int) Unit
     balance = balance + n
 a = Account(owner: "Ann", balance: 5)
 a.deposit(3)
@@ -1580,9 +1580,9 @@ A setter can reject a value by returning a `Result`. You write the return type a
 
 ```
 tuple Account
-  owner: String,
-  property balance: Int = 0
-    set(value: Int) Result[Unit, Error]
+  owner String,
+  property balance Int = 0
+    set(value Int) Result[Unit, Error]
       if value < 0
         fail(1, "negative")
       else
@@ -1605,9 +1605,9 @@ A property that stores nothing is a computed one:
 
 ```
 tuple Rect
-  width: Int,
-  height: Int,
-  property area: Int
+  width Int,
+  height Int,
+  property area Int
     get
       width * height
     set(value)
@@ -1624,11 +1624,11 @@ Output: `12 Rect(width: 3, height: 4)`, then `6 24`. A property has storage unle
 
 ```
 tuple Report
-  data: List[Int],
-  lazy property total: Int
+  data List[Int],
+  lazy property total Int
     get
       data |> to_stream() |> sum()
-  static property title: String = "Weekly"
+  static property title String = "Weekly"
 r = Report(data: List(4, 5, 6))
 println("${Report.title}: ${r.total} ${r.total}")
 r.data = List(10, 20)
@@ -1643,22 +1643,22 @@ An interface lists a property the way it lists a field. A field, a property, or 
 
 ```
 interface Named
-  name: String
+  name String
 interface Wallet
-  property balance: Int
+  property balance Int
     get
     set
 tuple Person
-  given: String,
-  family: String,
-  property name: String
+  given String,
+  family String,
+  property name String
     get
       "${given} ${family}"
 tuple Purse
-  property balance: Int = 0
+  property balance Int = 0
 impl Named for Person
 impl Wallet for Purse
-fn greet[T: Named](x: T) String
+fn greet[T Named](x T) String
   "Hello, ${x.name}"
 println(greet(Person(given: "Ada", family: "Lovelace")))
 ```
@@ -1669,9 +1669,9 @@ When the tuple is held in an Atom, other code can watch a property, as many list
 
 ```
 tuple Account
-  owner: String,
-  property balance: Int = 0
-fn save_row(old: Int, new: Int) Unit
+  owner String,
+  property balance Int = 0
+fn save_row(old Int, new Int) Unit
   println("db: ${old} -> ${new}")
 shared = Atom[Account](Account(owner: "Ann"))
 db = shared.on_change(balance, save_row)
@@ -1695,11 +1695,11 @@ An operator is defined in an `impl` block: the receiver is the left operand and 
 
 ```
 tuple Money deriving show
-  cents: Int
+  cents Int
 impl Money
-  fn + (other: Money) Money
+  fn + (other Money) Money
     Money(cents: cents + other.cents)
-  fn < (other: Money) Bool
+  fn < (other Money) Bool
     cents < other.cents
 a = Money(cents: 150)
 b = Money(cents: 250)
@@ -1710,11 +1710,11 @@ Output: `400 true true`. Defining `<` gives you `>`, `<=`, and `>=`, and definin
 
 ```
 impl Addable for Money
-  fn +(other: Money) Money
+  fn +(other Money) Money
     Money(cents: cents + other.cents)
   static fn zero() Money
     Money(cents: 0)
-fn sum_two[T: Addable](x: T, y: T) T
+fn sum_two[T Addable](x T, y T) T
   x + y
 println("${sum_two(3, 4)} ${sum_two(a, b).cents}")
 ```
@@ -1722,7 +1722,7 @@ println("${sum_two(3, 4)} ${sum_two(a, b).cents}")
 Output: `7 400`. A bound on `Ordered` lets a generic compare (numbers and strings already satisfy it):
 
 ```
-fn larger[T: Ordered](x: T, y: T) T
+fn larger[T Ordered](x T, y T) T
   if x < y then y else x
 println("${larger(a, b).cents} ${larger(2, 5)}")
 ```
@@ -1731,14 +1731,14 @@ Output: `250 5`. A type may define its own bind `|>>` in an `impl`, and `Result`
 
 ```
 enum Box[A] deriving show
-  Full(value: A),
+  Full(value A),
   Empty
 impl[A] Box[A]
-  fn |>>[B] (f: (A) -> Box[B]) Box[B]
+  fn |>>[B] (f (A) -> Box[B]) Box[B]
     when self
       Full(v) -> f(v)
       Empty -> Box.Empty
-fn half(n: Int) Box[Int]
+fn half(n Int) Box[Int]
   if n % 2 == 0 then Box.Full(n / 2) else Box.Empty
 x = Box.Full(20) |>> half |>> half
 y = Box.Full(10) |>> half |>> half
@@ -1748,7 +1748,7 @@ println("$x $y")
 Output: `Box.Full(5) Box.Empty`. (`10 → 5`, then `5` is odd.) Result helpers cover the same ground:
 
 ```
-fn parse_ok(n: Int) Result[Int, Error]
+fn parse_ok(n Int) Result[Int, Error]
   if n < 0 then fail(1, "negative") else Ok(n)
 r1 = parse_ok(5) |>> ((v) -> Ok(v * 2))
 m = map_ok(parse_ok(20), (v) -> v + 1)
@@ -1759,7 +1759,7 @@ println("${is_ok(r1)} ${is_err(bad)} ${m.get_or(-1)}")
 Output: `true true 21`. The prelude defines `<$>` (map), `<*>` (apply), and `|>>` (bind) for every type with a `Functor`, `Applicative`, or `Monad` impl, `Result` among them. Both `<$>` and `<*>` start with `<`, so parenthesize them with other operators:
 
 ```
-inc = (x: Int) -> x + 1
+inc = (x Int) -> x + 1
 two: Result[Int, Error] = Ok(2)
 f: Result[(Int) -> Int, Error] = Ok(inc)
 println("${(inc <$> two)} ${(f <*> two)}")
@@ -1770,16 +1770,16 @@ Output: `Ok(3) Ok(3)`. **Mistakes:** defining `>`, `~=`, or `>=` yourself (they 
 **Chapter 11: Pipelines and `seq`**
 
 ```
-fn add(x: Int, y: Int) Int
+fn add(x Int, y Int) Int
   x + y
-fn multiply(factor: Int, value: Int) Int
+fn multiply(factor Int, value Int) Int
   factor * value
 final_score = 10
   |> add(5, &)
   |> multiply(2, &)
-fn is_big(n: Int) Bool
+fn is_big(n Int) Bool
   n > 100
-fn halve(n: Int) Int
+fn halve(n Int) Int
   n / 2
 shrunk = 500
   |> seq
@@ -1800,7 +1800,7 @@ println("$a $b")
 Output: `12 12`. A two-argument function can be written between its arguments with backticks:
 
 ```
-fn calculate_yield(base: Int, factor: Int) Int
+fn calculate_yield(base Int, factor Int) Int
   base * factor
 ```
 `println("${100 `calculate_yield` 5}")`
@@ -1815,15 +1815,15 @@ Output: `500`. **Mistake:** `10 |> subtract(3)` is ambiguous because both slots 
 A stage with no explicit arguments takes a tuple that fits its whole parameter list, so results flow from one stage to the next:
 
 ```
-fn fetch_sensor_data(id: Int) (Float, Float, Float)
+fn fetch_sensor_data(id Int) (Float, Float, Float)
   (12.5, 45.0, 0.8)
 fn calculate_velocity(
-  x: Float,
-  y: Float,
-  z: Float
-) (speed: Float, angle: Float)
+  x Float,
+  y Float,
+  z Float
+) (speed Float, angle Float)
   (95.2, 14.6)
-fn update_physics(speed: Float, angle: Float) Unit
+fn update_physics(speed Float, angle Float) Unit
   println("Physics vector updated: speed $speed, angle $angle")
 1042
   |> fetch_sensor_data()
@@ -1849,8 +1849,8 @@ Output: `head 105`, then `tail 210`, `tail 315`, `tail 420`. A guard adds a cond
 
 ```
 tuple Account
-  name: String,
-  score: Int
+  name String,
+  score Int
 player = Account(name: "Bob", score: 150)
 when player
   p@Account(name, score) if score > 200 -> println("top tier: $name")
@@ -1872,13 +1872,13 @@ when reading
 Output: `exactly at the limit`. A relational pattern (`>=`, `>`, `<=`, `<`) matches an open-ended range, for any ordered type, and its operand is a literal or a pin:
 
 ```
-fn describe(status: Int) String
+fn describe(status Int) String
   when status
     200 -> "Success"
     400..=499 -> "Client Error"
     >= 500 -> "Server Error"
     else "Unknown"
-fn grade(score: Double) String
+fn grade(score Double) String
   when score
     >= 90.0 -> "A"
     >= 80.0 -> "B"
@@ -1892,7 +1892,7 @@ Output: `Success Client Error Server Error Unknown B`. On an unbounded type the 
 **`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq` can be written `else` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows on the same line or indented below it. In a `seq` every arm whose test passes runs in turn, so `else` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`, and in a `select` it is written without `case`. An arm after one that matches everything (`else`, `_`, or a bare name) never runs, and neither does a repeated literal or a repeated enum case: the compiler warns about both.
 
 ```
-status = Dict("speed": 60, "limit": 100)
+status = Dict("speed" -> 60, "limit" -> 100)
 when status
   Dict("speed": current, "limit": 100) -> println("moving at $current")
   else println("idle")
@@ -1909,18 +1909,18 @@ Output: `moving at 60`, then `odd and positive`. A function can be defined by se
 fn route_status(200) String = "Success"
 fn route_status(404) String = "Not Found"
 fn route_status(_) String = "Unknown Error"
-fn sum_to(0, total: Int) Int = total
-fn sum_to(n, total: Int) Int = sum_to(n - 1, total + n)
+fn sum_to(0, total Int) Int = total
+fn sum_to(n, total Int) Int = sum_to(n - 1, total + n)
 println("${route_status(404)} ${sum_to(4, 0)}")
 ```
 
 Output: `Not Found 10`. A clause can carry an `if` guard before its body, and `tailrec` makes a self-call that isn't a tail call a compile error:
 
 ```
-fn classify(n: Int) String if n < 0 = "neg"
+fn classify(n Int) String if n < 0 = "neg"
 fn classify(n) if n == 0 = "zero"
 fn classify(n) = "pos"
-tailrec fn count_up(0, acc: Int) Int = acc
+tailrec fn count_up(0, acc Int) Int = acc
 tailrec fn count_up(n, acc) = count_up(n - 1, acc + n)
 println("${classify(-1)} ${classify(0)} ${classify(5)} ${count_up(100, 0)}")
 ```
@@ -1936,9 +1936,9 @@ Output: `1.5 2.0`. `value is Pattern` is a Boolean test, and its names are visib
 
 ```
 enum Reading
-  Value(n: Int)
+  Value(n Int)
   Missing
-fn show_reading(r: Reading) String
+fn show_reading(r Reading) String
   if r is Value(n) then "value $n" else "missing"
 println("${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}")
 ```
@@ -1946,7 +1946,7 @@ println("${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}")
 Output: `value 7 missing`. A **let-else**, `Pattern = expr else value`, leaves the whole function with the else value when the pattern doesn't match:
 
 ```
-fn times_ten(r: Reading) Reading
+fn times_ten(r Reading) Reading
   Value(n) = r else Reading.Missing
   Reading.Value(n * 10)
 print("${times_ten(Reading.Value(7))} ")
@@ -1960,7 +1960,7 @@ Output: `Reading.Value(70) Reading.Missing` (using `Reading` from above). **Mist
 A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:
 
 ```
-fn describe(packet: Array[Byte]) String
+fn describe(packet Array[Byte]) String
   when packet
     Bin(
       0xCA,
@@ -1995,7 +1995,7 @@ Output: `Array(202, 33, 0, 2, 104, 105, 88, 89, 90)`, then `v2 k1 size 2 body 2 
 
 ```
 type union Value = Int | String
-fn describe(v: Value) String
+fn describe(v Value) String
   when v
     n@Int -> "the number ${n + 1}"
     s@String -> "the text ${s}"
@@ -2011,9 +2011,9 @@ Members with type arguments work the same way. With `type union Data = List[Int]
 interface Speaker
   fn speak(self) String
 tuple Dog
-  name: String
+  name String
 tuple Robot
-  serial: Int
+  serial Int
 impl Speaker for Dog
   fn speak(self) String
     "Woof"
@@ -2078,10 +2078,10 @@ println("${ordered(0)} ${flipped(0)}")
 Output: `1 1` (the smallest is first when sorted, and `1` is last in `nums`, so first when reversed). **Horizontal and vertical.** Horizontal stages pass one element at a time through the whole chain. A vertical stage like `sort` first collects every element:
 
 ```
-fn tag_map(x: Int) Int
+fn tag_map(x Int) Int
   println("map $x")
   x * 2
-fn tag_keep(y: Int) Bool
+fn tag_keep(y Int) Bool
   println("keep $y")
   y > 2
 src = List(3, 1, 2)
@@ -2169,8 +2169,8 @@ Output: `List(11, 22, 33) List(1, 2, 3) List(1, 2, 1, 2, 1) List(1) List(2, 3, 4
 
 ```
 tuple Fib
-  a: Int,
-  b: Int
+  a Int,
+  b Int
 fn fibonacci() Stream[Int]
   unfold(Fib(a: 0, b: 1))(s) ->
     Ok((s.a, Fib(a: s.b, b: s.a + s.b)))
@@ -2182,8 +2182,8 @@ Output: `0`, `1`, `1`, `2`, `3`, `5`. **[gc]** A stream holds its source, so a h
 
 ```
 tuple NetworkBuffer
-  packets: List[Packet]
-fn stream_packets(buffer: NetworkBuffer) Stream[Packet]
+  packets List[Packet]
+fn stream_packets(buffer NetworkBuffer) Stream[Packet]
   Stream(buffer.packets, 0..)
 ```
 
@@ -2209,7 +2209,7 @@ Output: `7 21`. **Mistakes:** one stream feeding two terminals by accident, and 
 Nothing is memoized unless you ask: the one built-in way is `lazy` on a binding or a property (chapter 9b), which computes a pure expression once, on its first read. For a function of a changing argument, nothing is cached for you, and the usual recipe is a bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
 
 ```
-fn fib(n: Int) Int
+fn fib(n Int) Int
   (a, _) = Range(1..=n, 1) |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
   a
 println("${fib(10)}")
@@ -2218,9 +2218,9 @@ println("${fib(10)}")
 Output: `55`. A grid of paths (move right or down, count the ways to the far corner) carries one row, and each new row is a `reduce` over the columns:
 
 ```
-fn next_row(prev: List[Int]) List[Int]
+fn next_row(prev List[Int]) List[Int]
   Range(1..len(prev), 1) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
-fn paths(rows: Int, cols: Int) Int
+fn paths(rows Int, cols Int) Int
   first = List(1 for _ in 0..cols)
   last = Range(1..rows, 1) |> reduce(first, (prev, _) -> next_row(prev))
   last(cols - 1)
@@ -2230,14 +2230,14 @@ println("${paths(3, 3)} ${paths(10, 10)}")
 Output: `6 48620`. The same shape handles the longest common subsequence of two strings: carry the previous row of lengths, and build each new row from it and from the cell to its left:
 
 ```
-fn step(prev: List[Int], acc: List[Int], ys: List[Char], x: Char, j: Int) Int
+fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) Int
   if ys(j - 1) == x
     prev(j - 1) + 1
   else
     max(prev(j), acc(j - 1))
-fn lcs_row(prev: List[Int], x: Char, ys: List[Char]) List[Int]
+fn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]
   Range(1..=len(ys), 1) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
-fn lcs(a: String, b: String) Int
+fn lcs(a String, b String) Int
   xs = List(c for c in chars(a))
   ys = List(c for c in chars(b))
   last = xs |> to_stream() |> reduce(List(0 for _ in 0..=len(ys)), (prev, x) -> lcs_row(prev, x, ys))
@@ -2252,8 +2252,8 @@ Output: `4`. Memory is the size of what is carried, not of the whole table, and 
 ```
 enum Tree[T]
   Leaf,
-  Node(left: Tree, value: T, right: Tree)
-fn size[T](t: Tree[T]) Int
+  Node(left Tree, value T, right Tree)
+fn size[T](t Tree[T]) Int
   when t
     Leaf -> 0
     Node(l, _, r) -> size(l) + 1 + size(r)
@@ -2299,7 +2299,7 @@ println("$a $b ${@hits}")
 Output: `1 6 6`. **A function that `run` starts is declared `fiber fn`** (or `fiber[n] fn` to limit how many can be alive at once); `run` on a plain `fn` is a compile error that says so. A fiber function may use `?`, which ends it at the first failure, but the `Result` it returns goes nowhere, since nothing waits for it. An inline `run fn` has no return type, so `?` is an error there. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `run` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `run worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If `run` returns NO_SLOT, no fiber starts, and the resources you passed are released for you. The channel closes for readers when the last write handle is dropped:
 
 ```
-fiber fn worker(id: Int, out: ChanW[Int]) Unit
+fiber fn worker(id Int, out ChanW[Int]) Unit
   \write(out, id * 10)
 rx2, tx2 = Chan[Int][3]()
 \run worker(1, clone(tx2))
@@ -2316,7 +2316,7 @@ Output: `60`. The workers write 10, 20, and 30 in some order, and the three read
 **Chapter 17: Fibers and daemon**
 
 ```
-fiber fn feed(tx: ChanW[String], msg: String) Unit
+fiber fn feed(tx ChanW[String], msg String) Unit
   sleep(1s)
   \write(tx, msg)
 fn start_feed() ChanR[String]
@@ -2351,7 +2351,7 @@ daemon
 A short fiber can be written inline. The short form gives only the arguments, and the body uses those names:
 
 ```
-fn greet(tx: ChanW[String]) Unit
+fn greet(tx ChanW[String]) Unit
   \run fn (tx) ->
     \write(tx, "hi")
 ```
@@ -2359,7 +2359,7 @@ fn greet(tx: ChanW[String]) Unit
 The full form puts the arguments first and the parameters second, so the names inside can differ, and an argument can be a literal:
 
 ```
-fn start_counter(tx: ChanW[Int], start: Int) Unit
+fn start_counter(tx ChanW[Int], start Int) Unit
   \run fn (tx, start)(out, first) ->
     \write(out, first + 1)
 ```
@@ -2373,7 +2373,7 @@ A fiber that loops forever, such as a worker or a ticker, needs a way to be told
 A `scope` block waits for every fiber started inside it (and every fiber those start) before the block ends. `scope name` also binds `name` to the block's own `Cancel`:
 
 ```
-fiber fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit
+fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
   while true
     select
       case cancelled(stop) ->
@@ -2395,9 +2395,9 @@ println(read(rx))
 Output: `scope over`, then `Ok("worker 1 stopping")` and `Ok("worker 2 stopping")`. Leaving the block early, with `?`, `return`, `break`, or `continue`, cancels its token first and then waits, so no fiber outlives the block:
 
 ```
-fn parse(text: String) Result[Int, Error]
+fn parse(text String) Result[Int, Error]
   if text == "" then fail(7, "no input") else Ok(1)
-fn job(out: ChanW[String]) Result[Int, Error]
+fn job(out ChanW[String]) Result[Int, Error]
   scope s
     \run worker(1, out, s)
     n = parse("")?
@@ -2411,12 +2411,12 @@ Here `job` returns the error only after the worker has seen the cancel and finis
 There is no `try`: a failing operation returns a `Result`.
 
 ```
-fn fetch_first(id: Int) Result[Int, Error]
+fn fetch_first(id Int) Result[Int, Error]
   if id < 0
     fail(7, "negative id")
   else
     Ok(10)
-fn fetch_total(id: Int) Result[Int, Error]
+fn fetch_total(id Int) Result[Int, Error]
   a = fetch_first(id)?
   b = fetch_first(id + 1)?
   Ok(a + b)
@@ -2431,9 +2431,9 @@ Output: `total 20`, then `0`. With `fetch_total(-5)`, the first `?` returns the 
 
 ```
 tuple User
-  id: Int,
-  name: String
-fn find_user(id: Int) Result[User, Error]
+  id Int,
+  name String
+fn find_user(id Int) Result[User, Error]
   if id == 1 then Ok(User(id: 1, name: "Ada")) else fail(2, "no user")
 for id in List(1, 9)
   when find_user(id).name
@@ -2446,16 +2446,16 @@ Output: `Ada`, then `no user`. **Typed errors.** The error type can be your own 
 ```
 enum ParseError deriving show
   Empty,
-  BadDigit(ch: Char)
+  BadDigit(ch Char)
 enum AppError deriving show
-  Parse(why: ParseError),
-  TooOld(limit: Int)
+  Parse(why ParseError),
+  TooOld(limit Int)
 impl From[ParseError] for AppError
-  static fn from(e: ParseError) AppError
+  static fn from(e ParseError) AppError
     Parse(why: e)
-fn parse_age(text: String) Result[Int, ParseError]
+fn parse_age(text String) Result[Int, ParseError]
   if text == "" then Err(Empty) elif text == "ancient" then Ok(150) else Ok(30)
-fn check_age(text: String) Result[Int, AppError]
+fn check_age(text String) Result[Int, AppError]
   age = parse_age(text)?
   if age > 99 then Err(TooOld(limit: 99)) else Ok(age)
 for t in List("30", "", "ancient")
@@ -2471,9 +2471,9 @@ Output: `age 30`, then `AppError.Parse(ParseError.Empty)`, then `AppError.TooOld
 Not every miss is an error. The prelude has `Option[T]`, with the cases `Some(value)` and `None`, written bare as `Ok` and `Err` are. `?` works on it the same way: it gives the value of a `Some`, or returns `None` from the function.
 
 ```
-fn half(n: Int) Option[Int]
+fn half(n Int) Option[Int]
   if n % 2 == 0 then Some(n / 2) else None
-fn quarter(n: Int) Option[Int]
+fn quarter(n Int) Option[Int]
   h = half(n)?
   half(h)
 println(quarter(8))
@@ -2527,7 +2527,7 @@ println("editor $editor")
 `stdin`, `stdout`, and `stderr` are values the runtime owns. Any function can take one as a parameter, which is how output code gets tested:
 
 ```
-fn greet(out: Io, name: String) Unit
+fn greet(out Io, name String) Unit
   println(out, "hello, $name")
 greet(stdout, "mixer")
 greet(stderr, "mixer")
@@ -2536,7 +2536,7 @@ greet(stderr, "mixer")
 Output: `hello, mixer` on standard output, and the same line on standard error. `print` and `println` with no stream write to `stdout`, and `eprint` and `eprintln` write to `stderr`. Reading is `read_line()`, which returns a `Result` (the line without its newline), `read_all()`, and `stdin_lines()`, a stream of lines. They all `parks`: only the fiber that waits is held up. `with_stdin(text, f)` runs `f` with `text` as the input, so a test can feed a program:
 
 ```
-fn ask(question: String) String
+fn ask(question String) String
   print("$question ")
   read_line().get_or("nobody")
 answer = with_stdin("Ada\n", fn () -> ask("name?"))
@@ -2588,7 +2588,7 @@ when read_file("missing.txt")
 Output: `code 9, not found: true`. Sockets work the same way: `listen(port)` gives a `Listener` (port 0 picks a free one, and `port_of` says which), `accept` waits for a client, and `connect(host, port)` is the client side. A server and a client can run as two fibers of one program, because `accept` and `read_line` park only their own fiber:
 
 ```
-fiber fn server(tx: ChanW[Int]) Result[Unit, Error]
+fiber fn server(tx ChanW[Int]) Result[Unit, Error]
   l = listen(0)?
   \write(tx, port_of(l))
   c = accept(l)?
@@ -2674,10 +2674,10 @@ close(tx)
 
 Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn () = ...`, as a plain lambda must be pure.
 
-**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `scope`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c: Cancel) ...`; a plain lambda must be pure.
+**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `scope`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c Cancel) ...`; a plain lambda must be pure.
 
 ```
-fn polite(c: Cancel) Result[Int, Error]
+fn polite(c Cancel) Result[Int, Error]
   while true
     select
       case cancelled(c) ->
@@ -2685,7 +2685,7 @@ fn polite(c: Cancel) Result[Int, Error]
       else
         sleep(5ms)
   Ok(0)
-fn quick(c: Cancel) Result[Int, Error]
+fn quick(c Cancel) Result[Int, Error]
   sleep(10ms)
   Ok(42)
 println(race(polite, quick))
@@ -2698,10 +2698,10 @@ Output: `Ok(42)`, `Ok(42)`, then `Err(Error(code: 12, message: "with_timeout: ti
 **Doing the work in parallel.** `par_map(f, xs, limit: n)` calls `f` on every item, at most `n` at a time, each call in its own fiber, and gives the results as a `List` in the order of the input, however the calls finish. It pays off when `f` mostly waits (a network call, a file, a program) or when the work spreads across cores; for a quick calculation, plain `map` is faster, because starting a fiber costs more than the work. `limit:` is a number the compiler can see (a literal, or a top-level constant), the same rule as a channel's capacity, and for the same reason: the program's fibers are counted before it runs, and each `par_map` call adds `n` to the count that `moxie pools` shows. `par_traverse(f, xs, limit: n)` is `traverse` for the same job, for an `f` that gives a `Result`. When an item fails it stops starting new items, lets the running ones finish, and gives the `Err` of the earliest failing item, so the answer does not depend on timing: items start in input order, so every item before a failure has run. Both park, and the order of any output the calls print is up to the scheduler. The items and what `f` uses must be plain data: a resource is owned by one fiber.
 
 ```
-fn slow_double(n: Int) Int
+fn slow_double(n Int) Int
   sleep((6 - n) * 10ms)
   n * 2
-fn check(n: Int) Result[Int, String]
+fn check(n Int) Result[Int, String]
   sleep((6 - n) * 10ms)
   when n % 2 == 0
     true -> Err("even ${n}")
@@ -2716,7 +2716,7 @@ Output: `List(2, 4, 6, 8, 10)`, `Ok(List(1, 3, 5))`, then `Err("even 2")`, thoug
 **Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
 
 ```
-fiber fn serve(l: Listener) Result[Unit, Error]
+fiber fn serve(l Listener) Result[Unit, Error]
   c = accept(l)?
   for line in lines(c)
     println(c, "echo $line")
@@ -2796,8 +2796,8 @@ A `foreign` block declares C functions by signature. Every function says what it
 
 ```
 foreign "m"
-  pure fn cos(x: Double) Double
-  pure fn pow(x: Double, y: Double) Double
+  pure fn cos(x Double) Double
+  pure fn pow(x Double, y Double) Double
 println(cos(0.0))
 println(pow(2.0, 10.0))
 ```
@@ -2806,7 +2806,7 @@ Output: `1.0`, then `1024.0`. A `ref` parameter is a C out-parameter: the value 
 
 ```
 foreign "m"
-  pure fn frexp(x: Double, ref exp: Int32) Double
+  pure fn frexp(x Double, ref exp Int32) Double
 e = 0i32
 m = frexp(8.0, ref e)
 println("$m $e")
@@ -2817,10 +2817,10 @@ Output: `0.5 4`. An `Array` of any number type is passed as a pointer. A paramet
 ```
 foreign "c"
   impure fn qsort(
-    ref base: Array[Int32],
-    n: UInt = len(base),
-    size: UInt = size_of(base),
-    cmp: (Ptr[Int32], Ptr[Int32]) -> Int32
+    ref base Array[Int32],
+    n UInt = len(base),
+    size UInt = size_of(base),
+    cmp (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
 qsort(ref xs, (a, b) -> a - b)
@@ -2831,8 +2831,8 @@ Output: `Array(1, 3, 5, 7, 9)`. Text crosses as a `CString`, made by `cstr(text)
 
 ```
 foreign "c"
-  pure fn strlen(s: CString) UInt
-fn byte_length(text: String) UInt = strlen(cstr(text))
+  pure fn strlen(s CString) UInt
+fn byte_length(text String) UInt = strlen(cstr(text))
 println(byte_length("héllo"))
 ```
 
@@ -2841,9 +2841,9 @@ Output: `6`, because `é` is two bytes in UTF-8. A library that hands back an op
 ```
 foreign "store"
   handle Store closes store_close
-  impure fn store_open(path: CString) Result[Store, Error]
-  impure fn store_get(s: Store, key: CString) Int32
-  impure fn store_close(s: Store)
+  impure fn store_open(path CString) Result[Store, Error]
+  impure fn store_get(s Store, key CString) Int32
+  impure fn store_close(s Store)
 s = store_open(cstr("data.db"))?
 println(store_get(s, cstr("answer")))
 store_close(move s)
@@ -2853,8 +2853,8 @@ A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C retur
 
 ```
 foreign "sensor"
-  impure fn on_reading(cb: Events[(Int32, Double)])
-  impure fn on_query(cb: Handler[(Int32) -> Int32])
+  impure fn on_reading(cb Events[(Int32, Double)])
+  impure fn on_query(cb Handler[(Int32) -> Int32])
 rx, tx = Chan[(Int32, Double)][16]()
 on_reading(move tx)
 on_query((id) -> id * 2i32)
@@ -2907,7 +2907,7 @@ println(secret_eq(token, secret("none")))
 Output: `using Secret(***)`, then `true` when the variable is unset. Printing, interpolating, and `show` all give `Secret(***)`. `reveal(token)` is the one way to the real value, so each place it is used shows in the source, and `==` on secrets is an error: compare with `secret_eq`, which takes the same time however many characters match. A `Secret[String]` is not a `String`, so a function that takes one can't be handed plain text by mistake. `exit(code)` ends the program with a code from 0 to 255, from any fiber, and `signals()` gives a channel of `#interrupt`, `#terminate`, and `#hangup` so a program can shut down cleanly when someone presses Ctrl-C:
 
 ```
-fiber fn work(done: ChanW[Int]) Unit
+fiber fn work(done ChanW[Int]) Unit
   sleep(1s)
   \write(done, 1)
 
@@ -3015,21 +3015,21 @@ A builder is a set of ordinary functions, and nesting is nested calls. Nominal t
 
 ```
 tuple Html
-  text: String
+  text String
 tuple Li
-  text: String
-fn join(parts: List[Html]) String
+  text String
+fn join(parts List[Html]) String
   parts |> to_stream() |> map(_.text) |> reduce("", _1 + _2)
-fn h1(text: String) Html
+fn h1(text String) Html
   Html(text: "<h1>$text</h1>")
-fn li(text: String) Li
+fn li(text String) Li
   Li(text: "<li>$text</li>")
-fn ul(items: ...Li) Html
+fn ul(items ...Li) Html
   inner = items |> to_stream() |> map(_.text) |> reduce("", _1 + _2)
   Html(text: "<ul>$inner</ul>")
-fn body(children: ...Html) Html
+fn body(children ...Html) Html
   Html(text: "<body>${join(children)}</body>")
-fn html(child: Html) String
+fn html(child Html) String
   "<html>${child.text}</html>"
 page = html(
   body(
@@ -3059,11 +3059,11 @@ You open a connection in the entry file with `Connection.open(path)`, which retu
 
 ```
 tuple Telemetry
-  id: Int,
-  value: Double
+  id Int,
+  value Double
 inline fn fetch_active_telemetry(
-  conn: Connection,
-  min_value: Double
+  conn Connection,
+  min_value Double
 ) Result[Stream[Telemetry], Error]
   sql(conn):
     SELECT id, value FROM telemetry
@@ -3077,7 +3077,7 @@ for t in rows
 `$min_value` is a bound parameter, so there is no injection. The accepted SQL is a subset: SELECT with WHERE, JOIN, GROUP BY, the aggregates COUNT, SUM, MIN, and MAX, ORDER BY, LIMIT, and OFFSET, plus INSERT, UPDATE, and DELETE. The result is a `Result` of a lazy stream that borrows `conn` (so the helper is `inline fn`), and each row is a named tuple of the selected columns. Writes return the rows affected, and configuration is read in the entry file before `daemon` (`sql` is not allowed at module level or in `init`):
 
 ```
-fn load_config(conn: Connection) Result[Dict[String, String], Error]
+fn load_config(conn Connection) Result[Dict[String, String], Error]
   rows = sql(conn):
     SELECT key, value FROM config
   rows? |> collect()
@@ -3087,10 +3087,10 @@ A **transaction** commits when its function returns `Ok` and rolls back on `Err`
 
 ```
 fn move_funds(
-  tx: Connection,
-  from_id: Int,
-  to_id: Int,
-  amount: Int
+  tx Connection,
+  from_id Int,
+  to_id Int,
+  amount Int
 ) Result[Unit, Error]
   debit = sql(tx):
     UPDATE accounts SET balance = balance - $amount WHERE id = $from_id
@@ -3101,10 +3101,10 @@ fn move_funds(
   Ok(())
 
 fn transfer(
-  conn: Connection,
-  from_id: Int,
-  to_id: Int,
-  amount: Int
+  conn Connection,
+  from_id Int,
+  to_id Int,
+  amount Int
 ) Result[Unit, Error]
   transaction(conn, move_funds(_, from_id, to_id, amount))
 ```
@@ -3114,7 +3114,7 @@ fn transfer(
 **Chapter 23: Tests, assertions, `dbg`**
 
 ```
-fn double(x: Int) Int
+fn double(x Int) Int
   x * 2
 test "double doubles"
   assert_eq(double(4), 8)
@@ -3132,7 +3132,7 @@ println("$total")
 
 ```
 test "reversing twice changes nothing"
-  forall xs: List[Int]
+  forall xs List[Int]
     assert_eq(xs |> to_stream() |> reverse() |> reverse() |> collect(), xs)
 ```
 
@@ -3140,17 +3140,17 @@ The values come from the types: whole numbers (with the edge cases mixed in), `B
 
 ```
 tuple Pct
-  n: Int
+  n Int
 
 impl Generatable for Pct
-  static fn generate(g: Gen) Self = Pct(gen_int(g, 0, 100))
+  static fn generate(g Gen) Self = Pct(gen_int(g, 0, 100))
   fn shrink() List[Pct]
     when n
       0 -> List()
       else List(Pct(0), Pct(n - 1))
 ```
 
-`gen_int(g, lo, hi)`, `gen_bool(g)`, and `gen_pick(g, list)` draw values, and `sample[T](g)` draws a `T` the usual way, so a sorted list is `xs = sample[List[Int]](g)` followed by sorting it. A type with an `invariant` does not need an impl for a loose rule: `forall` builds it through its constructor and draws again when the invariant rejects the value, so `invariant len(name) > 0` works as it is. A tight rule, such as sorted order, would reject nearly every draw, so give the type an impl. Once `Pct` has an impl, `forall p: Pct` and even `forall xs: List[Pct]` use it. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
+`gen_int(g, lo, hi)`, `gen_bool(g)`, and `gen_pick(g, list)` draw values, and `sample[T](g)` draws a `T` the usual way, so a sorted list is `xs = sample[List[Int]](g)` followed by sorting it. A type with an `invariant` does not need an impl for a loose rule: `forall` builds it through its constructor and draws again when the invariant rejects the value, so `invariant len(name) > 0` works as it is. A tight rule, such as sorted order, would reject nearly every draw, so give the type an impl. Once `Pct` has an impl, `forall p Pct` and even `forall xs List[Pct]` use it. **Mistakes:** assuming a property holds for every `Int` when `a + b` can overflow (the test will find it), and printing inside the body.
 
 **23a. `moxie fmt`**
 
@@ -3199,23 +3199,23 @@ Output: `3 4`. Every update gives a new value, and a name is rebound, never muta
 The compiler works out which functions can park, print, or use a resource. You can state the intent with `pure fn`, and a violation is a compile error that names the call:
 
 ```
-pure fn area(w: Int, h: Int) Int
+pure fn area(w Int, h Int) Int
   w * h
-pure fn noisy(w: Int) Int
+pure fn noisy(w Int) Int
   println("w is $w")    // ERROR: pure fn calls println
   w
 ```
 
 Using a resource counts too: creating, closing, or changing a channel, timer, future, or atom (and reading an atom with `@`) is not allowed in a `pure fn`, because shared state isn't pure. `swap`, `debug_assert`, and compile-time evaluation require pure functions, with or without the marker. `dbg` and `trace` are exempt: `trace("got here")` writes a message to the error stream, does not count as an effect, and is removed in release builds, while `println` is real output and does count. Compile-time evaluation lets `limit = pow2(10, 1)` size a Dict (chapter 2c).
 
-You are never required to write effects, and you never have to pass them up the call chain: a caller of a function that prints is inferred to print, and you change nothing in the callers when you add a `println` while debugging (or use `dbg`, which is exempt). When you want the compiler to hold you to a statement, declare it before `fn`: `pure`, `prints`, `parks` (both can be given, as in `prints parks fn`), or `impure` for "has some effect". A declaration is an agreement checked both ways. The compiler rejects a body that does an effect you did not declare, and it also rejects a declaration the body no longer earns, so a stale `prints` cannot linger after the print is removed. An interface member can be declared the same way (`prints fn log(self, s: String) Unit`), and then it is an upper bound: an impl may do less, but doing more is a compile error, and code that calls through the interface is checked against the declaration.
+You are never required to write effects, and you never have to pass them up the call chain: a caller of a function that prints is inferred to print, and you change nothing in the callers when you add a `println` while debugging (or use `dbg`, which is exempt). When you want the compiler to hold you to a statement, declare it before `fn`: `pure`, `prints`, `parks` (both can be given, as in `prints parks fn`), or `impure` for "has some effect". A declaration is an agreement checked both ways. The compiler rejects a body that does an effect you did not declare, and it also rejects a declaration the body no longer earns, so a stale `prints` cannot linger after the print is removed. An interface member can be declared the same way (`prints fn log(self, s String) Unit`), and then it is an upper bound: an impl may do less, but doing more is a compile error, and code that calls through the interface is checked against the declaration.
 
 **24c. Functions as values: compose, apply, curry**
 
 ```
-fn inc(x: Int) Int = x + 1
-fn twice(x: Int) Int = x * 2
-fn square(x: Int) Int = x * x
+fn inc(x Int) Int = x + 1
+fn twice(x Int) Int = x * 2
+fn square(x Int) Int = x * x
 pipeline = inc ~> twice ~> square
 out: List[Int] = List(1, 2, 3) |> to_stream() |> map(pipeline) |> collect()
 println("${pipeline(2)} ${out(0)} ${out(1)} ${out(2)}")
@@ -3233,7 +3233,7 @@ Output: `4` (0 becomes 1, then 2, then 4). Currying is a library function, and c
 
 ```
 add5 = curry(add)(5)
-make_adder = (k: Int) -> (n: Int) -> n + k
+make_adder = (k Int) -> (n Int) -> n + k
 println("${add5(1)} ${make_adder(10)(1)}")
 ```
 
@@ -3245,10 +3245,10 @@ Output: `6 11` (`add` from chapter 6). **[gc]** Closures can be passed, returned
 
 ```
 enum Expr
-  Num(n: Int),
-  Add(l: Expr, r: Expr),
-  Mul(l: Expr, r: Expr)
-fn eval(e: Expr) Int
+  Num(n Int),
+  Add(l Expr, r Expr),
+  Mul(l Expr, r Expr)
+fn eval(e Expr) Int
   when e
     Num(n) -> n
     Add(l, r) -> eval(l) + eval(r)
@@ -3260,7 +3260,7 @@ println("${eval(e)}")
 Output: `14`. A fold abstracts the recursion. Here a generic fold over the `Tree` of chapter 15 gives a sum and a depth:
 
 ```
-fn fold_tree[T, R](t: Tree[T], base: R, f: (R, T, R) -> R) R
+fn fold_tree[T, R](t Tree[T], base R, f (R, T, R) -> R) R
   when t
     Leaf -> base
     Node(l, v, r) -> f(fold_tree(l, base, f), v, fold_tree(r, base, f))
@@ -3274,13 +3274,13 @@ Output: `6 2`. Tail-recursive functions run in constant stack (chapter 12), and 
 **24e. Errors as values: `?`, bind, map, apply**
 
 ```
-fn positive(n: Int) Result[Int, Error]
+fn positive(n Int) Result[Int, Error]
   if n > 0 then Ok(n) else fail(1, "not positive")
-fn small(n: Int) Result[Int, Error]
+fn small(n Int) Result[Int, Error]
   if n < 100 then Ok(n) else fail(2, "too big")
-fn check(n: Int) Result[Int, Error]
+fn check(n Int) Result[Int, Error]
   positive(n) |>> small
-fn check2(n: Int) Result[Int, Error]
+fn check2(n Int) Result[Int, Error]
   p = positive(n)?
   small(p)
 println("${is_ok(check(5))} ${is_ok(check(-1))} ${is_ok(check2(500))}")
@@ -3313,7 +3313,7 @@ Output: `true false`. The error type is yours, so the same patterns work with an
 `traverse` stops at the first error, which is right for a pipeline and wrong for a form, where you want every problem at once. `validate(f, xs)` runs `f` on every item and gives `Ok` with the list of results, or `Err` with the list of *all* the errors; `collect_errors(rs)` does the same for a stream of `Result`s you already have. `partition_results(rs)` splits them into `(oks, errs)` and keeps going either way, `recover(r, f)` turns an `Err` into an `Ok` with a fallback computed from the error, and `tap(x, f)` runs `f(x)` for its effect and gives `x` back, which is handy for a log line in the middle of a pipeline (`f` may print, so write it `fn (x) = ...`). `retry(n, delay, f)` calls `f` once and calls it again only if it gave an `Err`, waiting `delay` between tries, up to `n` tries in all; the last `Err` comes back if every try fails. It does not repeat an error that a second try can't change (`NOT_FOUND`, `DENIED`, `BAD_ENCODING`, `OUT_OF_RANGE`, `MISSING`, `TOO_LONG`, `TOO_SHORT`), and `when: (e): ...` replaces that rule with your own. Use it for calls that are safe to repeat (reads, lookups, connecting), because a call that half-worked will half-work again:
 
 ```
-fn check(n: Int) Result[Int, String]
+fn check(n Int) Result[Int, String]
   when n > 0
     true -> Ok(n)
     false -> Err("bad ${n}")
@@ -3337,20 +3337,20 @@ Output: `Err(List("bad -1", "bad -3"))`, `List(5, 7) List("bad -1", "bad -3")`, 
 
 ```
 tuple User
-  name: String
-  email: String
+  name String
+  email String
 
-fn check_name(s: String) Result[String, String]
+fn check_name(s String) Result[String, String]
   when s == ""
     true -> Err("name is empty")
     false -> Ok(s)
 
-fn check_email(s: String) Result[String, String]
+fn check_email(s String) Result[String, String]
   when s.contains("@")
     true -> Ok(s)
     false -> Err("bad email: ${s}")
 
-fn create(name: String, email: String) Result[User, List[String]]
+fn create(name String, email String) Result[User, List[String]]
   map_all(User, check_name(name), check_email(email))
 
 println(create("ann", "ann@x.org"))
@@ -3365,31 +3365,31 @@ These are prelude interfaces over a type constructor `F[_]` (chapter 8d), with t
 
 ```
 interface Functor[F[_]]
-  fn map[A, B](self: F[A], f: (A) -> B) F[B]
+  fn map[A, B](self F[A], f (A) -> B) F[B]
 interface Applicative[F[_]]
   Functor[F]
-  static fn pure[A](a: A) F[A]
-  fn ap[A, B](self: F[(A) -> B], x: F[A]) F[B]
+  static fn pure[A](a A) F[A]
+  fn ap[A, B](self F[(A) -> B], x F[A]) F[B]
 interface Monad[F[_]]
   Applicative[F]
-  fn flat_map[A, B](self: F[A], f: (A) -> F[B]) F[B]
+  fn flat_map[A, B](self F[A], f (A) -> F[B]) F[B]
 ```
 
 The prelude has instances for `Result[_, E]`, `Stream`, `List[_]` **[gc]**, and `Array[_][N]`. You write one for your own type with no `for`, naming the constructor (`Box` and `half` from chapter 10):
 
 ```
 impl Monad[Box]
-  fn map[A, B](self: Box[A], f: (A) -> B) Box[B]
+  fn map[A, B](self Box[A], f (A) -> B) Box[B]
     when self
       Full(v) -> Box.Full(f(v))
       Empty -> Box.Empty
-  static fn pure[A](a: A) Box[A]
+  static fn pure[A](a A) Box[A]
     Box.Full(a)
-  fn ap[A, B](self: Box[(A) -> B], x: Box[A]) Box[B]
+  fn ap[A, B](self Box[(A) -> B], x Box[A]) Box[B]
     when self
       Full(g) -> x.map(g)
       Empty -> Box.Empty
-  fn flat_map[A, B](self: Box[A], f: (A) -> Box[B]) Box[B]
+  fn flat_map[A, B](self Box[A], f (A) -> Box[B]) Box[B]
     when self
       Full(v) -> f(v)
       Empty -> Box.Empty
@@ -3404,13 +3404,13 @@ Output: `Box.Full(4) Box.Full(5)`. The operators `<$>`, `<*>`, and `|>>` are the
 **Sequences with the operators.** With `Box` and its `Monad` impl in scope (they are your code, not the prelude's), `|>>` chains steps that each return a `Box`, `<$>` maps a plain function over the value inside, and `<*>` combines independent values. `Result` and `List` work the same way with no impl of your own, because the prelude supplies them. `Maybe`, `Option`, `Either`, and similar types are never built in: you define the type and its impl.
 
 ```
-fn dec(n: Int) Box[Int]
+fn dec(n Int) Box[Int]
   if n > 0 then Box.Full(n - 1) else Box.Empty
-sq = (x: Int) -> x * x
-dup = (x: Int) -> List(x, x)
-fn pos(n: Int) Result[Int, Error]
+sq = (x Int) -> x * x
+dup = (x Int) -> List(x, x)
+fn pos(n Int) Result[Int, Error]
   if n > 0 then Ok(n) else fail(1, "not positive")
-fn under(n: Int) Result[Int, Error]
+fn under(n Int) Result[Int, Error]
   if n < 10 then Ok(n) else fail(2, "too big")
 println("${Box.Full(3) |>> dec |>> dec} ${Box.Full(1) |>> dec |>> dec}")
 println("${sq <$> Box.Full(7)} ${sq <$> Box.Empty}")
@@ -3449,33 +3449,33 @@ enum Rank
   Manager,
   Staff
 enum User
-  Active(name: String, rank: Rank),
-  Retired(name: String)
+  Active(name String, rank Rank),
+  Retired(name String)
 enum PayError deriving show
-  NotFound(id: Int)
-fn find_user(id: Int) Result[User, PayError]
+  NotFound(id Int)
+fn find_user(id Int) Result[User, PayError]
   when id
     42 -> Ok(User.Active(name: "Ada", rank: Manager))
     7 -> Ok(User.Active(name: "Bo", rank: Staff))
     9 -> Ok(User.Retired(name: "Cy"))
     else Err(NotFound(id: id))
-fn base_pay(rank: Rank) Int
+fn base_pay(rank Rank) Int
   when rank
     Manager -> 500000
     Staff -> 300000
-fn pay_one(id: Int, bonus_pct: Int) Result[Int, PayError]
+fn pay_one(id Int, bonus_pct Int) Result[Int, PayError]
   user = find_user(id)?
   Active(_, rank) = user else Err(NotFound(id: id))
   base = base_pay(rank)
   cents = if bonus_pct > 0 then base + base * bonus_pct / 100 else base
   Ok(cents)
-fn pay_for(id: Int, bonus_pct: Int) Result[Int, PayError]
+fn pay_for(id Int, bonus_pct Int) Result[Int, PayError]
   for
     user in find_user(id)
     Active(_, rank) = user else Err(NotFound(id: id))
     base = base_pay(rank)
     yield base + base * bonus_pct / 100
-fn process_batch(ids: List[Int], bonus_pct: Int) Result[List[Int], PayError]
+fn process_batch(ids List[Int], bonus_pct Int) Result[List[Int], PayError]
   ids |> to_stream() |> traverse(pay_one(_, bonus_pct))
 println("${pay_one(42, 10)} ${pay_for(42, 10)}")
 when process_batch(List(42, 7), 10)
@@ -3489,7 +3489,7 @@ when process_batch(List(42, 9), 10)
 Output: `Ok(550000) Ok(550000)`, then `550000 330000`, then `PayError.NotFound(9)` (the first error in the batch wins). Guards are prelude functions: `ensure(cond, err)` for `Result`, `guard(cond)` for a plain condition (`Ok(())`, or `Err` with the code `MISSING`), and `or_else` to recover. An error that carries runtime text must be a typed payload such as `NotFound(id: id)`, since a static-string `Error` cannot. Two generators over `Result` need only `Applicative`:
 
 ```
-fn both(a: Result[Int, Error], b: Result[Int, Error]) Result[Int, Error]
+fn both(a Result[Int, Error], b Result[Int, Error]) Result[Int, Error]
   for
     x in a
     and y in b
@@ -3503,7 +3503,7 @@ Output: `Ok(3)`. The container form is separate (one filter, no nested `for`), a
 xs = List(1, 2, 3, 4)
 squares: List[Int] = List(x * x for x in xs if x > 1)
 words = List("ab", "cde")
-lens: Dict[String, Int] = Dict(w: len(w) for w in words)
+lens: Dict[String, Int] = Dict(w -> len(w) for w in words)
 println("${len(squares)} ${squares(0)} ${lens(cde)}")
 ```
 
@@ -3514,9 +3514,9 @@ Output: `3 4 Ok(3)`: the squares are 4, 9, and 16, and a Dict lookup returns a `
 Recommended for state: `ref` threading, which does the job with the data flow visible at each call:
 
 ```
-fn push(ref stack: List[Int], x: Int) Unit
+fn push(ref stack List[Int], x Int) Unit
   stack += x
-fn pop(ref stack: List[Int]) Int
+fn pop(ref stack List[Int]) Int
   top = stack(len(stack) - 1)
   stack = remove_at(stack, len(stack) - 1)
   top
@@ -3532,23 +3532,23 @@ Output: `12 0`. Each call returns a value and hands back the updated state, the 
 
 ```
 tuple State[S, A]
-  run: (S) -> (A, S)
-fn map_state[S, A, B](m: State[S, A], f: (A) -> B, s: S) (B, S)
+  run (S) -> (A, S)
+fn map_state[S, A, B](m State[S, A], f (A) -> B, s S) (B, S)
   (a, s2) = m.run(s)
   (f(a), s2)
-fn bind_state[S, A, B](m: State[S, A], f: (A) -> State[S, B], s: S) (B, S)
+fn bind_state[S, A, B](m State[S, A], f (A) -> State[S, B], s S) (B, S)
   (a, s2) = m.run(s)
   f(a).run(s2)
 impl[S] Monad[State[S, _]]
-  fn map[A, B](self: State[S, A], f: (A) -> B) State[S, B]
+  fn map[A, B](self State[S, A], f (A) -> B) State[S, B]
     State(run: (s) -> map_state(self, f, s))
-  static fn pure[A](a: A) State[S, A]
+  static fn pure[A](a A) State[S, A]
     State(run: (s) -> (a, s))
-  fn ap[A, B](self: State[S, (A) -> B], x: State[S, A]) State[S, B]
+  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]
     self.flat_map((g) -> x.map(g))
-  fn flat_map[A, B](self: State[S, A], f: (A) -> State[S, B]) State[S, B]
+  fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]
     State(run: (s) -> bind_state(self, f, s))
-next_id = State(run: (c: Int) -> (c + 1, c + 1))
+next_id = State(run: (c Int) -> (c + 1, c + 1))
 two = next_id.flat_map((a) -> next_id.map((b) -> (a, b)))
 r = two.run(0)
 println("${r(0)(0)} ${r(0)(1)} ${r(1)}")
@@ -3559,15 +3559,15 @@ Output: `1 2 2`. **[gc]** None of no-GC moxie's closure limits apply: a closure 
 ```
 import fp.state
 
-fn label(name: String) state.State[Int, String]
-  state.modify((n: Int) -> n + 1).flat_map((u) -> state.gets((n: Int) -> "${name}${n}"))
+fn label(name String) state.State[Int, String]
+  state.modify((n Int) -> n + 1).flat_map((u) -> state.gets((n Int) -> "${name}${n}"))
 println(state.traverse(List("a", "b", "c"), label).run(0))
 ```
 
 Output: `(List("a1", "b2", "c3"), 3)`. A **Reader** is a `using` parameter, which the caller can override:
 
 ```
-fn price(base: Int, using tax: Int) Int
+fn price(base Int, using tax Int) Int
   base + base * tax / 100
 using tax = 20
 println("${price(100, using)} ${price(100, 5)}")
@@ -3594,11 +3594,11 @@ import fp.reader
 import fp.writer
 import fp.cont
 
-greet = reader.asks((n: String) -> "hi ${n}").flat_map((g) -> reader.asks((n: String) -> "${g}!"))
+greet = reader.asks((n String) -> "hi ${n}").flat_map((g) -> reader.asks((n String) -> "${g}!"))
 println(reader.run_reader(greet, "bo"))
 log = writer.tell("start").flat_map((u) -> writer.tell("end")).map((u) -> 7)
 println(writer.run_writer(log))
-safe_div = (a: Int, b: Int) -> cont.call_cc((leave) -> if b == 0 then leave(-1) else cont.Cont.pure(a / b))
+safe_div = (a Int, b Int) -> cont.call_cc((leave) -> if b == 0 then leave(-1) else cont.Cont.pure(a / b))
 println("${cont.eval_cont(safe_div(10, 2))} ${cont.eval_cont(safe_div(1, 0))}")
 ```
 
@@ -3612,15 +3612,15 @@ enum Cmd[Next]
   Ask((String) -> Next)
 
 impl Functor[Cmd]
-  fn map[A, B](self: Cmd[A], f: (A) -> B) Cmd[B]
+  fn map[A, B](self Cmd[A], f (A) -> B) Cmd[B]
     when self
       Say(s, n) -> Say(s, f(n))
       Ask(k) -> Ask((x) -> f(k(x)))
 
-say = (s: String) -> free.lift_f(Say(s, ()))
+say = (s String) -> free.lift_f(Say(s, ()))
 ask = free.lift_f(Ask((x) -> x))
 prog = say("name?").flat_map((u) -> ask.flat_map((n) -> say("hello ${n}")))
-step = (c: Cmd[List[String]]) -> when c
+step = (c Cmd[List[String]]) -> when c
   Say(s, rest) -> List(s) + rest
   Ask(k) -> k("sam")
 println(free.fold_free(prog, (u) -> List(), step))
@@ -3635,12 +3635,12 @@ A **transformer** adds one capability to any monad underneath it. `import fp.tra
 ```
 import fp.trans
 
-fn tick[M[_]: Monad + MonadState[Int] + MonadError[String]](limit: Int) M[Int]
+fn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]
   M.get().flat_map((n) -> if n >= limit then M.throw_error("too big") else M.put(n + 1)).flat_map((u) -> M.get())
 
-fn state_then_error(s: Int) Result[(Int, Int), String]
+fn state_then_error(s Int) Result[(Int, Int), String]
   trans.run_identity(trans.run_except_t(trans.run_state_t(tick[trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, _]](5), s)))
-fn error_then_state(s: Int) (Result[Int, String], Int)
+fn error_then_state(s Int) (Result[Int, String], Int)
   trans.run_identity(trans.run_state_t(trans.run_except_t(tick[trans.ExceptT[trans.StateT[trans.Identity, Int, _], String, _]](5)), s))
 println("${state_then_error(1)} ${state_then_error(9)}")
 println("${error_then_state(1)} ${error_then_state(9)}")
@@ -3653,9 +3653,9 @@ Two more transformers cover the other monads in this chapter. `ContT` is a conti
 ```
 import fp.trans
 
-fn find_first[M[_]: Monad + MonadCont](xs: List[Int], want: Int) M[Int]
+fn find_first[M[_] Monad + MonadCont](xs List[Int], want Int) M[Int]
   M.call_cc((leave) -> xs.reduce(M.pure(-1), (acc, x) -> acc.flat_map((r) -> if x == want then leave(x * 100) else M.pure(r))))
-fn go(want: Int) Int
+fn go(want Int) Int
   trans.run_identity(trans.run_cont_t(find_first[trans.ContT[trans.Identity, Int, _]](List(1, 2, 3), want), (a) -> trans.Identity.pure(a)))
 println("${go(2)} ${go(9)}")
 ```
@@ -3669,9 +3669,9 @@ import fp.trans
 
 type alias App[A] = trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, A]
 
-fn tick[M[_]: Monad + MonadState[Int] + MonadError[String]](limit: Int) M[Int]
+fn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]
   M.get().flat_map((n) -> if n >= limit then M.throw_error("too big") else M.put(n + 1)).flat_map((u) -> M.get())
-fn go(s: Int) Result[(Int, Int), String]
+fn go(s Int) Result[(Int, Int), String]
   trans.run_identity(trans.run_except_t(trans.run_state_t(tick[App](5), s)))
 println("${go(1)} ${go(9)}")
 up = trans.lift[[M[_], A] -> trans.StateT[M, Int, A], _, _](Ok(1))
@@ -3717,7 +3717,7 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 
 **24l. Semigroup and Monoid**
 
-The prelude declares `Semigroup` (`fn combine(self, other: Self) Self`, which must be associative) and `Monoid` (a `Semigroup` plus `static fn empty() Self`, the identity), as in Haskell and Cats. `String` and `List[T]` implement both, with `+` as `combine` and `""` and `List()` as `empty`. For the other combinations that make sense, the prelude has small wrapper tuples with one field, `value`: `Sum[T]` (for any `Addable`), `Product[T]` (any `Numeric`), `All` and `Any` (`Bool`, with `and` and `or`), and, as semigroups only because they have no identity, `Min[T]` and `Max[T]` (any `Ordered`). A number has more than one monoid, so it has none of its own: you pick one by wrapping it. `fold_all(xs)` combines a stream or list of monoid values (Haskell's `mconcat`), and `fold_map(f, xs)` maps each item to a monoid value first (`foldMap`). Your own types join with an `impl`, as in chapter 8d, and nothing needs importing:
+The prelude declares `Semigroup` (`fn combine(self, other Self) Self`, which must be associative) and `Monoid` (a `Semigroup` plus `static fn empty() Self`, the identity), as in Haskell and Cats. `String` and `List[T]` implement both, with `+` as `combine` and `""` and `List()` as `empty`. For the other combinations that make sense, the prelude has small wrapper tuples with one field, `value`: `Sum[T]` (for any `Addable`), `Product[T]` (any `Numeric`), `All` and `Any` (`Bool`, with `and` and `or`), and, as semigroups only because they have no identity, `Min[T]` and `Max[T]` (any `Ordered`). A number has more than one monoid, so it has none of its own: you pick one by wrapping it. `fold_all(xs)` combines a stream or list of monoid values (Haskell's `mconcat`), and `fold_map(f, xs)` maps each item to a monoid value first (`foldMap`). Your own types join with an `impl`, as in chapter 8d, and nothing needs importing:
 
 ```
 println(fold_all(List("a", "b", "c")))
@@ -3726,10 +3726,10 @@ println(fold_all(List(Sum(1), Sum(2), Sum(3))))
 println(fold_map(fn (w) -> List(len(w)), List("a", "bb", "ccc")))
 println(fold_map(fn (n) -> Min(n), List(4, 2, 8)))
 tuple Stats deriving show
-  count: Int
-  total: Int
+  count Int
+  total Int
 impl Semigroup for Stats
-  fn combine(self, other: Stats) Stats
+  fn combine(self, other Stats) Stats
     Stats(count: self.count + other.count, total: self.total + other.total)
 impl Monoid for Stats
   static fn empty() Stats = Stats(count: 0, total: 0)
@@ -3788,7 +3788,7 @@ What the collector can't do is free data the program itself keeps. An Atom that 
 
 ```
 log = Atom[List[String]](List())
-fn note(msg: String) Unit
+fn note(msg String) Unit
   \swap(log, _ + msg)
 ```
 
@@ -3796,7 +3796,7 @@ Every call to `note` makes the list longer, and the list stays reachable through
 
 ```
 log = Atom[Ring[String]](Ring[String](3))
-fn note(msg: String) Unit
+fn note(msg String) Unit
   \swap(log, _ + msg)
 for i in 1..=5
   note("m$i")
@@ -3894,7 +3894,7 @@ Output: `List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)`
 ```
 import http
 
-fn handle(req: http.Request) http.Response
+fn handle(req http.Request) http.Response
   if req.method == "POST"
     http.text(200, "you said: ${req.body}")
   elif req.path == "/hello"
@@ -3902,7 +3902,7 @@ fn handle(req: http.Request) http.Response
   else
     http.text(404, "nothing at ${req.path}")
 
-fiber fn server(l: Listener, count: Int) Unit
+fiber fn server(l Listener, count Int) Unit
   http.serve_n(l, count, handle)
 
 l = listen(0)?

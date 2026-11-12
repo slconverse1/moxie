@@ -3,26 +3,26 @@ import sys, subprocess
 sys.path.insert(0, ".")
 PROG = r'''
 tuple User
-  name: String
-  email: String
-  age: Int
+  name String
+  email String
+  age Int
 
-fn check_name(name: String) Result[String, String]
+fn check_name(name String) Result[String, String]
   when name == ""
     true -> Err("name is empty")
     false -> Ok(name)
 
-fn check_email(e: String) Result[String, String]
+fn check_email(e String) Result[String, String]
   when e.contains("@")
     true -> Ok(e)
     false -> Err("bad email ${e}")
 
-fn check_age(a: Int) Result[Int, String]
+fn check_age(a Int) Result[Int, String]
   when a < 0
     true -> Err("negative age")
     false -> Ok(a)
 
-fn create(name: String, email: String, age: Int) Result[User, List[String]]
+fn create(name String, email String, age Int) Result[User, List[String]]
   map_all(User, check_name(name), check_email(email), check_age(age))
 
 println(create("ann", "a@b", 3))

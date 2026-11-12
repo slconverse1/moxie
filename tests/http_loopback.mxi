@@ -1,6 +1,6 @@
 import http
 
-fn handle(req: http.Request) http.Response
+fn handle(req http.Request) http.Response
   if req.method == "POST"
     http.text(200, "you said: ${req.body}")
   elif req.path == "/hello"
@@ -8,7 +8,7 @@ fn handle(req: http.Request) http.Response
   else
     http.text(404, "nothing at ${req.path}")
 
-fiber fn server(l: Listener, count: Int) Unit
+fiber fn server(l Listener, count Int) Unit
   http.serve_n(l, count, handle)
 
 l = listen(0)?

@@ -85,7 +85,7 @@ class Parser(ExprParser):
                 return InitDecl(self.parse_block(), line=line)
             if v == "using" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2)):
                 return self.parse_using()
-            if v == "forall" and self.peek(1).kind == "NAME" and self.at_op(":", 2):
+            if v == "forall" and self.peek(1).kind == "NAME" and (self.at_op(":", 2) or self.type_follows(2)):
                 return self.parse_forall()
             if v == "return":
                 self.next()
@@ -287,7 +287,7 @@ class Parser(ExprParser):
         binds = []
         while True:
             name = self.expect_ident("a name").val
-            self.expect_op(":")
+            self.no_decl_colon("a `forall` name")
             binds.append((name, self.parse_type()))
             if not self.eat_op(","):
                 break
@@ -344,9 +344,11 @@ class Parser(ExprParser):
             elif self.peek().kind == "STR":              # and so is a string: `"id" -> Int`
                 e = self.parse_atom()
                 pat = TExpr(e, line=e.line)
-            elif self.peek().kind == "NAME" and self.peek(1).kind == "OP" and self.peek(1).val == ":" and self.peek(2).kind == "NAME":
-                tk = self.next()                         # `X: Show` or `X: Show + Eq`, written like a bound `[T: Show + Eq]`
-                self.next()
+            elif self.peek().kind == "NAME" and self.peek().val not in ("any", "static") and self.peek(1).kind == "NAME" \
+                    and self.peek(1).val not in ("if",) \
+                    or (self.peek().kind == "NAME" and self.peek(1).kind == "OP" and self.peek(1).val == ":" and self.peek(2).kind == "NAME"):
+                tk = self.next()                         # `X Show` or `X Show + Eq`, written like a bound `[T Show + Eq]`
+                self.no_decl_colon("a bound")
                 first = self.next().val
                 also = []
                 while self.at_op("+") and self.peek(1).kind == "NAME":
@@ -600,7 +602,7 @@ class Parser(ExprParser):
             cap = ct.val
             self.expect_op("]")
         name = self.expect_ident("a property name").val
-        self.expect_op(":")
+        self.no_decl_colon("a property")
         typ = self.parse_type()
         default = None
         if self.at_op("="):
@@ -642,7 +644,8 @@ class Parser(ExprParser):
                     if self.at_op("("):
                         self.next()
                         pname = self.expect_ident("the name of the new value").val
-                        if self.eat_op(":"):
+                        self.no_decl_colon("a setter parameter")
+                        if self.type_follows():
                             ptype = self.parse_type()
                         self.expect_op(")")
                         named = True
@@ -739,7 +742,7 @@ class Parser(ExprParser):
             t = self.next()
             if t.kind != "NAME":
                 self.err("expected a field name", t)
-            self.expect_op(":")
+            self.no_decl_colon("a field")
             typ = self.parse_type()
             default = None
             delegate = None
@@ -786,9 +789,11 @@ class Parser(ExprParser):
                     self.next()
                     while not self.at_op(")"):
                         ft = self.peek()
-                        if ft.kind == "NAME" and self.at_op(":", 1):
+                        colon = self.colon_label_at(0, "a case field has no colon: write `Circle(radius Float)`")
+                        if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static", "_") and self.type_follows(1))):
                             self.next()
-                            self.next()
+                            if colon:
+                                self.next()
                             fields.append(FieldDecl(ft.val, self.parse_type(), None, None, line=ft.line))
                         else:
                             fields.append(FieldDecl(None, self.parse_type(), None, None, line=ft.line))
@@ -866,7 +871,7 @@ class Parser(ExprParser):
             if iface and t.kind == "NAME" and t.val == "property" and self.peek(1).kind == "NAME":
                 self.next()
                 nm = self.expect_ident("a property name").val
-                self.expect_op(":")
+                self.no_decl_colon("a property")
                 ty = self.parse_type()
                 self.eat_op(",")
                 need = set()
@@ -890,9 +895,11 @@ class Parser(ExprParser):
                 continue
             if iface and t.kind == "NAME":
                 # embedded interface or property
-                if self.at_op(":", 1):
+                colon = self.colon_label_at(0, "an interface field has no colon: write the name and then its type")
+                if colon or (t.val not in ("any", "static") and self.type_follows(1)):
                     nm = self.next().val
-                    self.next()
+                    if colon:
+                        self.next()
                     ty = self.parse_type()
                     members.append(FieldDecl(nm, ty, None, None, line=t.line))
                 else:
@@ -948,7 +955,7 @@ def _with_setter(td, p, ln):
     """`set_NAME(value) Result[Self, Error]`: the visible function for a property whose setter can fail. It runs the setter on
     a copy and returns the changed tuple, or the setter's `Err`; the original is untouched either way."""
     import copy
-    src = (f"fn set_{p.name}(value: Int) Result[Int, Error]\n"
+    src = (f"fn set_{p.name}(value Int) Result[Int, Error]\n"
            f"  c = self\n  c.__set_{p.name}(value)?\n  Ok(c)\n")
     fn = parse_program(src).stmts[0]
     me = TName([td.name], [[TName([tp.name], []) for tp in td.tparams]] if td.tparams else [])
@@ -1030,7 +1037,7 @@ def expand_delegates(stmts, file=None):
             if d is None or d.__class__ is not TName or d.path[-1] not in failing:
                 continue
             ln = s.line
-            src = f"fn set_{f.name}(value: Int) Result[Int, Error]\n  __set_delegate(self, \"{f.name}\", value)\n"
+            src = f"fn set_{f.name}(value Int) Result[Int, Error]\n  __set_delegate(self, \"{f.name}\", value)\n"
             fn = parse_program(src).stmts[0]
             fn.flags = set(fn.flags or ()) | {"generated"}
             fn.params[0].type = copy.deepcopy(f.type)

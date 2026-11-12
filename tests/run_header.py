@@ -2,13 +2,13 @@
 import json, os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fails = []
-PROG = '''fiber[2] fn w(tx: ChanW[Int]) Unit
+PROG = '''fiber[2] fn w(tx ChanW[Int]) Unit
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
 println(read(rx)?)
 '''
-NOLIMIT = '''fiber fn w(tx: ChanW[Int]) Unit
+NOLIMIT = '''fiber fn w(tx ChanW[Int]) Unit
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()
 run w(tx)
@@ -99,9 +99,9 @@ chk("moxie/gc has no pool header", moxie(d, "--gc", "--header=h.json", "run", "m
 LIB = '''export fn mk() ChanW[Int]
   rx, tx = Chan[Int][1]()
   tx
-fiber[2] fn work(tx: ChanW[Int]) Unit
+fiber[2] fn work(tx ChanW[Int]) Unit
   \\write(tx, 7)
-export fn go(tx: ChanW[Int]) Unit
+export fn go(tx ChanW[Int]) Unit
   run work(tx)
 '''
 MAIN = '''import lib
@@ -125,10 +125,10 @@ d = project("import lib\nprintln(1)\n", files={"lib.mxi": 'rx, tx = Chan[Int][1]
 chk("a package's top level is counted once it is imported", moxie(d, "pools", "main.mxi"), 0, "Chan     1")
 d = project('import lib\nfor i in 0..3\n  t = lib.mk()\nprintln(1)\n', files={"lib.mxi": LIB})
 chk("a kept resource from a package in a loop is an error naming the package", moxie(d, "pools", "main.mxi"), 1, "lib.mk' creates a Chan that outlives the call")
-d = project('fiber[3] fn w(tx: ChanW[Int]) Unit\n  \\write(tx, 2)\nfn start(tx: ChanW[Int]) Unit\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n')
+d = project('fiber[3] fn w(tx ChanW[Int]) Unit\n  \\write(tx, 2)\nfn start(tx ChanW[Int]) Unit\n  run w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n')
 chk("fibers started by a helper function are counted", moxie(d, "pools", "main.mxi"), 0, "largest possible fiber count: 4")
 BOXLIB = '''export tuple Box
-  n: Int
+  n Int
 impl Box
   fn chan(self) ChanW[Int]
     rx, tx = Chan[Int][1]()
@@ -153,8 +153,8 @@ d = project(PB, FM.format(t="2199"))
 chk("one byte less is refused, with the pools named", moxie(d, "run", "main.mxi"), 2, "needs 2200 bytes", "152 for pools")
 chk("the pool report gives the pool memory", moxie(d, "pools", "main.mxi"), 0, "pool memory: 152 bytes")
 TUP = '''tuple Point
-  x: Double
-  y: Float
+  x Double
+  y Float
 rx, tx = Chan[Point][3]()
 println(1)
 '''
@@ -164,7 +164,7 @@ d = project("rx, tx = Chan[String]()\nprintln(1)\n", FM.format(t="4KiB"))
 chk("a pool whose size is not known cannot be budgeted", moxie(d, "run", "main.mxi"), 2, "the size of the pools is not known", "line 1", "Chan")
 d = project("a = Atom(7)\nb = Atom(\"x\")\nprintln(1)\n", FM.format(t="4KiB"))
 chk("an Atom with no type argument is sized from a literal, else it is not known", moxie(d, "run", "main.mxi"), 2, "write the type of the Atom")
-FP = '''fiber[2] fn w(tx: ChanW[Int]) Unit
+FP = '''fiber[2] fn w(tx ChanW[Int]) Unit
   rx2, tx2 = Chan[Int][1]()
   \\write(tx, 2)
 rx, tx = Chan[Int][1]()

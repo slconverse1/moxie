@@ -26,16 +26,16 @@ def make(files):
 D = make({
     "util.mxi": '//! Small helpers.\n\n/// The greeting.\nexport fn greeting() String\n  "hello"\n\ninternal retry_limit = 3\n',
     "shapes/Moxie.toml": 'name = "shapes"\nfiles = ["base.mxi", "area.mxi"]\n',
-    "shapes/base.mxi": '//! Shapes with areas.\ninternal pi_ish = 3\n\n/// A square.\nexport tuple Square\n  side: Int\n',
-    "shapes/area.mxi": '/// Area of a square. See [`shapes.Square`].\n///\n/// > area(Square(side: 3))\n/// 9\nexport pure fn area(s: Square) Int\n  s.side * s.side + pi_ish - 3\n',
+    "shapes/base.mxi": '//! Shapes with areas.\ninternal pi_ish = 3\n\n/// A square.\nexport tuple Square\n  side Int\n',
+    "shapes/area.mxi": '/// Area of a square. See [`shapes.Square`].\n///\n/// > area(Square(side: 3))\n/// 9\nexport pure fn area(s Square) Int\n  s.side * s.side + pi_ish - 3\n',
     "app.mxi": 'import shapes\nimport util\nprintln(shapes.area(shapes.Square(side: 4)))\nprintln(util.greeting())\n',
     "bad.mxi": 'import util\nprintln(util.retry_limit)\n',
     "bad2.mxi": 'import util (retry_limit)\nprintln(retry_limit)\n',
     "alias.mxi": 'import util as u\nprintln(u.retry_limit)\n',
     "rebound.mxi": 'import util\nx = util\nprintln(x.retry_limit)\n',
     "main.mxi": 'println("main")\n',
-    "kinds.mxi": 'internal tuple Secret\n  n: Int\ntuple Local\n  n: Int\nexport tuple Pub\n  n: Int\n',
-    "usetypes.mxi": 'import kinds\nfn f(s: kinds.Secret) Int\n  s.n\nfn g(l: kinds.Local) Int\n  l.n\nfn h(p: kinds.Pub) Int\n  p.n\n',
+    "kinds.mxi": 'internal tuple Secret\n  n Int\ntuple Local\n  n Int\nexport tuple Pub\n  n Int\n',
+    "usetypes.mxi": 'import kinds\nfn f(s kinds.Secret) Int\n  s.n\nfn g(l kinds.Local) Int\n  l.n\nfn h(p kinds.Pub) Int\n  p.n\n',
     "broken/Moxie.toml": 'files = ["one.mxi", "gone.mxi"]\n',
     "broken/one.mxi": 'export fn f() Int\n  1\n',
     "usebroken.mxi": 'import broken\nprintln(broken.f())\n',
@@ -86,7 +86,7 @@ chk("a broken qualified link is reported by --check", make({"p/Moxie.toml": 'fil
 chk("--std adds the packages that ship with moxie", D, ["--gc", "doc", "app.mxi", "--all", "--std"], 0, "shapes")
 
 # local (private) impls of a foreign interface for a foreign type
-SQ = 'export tuple Square\n  side: Int\n'
+SQ = 'export tuple Square\n  side Int\n'
 SP = 'export interface Speaker\n  fn say(self) String\n'
 IMPL = 'impl talk.Speaker for shapes.Square\n  fn say(self) String\n    "side ${self.side}"\n'
 HEAD = 'import shapes\nimport talk\n'
@@ -99,7 +99,7 @@ O = make({
     "viaimport.mxi": 'import mid\nprintln(mid.mk().say())\n',
     "inside.mxi": 'import mid\nprintln(mid.inside())\n',
     "both.mxi": 'import mid\nimport mid2\nprintln(mid.inside())\nprintln(mid2.inside2())\n',
-    "owned.mxi": 'import talk\ntuple Sq\n  side: Int\nimpl talk.Speaker for Sq\n  fn say(self) String\n    "mine"\nprintln(Sq(side: 1).say())\n',
+    "owned.mxi": 'import talk\ntuple Sq\n  side Int\nimpl talk.Speaker for Sq\n  fn say(self) String\n    "mine"\nprintln(Sq(side: 1).say())\n',
    })
 chk("a local impl of a foreign interface for a foreign type works in its own package", O, ["ok.mxi"], 0, "side 4")
 chk("a second local impl of the same pair is an error", O, ["twice.mxi"], 2, "already implements")

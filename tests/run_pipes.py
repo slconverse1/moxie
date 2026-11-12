@@ -28,7 +28,7 @@ def chk(name, res, rc_want, *wants, absent=(), under=None):
     print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}, {dt:.1f}s) {out[:300]!r}"))
     if not ok: fails.append(name)
 
-ECHO = '''fiber fn serve(l: Listener) Result[Unit, Error]
+ECHO = '''fiber fn serve(l Listener) Result[Unit, Error]
   c = accept(l)?
   for line in lines(c)
     println(c, "echo $line")
@@ -86,7 +86,7 @@ chk("make_fifo twice is IO_ERROR", run('init\n  make_fifo("@FIFO@")?\n  println(
 chk("a named pipe opens one way only", run('init\n  make_fifo("@FIFO@")?\n  println(open_file("@FIFO@", ReadWrite))\n'), 0, "code: 11", "reading or for writing")
 chk("make_fifo needs fs.write", run('init\n  println(make_fifo("@FIFO@"))\n', ("--allow-read", "--allow-write=/nonexistent")), 0, "code: 10")
 chk("the browser has no named pipes", run('init\n  println(make_fifo("@FIFO@"))\n', ("--platform=browser",)), 0, "not available here")
-HELD = '''fiber fn reader(path: String) Result[Unit, Error]
+HELD = '''fiber fn reader(path String) Result[Unit, Error]
   r = open_file(path, ReadOnly)?
   println(read_line(r))
   Ok(())

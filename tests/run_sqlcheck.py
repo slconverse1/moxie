@@ -14,7 +14,7 @@ CREATE TABLE accounts (
 );
 """
 MAN = '[database]\nschema = "schema.sql"\ndriver = "sqlite"\n'
-HEAD = 'fn q(conn: Connection, min_value: Double, amount: Int) Result[Unit, Error]\n'
+HEAD = 'fn q(conn Connection, min_value Double, amount Int) Result[Unit, Error]\n'
 def prog(body): return HEAD + "".join("  " + l + "\n" for l in body.strip("\n").split("\n")) + "  Ok(())\nprintln(1)\n"
 def run(body, manifest=MAN, cmd="check"):
     d = tempfile.mkdtemp()

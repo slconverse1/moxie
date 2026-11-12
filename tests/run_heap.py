@@ -12,7 +12,7 @@ GARBAGE = '''fn main() Unit
   println(n)
 main()
 '''
-FIBER = '''fiber fn hold(done: ChanW[Int]) Unit
+FIBER = '''fiber fn hold(done ChanW[Int]) Unit
   xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i) -> acc + i)
   \\write(done, len(xs))
 rx, tx = Chan[Int][1]()

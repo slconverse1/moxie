@@ -2,7 +2,7 @@
 Run: python3 tests/run_monoid.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATS = 'tuple Stats deriving show\n  count: Int\n  total: Int\nimpl Semigroup for Stats\n  fn combine(self, other: Stats) Stats\n    Stats(count: self.count + other.count, total: self.total + other.total)\nimpl Monoid for Stats\n  static fn empty() Stats = Stats(count: 0, total: 0)\n'
+STATS = 'tuple Stats deriving show\n  count Int\n  total Int\nimpl Semigroup for Stats\n  fn combine(self, other Stats) Stats\n    Stats(count: self.count + other.count, total: self.total + other.total)\nimpl Monoid for Stats\n  static fn empty() Stats = Stats(count: 0, total: 0)\n'
 CASES = [
  ("strings", 'println(fold_all(List("a", "b", "c")))\nprintln("x".combine("y"))\n', "abc\nxy"),
  ("lists", 'println(fold_all(List(List(1), List(2, 3))))\n', "List(1, 2, 3)"),
@@ -13,11 +13,11 @@ CASES = [
  ("fold_map", 'println(fold_map(fn (w) -> List(len(w)), List("a", "bb", "ccc")))\n', "List(1, 2, 3)"),
  ("your own type", STATS + 'println(fold_map(fn (n) -> Stats(count: 1, total: n), List(4, 6, 8)))\n', "Stats(count: 3, total: 18)"),
  ("an empty input gives empty", STATS + 'println(fold_all[Stats](List()))\nprintln(fold_all[String](List()) == "")\n', "Stats(count: 0, total: 0)\ntrue"),
- ("a generic function over Monoid", STATS + 'fn twice[T: Monoid](x: T) T\n  x.combine(x)\nprintln(twice(Stats(count: 1, total: 5)))\nprintln(twice("ab"))\n', "Stats(count: 2, total: 10)\nabab"),
- ("a program may declare its own Sum", 'tuple Sum\n  n: Int\nprintln(Sum(n: 1))\n', "Sum(n: 1)"),
+ ("a generic function over Monoid", STATS + 'fn twice[T Monoid](x T) T\n  x.combine(x)\nprintln(twice(Stats(count: 1, total: 5)))\nprintln(twice("ab"))\n', "Stats(count: 2, total: 10)\nabab"),
+ ("a program may declare its own Sum", 'tuple Sum\n  n Int\nprintln(Sum(n: 1))\n', "Sum(n: 1)"),
 ]
 BAD = [
- ("a bound is checked", 'fn g[T: Monoid](x: T) T\n  x\nprintln(g(5))\n', "`Int` doesn't implement `Monoid`"),
+ ("a bound is checked", 'fn g[T Monoid](x T) T\n  x\nprintln(g(5))\n', "`Int` doesn't implement `Monoid`"),
  ("fold_all gives the item type", 'n: Int = fold_all(List("a", "b"))\n', "expected `Int`, found `String`"),
 ]
 fails = []

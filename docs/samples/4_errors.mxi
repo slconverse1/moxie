@@ -1,11 +1,11 @@
 // No exceptions. Failures are values, and ? passes them up.
-fn fetch_first(id: Int) Result[Int, Error]
+fn fetch_first(id Int) Result[Int, Error]
   if id < 0
     fail(7, "negative id")
   else
     Ok(10)
 
-fn fetch_total(id: Int) Result[Int, Error]
+fn fetch_total(id Int) Result[Int, Error]
   a = fetch_first(id)?
   b = fetch_first(id + 1)?
   Ok(a + b)

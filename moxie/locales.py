@@ -54,7 +54,7 @@ def tuple_source():
     types = {"decimal": "String", "group": "String", "date_order": "String", "date_sep": "String", "hour24": "Bool"}
     lines = ["tuple Locale"]
     for k in ORDER:
-        lines.append(f"  {k}: {types.get(k, 'List[String]')} = {_lit(DEFAULT[k])}")
+        lines.append(f"  {k} {types.get(k, 'List[String]')} = {_lit(DEFAULT[k])}")
     return "\n".join(lines) + "\n"
 
 

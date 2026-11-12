@@ -4,18 +4,18 @@
 //! `tests/run_selfhost.py` checks it against `moxie/lexer.py`.
 
 export tuple Token
-  kind: String,
-  text: String,
-  line: Int,
-  col: Int
+  kind String,
+  text String,
+  line Int,
+  col Int
 
-fn is_digit(c: Char) Bool
+fn is_digit(c Char) Bool
   c >= '0' and c <= '9'
 
-fn is_id_start(c: Char) Bool
+fn is_id_start(c Char) Bool
   c == '_' or (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z')
 
-fn is_id_char(c: Char) Bool
+fn is_id_char(c Char) Bool
   is_id_start(c) or is_digit(c)
 
 // The operators, longest first, so `|>>` wins over `|>` and `|`.
@@ -25,10 +25,10 @@ ops = List("...", "..=", "|>>", "<$>", "<*>", ">>=", "<<=",
            "+", "-", "*", "/", "%", "<", ">", "=", "&", "|", "^", "~", "(", ")", "[", "]",
            "{", "}", ",", ":", ".", "?", "@", ";", "!", "$", "\\")
 
-fn text_of(cs: List[Char], from: Int, to: Int) String
+fn text_of(cs List[Char], from Int, to Int) String
   cs |> to_stream() |> drop(from) |> take(to - from) |> map((c) -> "$c") |> join("")
 
-fn op_at(cs: List[Char], i: Int) String
+fn op_at(cs List[Char], i Int) String
   for op in ops
     n = len(op)
     if i + n <= len(cs) and text_of(cs, i, i + n) == op
@@ -37,30 +37,30 @@ fn op_at(cs: List[Char], i: Int) String
 
 // The scanner's state: where it is, which line it is on, where that line began, and the tokens so far.
 tuple Lx
-  i: Int,
-  line: Int,
-  line_start: Int,
-  out: List[Token]
+  i Int,
+  line Int,
+  line_start Int,
+  out List[Token]
 
-fn emit(st: Lx, kind: String, text: String, to: Int) Lx
+fn emit(st Lx, kind String, text String, to Int) Lx
   t = Token(kind: kind, text: text, line: st.line, col: st.i - st.line_start + 1)
   Lx(...st, i: to, out: st.out + t)
 
-fn skip_while(cs: List[Char], from: Int, ok: (Char) -> Bool) Int
+fn skip_while(cs List[Char], from Int, ok (Char) -> Bool) Int
   for k in from..len(cs)
     if not ok(cs(k))
       break(k)
   else
     len(cs)
 
-fn is_hex(c: Char) Bool
+fn is_hex(c Char) Bool
   is_digit(c) or (c >= 'a' and c <= 'f') or (c >= 'A' and c <= 'F')
 
-fn is_alnum(c: Char) Bool
+fn is_alnum(c Char) Bool
   is_id_char(c)
 
 // A run of digits where a single `_` may sit between two digits (`1_000`).
-fn skip_digits(cs: List[Char], from: Int) Int
+fn skip_digits(cs List[Char], from Int) Int
   for k in from..len(cs)
     ok = is_digit(cs(k)) or (cs(k) == '_' and k > from and k + 1 < len(cs) and is_digit(cs(k + 1)) and is_digit(cs(k - 1)))
     if not ok
@@ -72,20 +72,20 @@ fn skip_digits(cs: List[Char], from: Int) Int
 suffixes = List("i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f", "d", "ns", "us", "ms", "s", "m", "h")
 
 // The suffix at `j` (not followed by a letter, digit, or `_`), or "".
-fn suffix_at(cs: List[Char], j: Int) String
+fn suffix_at(cs List[Char], j Int) String
   for sx in suffixes
     n = len(sx)
     if j + n <= len(cs) and text_of(cs, j, j + n) == sx and (j + n == len(cs) or not is_alnum(cs(j + n)))
       return sx
   ""
 
-fn is_radix(c: Char) Bool
+fn is_radix(c Char) Bool
   c == 'x' or c == 'X' or c == 'o' or c == 'O' or c == 'b' or c == 'B'
 
-fn radix_digit(base: Char, c: Char) Bool
+fn radix_digit(base Char, c Char) Bool
   c == '_' or (if base == 'x' or base == 'X' then is_hex(c) else (if base == 'o' or base == 'O' then c >= '0' and c <= '7' else c == '0' or c == '1'))
 
-fn number_kind(suffix: String, is_float: Bool) String
+fn number_kind(suffix String, is_float Bool) String
   if suffix == "ns" or suffix == "us" or suffix == "ms" or suffix == "s" or suffix == "m" or suffix == "h"
     "DUR"
   elif suffix == "d"
@@ -95,7 +95,7 @@ fn number_kind(suffix: String, is_float: Bool) String
   else
     "INT"
 
-fn scan_radix(cs: List[Char], st: Lx) Lx
+fn scan_radix(cs List[Char], st Lx) Lx
   base = cs(st.i + 1)
   end = skip_while(cs, st.i + 2, (c) -> radix_digit(base, c))
   hex = base == 'x' or base == 'X'
@@ -104,7 +104,7 @@ fn scan_radix(cs: List[Char], st: Lx) Lx
   stop = if keep then end + len(sx) else end
   emit(st, "INT", text_of(cs, st.i, stop), stop)
 
-fn scan_decimal(cs: List[Char], st: Lx) Lx
+fn scan_decimal(cs List[Char], st Lx) Lx
   j = skip_digits(cs, st.i)
   frac = j + 1 < len(cs) and cs(j) == '.' and is_digit(cs(j + 1))
   k = if frac then skip_digits(cs, j + 1) else j
@@ -115,7 +115,7 @@ fn scan_decimal(cs: List[Char], st: Lx) Lx
   stop = end + len(sx)
   emit(st, number_kind(sx, frac or has_exp), text_of(cs, st.i, stop), stop)
 
-fn scan_number(cs: List[Char], st: Lx) Lx
+fn scan_number(cs List[Char], st Lx) Lx
   if cs(st.i) == '0' and st.i + 1 < len(cs) and is_radix(cs(st.i + 1))
     scan_radix(cs, st)
   else
@@ -123,7 +123,7 @@ fn scan_number(cs: List[Char], st: Lx) Lx
 
 // A quoted token whose opening is `open` characters long (`"`, `'`, `b"`, `b'`) and whose closing character is `quote`.
 // A backslash skips the character after it, so `\"` and `\'` do not end the token.
-fn scan_quoted(cs: List[Char], st: Lx, open: Int, quote: Char, kind: String) Lx
+fn scan_quoted(cs List[Char], st Lx, open Int, quote Char, kind String) Lx
   j = st.i + open
   end = while j < len(cs) and cs(j) ~= quote
     j = if cs(j) == '\\' then j + 2 else j + 1
@@ -132,15 +132,15 @@ fn scan_quoted(cs: List[Char], st: Lx, open: Int, quote: Char, kind: String) Lx
   emit(st, kind, text_of(cs, st.i, end + 1), end + 1)
 
 // How many `#` follow the `r` at `i`, when they are followed by `"` (a raw string opens there), otherwise -1.
-fn raw_hashes(cs: List[Char], i: Int) Int
+fn raw_hashes(cs List[Char], i Int) Int
   h = skip_while(cs, i + 1, (c) -> c == '#') - (i + 1)
   if i + 1 + h < len(cs) and cs(i + 1 + h) == '"' then h else -1
 
 // Does a raw string that opened with `h` hashes close at `k` (a `"` followed by `h` hashes)?
-fn raw_closes(cs: List[Char], k: Int, h: Int) Bool
+fn raw_closes(cs List[Char], k Int, h Int) Bool
   k + h < len(cs) and cs(k) == '"' and skip_while(cs, k + 1, (c) -> c == '#') - (k + 1) >= h
 
-fn scan_raw(cs: List[Char], st: Lx, h: Int) Lx
+fn scan_raw(cs List[Char], st Lx, h Int) Lx
   j = st.i + 2 + h
   end = while j < len(cs) and not raw_closes(cs, j, h)
     j = j + 1
@@ -151,15 +151,15 @@ fn scan_raw(cs: List[Char], st: Lx, h: Int) Lx
 
 // A block comment, which nests. Its line breaks move the line count but make no `NL`.
 tuple Cm
-  k: Int,
-  depth: Int,
-  line: Int,
-  ls: Int
+  k Int,
+  depth Int,
+  line Int,
+  ls Int
 
-fn pair_at(cs: List[Char], k: Int, a: Char, b: Char) Bool
+fn pair_at(cs List[Char], k Int, a Char, b Char) Bool
   k + 1 < len(cs) and cs(k) == a and cs(k + 1) == b
 
-fn comment_step(cs: List[Char], c: Cm) Cm
+fn comment_step(cs List[Char], c Cm) Cm
   if pair_at(cs, c.k, '/', '*')
     Cm(...c, k: c.k + 2, depth: c.depth + 1)
   elif pair_at(cs, c.k, '*', '/')
@@ -169,7 +169,7 @@ fn comment_step(cs: List[Char], c: Cm) Cm
   else
     Cm(...c, k: c.k + 1)
 
-fn skip_block_comment(cs: List[Char], st: Lx) Lx
+fn skip_block_comment(cs List[Char], st Lx) Lx
   c = Cm(k: st.i + 2, depth: 1, line: st.line, ls: st.line_start)
   done = while c.k < len(cs) and c.depth > 0
     c = comment_step(cs, c)
@@ -177,7 +177,7 @@ fn skip_block_comment(cs: List[Char], st: Lx) Lx
     c
   Lx(...st, i: done.k, line: done.line, line_start: done.ls)
 
-fn scan_operator(cs: List[Char], st: Lx) Lx
+fn scan_operator(cs List[Char], st Lx) Lx
   op = op_at(cs, st.i)
   if op == ""
     emit(st, "ERR", "${cs(st.i)}", st.i + 1)
@@ -185,7 +185,7 @@ fn scan_operator(cs: List[Char], st: Lx) Lx
     emit(st, "OP", op, st.i + len(op))
 
 // One step: the state after the token (or the blank, comment, or line break) at the current position.
-fn step(cs: List[Char], st: Lx) Lx
+fn step(cs List[Char], st Lx) Lx
   c = cs(st.i)
   if c == '\n'
     after = emit(st, "NL", "", st.i + 1)
@@ -215,7 +215,7 @@ fn step(cs: List[Char], st: Lx) Lx
     scan_operator(cs, st)
 
 // Every raw token of `src`. A line break is an `NL` token. Anything outside the slice is an `ERR` token holding the character.
-export fn lex(src: String) List[Token]
+export fn lex(src String) List[Token]
   cs = chars(src) |> collect()
   st = Lx(i: 0, line: 1, line_start: 0, out: List[Token]())
   done = while st.i < len(cs)
@@ -233,27 +233,27 @@ cont_starters = List("|>", "|>>", "~>", "<~", "<$>", "<*>")
 word_ops = List("and", "or", "not", "in", "is")
 accessors = List("get", "set", "priv", "did_set", "will_set")
 
-fn has(xs: List[String], x: String) Bool
+fn has(xs List[String], x String) Bool
   xs |> any(_ == x)
 
-fn mk(kind: String, line: Int) Token
+fn mk(kind String, line Int) Token
   Token(kind: kind, text: "", line: line, col: 1)
 
 // One physical line's tokens, in order, with the line breaks left out.
 tuple Gp
-  rows: List[List[Token]],
-  cur: List[Token]
+  rows List[List[Token]],
+  cur List[Token]
 
-fn last_of(xs: List[Token]) Token
+fn last_of(xs List[Token]) Token
   xs(len(xs) - 1)
 
-fn group_step(g: Gp, t: Token) Gp
+fn group_step(g Gp, t Token) Gp
   if t.kind == "NL"
     if len(g.cur) > 0 then Gp(rows: g.rows + List(g.cur), cur: List[Token]()) else g
   else
     Gp(...g, cur: g.cur + t)
 
-fn group_lines(toks: List[Token]) List[List[Token]]
+fn group_lines(toks List[Token]) List[List[Token]]
   g = Gp(rows: List[List[Token]](), cur: List[Token]())
   i = 0
   done = while i < len(toks)
@@ -264,22 +264,22 @@ fn group_lines(toks: List[Token]) List[List[Token]]
   if len(done.cur) > 0 then done.rows + List(done.cur) else done.rows
 
 tuple Sx
-  stack: List[Int],
-  depth: Int,
-  stmt_indent: Int,
-  prev: List[Token],
-  have_line: Bool,
-  opens: Bool,
-  out: List[Token]
+  stack List[Int],
+  depth Int,
+  stmt_indent Int,
+  prev List[Token],
+  have_line Bool,
+  opens Bool,
+  out List[Token]
 
-fn drop_last(xs: List[Int]) List[Int]
+fn drop_last(xs List[Int]) List[Int]
   xs(..len(xs) - 1)
 
-fn top_of(stack: List[Int]) Int
+fn top_of(stack List[Int]) Int
   stack(len(stack) - 1)
 
 // Pops indentation levels deeper than `target`, giving a DEDENT for each.
-fn dedent_to(sx: Sx, target: Int, line: Int) Sx
+fn dedent_to(sx Sx, target Int, line Int) Sx
   st = sx
   done = while len(st.stack) > 1 and top_of(st.stack) > target
     st = Sx(...st, stack: drop_last(st.stack), out: st.out + mk("DEDENT", line))
@@ -287,7 +287,7 @@ fn dedent_to(sx: Sx, target: Int, line: Int) Sx
     st
   done
 
-fn continues(sx: Sx, row: List[Token]) Bool
+fn continues(sx Sx, row List[Token]) Bool
   first = row(0)
   if not sx.have_line
     false
@@ -299,7 +299,7 @@ fn continues(sx: Sx, row: List[Token]) Bool
       or (first.kind == "OP" and has(cont_starters, first.text)) \
       or (first.kind == "OP" and first.text == "." and len(row) > 1 and row(1).kind == "NAME" and row(1).col == first.col + 1)
 
-fn bracket_delta(t: Token) Int
+fn bracket_delta(t Token) Int
   if t.kind == "OP" and (t.text == "(" or t.text == "[" or t.text == "{")
     1
   elif t.kind == "OP" and (t.text == ")" or t.text == "]" or t.text == "}")
@@ -307,10 +307,10 @@ fn bracket_delta(t: Token) Int
   else
     0
 
-fn depth_after(depth: Int, row: List[Token]) Int
+fn depth_after(depth Int, row List[Token]) Int
   depth + (row |> to_stream() |> map(bracket_delta) |> sum())
 
-fn step_line(sx: Sx, row: List[Token]) Sx
+fn step_line(sx Sx, row List[Token]) Sx
   first = row(0)
   cont = continues(sx, row)
   st = if cont
@@ -333,7 +333,7 @@ fn step_line(sx: Sx, row: List[Token]) Sx
   Sx(...st, depth: d, prev: row, have_line: true, opens: false, out: st.out + row)
 
 // The tokens with NL, INDENT, and DEDENT in place, ending with EOF on line `last_line`.
-export fn structure(toks: List[Token], last_line: Int) List[Token]
+export fn structure(toks List[Token], last_line Int) List[Token]
   rows = group_lines(toks)
   sx = Sx(stack: List(0), depth: 0, stmt_indent: 0, prev: List[Token](), have_line: false, opens: false, out: List[Token]())
   i = 0
@@ -347,10 +347,10 @@ export fn structure(toks: List[Token], last_line: Int) List[Token]
   tail.out + mk("EOF", last_line)
 
 // Every token of `src`, with logical lines.
-export fn lex_lines(src: String) List[Token]
+export fn lex_lines(src String) List[Token]
   toks = lex(src)
   structure(toks, 1 + (chars(src) |> filter((c) -> c == '\n') |> count()))
 
-fn show_token(t: Token) String
+fn show_token(t Token) String
   "${t.kind}\t${t.text}\t${t.line}\t${t.col}"
 

@@ -4,7 +4,7 @@ run (so no signature gives a type the interpreter does not produce), and each sa
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PRE = 'xs = List(3, 1, 2)\nws = List("b", "a")\nd: Dict[String, Int] = Dict("a": 1)\nr: Result[Int, String] = Ok(4)\nat = Atom[Int](0)\n'
+PRE = 'xs = List(3, 1, 2)\nws = List("b", "a")\nd: Dict[String, Int] = Dict("a" -> 1)\nr: Result[Int, String] = Ok(4)\nat = Atom[Int](0)\n'
 SAMPLES = [
  ("List[Int]", 'xs |> map((x) -> x + 1) |> collect()'),
  ("List[Int]", 'map((x) -> x + 1, xs)'),

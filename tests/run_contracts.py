@@ -2,15 +2,15 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PROG = '''fn inc(x: Int) Int
+PROG = '''fn inc(x Int) Int
   requires x > 0
   ensures result > x
   x + 1
-fn bad(x: Int) Int
+fn bad(x Int) Int
   ensures result > x
   x - 1
 tuple P
-  a: Int
+  a Int
   invariant a >= 0
 '''
 
@@ -43,13 +43,13 @@ chk("--release strips checks", rc == 0 and o.strip() == "1")
 IF = '''interface Named
   fn name(self) String
     ensures len(result) > 0
-  fn pick(self, n: Int) Int
+  fn pick(self, n Int) Int
     requires n >= 0
 tuple Cat
-  nm: String
+  nm String
 impl Named for Cat
   fn name(self) String = self.nm
-  fn pick(self, k: Int) Int = k + 1
+  fn pick(self, k Int) Int = k + 1
 '''
 def run2(body, *flags):
     with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
@@ -69,7 +69,7 @@ rc, o = run2('impl Named for Cat\n  fn name(self) String = self.nm\n' if False e
 BADIMPL = '''interface Named
   fn name(self) String
 tuple Cat
-  nm: String
+  nm String
 impl Named for Cat
   fn name(self) String
     ensures len(result) > 0

@@ -32,7 +32,7 @@ case("try_fmt with a bad spec is an Err, not a crash", 't = "{:.2f}"\nwhen try_f
 case("try_fmt with the wrong count is an Err", 't = "{} {}"\nwhen try_fmt(t, 1)\n  Ok(s) -> println(s)\n  Err(e) -> println(e.message)\n', 0, "more fields than arguments")
 case("try_fmt with a literal is still checked", 'println(try_fmt("{}", 1, 2))\n', 2, "has 1 field, but 2 arguments are given")
 case("try_fmt gives a Result", 'r: Result[String, Error] = try_fmt("{}", 7)\nprintln(is_ok(r))\n', 0, "true")
-case("a user function named fmt wins", 'fn fmt(a: Int) Int\n  a + 1\nprintln(fmt(1))\n', 0, "2")
+case("a user function named fmt wins", 'fn fmt(a Int) Int\n  a + 1\nprintln(fmt(1))\n', 0, "2")
 
 print()
 print("FAILURES: " + ", ".join(fails) if fails else "all fmt function tests passed")

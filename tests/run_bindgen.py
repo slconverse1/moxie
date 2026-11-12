@@ -104,8 +104,8 @@ chk("a writable buffer becomes ref Array[Byte]", "fn mini_fill(ref buf: Array[By
 
 # end to end: wrappers over the generated bindings, called from moxie
 prog = text + '''
-export pure fn add(a: Int32, b: Int32) Int32 = mini_add(a, b)
-export fn parse_count(s: String) Result[Int32, Error]
+export pure fn add(a Int32, b Int32) Int32 = mini_add(a, b)
+export fn parse_count(s String) Result[Int32, Error]
   n = 0i32
   code = mini_parse(cstr(s), ref n)
   if code ~= 0i32
@@ -120,7 +120,7 @@ k = mini_connect(cstr("db"))?
 println("connected ${mini_hits(k)}")
 mini_close(k)
 println(mini_connect(cstr("x")))
-fn show(v: Int32) Unit
+fn show(v Int32) Unit
   println("item $v")
 println("each ${mini_each(show)}")
 println("feed ${mini_feed(b"abc", (d) -> len(d))}")
@@ -154,7 +154,7 @@ println("${add(2i32, 3i32)} ${parse("42")} ${parse("x")}")
 c = connect_("db")?
 println("hits ${hits(c)}")
 close_(move c)
-fn show2(v: Int32) Unit
+fn show2(v Int32) Unit
   println("item $v")
 println("each ${each(show2)}")
 println("feed ${feed(b"abcd", (data) -> len(data))}")

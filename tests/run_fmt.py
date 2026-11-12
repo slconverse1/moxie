@@ -52,14 +52,14 @@ check("--check passes after fmt", fmt_main(["--check", d], io.StringIO(), e), 0)
 open(os.path.join(d, "b.mxi"), "w").write("fn g() Int:\n\t1\n")
 check("a file that does not parse exits 2", fmt_main([d], io.StringIO(), e), 2)
 check("spaces around binary operators and after commas", format_source("x=a+b*2\ny = f(a,b ,c)\nz = g(-1, x-1)\n"), "x = a + b * 2\ny = f(a, b, c)\nz = g(-1, x - 1)\n")
-check("arrows, comparisons and pipes", format_source('fn f(x: Int) Int\n  when x\n    1->2\n    _->3\nok = 1==1\nv = 2|>f\n'),
-      'fn f(x: Int) Int\n  when x\n    1 -> 2\n    _ -> 3\nok = 1 == 1\nv = 2 |> f\n')
+check("arrows, comparisons and pipes", format_source('fn f(x Int) Int\n  when x\n    1->2\n    _->3\nok = 1==1\nv = 2|>f\n'),
+      'fn f(x Int) Int\n  when x\n    1 -> 2\n    _ -> 3\nok = 1 == 1\nv = 2 |> f\n')
 check("strings and comments are not touched", format_source('s = "a,b+c==d"  // x,y=1\n'), 's = "a,b+c==d"  // x,y=1\n')
 check("a blank line before a declaration after a block", format_source('fn a() Int\n  1\nfn b() Int\n  2\n'), 'fn a() Int\n  1\n\nfn b() Int\n  2\n')
 check("no blank line is added after a comment", format_source('fn a() Int\n  1\n/// doc\nfn b() Int\n  2\n'), 'fn a() Int\n  1\n/// doc\nfn b() Int\n  2\n')
 check("a fragment that does not parse still gets layout only", format_source("x=(\n"), "x=(\n")
 check("a block under a continuation line stays deeper than it", format_source('x = 5\n    |> seq\n      a -> b\n      c -> d\ny = 1\n'), 'x = 5\n    |> seq\n      a -> b\n      c -> d\ny = 1\n')
-check("an operator method name keeps its form", format_source('impl Money\n  fn +(other: Money) Money\n    other\n'), 'impl Money\n  fn +(other: Money) Money\n    other\n')
+check("an operator method name keeps its form", format_source('impl Money\n  fn +(other Money) Money\n    other\n'), 'impl Money\n  fn +(other Money) Money\n    other\n')
 check("a fragment that changes meaning when spaced is left with layout only", format_source("x = 1\ny = 2\n"), "x = 1\ny = 2\n")
 LONG = 'fn main() Unit\n  result = compute_something_long(first_argument_name, second_argument_name, third_argument_name, fourth_arg)\n  println(result)\n'
 check("a long call breaks one argument to a line", format_source(LONG),
@@ -67,8 +67,8 @@ check("a long call breaks one argument to a line", format_source(LONG),
 check("a line that fits is left alone", format_source("x = foo(a, b)\n"), "x = foo(a, b)\n")
 check("breaking is stable", format_source(format_source(LONG)), format_source(LONG))
 check("a long parameter list breaks and the body stays put",
-      format_source('fn very_long_function_name(first_parameter: Int, second_parameter: String, third_parameter: List[Int]) Int\n  first_parameter\n'),
-      'fn very_long_function_name(\n  first_parameter: Int,\n  second_parameter: String,\n  third_parameter: List[Int]\n) Int\n  first_parameter\n')
+      format_source('fn very_long_function_name(first_parameter Int, second_parameter String, third_parameter List[Int]) Int\n  first_parameter\n'),
+      'fn very_long_function_name(\n  first_parameter Int,\n  second_parameter String,\n  third_parameter List[Int]\n) Int\n  first_parameter\n')
 check("nested groups break from the outside in", format_source("total = alpha(beta(gamma(delta_value_with_long_name, epsilon_value_with_long_name), zeta_value_with_long_name), eta_value_xx)\n"),
       "total = alpha(\n  beta(\n    gamma(delta_value_with_long_name, epsilon_value_with_long_name),\n    zeta_value_with_long_name\n  ),\n  eta_value_xx\n)\n")
 LS = 's = "' + "a very long string that cannot be broken because it is one token " * 2 + '"\n'

@@ -10,7 +10,7 @@
 /// 212
 /// > to_f(0)
 /// 32
-export pure fn to_f(c: Int) Int
+export pure fn to_f(c Int) Int
   requires c >= -273
   ensures result >= -459
   c * 9 / 5 + 32
@@ -19,8 +19,8 @@ export pure fn to_f(c: Int) Int
 ///
 /// See [`to_f`] for conversion.
 export tuple Reading
-  celsius: Int
-  label: String
+  celsius Int
+  label String
   invariant celsius >= -273
 
 /// Where a reading came from.
@@ -38,7 +38,7 @@ export interface Summary
 ///
 /// > describe(Reading(20, "lab"))
 /// "lab: 20C"
-export pure fn describe(r: Reading) String
+export pure fn describe(r Reading) String
   "${r.label}: ${r.celsius}C"
 
 /// Returns one.
@@ -49,5 +49,5 @@ export pure fn one() Int
   1
 
 /// Prints a greeting.
-export prints fn greet(name: String) Unit
+export prints fn greet(name String) Unit
   println("hello $name")

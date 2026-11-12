@@ -3,7 +3,7 @@ Run: python3 tests/run_concurrency.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-WORKER = '''fiber fn worker(id: Int, out: ChanW[String], stop: Cancel) Unit
+WORKER = '''fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
   while true
     select
       case cancelled(stop) ->
@@ -43,7 +43,7 @@ println(read(rx))
 println("after")
 ''', 0, 'worker 1 stopping', 'worker 2 stopping', 'after')
 
-chk("a scope waits for its fibers at the end", '''fiber fn slow(out: ChanW[String]) Unit
+chk("a scope waits for its fibers at the end", '''fiber fn slow(out ChanW[String]) Unit
   sleep(100ms)
   \\write(out, "slow done")
 
@@ -90,7 +90,7 @@ select
   case _ -> println("default")
 ''', 0, 'seen')
 
-chk("nested scopes wait for their own fibers", '''fiber fn task(name: String, ms: Int, out: ChanW[String]) Unit
+chk("nested scopes wait for their own fibers", '''fiber fn task(name String, ms Int, out ChanW[String]) Unit
   sleep(ms * 1ms)
   \\write(out, name)
 
@@ -105,11 +105,11 @@ println(read(rx))
 println(read(rx))
 ''', 0, 'inner scope over\nouter scope over', 'Ok("inner")', 'Ok("outer")')
 
-chk("a fiber started by a scoped fiber is waited for too", '''fiber fn leaf(out: ChanW[String]) Unit
+chk("a fiber started by a scoped fiber is waited for too", '''fiber fn leaf(out ChanW[String]) Unit
   sleep(30ms)
   \\write(out, "leaf")
 
-fiber fn mid(out: ChanW[String]) Unit
+fiber fn mid(out ChanW[String]) Unit
   _ = run leaf(out)
 
 rx, tx = Chan[String][2]()

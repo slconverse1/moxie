@@ -14,6 +14,21 @@ HARD = {
 ASSIGN_OPS = {"=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="}
 
 
+def edit_row(row, edits):
+    """`row` with the old-style colons at the 1-based columns in `edits` ({col: kind}) rewritten: a declaration colon is
+    deleted, a Dict entry colon becomes ` ->`."""
+    for col, kind in sorted(edits.items(), reverse=True):
+        if col - 1 >= len(row) or row[col - 1] != ":":
+            continue
+        after = row[col:col + 1]
+        gap = " " if after not in (" ", "") else ""
+        if kind == "dict":
+            row = row[:col - 1] + " ->" + gap + row[col:]
+        else:
+            row = row[:col - 1] + gap + row[col:]
+    return row
+
+
 class PBase:
     def __init__(self, toks, file="<input>"):
         self.toks = toks
@@ -96,6 +111,33 @@ class PBase:
         return t.kind == "NAME" and t.val not in HARD
 
     # ---------------------------------------------------------------- types
+    NOT_TYPE_WORDS = ("where", "in", "then", "do", "else", "if", "elif", "and", "or", "not", "is", "as")
+
+    def type_follows(self, k=0):
+        """True when the token at offset k can begin a type that follows a declared name (`x Int`, `xs ...Int`, `f (A) -> B`)."""
+        t = self.peek(k)
+        if t.kind == "NAME":
+            return t.val not in self.NOT_TYPE_WORDS
+        return t.kind == "OP" and (t.val == "..." or (t.val in ("(", "[") and t.sp))
+
+    RECORD = None       # a list while tools/declcolon.py converts old source: old colons are recorded and skipped, not errors
+
+    def no_decl_colon(self, what="a declaration"):
+        if self.at_op(":"):
+            if PBase.RECORD is not None:
+                PBase.RECORD.append(("decl", self.next()))
+                return
+            self.err(f"{what} has no colon: write the name and then its type, as in `x Int`")
+
+    def colon_label_at(self, k, msg):
+        """A name followed by an old-style colon at offset k (declaration position): an error, or in record mode skipped."""
+        if self.peek(k).kind == "NAME" and self.at_op(":", k + 1):
+            if PBase.RECORD is not None:
+                PBase.RECORD.append(("decl", self.peek(k + 1)))
+                return True
+            self.err(msg, self.peek(k + 1))
+        return False
+
     def parse_type(self):
         t = self.parse_type_fn()
         if self.at_op("|"):
@@ -137,9 +179,11 @@ class PBase:
                     if not self.eat_op(","):
                         break
                     continue
-                if self.peek().kind == "NAME" and self.at_op(":", 1):
+                colon = self.colon_label_at(0, "a tuple type has no colon: write `(name String, age Int)`")
+                if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static", "_") and self.type_follows(1))):
                     label = self.next().val
-                    self.next()
+                    if colon:
+                        self.next()
                 items.append((label, self.parse_type()))
                 if not self.eat_op(","):
                     break
@@ -183,9 +227,11 @@ class PBase:
                 if not self.at_op(")"):
                     while True:
                         label = None
-                        if self.peek().kind == "NAME" and self.at_op(":", 1):
+                        colon = self.colon_label_at(0, "a function type has no colon: write `(x Int) -> Int`")
+                        if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static", "_") and self.type_follows(1))):
                             label = self.next().val
-                            self.next()
+                            if colon:
+                                self.next()
                         params.append((label, self.parse_type()))
                         if not self.eat_op(","):
                             break
@@ -246,8 +292,8 @@ class PBase:
             tp = TParam(name, holes, [], None)
             if holes:
                 pass
-            if self.at_op(":"):
-                self.next()
+            self.no_decl_colon("a type parameter bound")
+            if self.type_follows() and not self.at_name("where"):
                 tp.bounds.append(self.parse_type_prim())
                 while self.eat_op("+"):
                     tp.bounds.append(self.parse_type_prim())
@@ -289,8 +335,8 @@ class PBase:
                         break
                 self.expect_op("]")
             tp = TParam(name, holes, [], None)
-            if self.at_op(":"):
-                self.next()
+            self.no_decl_colon("a type parameter bound")
+            if self.type_follows() and not self.at_name("where"):
                 tp.bounds.append(self.parse_type_prim())
                 while self.eat_op("+"):
                     tp.bounds.append(self.parse_type_prim())
@@ -553,9 +599,18 @@ class PBase:
                 sub = type(self)(tokenize(src, self.file), self.file)
                 for tk in sub.toks:
                     tk.line = line
-                e = sub.parse_expr()
-                sub.skip_nl()
-                if sub.peek().kind != "EOF":
-                    sub.err("unexpected text in interpolation")
+                outer = PBase.RECORD
+                if outer is not None:
+                    PBase.RECORD = []
+                try:
+                    e = sub.parse_expr()
+                    sub.skip_nl()
+                    if sub.peek().kind != "EOF":
+                        sub.err("unexpected text in interpolation")
+                finally:
+                    if outer is not None:
+                        inner, PBase.RECORD = PBase.RECORD, outer
+                        if inner and "\n" not in src:
+                            outer.append(("interp", line, src, edit_row(src, {(t.col): k for k, t in inner})))
                 out.append(Interp(e, spec, src, line=line))
         return out

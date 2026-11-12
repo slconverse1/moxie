@@ -4,7 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAD = [
  ("len of a number", 'n = len(5)\n', "`len` can't take (Int)"),
  ("len gives an Int", 'n: String = len("x")\n', "expected `String`, found `Int`"),
- ("hash gives an Int", 'tuple P deriving eq, hash\n  a: Int\nh: String = hash(P(a: 1))\n', "expected `String`, found `Int`"),
+ ("hash gives an Int", 'tuple P deriving eq, hash\n  a Int\nh: String = hash(P(a: 1))\n', "expected `String`, found `Int`"),
  ("parse_iso takes text", 'r = parse_iso(5)\n', "`parse_iso` can't take (Int)"),
  ("parse_time takes two strings", 'r = parse_time("2024", 3)\n', "`parse_time` can't take"),
  ("listen takes a port", 'l = listen("80")\n', "`listen` can't take (String)"),
@@ -15,15 +15,15 @@ BAD = [
  ("read_key takes a Terminal", 'k = read_key(5)\n', "`read_key` can't take (Int)"),
  ("run_command has no such option", 'r = run_command("echo", bogus: 1)\n', "`run_command` has no option `bogus`"),
  ("run_command gives Output fields", 'o = run_command("echo", List("hi"))?\nn: Int = o.stdout\n', "expected `Int`, found `String`"),
- ("no such field on a tuple", 'tuple P\n  a: Int\np = P(a: 1)\nprintln(p.nope)\n', "`P` has no field `nope`; its fields are `a`"),
+ ("no such field on a tuple", 'tuple P\n  a Int\np = P(a: 1)\nprintln(p.nope)\n', "`P` has no field `nope`; its fields are `a`"),
  ("no such field on an Output", 'o = run_command("echo")?\nprintln(o.nope)\n', "`Output` has no field `nope`"),
  ("run_command option type", 'r = run_command("echo", cwd: 5)\n', "option `cwd` of `run_command` expects `String`, found `Int`"),
 ]
 GOOD = [
- ("len of a tuple, collections and text", 'tuple P\n  a: Int\n  b: Int\nprintln("${len("abc")} ${len(List(1, 2))} ${len(Dict("a": 1))} ${len((1, 2, 3))} ${len(P(a: 1, b: 2))}")\n', "3 2 1 3 2"),
+ ("len of a tuple, collections and text", 'tuple P\n  a Int\n  b Int\nprintln("${len("abc")} ${len(List(1, 2))} ${len(Dict("a" -> 1))} ${len((1, 2, 3))} ${len(P(a: 1, b: 2))}")\n', "3 2 1 3 2"),
  ("run_command with options", 'o = run_command("echo", List("hi"), stdin: "x", timeout: 5s)?\nprintln(o.stdout.trim())\nprintln(o.code)\n', "hi\n0"),
  ("spawn and wait_child", 'c = spawn("true")?\nprintln(wait_child(c)?)\nkill_child(c)\n', "0"),
- ("a method is not a missing field", 'tuple P\n  a: Int\nimpl P\n  fn twice(self) Int = self.a * 2\np = P(a: 4)\nprintln(p.twice())\n', "8"),
+ ("a method is not a missing field", 'tuple P\n  a Int\nimpl P\n  fn twice(self) Int = self.a * 2\np = P(a: 4)\nprintln(p.twice())\n', "8"),
  ("parse_iso and to_instant", 'd = parse_iso("2024-01-02")?\nprintln(iso(d))\n', "2024-01-02"),
 ]
 fails = []

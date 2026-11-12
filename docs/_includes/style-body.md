@@ -21,7 +21,7 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 - Give every function a return type, and write `Unit` for one that returns nothing. The compiler requires it, and the signature then reads as a sentence.
 - Write the types of the parameters. They are the documentation that the body can't give.
 - Keep a function short enough to read without scrolling. When a block grows a second job, give the second job a name.
-- Use the one-line form when the body is one expression: `fn double(x: Int) Int: x * 2`.
+- Use the one-line form when the body is one expression: `fn double(x Int) Int: x * 2`.
 - Update with `+=`, `-=`, and `++` rather than `x = x + 1`. A rebinding inside a loop does not leave the loop, so accumulate with a stream terminal such as `reduce` or `sum`, or break out with a value.
 
 ## Lambdas

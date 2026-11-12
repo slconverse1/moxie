@@ -1,7 +1,7 @@
 """Spreading a List into a variadic: a warning in no-GC moxie (count checked at run time), silent in moxie/gc.  Run: python3 tests/run_spreadwarn.py"""
 import subprocess, sys, os, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = 'fn total(xs: ...Int) Int\n  xs |> sum()\nvals = List(1, 2, 3)\nprintln(total(...vals))\n'
+SRC = 'fn total(xs ...Int) Int\n  xs |> sum()\nvals = List(1, 2, 3)\nprintln(total(...vals))\n'
 f = os.path.join(tempfile.mkdtemp(), "t.mx")
 open(f, "w").write(SRC)
 fails = []

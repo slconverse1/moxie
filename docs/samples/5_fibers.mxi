@@ -1,5 +1,5 @@
 // Three fibers send to one channel. The main fiber reads the results.
-fiber fn worker(id: Int, out: ChanW[Int]) Unit
+fiber fn worker(id Int, out ChanW[Int]) Unit
   _ = write(out, id * 10)
 
 rx, tx = Chan[Int][3]()

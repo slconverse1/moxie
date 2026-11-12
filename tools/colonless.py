@@ -342,7 +342,7 @@ def convert_py(text, report=None, oneline_ok=False, fix_only=False):
                 continue                                             # C source, not moxie
             try:
                 new = fix_mixed(val) if fix_only else convert(val)
-            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError):
+            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError, AttributeError):
                 continue
             if new == val:
                 continue
@@ -359,7 +359,7 @@ def convert_py(text, report=None, oneline_ok=False, fix_only=False):
             inner = seg[len(m.group(0)):-3]
             try:
                 new_inner = convert(inner)
-            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError):
+            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError, AttributeError):
                 continue
             if new_inner != inner:
                 reps.append((a, z, m.group(0) + new_inner + m.group(2)))
@@ -387,7 +387,7 @@ def convert_md(text, report=None, fix_only=False):
             return m.group(0)
         try:
             new = convert(code)
-        except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError):
+        except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError, AttributeError):
             return m.group(0)
         return "`" + new + "`"
     while i < len(lines):
@@ -405,7 +405,7 @@ def convert_md(text, report=None, fix_only=False):
                 for k, msg in rep:
                     if report is not None:
                         report.append((i + 1 + k, msg))
-            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError) as e:
+            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError, AttributeError) as e:
                 new = block
                 if report is not None:
                     report.append((i + 2, f"block not converted: {e}"))

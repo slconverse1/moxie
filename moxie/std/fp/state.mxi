@@ -1,54 +1,54 @@
 /// A computation that carries a state of type `S` and produces an `A`: `run` takes the state and returns the result with the new state.
 export tuple State[S, A]
-  run: (S) -> (A, S)
+  run (S) -> (A, S)
 
-fn map_state[S, A, B](m: State[S, A], f: (A) -> B, s: S) (B, S)
+fn map_state[S, A, B](m State[S, A], f (A) -> B, s S) (B, S)
   (a, s2) = m.run(s)
   (f(a), s2)
 
-fn bind_state[S, A, B](m: State[S, A], f: (A) -> State[S, B], s: S) (B, S)
+fn bind_state[S, A, B](m State[S, A], f (A) -> State[S, B], s S) (B, S)
   (a, s2) = m.run(s)
   f(a).run(s2)
 
 impl[S] Monad[State[S, _]]
-  fn map[A, B](self: State[S, A], f: (A) -> B) State[S, B]
+  fn map[A, B](self State[S, A], f (A) -> B) State[S, B]
     State(run: (s) -> map_state(self, f, s))
-  static fn pure[A](a: A) State[S, A]
+  static fn pure[A](a A) State[S, A]
     State(run: (s) -> (a, s))
-  fn ap[A, B](self: State[S, (A) -> B], x: State[S, A]) State[S, B]
+  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]
     self.flat_map((g) -> x.map(g))
-  fn flat_map[A, B](self: State[S, A], f: (A) -> State[S, B]) State[S, B]
+  fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]
     State(run: (s) -> bind_state(self, f, s))
 
 /// The computation that returns the current state and leaves it unchanged.
 export fn get[S]() State[S, S]
-  State(run: (s: S) -> (s, s))
+  State(run: (s S) -> (s, s))
 
 /// Replaces the state with `new`.
-export fn put[S](new: S) State[S, Unit]
-  State(run: (s: S) -> ((), new))
+export fn put[S](new S) State[S, Unit]
+  State(run: (s S) -> ((), new))
 
 /// Replaces the state with `f` applied to it.
-export fn modify[S](f: (S) -> S) State[S, Unit]
-  State(run: (s: S) -> ((), f(s)))
+export fn modify[S](f (S) -> S) State[S, Unit]
+  State(run: (s S) -> ((), f(s)))
 
 /// Reads a value computed from the state, leaving the state unchanged.
-export fn gets[S, A](f: (S) -> A) State[S, A]
-  State(run: (s: S) -> (f(s), s))
+export fn gets[S, A](f (S) -> A) State[S, A]
+  State(run: (s S) -> (f(s), s))
 
 /// Runs the computation from the starting state `s` and returns only the result.
-export fn eval[S, A](m: State[S, A], s: S) A
+export fn eval[S, A](m State[S, A], s S) A
   m.run(s)(0)
 
 /// Runs the computation from the starting state `s` and returns only the final state.
-export fn exec[S, A](m: State[S, A], s: S) S
+export fn exec[S, A](m State[S, A], s S) S
   m.run(s)(1)
 
 /// Runs `f` on each element in order, threading the state through, and collects the results.
-export fn traverse[S, A, B](xs: List[A], f: (A) -> State[S, B]) State[S, List[B]]
-  State(run: (s: S) -> traverse_from(xs, 0, List(), f, s))
+export fn traverse[S, A, B](xs List[A], f (A) -> State[S, B]) State[S, List[B]]
+  State(run: (s S) -> traverse_from(xs, 0, List(), f, s))
 
-fn traverse_from[S, A, B](xs: List[A], i: Int, out: List[B], f: (A) -> State[S, B], s: S) (List[B], S)
+fn traverse_from[S, A, B](xs List[A], i Int, out List[B], f (A) -> State[S, B], s S) (List[B], S)
   if i == len(xs)
     (out, s)
   else

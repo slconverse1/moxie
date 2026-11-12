@@ -416,6 +416,12 @@ class ExprParser(PBase):
     def parse_comprehension(self, first):
         """Container comprehension: List(x * x for x in xs if x > 1) / Dict(k: v for k in ks)."""
         line = self.next().line          # 'for'
+        ct = getattr(self, "_colon_of", {}).get(id(first))
+        if ct is not None:
+            if PBase.RECORD is not None:
+                PBase.RECORD.append(("dict", ct))
+            else:
+                self.err("a `Dict` entry is written `key -> value`, not `key: value`", ct)
         pats = [self.parse_pattern()]
         while self.eat_op(","):
             pats.append(self.parse_pattern())
@@ -440,9 +446,33 @@ class ExprParser(PBase):
 
     def parse_arg(self):
         t = self.peek()
+        arrow = t.kind in ("NAME", "INT", "STR") and self.at_op("->", 1)
+        colon = self.peek(1) if (t.kind in ("NAME", "INT", "STR") and self.at_op(":", 1)) else None
+        a = self.parse_arg0()
+        if colon is not None:
+            if not hasattr(self, "_colon_of"):
+                self._colon_of = {}
+            self._colon_of[id(a)] = colon
+        if arrow:
+            if not hasattr(self, "_arrow_args"):
+                self._arrow_args = set()
+            self._arrow_args.add(id(a))
+        return a
+
+    def parse_arg0(self):
+        t = self.peek()
         line = t.line
         label = None
-        if t.kind in ("NAME", "INT") and self.at_op(":", 1):
+        if t.kind in ("NAME", "INT") and self.at_op("->", 1):
+            label = t.val
+            self.next()
+            self.next()
+        elif t.kind == "STR" and self.at_op("->", 1):
+            label = "".join(p for p in t.val if isinstance(p, str))
+            self.next()
+            self.next()
+            label = ("str", label)
+        elif t.kind in ("NAME", "INT") and self.at_op(":", 1):
             label = t.val
             self.next()
             self.next()
@@ -474,6 +504,18 @@ class ExprParser(PBase):
         return Arg(label, e, None, line=line)
 
     def finish_call(self, fn, args, line):
+        base = fn.base if fn.__class__ is GenApp else fn
+        is_dict = base.__class__ is Name and base.name == "Dict"
+        arrows = getattr(self, "_arrow_args", set())
+        for a in args:
+            if id(a) in arrows and not is_dict:
+                self.err("`key -> value` is how a `Dict` entry is written; a named argument is `name: value`", None)
+            ct = getattr(self, "_colon_of", {}).get(id(a))
+            if is_dict and ct is not None:
+                if PBase.RECORD is not None:
+                    PBase.RECORD.append(("dict", ct))
+                else:
+                    self.err("a `Dict` entry is written `key -> value`, not `key: value`", ct)
         partial = False
         new_args = []
         for a in args:
@@ -750,6 +792,7 @@ class ExprParser(PBase):
         cur = []
         trailing_comma = False
         multi = False
+        one_marker = False
         while True:
             self.skip_nl()
             label = None
@@ -759,6 +802,10 @@ class ExprParser(PBase):
                 label = tt.val
                 self.next()
                 self.next()
+            elif tt.kind == "OP" and tt.val == "%" and not cur:
+                self.next()
+                label = 0
+                one_marker = True
             elif tt.kind == "OP" and tt.val == "...":
                 self.next()
                 spread = True
@@ -787,6 +834,8 @@ class ExprParser(PBase):
         self.skip_nl()
         self.expect_op(")", "to close the parentheses")
         self.no_trailing, self.stop_bol = save
+        if one_marker and (len(cur) != 1 or multi):
+            self.err("`%` marks a one-item tuple: write `(%40)`", t)
         if multi:
             rows.append((cur, 0))
             return MArr(rows, line=line)
@@ -870,15 +919,16 @@ class ExprParser(PBase):
         t = self.peek()
         line = t.line
         mod = None
-        if t.kind == "NAME" and t.val in ("ref", "lazy", "using", "move") and not (self.at_op(":", 1) or self.at_op(",", 1) or self.at_op(")", 1)):
+        if t.kind == "NAME" and t.val in ("ref", "lazy", "using", "move") and self.peek(1).kind == "NAME" \
+                and (self.at_op(",", 2) or self.at_op(")", 2) or self.at_op("=", 2) or self.at_op(":", 2) or self.type_follows(2)):
             mod = t.val
             self.next()
             t = self.peek()
-            if mod == "using" and t.kind == "NAME" and not self.at_op(":", 1):
-                self.err("a `using` parameter needs a name: write `using ctx: Context`", t)
+            if mod == "using" and not (self.type_follows(1) or self.at_op(":", 1)):
+                self.err("a `using` parameter needs a name and a type: write `using ctx Context`", t)
         pat = None
         name = None
-        if t.kind == "NAME" and (t.val not in HARD or t.val == "self") and (self.at_op(":", 1) or self.at_op(",", 1) or self.at_op(")", 1)) :
+        if t.kind == "NAME" and (t.val not in HARD or t.val == "self") and (self.at_op(",", 1) or self.at_op(")", 1) or self.at_op("=", 1) or self.at_op(":", 1) or self.type_follows(1)):
             name = t.val
             self.next()
         else:
@@ -888,7 +938,8 @@ class ExprParser(PBase):
         typ = None
         variadic = False
         default = None
-        if self.eat_op(":"):
+        self.no_decl_colon("a parameter")
+        if not (self.at_op(",") or self.at_op(")") or self.at_op("=")):
             if self.at_op("..."):
                 self.next()
                 variadic = True
@@ -897,7 +948,7 @@ class ExprParser(PBase):
             self.next()
             default = self.parse_expr()
         if mod == "using" and (name is None or name == "_"):
-            self.err("a `using` parameter needs a name: write `using ctx: Context`", t)
+            self.err("a `using` parameter needs a name and a type: write `using ctx Context`", t)
         return Param(pat, name, typ, default, mod, variadic, line=line)
 
     # ------------------------------------------------------------ blocks

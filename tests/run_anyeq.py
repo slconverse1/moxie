@@ -11,8 +11,8 @@ CASES = [
  ("a set of any", E, 'a: any Voice = Dog("x")\nc: any Voice = Cat("x")\nprintln(len(Set(a, c, a)))\n', "2", None),
  ("== without Equatable is an error", "", 'a: any Voice = Dog("x")\nprintln(a == a)\n', None, "needs the interface to embed `Equatable`"),
  ("< without Ordered is an error", "  Equatable\n", 'a: any Voice = Dog("x")\nprintln(a < a)\n', None, "embed `Ordered`"),
- ("Set element without Hashable is an error", "  Equatable\n", 'fn n(xs: Set[any Voice]) Int = len(xs)\n', None, "must embed `Hashable`"),
- ("a parameter typed any", E, 'fn same(a: any Voice, b: any Voice) Bool = a == b\nprintln(same(Dog("x"), Dog("x")))\n', "true", None),
+ ("Set element without Hashable is an error", "  Equatable\n", 'fn n(xs Set[any Voice]) Int = len(xs)\n', None, "must embed `Hashable`"),
+ ("a parameter typed any", E, 'fn same(a any Voice, b any Voice) Bool = a == b\nprintln(same(Dog("x"), Dog("x")))\n', "true", None),
 ]
 fails = []
 for name, emb, body, out_has, err_has in CASES:

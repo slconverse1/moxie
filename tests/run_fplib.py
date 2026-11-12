@@ -11,7 +11,7 @@ CASES = [
  ("partition_results", 'println(partition_results(List(Ok(1), Err("x"), Ok(2))))\n', '(List(1, 2), List("x"))'),
  ("collect_errors gathers every error", 'println(collect_errors(List(Ok(1), Err("x"), Err("y"))))\n', 'Err(List("x", "y"))'),
  ("collect_errors all ok", 'println(collect_errors(List(Ok(1), Ok(2))))\n', "Ok(List(1, 2))"),
- ("validate gathers every error", 'fn check(n: Int) Result[Int, String]\n  when n > 0\n    true -> Ok(n)\n    false -> Err("bad ${n}")\nprintln(validate(check, List(1, -2, 3, -4)))\n', 'Err(List("bad -2", "bad -4"))'),
+ ("validate gathers every error", 'fn check(n Int) Result[Int, String]\n  when n > 0\n    true -> Ok(n)\n    false -> Err("bad ${n}")\nprintln(validate(check, List(1, -2, 3, -4)))\n', 'Err(List("bad -2", "bad -4"))'),
  ("recover", 'println(recover(Err("e"), (e) -> 0))\nprintln(recover(Ok(5), (e) -> 0))\n', "Ok(0)\nOk(5)"),
  ("tap passes the value through", 'println(5.tap(fn (x) -> println("saw ${x}")))\n', "saw 5\n5"),
  ("retry calls again only after a failure", 'n = Atom[Int](0)\nfn flaky() Result[Int, String]\n  k = swap(n, _ + 1)\n  when k < 3\n    true -> Err("fail")\n    false -> Ok(k)\nprintln(retry(5, 1ms, flaky))\nprintln(@n)\n', "Ok(3)\n3"),

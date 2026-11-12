@@ -1,7 +1,7 @@
 """Signatures that differ between moxie and moxie/gc (put), and the ones they share (remove, clear).  Run: python3 tests/run_sigs_dialect.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PRE = 'd: Dict[String, Int] = Dict("a": 1)\nxs: List[Int] = List(1, 2)\n'
+PRE = 'd: Dict[String, Int] = Dict("a" -> 1)\nxs: List[Int] = List(1, 2)\n'
 CASES = [
  # (dialect flags, source, expected text in the output of `check`, or None for a clean run)
  ([], 'a: Int = put(d, "b", 2)\n', "expected `Int`, found `Result[Dict[String, Int]"),

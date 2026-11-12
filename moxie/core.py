@@ -457,6 +457,8 @@ def show(v, interp=None):
             inner = [show(x, interp) for x in v.vals]
         if v.tname:
             return f"{v.tname}({', '.join(inner)})"
+        if len(inner) == 1 and not v.names:
+            return f"(%{inner[0]})"                 # a one-item positional tuple, so it is not read as `(40)`, a plain number
         return f"({', '.join(inner)})"
     if t is EnumV:
         if interp is not None:
@@ -476,7 +478,7 @@ def show(v, interp=None):
     if t is SetV:
         return "Set(" + ", ".join(show(x, interp) for x in v.items) + ")"
     if t is DictV:
-        return "Dict(" + ", ".join(f"{show(k, interp)}: {show(x, interp)}" for k, x in v.d.items()) + ")"
+        return "Dict(" + ", ".join(f"{show(k, interp)} -> {show(x, interp)}" for k, x in v.d.items()) + ")"
     if t is MultiV:
         return "MultiArray(" + ", ".join(show(x, interp) for x in v.items) + ")"
     if t is RangeV:

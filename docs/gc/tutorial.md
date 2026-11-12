@@ -37,7 +37,7 @@ Welcome to Moxie 101
 ## Step 2. A function that decides
 
 ```moxie
-fn letter(score: Int) String
+fn letter(score Int) String
   when score
     >= 90 -> "A"
     >= 80 -> "B"
@@ -62,8 +62,8 @@ Three things to notice:
 
 ```moxie
 tuple Student deriving show, eq
-  name: String,
-  score: Int
+  name String,
+  score Int
 
 ada = Student(name: "Ada", score: 95)
 bob = Student(name: "Bob", score: 83)
@@ -123,11 +123,11 @@ Two moxie-specific details:
 ## Step 5. When things go wrong
 
 ```moxie
-fn parse_score(text: String) Result[Int, Error]
+fn parse_score(text String) Result[Int, Error]
   n = read[Int](text)?
   if n < 0 or n > 100 then fail(1, "score out of range") else Ok(n)
 
-fn make_student(name: String, text: String) Result[Student, Error]
+fn make_student(name String, text String) Result[Student, Error]
   score = parse_score(text)?
   Ok(Student(name: name, score: score))
 
@@ -158,11 +158,11 @@ The `?` is the shortcut. `read[Int](text)?` means: "if this failed, return the e
 ## Step 6. Code that works for any type
 
 ```moxie
-fn best[T: Ordered](a: T, b: T) T
+fn best[T Ordered](a T, b T) T
   if a < b then b else a
 
 impl Ordered for Student
-  fn <(other: Student) Bool
+  fn <(other Student) Bool
     score < other.score
 
 println("${best(3, 9)} ${best("pear", "fig")} ${best(ada, bob).name}")
@@ -192,7 +192,7 @@ The compiler builds one specialized copy of `best` for each type it's used with,
 ## Step 7. Doing several things at once
 
 ```moxie
-fiber fn grader(s: Student, out: ChanW[Int]) Unit
+fiber fn grader(s Student, out ChanW[Int]) Unit
   \write(out, s.score)
 
 rx, tx = Chan[Int][3]()
@@ -229,7 +229,7 @@ The collector frees whatever your program no longer holds, but it can't free wha
 
 ```moxie
 history = Atom[Ring[String]](Ring[String](3))
-fn record(note: String) Unit
+fn record(note String) Unit
   \swap(history, _ + note)
 record("Ada 95")
 record("Bob 88")
@@ -287,13 +287,13 @@ Each test runs in its own fiber, and a failed `assert_eq` stops that test with a
 So far the roster was written into the program. A real gradebook reads it, and the same function can read it from anywhere, because the keyboard, a file, and a network connection are all an `Io`:
 
 ```moxie
-fn parse_line(line: String) Result[Student, Error]
+fn parse_line(line String) Result[Student, Error]
   parts = split(line, ",")
   name = get(parts, 0)?
   text = get(parts, 1)?
   make_student(name, text)
 
-fn report(input: Io) Result[Unit, Error]
+fn report(input Io) Result[Unit, Error]
   for line in lines(input)
     when parse_line(line)
       Ok(s) -> println("${s.name}: ${s.score} ${letter(s.score)}")

@@ -27,11 +27,11 @@ def chk(name, got, rc, *words):
 LIB = '''export fn shout() Int
   println("hi")
   1
-export pure fn twice(n: Int) Int = n * 2
-export fn slurp(p: String) Result[String, Error] = read_file(p)
-export fn apply(f: () -> Int) Int = f()
+export pure fn twice(n Int) Int = n * 2
+export fn slurp(p String) Result[String, Error] = read_file(p)
+export fn apply(f () -> Int) Int = f()
 export tuple Box
-  n: Int
+  n Int
 impl Box
   export fn say(self) Int
     println("box")
@@ -42,7 +42,7 @@ F = {"lib.mxi": LIB}
 chk("a pure function that calls a printing package function is an error", run('import lib\npure fn f() Int = lib.shout()\nprintln(f())\n', F), 2, "prints (calls 'println')")
 chk("so is one that imports the function by name", run('import lib (shout)\npure fn f() Int = shout()\nprintln(f())\n', F), 2, "prints")
 chk("a pure package function keeps a pure caller pure", run('import lib\npure fn f() Int = lib.twice(2)\nprintln(f())\n', F), 0, "4")
-chk("a package method called as x.method() carries its effect", run('import lib\npure fn f(b: lib.Box) Int = b.say()\nprintln(f(lib.new_box()))\n', F), 2, "prints")
+chk("a package method called as x.method() carries its effect", run('import lib\npure fn f(b lib.Box) Int = b.say()\nprintln(f(lib.new_box()))\n', F), 2, "prints")
 chk("a function passed to a package function that calls it carries its effect", run('import lib\npure fn f() Int = lib.apply(shout)\nfn shout() Int\n  println("x")\n  1\nprintln(f())\n', F), 2, "prints")
 chk("a pure function passed to a package function is fine", run('import lib\npure fn f() Int = lib.apply(() -> 5)\nprintln(f())\n', F), 0, "5")
 chk("a restricted program that reaches a package's file read is a compile error", run('import lib\nprintln(lib.slurp("x"))\n', F, "--deny-all"), 2, "needs fs.read or fs.write")

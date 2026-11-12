@@ -2,40 +2,40 @@
 
 /// A value and the entries logged while computing it.
 export tuple Writer[W, A]
-  value: A
-  log: List[W]
+  value A
+  log List[W]
 
 impl[W] Monad[Writer[W, _]]
-  fn map[A, B](self: Writer[W, A], f: (A) -> B) Writer[W, B]
+  fn map[A, B](self Writer[W, A], f (A) -> B) Writer[W, B]
     Writer(value: f(self.value), log: self.log)
-  static fn pure[A](a: A) Writer[W, A]
+  static fn pure[A](a A) Writer[W, A]
     Writer(value: a, log: List())
-  fn ap[A, B](self: Writer[W, (A) -> B], x: Writer[W, A]) Writer[W, B]
+  fn ap[A, B](self Writer[W, (A) -> B], x Writer[W, A]) Writer[W, B]
     self.flat_map((g) -> x.map(g))
-  fn flat_map[A, B](self: Writer[W, A], f: (A) -> Writer[W, B]) Writer[W, B]
+  fn flat_map[A, B](self Writer[W, A], f (A) -> Writer[W, B]) Writer[W, B]
     next = f(self.value)
     Writer(value: next.value, log: self.log + next.log)
 
 /// Log one entry.
-export fn tell[W](entry: W) Writer[W, Unit]
+export fn tell[W](entry W) Writer[W, Unit]
   Writer(value: (), log: List(entry))
 
 /// Log several entries.
-export fn tell_all[W](entries: List[W]) Writer[W, Unit]
+export fn tell_all[W](entries List[W]) Writer[W, Unit]
   Writer(value: (), log: entries)
 
 /// A value with its log, as the pair `(value, log)`.
-export fn listen[W, A](m: Writer[W, A]) Writer[W, (A, List[W])]
+export fn listen[W, A](m Writer[W, A]) Writer[W, (A, List[W])]
   Writer(value: (m.value, m.log), log: m.log)
 
 /// Change every entry of a computation's log.
-export fn censor[W, A](f: (List[W]) -> List[W], m: Writer[W, A]) Writer[W, A]
+export fn censor[W, A](f (List[W]) -> List[W], m Writer[W, A]) Writer[W, A]
   Writer(value: m.value, log: f(m.log))
 
 /// The result and the log, as a pair.
-export fn run_writer[W, A](m: Writer[W, A]) (A, List[W])
+export fn run_writer[W, A](m Writer[W, A]) (A, List[W])
   (m.value, m.log)
 
 /// Just the log.
-export fn exec_writer[W, A](m: Writer[W, A]) List[W]
+export fn exec_writer[W, A](m Writer[W, A]) List[W]
   m.log

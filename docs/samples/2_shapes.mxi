@@ -1,7 +1,7 @@
 // A sum type with a method. Leave out a case and the checker objects.
 enum Shape
-  Circle(radius: Double),
-  Rect(w: Double, h: Double),
+  Circle(radius Double),
+  Rect(w Double, h Double),
   Empty
 
 impl Shape

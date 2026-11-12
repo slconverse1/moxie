@@ -44,7 +44,7 @@ y: Int = first(Array("a", "b", "c"))        # first[T](xs: Array[T][3]) T, a Str
 
 1. **Nothing to match on.** A type-level `when` matches on the shape of a type. The checker has no value for the type of `Array("a", "b", "c")`, so every call site that infers its types is stuck.
 2. **Prelude functions have no signatures.** There are 258 built-in functions and stream stages (`map`, `filter`, `reduce`, `flat_map`, `collect`, ...), written in Python with no declared types. An expression that passes through one has an unknown type.
-3. **Generic bodies are checked once, abstractly.** Inside `fn f[T](x: T) Elem[T]`, `T` is a parameter, not a type, so `Elem[T]` cannot reduce. It would have to stay symbolic, or the checker would have to check each instantiation separately (which is what specialization does at code generation, not in the checker).
+3. **Generic bodies are checked once, abstractly.** Inside `fn f[T](x T) Elem[T]`, `T` is a parameter, not a type, so `Elem[T]` cannot reduce. It would have to stay symbolic, or the checker would have to check each instantiation separately (which is what specialization does at code generation, not in the checker).
 4. **Types are erased at run time.** The interpreter binds a type parameter from a value's type name (`TypeV`), and keeps arguments only where I added them for `M.pure`. It cannot recover `Array[X][N]` from a value.
 
 The part that is easy: matching a written-out type against patterns. A 20-line experiment gets `Elem[Array[Int][3]] = Int`, `Elem[List[String]] = String`, and `Elem[(Bool, Int)] = Bool`, and returns "stuck" for `Box[Int]` (no arm) and for the abstract `T`. So explicit uses work today and inferred and generic uses do not.

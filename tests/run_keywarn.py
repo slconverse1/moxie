@@ -18,7 +18,7 @@ def chk(name, src, want_warn, manifest=None, *extra):
     print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}) {out[:300]!r}"))
     if not ok: fails.append(name)
 
-TYPES = 'tuple Big\n  a: String[60]\n  b: Int\ntuple Small\n  id: Int\n'
+TYPES = 'tuple Big\n  a String[60]\n  b Int\ntuple Small\n  id Int\n'
 chk("a big Dict key warns", TYPES + 'm: Dict[Big, Int] = Dict()\n', True, None, "a Dict key of 80 bytes")
 chk("a big Set element warns", TYPES + 's: Set[Big] = Set()\n', True, None, "a Set element of 80 bytes")
 chk("a small key does not", TYPES + 'm: Dict[Small, Int] = Dict()\n', False)
