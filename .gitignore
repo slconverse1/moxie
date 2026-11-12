@@ -3,3 +3,4 @@ __pycache__/
 roster.csv
 notes.txt
 x.txt
+tests/_selfhost_driver.mxi
