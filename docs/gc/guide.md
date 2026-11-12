@@ -2677,11 +2677,12 @@ Output: `List(2, 4, 6, 8, 10)`, `Ok(List(1, 3, 5))`, then `Err("even 2")`, thoug
 **Unix sockets and named pipes.** Programs on the same machine can talk without the network. A Unix socket works like the TCP ones, but the address is a file path:
 
 ```
-fiber fn serve(l: Listener) Unit:
+fiber fn serve(l: Listener) Result[Unit, Error]:
   c = accept(l)?
   for line in lines(c):
     println(c, "echo $line")
   close(c)
+  Ok(())
 
 init:
   path = temp_dir() + "/demo.sock"
@@ -2949,6 +2950,7 @@ Output: `2027-01-02T00:00:00`. All of these are pure except `to_local`, which de
 `read_line` waits for Enter. A menu, a game, or a pager wants each key as it is pressed, and for that you open the terminal in raw mode:
 
 ```
+// not run: needs a terminal
 init:
   t = raw_terminal()?
   println("press keys; Escape quits")
