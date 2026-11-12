@@ -62,6 +62,12 @@ case('a when on a list element of a union type must cover it', 'type union V = I
 case('a when on a loop variable over a union list must cover it', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nvs: List[V] = List(1, "a")\nfor x in vs:\n  when x:\n    Int -> println("n")\n', 2, '`when` does not cover `String`')
 case('a binding arm covers the rest of a union call', 'type union V = Int | String\ntuple W:\n  v: V\nfn mk() V:\n  3\nwhen mk():\n  n@Int -> println(n)\n  other -> println("o")\n', 0, '3')
 
+case('the branches of an if may be different members of the result union', 'type union V = Int | String\nfn g(n: Int) V:\n  if n > 0: n else: "neg"\nprintln(g(1))\nprintln(g(0))\n', 0, '1\nneg')
+case('the arms of a when may be different members of the result union', 'type union V = Int | String\nfn g(n: Int) V:\n  when n:\n    0 -> "zero"\n    _ -> n\nprintln(g(0))\n', 0, 'zero')
+case('an annotated union binding takes branches of different members', 'type union V = Int | String\nx: V = if true: 1 else: "a"\nprintln(x)\n', 0, '1')
+case('branches that are not members of the union are still an error', 'type union W = Int | Bool\nfn g(n: Int) W:\n  if n > 0: n else: "neg"\nprintln(g(1))\n', 2, 'have different types')
+case('branches of different types where no union is expected are still an error', 'fn g(n: Int) Int:\n  if n > 0: n else: "neg"\nprintln(g(1))\n', 2, 'have different types')
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)

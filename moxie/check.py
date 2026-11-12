@@ -263,6 +263,7 @@ class Checker:
         self.in_tfun = False
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
+        self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
         self.union_vars = {}             # Var of a parameter typed with a `type union` -> the names of its members
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
@@ -2394,6 +2395,8 @@ class Checker:
             s, d = s.parent, d + 1
 
     def e_Assign(self, n, sc):
+        if n.ann is not None and n.op == "=":
+            self.expect_union(n.value, n.ann)
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
         self.note_expected(n.value, ann)
@@ -2591,13 +2594,41 @@ class Checker:
             if odd is not None and (odd.__class__ is str or odd[0] in ("app", "tup", "named")):
                 self.err(n.line, f"an `if` without `else` must give `Unit`, but a branch gives `{tshow(odd)}`")
         if n.else_ is not None:
-            self.check_branch_types(ts, n.line, "`if`")
+            self.check_branch_types(ts, n.line, "`if`", n)
         if n.else_ is not None and ts and all(t == ts[0] for t in ts) and ts[0] is not None:
             return ts[0], None
         return None, None
 
-    def check_branch_types(self, ts, line, what):
-        """The branches of an `if` or `when` have one type: two plain, different types (`Int` and `String`) are an error."""
+    def expect_union(self, body, ut):
+        """The `if`/`when` expressions whose value `body` gives back are expected to be a member of union type `ut`: their branches
+        may differ, each being one of its members."""
+        ms = self.union_members(ut) if ut is not None else None
+        if not ms or body is None:
+            return
+        stack = [body]
+        while stack:
+            x = stack.pop()
+            c = x.__class__
+            if c is ExprStmt:
+                stack.append(x.e)
+            elif c is Block:
+                if x.stmts:
+                    stack.append(x.stmts[-1])
+            elif c is IfE:
+                self.union_expect[id(x)] = ms
+                stack.extend(b for _c, b in x.branches)
+                if x.else_ is not None:
+                    stack.append(x.else_)
+            elif c is WhenE:
+                self.union_expect[id(x)] = ms
+                stack.extend(a.body for a in x.arms)
+
+    def check_branch_types(self, ts, line, what, node=None):
+        """The branches of an `if` or `when` have one type: two plain, different types (`Int` and `String`) are an error, unless the
+        value goes where a union is expected and each branch is one of its members."""
+        ms = self.union_expect.get(id(node)) if node is not None else None
+        if ms and all(t is None or tshow(t) in ms for t in ts):
+            return
         plain = [t for t in ts if t is not None and t.__class__ is str and (t in INTS or t in ("Float", "Decimal", "String", "Bool", "Char", "Unit"))]
         if len(plain) != len([t for t in ts if t is not None]) or len(plain) < 2:
             return
@@ -2847,7 +2878,7 @@ class Checker:
             self.union_cover(n, sc, st)
             self.exhaustive(n, st)
         if n.scrut is not None:
-            self.check_branch_types(arm_ts, n.line, "`when`")
+            self.check_branch_types(arm_ts, n.line, "`when`", n)
         if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
             return arm_ts[0], None              # every arm gives one type, so the `when` does
         return None, None
@@ -5102,6 +5133,7 @@ class Checker:
             if n.guard is not None:
                 self.ev(n.guard, inner)
             self.tail_whens = self.when_tails(n.body)
+            self.expect_union(n.body, n.ret)
             for te in self.value_tails(n.body):
                 self.note_expected(te, self.fn_ret)
             t, c = self.ev(n.body, inner)
