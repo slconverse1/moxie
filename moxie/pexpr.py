@@ -453,10 +453,13 @@ class ExprParser(PBase):
             if not hasattr(self, "_colon_of"):
                 self._colon_of = {}
             self._colon_of[id(a)] = colon
+            if not hasattr(self, "_colon_keep"):
+                self._colon_keep = []
+            self._colon_keep.append(a)
         if arrow:
             if not hasattr(self, "_arrow_args"):
-                self._arrow_args = set()
-            self._arrow_args.add(id(a))
+                self._arrow_args = {}
+            self._arrow_args[id(a)] = a          # the node is kept, so its id is not reused by a later one
         return a
 
     def parse_arg0(self):
@@ -506,7 +509,7 @@ class ExprParser(PBase):
     def finish_call(self, fn, args, line):
         base = fn.base if fn.__class__ is GenApp else fn
         is_dict = base.__class__ is Name and base.name == "Dict"
-        arrows = getattr(self, "_arrow_args", set())
+        arrows = getattr(self, "_arrow_args", {})
         for a in args:
             if id(a) in arrows and not is_dict:
                 self.err("`key -> value` is how a `Dict` entry is written; a named argument is `name: value`", None)
@@ -516,6 +519,12 @@ class ExprParser(PBase):
                     PBase.RECORD.append(("dict", ct))
                 else:
                     self.err("a `Dict` entry is written `key -> value`, not `key: value`", ct)
+        seen_named = False
+        for a in args:                      # a bare name after a named argument, or anywhere in a Dict, names itself: `User(name: who, age)`
+            if a.label is not None:
+                seen_named = True
+            elif a.mod is None and a.expr.__class__ is Name and (seen_named or is_dict):
+                a.label = a.expr.name
         partial = False
         new_args = []
         for a in args:
