@@ -10,8 +10,8 @@ CASES = [
 ("span", '(a, b) = List(1, 2, 5, 1) |> to_stream() |> span(_ < 3)\nprintln("$a $b")\n', ["List(1, 2) List(5, 1)"], 0),
 ("split_at", '(c, d) = List(1, 2, 3, 4) |> to_stream() |> split_at(1)\nprintln("$c $d")\n', ["List(1) List(2, 3, 4)"], 0),
 ("guards on function clauses", '''
-fn classify(n: Int) String if n < 0 then "neg"
-fn classify(n) if n == 0 then "zero"
+fn classify(n: Int) String if n < 0 = "neg"
+fn classify(n) if n == 0 = "zero"
 fn classify(n) = "pos"
 println("${classify(-1)} ${classify(0)} ${classify(5)}")
 ''', ["neg zero pos"], 0),

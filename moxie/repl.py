@@ -222,7 +222,12 @@ def needs_more(text):
     if t.endswith(("->", "=", "\\")):
         return True
     try:
-        parse_program(dollars(t), "<repl>")
+        stmts = parse_program(dollars(t), "<repl>").stmts
+        last = stmts[-1] if stmts else None
+        if last.__class__.__name__ == "FnDecl" and last.body is None and last.alias is None:
+            return True                          # a `fn` header with no body yet: the body is indented below it
+        if last.__class__.__name__ == "TupleDecl" and not last.fields and not last.positional:
+            return True
     except MoxieSyntaxError as e:
         if "indented" in e.msg:
             return True

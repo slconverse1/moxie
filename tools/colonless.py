@@ -230,6 +230,8 @@ def _convert(src, report=None):
                     edits.append((t.line, t.col, 1, "" if block else " ->"))
                 elif k == "recvupdate":
                     edits.append((t.line, t.col, 1, "" if block else ""))
+                elif k == "do" and not block and toks[owner["idx"] + 1].kind == "NAME" and toks[owner["idx"] + 1].val == "with":
+                    edits.append((t.line, t.col, 1, " ->"))
                 elif k in ("get", "set", "will_set", "did_set") and not block:
                     edits.append((t.line, t.col, 1, " ->"))
                 else:                                                # a block keyword
@@ -347,6 +349,20 @@ def convert_py(text, report=None, oneline_ok=False, fix_only=False):
             a, z = off(node.lineno, node.col_offset), off(node.end_lineno, node.end_col_offset)
             seg = b[a:z].decode("utf-8")
             reps.append((a, z, _encode(seg, new)))
+    for node in ast.walk(tree):                                      # triple-quoted f-strings: convert the raw text
+        if isinstance(node, ast.JoinedStr) and not fix_only:
+            a, z = off(node.lineno, node.col_offset), off(node.end_lineno, node.end_col_offset)
+            seg = b[a:z].decode("utf-8")
+            m = re.match(r"([rRfF]*)(\"\"\"|''')", seg)
+            if not m or not seg.endswith(m.group(2)) or ":" not in seg:
+                continue
+            inner = seg[len(m.group(0)):-3]
+            try:
+                new_inner = convert(inner)
+            except (MoxieSyntaxError, Unhandled, IndexError, KeyError, RecursionError):
+                continue
+            if new_inner != inner:
+                reps.append((a, z, m.group(0) + new_inner + m.group(2)))
     reps.sort(reverse=True)
     last = None
     for a, z, new in reps:

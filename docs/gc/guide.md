@@ -1917,7 +1917,7 @@ println("${route_status(404)} ${sum_to(4, 0)}")
 Output: `Not Found 10`. A clause can carry an `if` guard before its body, and `tailrec` makes a self-call that isn't a tail call a compile error:
 
 ```
-fn classify(n: Int) String if n < 0 then "neg"
+fn classify(n: Int) String if n < 0 = "neg"
 fn classify(n) if n == 0 then "zero"
 fn classify(n) = "pos"
 tailrec fn count_up(0, acc: Int) Int = acc

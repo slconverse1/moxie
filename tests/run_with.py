@@ -21,7 +21,7 @@ case('do with opens the cases of an enum', 'enum Figure\n  Circle(r: Double)\n  
 case('do with tells apart a case two enums share', 'enum Light\n  Red\n  Green\nenum Signal\n  Red\n  Stop\ndo with Light\n  println(Red)\ndo with Signal\n  println(Red)\n  println(Stop)\n', 0, 'Light.Red\nSignal.Red\nSignal.Stop')
 case('do with opens several enums', 'enum Figure\n  Circle(r: Double)\n  Rect(w: Double, h: Double)\n  Dot\nenum Mode\n  Fast\n  Slow\nx = do with Figure, Mode\n  m = Fast\n  f = Circle(r: 1.0)\n  "${m} ${f}"\nprintln(x)\n', 0, 'Mode.Fast Figure.Circle(1.0)')
 case('do with rewrites patterns', 'enum Figure\n  Circle(r: Double)\n  Rect(w: Double, h: Double)\n  Dot\nenum Mode\n  Fast\n  Slow\nfn d(f: Figure) String\n  do with Figure\n    when f\n      Circle(r) -> "circle ${r}"\n      Rect(_, _) -> "rect"\n      Dot -> "dot"\nprintln(d(Figure.Circle(r: 1.5)))\nprintln(d(Figure.Dot))\n', 0, 'circle 1.5\ndot')
-case('do with can be inline and nested', 'enum A:\n  X\nenum B:\n  Z\ndo with A:\n  do with B:\n    println(X)\n    println(Z)\ndo with A: println(X)\n', 0, 'A.X\nB.Z\nA.X')
+case('do with can be inline and nested', 'enum A\n  X\nenum B\n  Z\ndo with A\n  do with B\n    println(X)\n    println(Z)\ndo with A -> println(X)\n', 0, 'A.X\nB.Z\nA.X')
 case('do with Option opens Some and None', 'do with Option\n  println(Some(3))\n  println(None)\n', 0, 'Some(3)\nNone')
 case('a case two listed enums share is an error', 'enum Light\n  Red\n  Green\nenum Signal\n  Red\n  Stop\ndo with Light, Signal\n  println(Red)\n', 2, '`Red` is a case of both `Light` and `Signal`')
 case('a case named like a function is an error', 'enum A\n  X\n  Y\nfn Y() Int = 1\ndo with A\n  println(1)\n', 2, 'also the name of a function or type')

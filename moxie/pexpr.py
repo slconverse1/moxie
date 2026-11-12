@@ -635,8 +635,7 @@ class ExprParser(PBase):
             while self.at_op(","):
                 self.next()
                 names.append(self.next().val)
-            self.no_block_colon()
-            return WithE(names, self.parse_block(), line=line)
+            return WithE(names, self.parse_body("->", "a `do with`"), line=line)
         if v == "do" and self.nl_indent_at(1):
             self.next()
             return DoE(self.parse_block(), None, line=line)
