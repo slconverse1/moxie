@@ -68,7 +68,8 @@ def header_text(lines, start):
         elif c in ")]}":
             d -= 1
         elif c == "=" and d == 0 and k > 0 and h[k - 1] == " " and h[k + 1:k + 2] == " ":
-            h = h[:k].rstrip()
+            if "(" in h[:k]:        # a function: show the header, not its one-line body
+                h = h[:k].rstrip()
             break
     return h
 
@@ -199,7 +200,7 @@ def run_doctests(src, items, make_interp):
     for it in items:
         for expr, exp, ln in it.examples:
             name = f"doctest {it.name} line {ln}"
-            tests.append(f'test "{name}":\n  assert_eq(show({expr}), "{_esc(exp)}")\n')
+            tests.append(f'test "{name}"\n  assert_eq(show({expr}), "{_esc(exp)}")\n')
             cases.append((it, expr, exp, name))
     if not cases:
         return []

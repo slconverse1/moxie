@@ -948,7 +948,7 @@ def _with_setter(td, p, ln):
     """`set_NAME(value) Result[Self, Error]`: the visible function for a property whose setter can fail. It runs the setter on
     a copy and returns the changed tuple, or the setter's `Err`; the original is untouched either way."""
     import copy
-    src = (f"fn set_{p.name}(value: Int) Result[Int, Error]:\n"
+    src = (f"fn set_{p.name}(value: Int) Result[Int, Error]\n"
            f"  c = self\n  c.__set_{p.name}(value)?\n  Ok(c)\n")
     fn = parse_program(src).stmts[0]
     me = TName([td.name], [[TName([tp.name], []) for tp in td.tparams]] if td.tparams else [])
@@ -1030,7 +1030,7 @@ def expand_delegates(stmts, file=None):
             if d is None or d.__class__ is not TName or d.path[-1] not in failing:
                 continue
             ln = s.line
-            src = f"fn set_{f.name}(value: Int) Result[Int, Error]:\n  __set_delegate(self, \"{f.name}\", value)\n"
+            src = f"fn set_{f.name}(value: Int) Result[Int, Error]\n  __set_delegate(self, \"{f.name}\", value)\n"
             fn = parse_program(src).stmts[0]
             fn.flags = set(fn.flags or ()) | {"generated"}
             fn.params[0].type = copy.deepcopy(f.type)
