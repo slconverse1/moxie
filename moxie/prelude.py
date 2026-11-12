@@ -1209,7 +1209,7 @@ def read_text(self, s, ta):
     t = ta[0][0] if ta and ta[0] else None
     name = t.path[-1] if isinstance(t, TName) else None
     s = s.strip()
-    if name in self.tuples or name in self.enums or (name in ("List", "Array") and t.groups):
+    if name in self.tuples or name in self.enums or (name in ("List", "Array", "Set", "Dict") and t.groups):
         try:
             return Ok(self.read_value(t, s))
         except ValueError as e:
@@ -1289,6 +1289,32 @@ def read_value(self, ft, txt):
             except ValueError as e:
                 raise ValueError(f"item {k}: {e}")
         return (ListV if fname == "List" else ArrayV)(items)
+    if fname == "Set" and ft.groups and len(ft.groups[0]) == 1:
+        m = re.match(r"^Set(?:\[[^\]]*\](?:\[\d+\])?)?\((.*)\)$", txt, re.S)
+        if not m:
+            raise ValueError("expected `Set(...)`")
+        d = {}
+        for k, part in enumerate(split_top(m.group(1))):
+            try:
+                d[self.read_value(ft.groups[0][0], part)] = True
+            except ValueError as e:
+                raise ValueError(f"item {k}: {e}")
+        return SetV(d)
+    if fname == "Dict" and ft.groups and len(ft.groups[0]) == 2:
+        m = re.match(r"^Dict(?:\[[^\]]*\](?:\[\d+\])?)?\((.*)\)$", txt, re.S)
+        if not m:
+            raise ValueError("expected `Dict(...)`")
+        d = {}
+        for k, part in enumerate(split_top(m.group(1))):
+            kv = split_pair(part)
+            if kv is None:
+                raise ValueError(f"entry {k}: expected `key: value`")
+            try:
+                key = self.read_value(ft.groups[0][0], kv[0])
+                d[key] = self.read_value(ft.groups[0][1], kv[1])
+            except ValueError as e:
+                raise ValueError(f"entry {k}: {e}")
+        return DictV(d)
     return self.read_field(fname, txt)
 
 
@@ -1299,12 +1325,17 @@ def read_enum(self, name, txt):
     et = info.et if hasattr(info, "et") else info
     if "read" not in (getattr(et, "derivs", None) or []):
         raise ValueError(f"`{name}` does not say `deriving read`")
-    if et.header:
-        raise ValueError(f"`{name}` has a header, which `read` does not support")
     m = re.match(r"^(?:" + re.escape(name) + r"\.)?([A-Za-z_]\w*)(?:\((.*)\))?$", txt, re.S)
     if not m or m.group(1) not in et.cases:
         raise ValueError(f"`{txt}` is not a case of {name} (the cases are {', '.join('`' + c + '`' for c in et.order)})")
     ci = et.cases[m.group(1)]
+    if et.header:                                   # the case is a constant; `Level.Low(1)` (what `show` prints) must name its values
+        const = et.consts[ci.name]
+        if m.group(2) is not None:
+            vals = self.read_fields(list(ci.fields), list(ci.ftypes), m.group(2))
+            if vals != list(const.vals):
+                raise ValueError(f"`{name}.{ci.name}` is `{name}.{ci.name}({', '.join(show(v) for v in const.vals)})`, not `{txt}`")
+        return const
     if not ci.fields:
         if m.group(2):
             raise ValueError(f"`{ci.name}` has no fields")
@@ -1334,6 +1365,22 @@ def read_field(self, fname, txt):
     if fname in ("Float", "Double", "LongDouble") and isinstance(v, int):
         v = float(v)
     return v
+
+
+def split_pair(s):
+    """`key: value` split at the first colon outside quotes and brackets, or None."""
+    depth, q = 0, False
+    for i, c in enumerate(s):
+        if c == '"':
+            q = not q
+        elif not q:
+            if c in "([":
+                depth += 1
+            elif c in ")]":
+                depth -= 1
+            elif c == ":" and depth == 0:
+                return s[:i].strip(), s[i + 1:].strip()
+    return None
 
 
 def split_top(s):
