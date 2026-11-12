@@ -1486,8 +1486,10 @@ class Checker:
             self.cur_line = n.line
         if m is not None:
             r = m(n, sc)
-            if n.__class__ is Pipe or n.__class__ is Call:
+            if n.__class__ is Pipe or n.__class__ is Call or n.__class__ is Name:
                 self.node_ty[id(n)] = r[0] if r else None
+                if n.__class__ is Call and r and r[0] is not None and r[0].__class__ is tuple and r[0][0] == "app":
+                    self.tag_creation(n, r[0])
             return r if r is not None else (None, None)
         for f in n._fields:
             self.ev(getattr(n, f), sc)
@@ -2403,6 +2405,7 @@ class Checker:
             if m is not None:
                 UTAGS[id(n.value)] = (n.value, m)
             self.tag_lambda(n.value, n.ann)
+            self.tag_declared(n.value, n.ann)
             if n.ann.__class__ is TName and n.ann.path[-1] in ("List", "Array") and n.ann.groups and n.ann.groups[0] \
                     and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == n.ann.path[-1]:
                 self.tag_ctor_args(n.ann.groups[0][0], n.value)
@@ -3252,6 +3255,36 @@ class Checker:
                 return m
         return None
 
+    def generic_members(self):
+        """The written members with type arguments (`List[Int]`) of every `type union`, by their text without spaces."""
+        if getattr(self, "_gm_n", -1) != len(self.aliases):
+            self._gm = {}
+            for a in self.aliases.values():
+                if a.kind == "union" and not a.tparams and a.type.__class__ is TUnion:
+                    for m in a.type.members:
+                        if m.__class__ is TName and m.groups:
+                            self._gm[self.type_node_text(m).replace(" ", "")] = self.type_node_text(m)
+            self._gm_n = len(self.aliases)
+        return self._gm
+
+    def tag_creation(self, n, st):
+        """A call whose static type is a member of some union (`List[String]` in `List[Int] | List[String]`) tags the list it makes
+        with that member, wherever the list goes afterwards: a field, a channel, a collection (see `tag_union_args`)."""
+        gm = self.generic_members()
+        if gm and not self.has_unsettled(st):
+            m = gm.get(tshow(st).replace(" ", ""))
+            if m is not None:
+                UTAGS[id(n)] = (n, m)
+
+    def tag_declared(self, e, tn):
+        """Expression `e` goes where the written type `tn` is expected, and `tn` is itself a member of some union
+        (`xs: List[String] = List()`): tag the list with it, as `tag_creation` does for a call of known type."""
+        if e is None or tn.__class__ is not TName or not tn.groups or e.__class__ is Lambda:
+            return
+        m = self.generic_members().get(self.type_node_text(tn).replace(" ", ""))
+        if m is not None:
+            UTAGS.setdefault(id(e), (e, m))
+
     def tag_value(self, e, ut, st):
         """Mark expression `e` (static type `st`) to be tagged with its member of union type `ut`, when it has one to name."""
         if e is None or ut is None:
@@ -3281,6 +3314,11 @@ class Checker:
 
     def tag_tails(self, fd):
         """The values a function with a union return type gives back are tagged with their member (see `tag_union_args`)."""
+        if fd.ret is not None and fd.body is not None and not self.union_members(fd.ret):
+            out = []
+            self.tail_nodes(fd.body, out)
+            for e in out:
+                self.tag_declared(e, fd.ret)
         if fd.ret is None or fd.body is None or not self.union_members(fd.ret) \
                 or not any("[" in m for m in self.union_members(fd.ret)):
             return
@@ -3407,6 +3445,7 @@ class Checker:
             m = self.union_member_tag(q.type, t)
             if m is not None:
                 UTAGS[id(a.expr)] = (a.expr, m)
+            self.tag_declared(a.expr, q.type)
             self.tag_lambda(a.expr, q.type)
 
     def check_poly_rec(self, n, sc):

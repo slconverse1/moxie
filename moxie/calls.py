@@ -475,6 +475,10 @@ class CallsMixin:
                 and "ref_self" in callee.node.flags and (has_self or callee.bound is not None):
             newself = self._last_self
             yield from self.assign_place_value(fnn.obj if c is Field else fnn.base.obj, newself, env)
+        if UTAGS and r.__class__ is Seq:
+            tg = UTAGS.get(id(n))                    # a list whose static type is a member of some union carries that member
+            if tg is not None and r.tag is None:
+                r.tag = tg[1]
         return r
 
     def insert_piped(self, callee, pos, piped, has_trailing):
