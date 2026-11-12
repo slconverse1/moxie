@@ -1151,7 +1151,7 @@ Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works 
 
 There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which has no GC, as well as in moxie/gc.
 
-The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. Ownership is not tracked through a type parameter yet (see the Spec, section 24a).
+The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. A generic function called with a resource is checked as written for that type, so copying the resource is an error; one gap remains for methods that pass a resource onward (see the Spec, section 24a).
 
 
 ## 18. Interfaces and impls (a.k.a. typeclasses)

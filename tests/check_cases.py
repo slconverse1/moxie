@@ -67,4 +67,9 @@ CASES = [
 ("ok: recursion with the same or a fixed type", 'fn count[A](xs: List[A], n: Int) Int:\n  if n == 0:\n    0\n  else:\n    1 + count[A](xs, n - 1)\nfn fixed[A](x: A, n: Int) Int:\n  if n == 0:\n    0\n  else:\n    1 + fixed[Int](1, n - 1)\nprintln(count[Int](List(1), 3))\nprintln(fixed[String]("a", 2))\n', None),
 ("read needs deriving read", 'tuple P:\n  x: Int\nprintln(read[P]("P(x: 1)"))\n', "doesn't implement `Read`"),
 ("ok: read with deriving read", 'tuple P deriving read, show:\n  x: Int\nprintln(read[P]("P(x: 1)"))\n', None),
+("generic tuple holding a resource is a resource", 'tuple Box[A]:\n  value: A\nfn ident(b: Box[ChanW[Int]]) Box[ChanW[Int]]:\n  b\nrx, tx = Chan[Int][1]()\nb = Box(move tx)\nc = ident(b)\nd = ident(b)\n', "takes ownership of `b`"),
+("a resource copied into a tuple literal", 'fn dup2(x: ChanW[Int]) (ChanW[Int], ChanW[Int]):\n  (x, x)\nrx, tx = Chan[Int][1]()\np = dup2(move tx)\n', "write `move x` to put it in a tuple"),
+("generic function copying a resource", 'fn dup[A](x: A) (A, A):\n  (x, x)\nrx, tx = Chan[Int][1]()\np = dup(move tx)\n', "`dup` is checked for `A` = `ChanW[Int]`"),
+("ok: generic copy of a plain value", 'fn dup[A](x: A) (A, A):\n  (x, x)\nprintln(dup(5))\nprintln(dup("a"))\n', None),
+("ok: generic function that moves a resource through", 'fn ident[A](x: A) A:\n  x\nrx, tx = Chan[Int][1]()\nt2 = ident(move tx)\nwrite(t2, 1)\nprintln(read(rx))\n', None),
 ]

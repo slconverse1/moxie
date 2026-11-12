@@ -491,6 +491,9 @@ class Checker:
     # ------------------------------------------------------------ ownership
     def is_res_type(self, t):
         """A resource type: a built-in resource, a foreign handle, or a tuple that holds one."""
+        if t.__class__ is TName and t.path and t.path[-1] in self.tuples and t.groups \
+                and any(self.is_res_type(g) for grp in t.groups for g in (grp if isinstance(grp, (list, tuple)) else [grp])):
+            return True                      # `Box[ChanW[Int]]`: a generic tuple holds a resource through its type argument
         return t.__class__ is TName and bool(t.path) and (t.path[-1] in RES_TYPES or t.path[-1] in self.handle_types
                                                           or t.path[-1] in self.res_tuples)
 
@@ -2176,6 +2179,21 @@ class Checker:
                 return g.path[-1]
         return None
 
+    def holds_resource(self, t):
+        """A value whose static type is a generic tuple instantiated with a resource (`Box[ChanW[Int]]`) is itself a resource."""
+        if t.__class__ is not tuple or len(t) != 3 or t[0] != "app" or t[1] not in self.tuples:
+            return False
+
+        def res(x):
+            if isinstance(x, str):
+                return x in RES_TYPES or x in self.handle_types or x in self.res_tuples
+            if x.__class__ is tuple and len(x) == 3 and x[0] == "app":
+                return x[1] in RES_TYPES or x[1] in self.handle_types or (x[1] in self.tuples and any(res(y) for y in x[2]))
+            if x.__class__ is tuple and len(x) == 2 and x[0] == "named":
+                return x[1] in self.res_tuples
+            return False
+        return any(res(a) for a in t[2])
+
     def is_resource_expr(self, e):
         wrapped = False
         while e.__class__ in (Q, Move):
@@ -2335,7 +2353,7 @@ class Checker:
             sfx = n.value.__class__ is IntLit and n.value.suffix
             if cv is not None and not sfx and not -2**63 <= cv <= 2**63 - 1 and -2**63 <= cv <= 2**64 - 1:
                 self.err(n.line, f"the constant {cv} does not fit `Int`; give the binding a type such as `UInt64`")
-        res = self.is_resource_expr(n.value)
+        res = self.is_resource_expr(n.value) or self.holds_resource(t)
         if n.value.__class__ is Name:
             v = sc.find(n.value.name)
             if v is not None and v.resource and n.op == "=":
@@ -3208,6 +3226,91 @@ class Checker:
         for e in out:
             if e.__class__ is not Name:
                 self.tag_value(e, fty.ret, self.node_ty.get(id(e)))
+
+    def ty_node(self, t):
+        """A written type node for an internal type, for the types a resource argument can have."""
+        if isinstance(t, str):
+            return TName([t], [])
+        if t.__class__ is tuple and len(t) == 3 and t[0] == "app":
+            return TName([t[1]], [[self.ty_node(x) for x in t[2]]])
+        if t.__class__ is tuple and len(t) == 2 and t[0] == "named":
+            return TName([t[1]], [])
+        return None
+
+    def check_resource_copy(self, fd, n, args, ats):
+        """A generic function called with a resource for a type parameter is checked as written for that type, as it will be
+        compiled: `dup(move tx)` for `fn dup[A](x: A) (A, A)` is a copy of a resource, which the one-owner rule rejects."""
+        if getattr(self, "in_spec", False) or fd.body is None or not fd.tparams:
+            return
+        bound = {}
+        for q, (t, _c) in zip([q for q in fd.params or [] if getattr(q, "name", None) != "self"], ats):
+            if t is None or q.type.__class__ is not TName:
+                continue
+            tp = self.bare_tparam(fd, q.type)
+            if tp is not None:
+                bound.setdefault(tp.name, t)
+            elif q.type.groups and q.type.path[-1] in {x.name for x in fd.tparams} and t.__class__ is tuple and len(t) == 3 and t[0] == "app":
+                bound.setdefault(q.type.path[-1], ("head", t[1]))              # `F[A]` against `Box[...]`: F is Box
+                for g, x in zip([g for grp in q.type.groups for g in grp], t[2]):
+                    if g.__class__ is TName and len(g.path) == 1 and not g.groups and g.path[0] in {x2.name for x2 in fd.tparams}:
+                        bound.setdefault(g.path[0], x)
+        def is_res(t):
+            if t.__class__ is tuple and t and t[0] == "head":
+                return False
+            return self.holds_resource(("app", "Box", (t,))) if False else (
+                (isinstance(t, str) and (t in RES_TYPES or t in self.handle_types or t in self.res_tuples))
+                or (t.__class__ is tuple and len(t) == 3 and t[0] == "app" and (t[1] in RES_TYPES or t[1] in self.handle_types or self.holds_resource(t)))
+                or (t.__class__ is tuple and len(t) == 2 and t[0] == "named" and t[1] in self.res_tuples))
+        if not any(is_res(t) for t in bound.values()):
+            return
+        import copy
+        names = {}
+        for k, t in bound.items():
+            nd = TName([t[1]], []) if t.__class__ is tuple and t and t[0] == "head" else self.ty_node(t)
+            if nd is None:
+                return
+            names[k] = nd
+
+        def sub(x):
+            if x.__class__ is TName and x.path and x.path[0] in names and len(x.path) == 1:
+                r = names[x.path[0]]
+                if x.groups:
+                    return TName(list(r.path), [[sub(g) for g in grp] for grp in x.groups], line=x.line) if not r.groups else r
+                return r
+            if isinstance(x, list):
+                return [sub(y) for y in x]
+            if isinstance(x, tuple):
+                return tuple(sub(y) for y in x)
+            if hasattr(x, "_fields"):
+                for f in x._fields:
+                    v = getattr(x, f, None)
+                    if v is not None and not isinstance(v, (str, int, float, bool)):
+                        setattr(x, f, sub(v))
+            return x
+        key = (id(fd), tuple(sorted((k, repr(v)) for k, v in bound.items())))
+        seen = self.__dict__.setdefault("spec_seen", {})
+        if key in seen:
+            msg = seen[key]
+        else:
+            fd2 = copy.deepcopy(fd)
+            fd2.tparams = [t for t in fd.tparams if t.name not in names]
+            sub(fd2.params)
+            sub(fd2.ret)
+            sub(fd2.body)
+            before = {(d.line, d.msg) for d in self.diags}
+            mark = len(self.diags)
+            self.in_spec = True
+            try:
+                self.e_FnDecl(fd2, Sc(self.top))
+            finally:
+                self.in_spec = False
+            new = [d for d in self.diags[mark:] if (d.line, d.msg) not in before and d.kind == "error"]
+            del self.diags[mark:]
+            msg = new[0].msg if new else None
+            seen[key] = msg
+        if msg:
+            shown = ", ".join(f"`{k}` = `{tshow(v) if not (v.__class__ is tuple and v and v[0] == 'head') else v[1]}`" for k, v in bound.items() if is_res(v))
+            self.err(n.line, f"`{fd.name}` is checked for {shown}, and a resource has one owner: {msg}")
 
     def tag_union_args(self, fd, args, ats):
         """A list passed where a union is expected is tagged with the member its static type names, so an empty list is still
@@ -4119,6 +4222,7 @@ class Checker:
             if fd.tparams or fd.alias is not None:
                 if fd.tparams:
                     self.check_bounds(fd, n, args, ats)
+                    self.check_resource_copy(fd, n, args, ats)
                     return self.generic_call(fd, n, args, ats, extra), None
                 return None, None
             r = self.check_call(fd, n, args, ats, extra)
@@ -5307,7 +5411,12 @@ class Checker:
         types, labs = [], []
         plain = True
         for it in n.items or []:
-            t = self.ev(it[1] if isinstance(it, tuple) and len(it) > 1 else it, sc)[0]
+            ie = it[1] if isinstance(it, tuple) and len(it) > 1 else it
+            if ie.__class__ is Name:
+                rv = sc.find(ie.name)
+                if rv is not None and rv.resource:
+                    self.err(n.line, f"`{ie.name}` is a resource; write `move {ie.name}` to put it in a tuple")
+            t = self.ev(ie, sc)[0]
             types.append(self.base(t))
             if isinstance(it, tuple) and len(it) > 1:
                 labs.append(it[0])
