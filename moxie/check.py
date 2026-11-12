@@ -3276,14 +3276,21 @@ class Checker:
             if m is not None:
                 UTAGS[id(n)] = (n, m)
 
-    def tag_declared(self, e, tn):
+    def tag_declared(self, e, tn, depth=0):
         """Expression `e` goes where the written type `tn` is expected, and `tn` is itself a member of some union
-        (`xs: List[String] = List()`): tag the list with it, as `tag_creation` does for a call of known type."""
-        if e is None or tn.__class__ is not TName or not tn.groups or e.__class__ is Lambda:
+        (`xs: List[String] = List()`): tag the list with it, as `tag_creation` does for a call of known type.  A list
+        written out (`List(List(), List())` for `List[List[String]]`) passes the element type down to its elements."""
+        if e is None or tn.__class__ is not TName or not tn.groups or e.__class__ is Lambda or depth > 4:
             return
-        m = self.generic_members().get(self.type_node_text(tn).replace(" ", ""))
+        gm = self.generic_members()
+        m = gm.get(self.type_node_text(tn).replace(" ", "")) if gm else None
         if m is not None:
             UTAGS.setdefault(id(e), (e, m))
+        if gm and e.__class__ is Call and e.fn.__class__ is Name and e.fn.name in ("List", "Array") and tn.path[-1] == e.fn.name \
+                and tn.groups[0]:
+            for a in e.args or []:
+                if a.expr is not None and not getattr(a, "label", None) and not getattr(a, "mod", None):
+                    self.tag_declared(a.expr, tn.groups[0][0], depth + 1)
 
     def tag_value(self, e, ut, st):
         """Mark expression `e` (static type `st`) to be tagged with its member of union type `ut`, when it has one to name."""
@@ -4867,6 +4874,9 @@ class Checker:
                 f = pos[i]
                 i += 1
             self.compat(self.ty_of_type(f.type), t, c, line)
+            if getattr(a, "expr", None) is not None and not getattr(td, "tparams", None):
+                self.tag_value(a.expr, f.type, t)
+                self.tag_declared(a.expr, f.type)
             if getattr(a, "expr", None).__class__ is Lambda and f.type.__class__ is TFn and not getattr(td, "tparams", None) \
                     and self.cur_sc is not None and not self.type_mentions_param(f.type):
                 self.check_stored_closure(a.expr, self.cur_sc, line)

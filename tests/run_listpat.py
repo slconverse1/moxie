@@ -49,6 +49,12 @@ case('a lambda with an inferred type makes a tagged list', U + 'fn f(d: Data) St
 case('a named empty List keeps its member in a constructor', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nys: List[String] = List()\nitems = List[Data](ys, 3)\nprintln(f(items(0)))\nmore: List[Data] = List(ys)\nprintln(f(more(0)))\n', 0, 'strings\nstrings')
 case('an empty List passed through a typed parameter or result', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\nfn g(xs: List[String]) String:\n  f(xs)\nfn mk() List[String]:\n  List()\nprintln(g(List()))\nprintln(f(mk()))\n', 0, 'strings\nstrings')
 
+case('an empty List from a stream step keeps its member in a field', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\nys = List("a") |> to_stream() |> filter((s): s == "b") |> collect()\nb = B(v: ys)\nprintln(f(b.v))\n', 0, 'strings')
+case('an empty List from a stream step is tagged where it is made', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\nxss = List(1) |> to_stream() |> map((n): List[String]()) |> collect()\nfor xs in xss:\n  println(f(B(v: xs).v))\n', 0, 'strings')
+case("a typed parameter's empty List keeps its member into a field", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\nfn g(xs: List[String]) B:\n  B(v: xs)\nprintln(f(g(List()).v))\n', 0, 'strings')
+case("a typed field's empty List keeps its member", U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\ntuple C:\n  w: List[String]\nc = C(w: List())\nprintln(f(B(v: c.w).v))\n', 0, 'strings')
+case('empty Lists nested in a typed List keep their members', U + 'fn f(d: Data) String:\n  when d:\n    List[Int] -> "ints"\n    List[String] -> "strings"\n    Int -> "one"\ntuple B:\n  v: Data\nxss: List[List[String]] = List(List(), List())\nfor xs in xss:\n  println(f(B(v: xs).v))\n', 0, 'strings\nstrings')
+
 print()
 print('FAILURES: ' + ', '.join(fails) if fails else 'all List pattern tests passed')
 sys.exit(1 if fails else 0)
