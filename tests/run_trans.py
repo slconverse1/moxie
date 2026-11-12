@@ -76,12 +76,16 @@ println(go(1))
 println(go(9))
 """, 0, "(Ok(2), 2)\n(Err(\"too big\"), 9)")
 
-chk("state and an error handler together", IMP + f"""f'fn prog[M[_]: Monad + MonadState[Int] + MonadError[String]]() M[Int]\n  M.catch_error(M.put(7).flat_map((u) -> M.throw_error("x")), (e) -> M.get())\nprintln(trans.run_identity(trans.run_except_t(trans.run_state_t(prog['{ST_EX}](), 0))))
+chk("state and an error handler together", IMP + f"""fn prog[M[_]: Monad + MonadState[Int] + MonadError[String]]() M[Int]:
+  M.catch_error(M.put(7).flat_map((u): M.throw_error("x")), (e): M.get())
+println(trans.run_identity(trans.run_except_t(trans.run_state_t(prog[{ST_EX}](), 0))))
 println(trans.run_identity(trans.run_state_t(trans.run_except_t(prog[{EX_ST}]()), 0)))
 """, 0, "Ok((0, 0))\n(Ok(7), 7)")
 
 THREE = "trans.ReaderT[trans.StateT[trans.WriterT[trans.Identity, String, _], Int, _], Int, _]"
-chk("three layers: reader, state, writer, each reached through the others", IMP + f"""f'fn prog[M[_]: Monad + MonadReader[Int] + MonadState[Int] + MonadWriter[String]]() M[Int]\n  M.ask().flat_map((step) -> M.modify((n) -> n + step).flat_map((u) -> M.get()).flat_map((n) -> M.tell("now ${n}").map((u) -> n)))\ninner = trans.run_reader_t(prog['{THREE}](), 10)
+chk("three layers: reader, state, writer, each reached through the others", IMP + f"""fn prog[M[_]: Monad + MonadReader[Int] + MonadState[Int] + MonadWriter[String]]() M[Int]:
+  M.ask().flat_map((step): M.modify((n): n + step).flat_map((u): M.get()).flat_map((n): M.tell("now ${{n}}").map((u): n)))
+inner = trans.run_reader_t(prog[{THREE}](), 10)
 println(trans.run_identity(trans.run_writer_t(trans.run_state_t(inner, 1))))
 """, 0, '((11, 11), List("now 11"))')
 

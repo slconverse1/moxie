@@ -4,7 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 REV = 'xs |> to_stream() |> reverse() |> reverse() |> collect()'
 CASES = [
- ("a true property passes", f''test "rev"\n  forall xs: List[Int]\n    assert_eq('{REV}, xs)\n', [], 0, "ok    rev"),
+ ("a true property passes", f'test "rev":\n  forall xs: List[Int]:\n    assert_eq({REV}, xs)\n', [], 0, "ok    rev"),
  ("several names", 'test "two"\n  forall a: Int8, b: Bool, s: String\n    assert(len(s) >= 0)\n', [], 0, "ok    two"),
  ("an integer shrinks to the boundary", 'test "t"\n  forall x: Int\n    assert(x < 1000, "big")\n', [], 1, "x = 1000"),
  ("a list shrinks to its smallest failing form", 'test "t"\n  forall xs: List[Int]\n    assert(len(xs) < 3, "long")\n', [], 1, "xs = List(0, 0, 0)"),

@@ -248,13 +248,17 @@ def convert_py(text, report=None, oneline_ok=False):
         if isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node.body \
                 and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant):
             docs.add(id(node.body[0].value))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.JoinedStr):
+            for sub in ast.walk(node):
+                docs.add(id(sub))                                    # the pieces of an f-string are not literals of their own
     reps = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and ":" in node.value and id(node) not in docs:
             val = node.value
             if "\n" not in val and not oneline_ok:
                 continue
-            if re.search(r"\)\s*\{|;\s*(\n|$)", val):
+            if re.search(r"\)\s*\{|#include", val):
                 continue                                             # C source, not moxie
             try:
                 new = convert(val)
