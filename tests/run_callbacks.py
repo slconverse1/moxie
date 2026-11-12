@@ -101,7 +101,7 @@ HCASES = [
 ]
 fails = []
 for name, body, rc_want, word in CASES + NUMCASES + EVCASES + HCASES:
-    src = body if body.startswith("foreign") else HDR.replace("  parks fn slow(f: (Int32) -> Int32, n: Int32) Int32\n", "") + body
+    src = body if body.startswith("foreign") else HDR.replace("  parks fn slow(f (Int32) -> Int32, n Int32) Int32\n", "") + body
     p = os.path.join(D, "t.mxi")
     open(p, "w").write(src)
     cmd = "check" if rc_want == 2 else "run"

@@ -1306,9 +1306,9 @@ def read_value(self, ft, txt):
             raise ValueError("expected `Dict(...)`")
         d = {}
         for k, part in enumerate(split_top(m.group(1))):
-            kv = split_pair(part)
+            kv = split_arrow(part)
             if kv is None:
-                raise ValueError(f"entry {k}: expected `key: value`")
+                raise ValueError(f"entry {k}: expected `key -> value`")
             try:
                 key = self.read_value(ft.groups[0][0], kv[0])
                 d[key] = self.read_value(ft.groups[0][1], kv[1])
@@ -1380,6 +1380,22 @@ def split_pair(s):
                 depth -= 1
             elif c == ":" and depth == 0:
                 return s[:i].strip(), s[i + 1:].strip()
+    return None
+
+
+def split_arrow(s):
+    """`key -> value` split at the first arrow outside quotes and brackets, or None."""
+    depth, q = 0, False
+    for i, c in enumerate(s):
+        if c == '"':
+            q = not q
+        elif not q:
+            if c in "([":
+                depth += 1
+            elif c in ")]":
+                depth -= 1
+            elif c == "-" and depth == 0 and s[i + 1:i + 2] == ">":
+                return s[:i].strip(), s[i + 2:].strip()
     return None
 
 

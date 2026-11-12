@@ -17,7 +17,7 @@ def chk(name, cond):
 rc, out, err = run("doc", EX, "--check")
 chk("check passes on documented example", rc == 0 and "4 examples ok" in out)
 rc, out, err = run("doc", EX, "--format", "md")
-chk("md has signature", "fn to_f(c: Int) Int" in out)
+chk("md has signature", "fn to_f(c Int) Int" in out)
 chk("md has contracts", "`requires c >= -273`" in out and "`invariant celsius >= -273`" in out)
 chk("md has interface member contract", "`ensures len(result) > 0`" in out)
 chk("md has module doc", "A tiny temperature library." in out)

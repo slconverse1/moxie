@@ -5,8 +5,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES = [
  ("distinct_by keeps the first per key", 'println(List(3, 1, 3, 2, 1) |> distinct_by((n) -> n % 2) |> collect())\n', "List(3, 2)"),
  ("zip3", 'println(zip3(List(1, 2), List("a", "b"), List(true, false)) |> collect())\n', 'List((1, "a", true), (2, "b", false))'),
- ("frequencies", 'println(frequencies(List("a", "b", "a")))\n', 'Dict("a": 2, "b": 1)'),
- ("count_by", 'println(count_by((n) -> n % 2 == 0, List(1, 2, 3, 4, 6)))\n', "Dict(false: 2, true: 3)"),
+ ("frequencies", 'println(frequencies(List("a", "b", "a")))\n', 'Dict("a" -> 2, "b" -> 1)'),
+ ("count_by", 'println(count_by((n) -> n % 2 == 0, List(1, 2, 3, 4, 6)))\n', "Dict(false -> 2, true -> 3)"),
  ("transpose of ragged rows", 'println(transpose(List(List(1, 2, 3), List(4, 5), List(6))))\n', "List(List(1, 4, 6), List(2, 5), List(3))"),
  ("partition_results", 'println(partition_results(List(Ok(1), Err("x"), Ok(2))))\n', '(List(1, 2), List("x"))'),
  ("collect_errors gathers every error", 'println(collect_errors(List(Ok(1), Err("x"), Err("y"))))\n', 'Err(List("x", "y"))'),

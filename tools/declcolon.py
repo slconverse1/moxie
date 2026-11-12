@@ -20,15 +20,25 @@ from moxie.pbase import PBase, edit_row                 # noqa: E402
 
 
 def declconvert(src, report=None):
+    import re
     rec = []
-    PBase.RECORD = rec
     err = None
-    try:
-        parse_program(src, "<declcolon>")
-    except MoxieSyntaxError as e:
-        err = e
-    finally:
-        PBase.RECORD = None
+    # a program built from pieces (`{embeds}`, `{REV}`) is parsed with each piece standing in as a name of the same length
+    masked = re.sub(r"\{[^{}\n]*\}", lambda m: "x" * len(m.group(0)), src)
+    spaced = re.sub(r"(?m)^\{[^{}\n]*\}", lambda m: " " * len(m.group(0)), masked if False else src)
+    spaced = re.sub(r"\{[^{}\n]*\}", lambda m: "x" * len(m.group(0)), spaced)
+    for attempt in (src, masked, spaced):
+        rec = []
+        PBase.RECORD = rec
+        err = None
+        try:
+            parse_program(attempt, "<declcolon>")
+        except MoxieSyntaxError as e:
+            err = e
+        finally:
+            PBase.RECORD = None
+        if err is None or attempt is spaced:
+            break
     if not rec:
         if err is not None and report is not None:
             report.append((0, f"not parsed: {err}"))

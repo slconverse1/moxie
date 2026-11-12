@@ -180,7 +180,7 @@ class PBase:
                         break
                     continue
                 colon = self.colon_label_at(0, "a tuple type has no colon: write `(name String, age Int)`")
-                if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static", "_") and self.type_follows(1))):
+                if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static") and self.type_follows(1))):
                     label = self.next().val
                     if colon:
                         self.next()
@@ -228,7 +228,7 @@ class PBase:
                     while True:
                         label = None
                         colon = self.colon_label_at(0, "a function type has no colon: write `(x Int) -> Int`")
-                        if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static", "_") and self.type_follows(1))):
+                        if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static") and self.type_follows(1))):
                             label = self.next().val
                             if colon:
                                 self.next()

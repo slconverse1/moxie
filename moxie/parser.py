@@ -580,7 +580,9 @@ class Parser(ExprParser):
         if not (t.kind == "NAME" and t.val == "property"):
             return False
         n = self.peek(i + 1)
-        return n.kind == "NAME" or (n.kind == "OP" and n.val == "[")
+        if n.kind == "OP" and n.val == "[":
+            return True
+        return n.kind == "NAME" and (self.type_follows(i + 2) or self.at_op(":", i + 2))
 
     def err_at(self, line, msg):
         raise MoxieSyntaxError(msg, line, 0, self.file)
@@ -790,7 +792,7 @@ class Parser(ExprParser):
                     while not self.at_op(")"):
                         ft = self.peek()
                         colon = self.colon_label_at(0, "a case field has no colon: write `Circle(radius Float)`")
-                        if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static", "_") and self.type_follows(1))):
+                        if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static") and self.type_follows(1))):
                             self.next()
                             if colon:
                                 self.next()

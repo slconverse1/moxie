@@ -79,28 +79,28 @@ def bg(*a):
 
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 text = open(os.path.join(d, "bindings.mxi")).read()
-chk("generates declarations", r.returncode == 0 and "fn mini_add(a: Int32, b: Int32) Int32" in text, r.stderr)
+chk("generates declarations", r.returncode == 0 and "fn mini_add(a Int32, b Int32) Int32" in text, r.stderr)
 chk("effects default to impure", "internal impure fn mini_add" in text)
-chk("pointer and length fuse", "fn mini_sum(seed: UInt32, buf: Array[Byte], len: UInt = len(buf)) UInt32" in text)
-chk("struct becomes a tuple", 'internal tuple MiniPoint' in text and "fn mini_dist(p: MiniPoint, q: MiniPoint) Double" in text)
-chk("out-parameter becomes ref", "fn mini_parse(s: CString, ref out: Int32) Int32" in text)
+chk("pointer and length fuse", "fn mini_sum(seed UInt32, buf Array[Byte], len UInt = len(buf)) UInt32" in text)
+chk("struct becomes a tuple", 'internal tuple MiniPoint' in text and "fn mini_dist(p MiniPoint, q MiniPoint) Double" in text)
+chk("out-parameter becomes ref", "fn mini_parse(s CString, ref out Int32) Int32" in text)
 chk("enum constants", "MINI_SAFE = 5" in text)
 chk("header comment becomes ///", "/// Adds two numbers." in text)
 chk("variadic and unpaired pointer are todos", all(f"todo: {n}" in text for n in ("mini_printf", "mini_bad")), text[-600:])
-chk("function pointer becomes a function type", "fn mini_apply(f: (Int32) -> Int32, x: Int32) Int32" in text, text[-900:])
-chk("callback with user data and a buffer", "fn mini_each(f: (Int32, UserData) -> Unit, user: UserData) Int32" in text and "fn mini_feed(buf: Array[Byte], n: UInt = len(buf), f: (Array[Byte], UInt, UserData) -> Int32, ud: UserData) Int32" in text, text[-900:])
+chk("function pointer becomes a function type", "fn mini_apply(f (Int32) -> Int32, x Int32) Int32" in text, text[-900:])
+chk("callback with user data and a buffer", "fn mini_each(f (Int32, UserData) -> Unit, user UserData) Int32" in text and "fn mini_feed(buf Array[Byte], n UInt = len(buf), f (Array[Byte], UInt, UserData) -> Int32, ud UserData) Int32" in text, text[-900:])
 chk("callback taking another pointer is a todo", "todo: mini_walk" in text, text[-500:])
-chk("pointer to opaque pointer becomes an out-handle", "fn mini_connect(name: CString, ref out: MiniCtx) Result[MiniCtx, Error]" in text and "fn mini_make(v: Int32, ref out: MiniCtx) MiniCtx" in text, text[-1100:])
-chk("opaque pointer becomes a handle", "  handle MiniCtx closes mini_close" in text and "fn mini_open(name: CString) Result[MiniCtx, Error]" in text and "fn mini_hits(c: MiniCtx) Int32" in text, text[-700:])
+chk("pointer to opaque pointer becomes an out-handle", "fn mini_connect(name CString, ref out MiniCtx) Result[MiniCtx, Error]" in text and "fn mini_make(v Int32, ref out MiniCtx) MiniCtx" in text, text[-1100:])
+chk("opaque pointer becomes a handle", "  handle MiniCtx closes mini_close" in text and "fn mini_open(name CString) Result[MiniCtx, Error]" in text and "fn mini_hits(c MiniCtx) Int32" in text, text[-700:])
 
 # sidecar: effects and pairing
 open(os.path.join(d, "bindgen.toml"), "w").write('[functions.mini_add]\neffects = "pure"\n')
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 text = open(os.path.join(d, "bindings.mxi")).read()
 chk("sidecar sets effects", "internal pure fn mini_add" in text)
-chk("number pointers with a length become arrays", "fn mini_mean(xs: Array[Double], n: UInt = len(xs)) Double" in text and "fn mini_double_all(ref xs: Array[Int32], n: UInt = len(xs))" in text, text)
-chk("callbacks may take number arrays and Ptr[T]", "fn mini_rows(a: Array[Int32], n: UInt = len(a), cb: (Array[Int32], UInt) -> Int32)" in text and "cmp: (Ptr[Int32], Ptr[Int32]) -> Int32" in text, text)
-chk("a writable buffer becomes ref Array[Byte]", "fn mini_fill(ref buf: Array[Byte], n: UInt = len(buf)) Int32" in text, text)
+chk("number pointers with a length become arrays", "fn mini_mean(xs Array[Double], n UInt = len(xs)) Double" in text and "fn mini_double_all(ref xs Array[Int32], n UInt = len(xs))" in text, text)
+chk("callbacks may take number arrays and Ptr[T]", "fn mini_rows(a Array[Int32], n UInt = len(a), cb (Array[Int32], UInt) -> Int32)" in text and "cmp (Ptr[Int32], Ptr[Int32]) -> Int32" in text, text)
+chk("a writable buffer becomes ref Array[Byte]", "fn mini_fill(ref buf Array[Byte], n UInt = len(buf)) Int32" in text, text)
 
 # end to end: wrappers over the generated bindings, called from moxie
 prog = text + '''
@@ -145,9 +145,9 @@ chk("end to end: calls the compiled library", r.returncode == 0 and f"5 {exp_sum
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--wrap")
 wtext = open(os.path.join(d, "wrappers.mxi")).read() if os.path.exists(os.path.join(d, "wrappers.mxi")) else ""
 btext = open(os.path.join(d, "bindings.mxi")).read()
-chk("--wrap strips the library prefix and converts text", 'fn add(a: Int32, b: Int32) Int32 = mini_add(a, b)' in wtext and 'fn open_(name: String) Result[MiniCtx, Error] = mini_open(cstr(name))' in wtext, wtext[:900])
-chk("--wrap turns status plus out-parameter into a Result", 'fn parse(s: String) Result[Int32, Error]' in wtext and "return fail(status," in wtext, wtext)
-chk("--wrap hides user data in callback types", 'fn each(f: (Int32) -> Unit) Int32 = mini_each(f)' in wtext and "f: (Array[Byte]) -> Int32" in wtext, wtext)
+chk("--wrap strips the library prefix and converts text", 'fn add(a Int32, b Int32) Int32 = mini_add(a, b)' in wtext and 'fn open_(name String) Result[MiniCtx, Error] = mini_open(cstr(name))' in wtext, wtext[:900])
+chk("--wrap turns status plus out-parameter into a Result", 'fn parse(s String) Result[Int32, Error]' in wtext and "return fail(status," in wtext, wtext)
+chk("--wrap hides user data in callback types", 'fn each(f (Int32) -> Unit) Int32 = mini_each(f)' in wtext and "f (Array[Byte]) -> Int32" in wtext, wtext)
 chk("--wrap reports its guesses", "status:  mini_parse -> parse" in r.stdout, r.stdout)
 prog2 = btext + wtext + '''
 println("${add(2i32, 3i32)} ${parse("42")} ${parse("x")}")
@@ -167,7 +167,7 @@ chk("--wrap: the generated wrappers run", r2.returncode == 0 and "5 Ok(42) Err(E
 open(os.path.join(d, "bindgen.toml"), "w").write('[functions.mini_parse]\nreturns = "value"\n')
 bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--wrap")
 w2 = open(os.path.join(d, "wrappers.mxi")).read()
-chk("returns = value keeps the raw shape", 'fn parse(s: String, ref out: Int32) Int32 = mini_parse(cstr(s), ref out)' in w2, w2)
+chk("returns = value keeps the raw shape", 'fn parse(s String, ref out Int32) Int32 = mini_parse(cstr(s), ref out)' in w2, w2)
 os.remove(os.path.join(d, "bindgen.toml"))
 
 # bindgen.toml: validation and the full format
@@ -189,15 +189,15 @@ chk("a TOML syntax error is reported", r.returncode == 2 and "bindgen.toml" in (
 r = toml_run('lib = "mini"\n[functions.mini_add]\neffects = "pure"\nrename = "plus"\n[handles.MiniCtx]\ncloses = "mini_close"\n', "--wrap")
 w3 = open(os.path.join(d, "wrappers.mxi")).read()
 b3 = open(os.path.join(d, "bindings.mxi")).read()
-chk("lib in the file, rename, handles all work", r.returncode == 0 and 'foreign "mini"' in b3 and 'fn plus(a: Int32, b: Int32) Int32 = mini_add(a, b)' in w3 and "handle MiniCtx closes mini_close" in b3, r.stdout + r.stderr + w3[:300])
+chk("lib in the file, rename, handles all work", r.returncode == 0 and 'foreign "mini"' in b3 and 'fn plus(a Int32, b Int32) Int32 = mini_add(a, b)' in w3 and "handle MiniCtx closes mini_close" in b3, r.stdout + r.stderr + w3[:300])
 
 # keeps: a callback the library keeps becomes Events (or a Handler when it returns a value)
 r = toml_run('[functions.mini_subscribe]\nkeeps = ["f"]\n[functions.mini_subscribe_bad]\nkeeps = ["f"]\n', "--lib", "mini", "--wrap")
 b4 = open(os.path.join(d, "bindings.mxi")).read()
 w4 = open(os.path.join(d, "wrappers.mxi")).read()
-chk("keeps turns a callback into Events", "fn mini_subscribe(f: Events[(Int32, Double, UserData)], user: UserData)" in b4 and "fn mini_subscribe_bad(f: Handler[(Int32) -> Int32]) Int32" in b4, b4[-700:])
-chk("a kept callback that returns a value becomes a Handler", 'fn subscribe_bad(f: Handler[(Int32) -> Int32]) Int32 = mini_subscribe_bad(f)' in w4, w4[-700:])
-chk("the wrapper takes a channel end and moves it", 'fn subscribe(f: ChanW[(Int32, Double)]) Unit = mini_subscribe(move f)' in w4, w4[-600:])
+chk("keeps turns a callback into Events", "fn mini_subscribe(f Events[(Int32, Double, UserData)], user UserData)" in b4 and "fn mini_subscribe_bad(f Handler[(Int32) -> Int32]) Int32" in b4, b4[-700:])
+chk("a kept callback that returns a value becomes a Handler", 'fn subscribe_bad(f Handler[(Int32) -> Int32]) Int32 = mini_subscribe_bad(f)' in w4, w4[-700:])
+chk("the wrapper takes a channel end and moves it", 'fn subscribe(f ChanW[(Int32, Double)]) Unit = mini_subscribe(move f)' in w4, w4[-600:])
 # --check drift
 bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini")
 r = bg(os.path.join(d, "mini.h"), "-o", os.path.join(d, "bindings.mxi"), "--lib", "mini", "--check")

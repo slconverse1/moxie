@@ -420,7 +420,7 @@ class Gen:
             k = d[0]
             if k == "bytes" and d[2] == "void" and any(q[1][0] == "callback" for q in params) \
                     and not (i + 1 < len(params) and params[i + 1][1][0] == "scalar" and LEN_NAMES.search(params[i + 1][0])):
-                out.append(f"{pn}: UserData")          # the user-data pointer that goes with a callback
+                out.append(f"{pn} UserData")          # the user-data pointer that goes with a callback
                 i += 1
                 continue
             if k == "bytes":
@@ -432,26 +432,26 @@ class Gen:
                         pair = (qn, qd[1])
                 if pair is None:
                     raise Todo(f"parameter '{pn}' is a byte pointer with no length parameter next to it (set pair = [\"{pn}\", \"<length>\"] in bindgen.toml)")
-                out.append(f"{'' if d[3] else 'ref '}{pn}: Array[Byte]")
-                out.append(f"{pair[0]}: {pair[1]} = len({pn})")
+                out.append(f"{'' if d[3] else 'ref '}{pn} Array[Byte]")
+                out.append(f"{pair[0]} {pair[1]} = len({pn})")
                 info["ps"].append((pn, "bytes_ro" if d[3] else "bytes_rw", "Array[Byte]"))
                 i += 2
                 continue
             if k == "scalar":
-                out.append(f"{pn}: {d[1]}")
+                out.append(f"{pn} {d[1]}")
                 info["ps"].append((pn, "val", d[1]))
             elif k == "cstring":
-                out.append(f"{pn}: CString")
+                out.append(f"{pn} CString")
                 info["ps"].append((pn, "cstring", "CString"))
             elif k == "struct":
-                out.append(f"{pn}: {d[1]}")
+                out.append(f"{pn} {d[1]}")
                 info["ps"].append((pn, "val", d[1]))
             elif k == "scalar_ptr" and i + 1 < len(params) and params[i + 1][1][0] == "scalar" \
                     and params[i + 1][1][1] not in ("Float", "Double", "Bool") \
                     and (LEN_NAMES.search(params[i + 1][0]) or sc.get("pair") == [pn, params[i + 1][0]]):
                 qn, qd = params[i + 1]
-                out.append(f"{'' if d[3] else 'ref '}{pn}: Array[{d[1]}]")
-                out.append(f"{qn}: {qd[1]} = len({pn})")
+                out.append(f"{'' if d[3] else 'ref '}{pn} Array[{d[1]}]")
+                out.append(f"{qn} {qd[1]} = len({pn})")
                 info["ps"].append((pn, "bytes_ro" if d[3] else "bytes_rw", f"Array[{d[1]}]"))
                 i += 2
                 continue
@@ -459,18 +459,18 @@ class Gen:
                 if d[3]:
                     # const pointer to a scalar: an array of them, which is not supported yet
                     raise Todo(f"parameter '{pn}' is a const pointer to {d[2]} (an array input), which is not supported yet")
-                out.append(f"ref {pn}: {d[1]}")
+                out.append(f"ref {pn} {d[1]}")
                 info["ps"].append((pn, "ref_" + ("scalar" if k == "scalar_ptr" else "struct"), d[1]))
             elif k == "out_handle":
                 if outh is not None:
                     raise Todo("more than one out-handle parameter is not supported")
                 outh = d[1]
-                out.append(f"ref {pn}: {d[1]}")
+                out.append(f"ref {pn} {d[1]}")
                 hs.add(d[1])
                 info["outh"] = d[1]
             elif k == "callback" and pn in (sc.get("keeps") or []):
                 if d[5] != "Unit":                # the library keeps it and wants an answer: a Handler
-                    out.append(f"{pn}: Handler[{d[1]}]")
+                    out.append(f"{pn} Handler[{d[1]}]")
                     info["ps"].append((pn, "handler", d[1]))
                 else:
                     vals = [x for x in clean_cb(d[1]).split(") -> ")[0][1:].split(", ") if x]
@@ -478,13 +478,13 @@ class Gen:
                         raise Todo(f"callback '{pn}' is kept by the library but carries no values to deliver")
                     payload = d[4][0] if len(d[4]) == 1 else "(" + ", ".join(d[4]) + ")"
                     wpayload = vals[0] if len(vals) == 1 else "(" + ", ".join(vals) + ")"
-                    out.append(f"{pn}: Events[{payload}]")
+                    out.append(f"{pn} Events[{payload}]")
                     info["ps"].append((pn, "events", wpayload))
             elif k == "callback":
-                out.append(f"{pn}: {d[1]}")
+                out.append(f"{pn} {d[1]}")
                 info["ps"].append((pn, "val", d[1]))
             elif k == "opaque_ptr":
-                out.append(f"{pn}: {d[1]}")
+                out.append(f"{pn} {d[1]}")
                 hs.add(d[1])
                 info["ps"].append((pn, "val", d[1]))
             else:
@@ -605,19 +605,19 @@ def make_wrappers(g, decls, lib, side, comments):
                 call.append(f"ref {pn}")
                 continue
             if kind == "cstring":
-                sig.append(f"{pn}: String")
+                sig.append(f"{pn} String")
                 call.append(f"cstr({pn})")
             elif kind in ("bytes_rw", "ref_scalar", "ref_struct"):
-                sig.append(f"ref {pn}: {ty}")
+                sig.append(f"ref {pn} {ty}")
                 call.append(f"ref {pn}")
             elif kind == "events":
-                sig.append(f"{pn}: ChanW[{ty}]")
+                sig.append(f"{pn} ChanW[{ty}]")
                 call.append(f"move {pn}")
             elif kind == "handler":
-                sig.append(f"{pn}: Handler[{clean_cb(ty)}]")
+                sig.append(f"{pn} Handler[{clean_cb(ty)}]")
                 call.append(pn)
             else:
-                sig.append(f"{pn}: {clean_cb(ty)}")
+                sig.append(f"{pn} {clean_cb(ty)}")
                 call.append(pn)
         for cl in comments.get(name, "").split("\n"):
             if cl.strip():
@@ -644,22 +644,22 @@ def make_wrappers(g, decls, lib, side, comments):
                 sig2, call2 = [], []
                 for p in ps:
                     if p in outs:
-                        sig2.append(f"ref {p[0]}: {p[2]}")
+                        sig2.append(f"ref {p[0]} {p[2]}")
                         call2.append(f"ref {p[0]}")
                     elif p[1] == "cstring":
-                        sig2.append(f"{p[0]}: String")
+                        sig2.append(f"{p[0]} String")
                         call2.append(f"cstr({p[0]})")
                     elif p[1] in ("bytes_rw", "ref_scalar", "ref_struct"):
-                        sig2.append(f"ref {p[0]}: {p[2]}")
+                        sig2.append(f"ref {p[0]} {p[2]}")
                         call2.append(f"ref {p[0]}")
                     elif p[1] == "events":
-                        sig2.append(f"{p[0]}: ChanW[{p[2]}]")
+                        sig2.append(f"{p[0]} ChanW[{p[2]}]")
                         call2.append(f"move {p[0]}")
                     elif p[1] == "handler":
-                        sig2.append(f"{p[0]}: Handler[{clean_cb(p[2])}]")
+                        sig2.append(f"{p[0]} Handler[{clean_cb(p[2])}]")
                         call2.append(p[0])
                     else:
-                        sig2.append(f"{p[0]}: {clean_cb(p[2])}")
+                        sig2.append(f"{p[0]} {clean_cb(p[2])}")
                         call2.append(p[0])
                 head = f"export {info['eff']} fn {w}({', '.join(sig2)})"
                 callx = f"{name}({', '.join(call2)})"
@@ -691,7 +691,8 @@ def find_closers(g, decls, side):
             continue
         text = decls[name]
         inner = text[text.index("(") + 1:text.rindex(")")] if ")" in text else ""
-        if inner.count(":") == 1 and inner.split(":")[1].strip() == h and "Result[" not in text:
+        words = inner.split()
+        if len(words) == 2 and "," not in inner and words[1] == h and "Result[" not in text:
             closers[h] = name
     return closers
 
@@ -730,7 +731,7 @@ def generate(header, lib, side, defines=(), includes=()):
     for tn, fields in g.tuples.items():
         lines.append(f"internal tuple {tn}")
         for fname, ft in fields:
-            lines.append(f"  {fname}: {ft}")
+            lines.append(f"  {fname} {ft}")
         lines.append("")
     seen = set()
     for en, ev in g.enums:

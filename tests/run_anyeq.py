@@ -1,7 +1,7 @@
 """`any I` with `==`, `<`, and as a Set element or Dict key when `I` embeds Equatable, Ordered, or Hashable.  Run: python3 tests/run_anyeq.py"""
 import subprocess, sys, os, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HEAD = 'interface Voice\n{embeds}  fn say() String\n\ntuple Dog deriving eq, ord, hash\n  name: String\n\ntuple Cat deriving eq, ord, hash\n  name: String\n\nimpl Voice for Dog\n  fn say() String = "woof"\nimpl Voice for Cat\n  fn say() String = "meow"\n\n'
+HEAD = 'interface Voice\n{embeds}  fn say() String\n\ntuple Dog deriving eq, ord, hash\n  name String\n\ntuple Cat deriving eq, ord, hash\n  name String\n\nimpl Voice for Dog\n  fn say() String = "woof"\nimpl Voice for Cat\n  fn say() String = "meow"\n\n'
 E = "  Equatable\n  Ordered\n  Hashable\n"
 CASES = [
  ("equal values of one type", E, 'a: any Voice = Dog("x")\nb: any Voice = Dog("x")\nprintln(a == b)\n', "true", None),
