@@ -1802,6 +1802,7 @@ class Checker:
         nt = self.narrowed_type(sc.find(n.e.name), n.pat) if n.e.__class__ is Name else None
         for nm in self.pat_names(n.pat):
             sc.vars[nm] = Var(nt if (nt is not None and n.pat.__class__ is PAs and n.pat.name == nm) else None, False, self.loop_depth)
+        self.bind_payloads(n.pat, self.decl_node(n.e, sc), sc)
         return "Bool", None
 
     SCAL = {"Int", "Float", "String", "Bool", "Char", "Decimal", "Unit"}
@@ -2552,7 +2553,13 @@ class Checker:
                         and not any(x.__class__ is tuple and x and x[0] == "spread" for x in vt[1]) and len(vt[1]) != len(tgt.items or []):
                     self.err(n.line, f"this pattern has {len(tgt.items or [])} names, but the value has {len(vt[1])} fields")
                 self.bind_pat(tgt, sc, vt, res)
+                if tgt.__class__ is PCon:
+                    self.bind_payloads(tgt, self.var_node_of(n, sc), sc)       # `P(a) = p`: `a` is written as `P`'s field is
         return None, None
+
+    def var_node_of(self, n, sc):
+        """The written type of an assignment's value: its annotation, else what the value was written as."""
+        return n.ann if n.ann is not None else self.decl_node(n.value, sc)
 
     def bind_any_local(self, n, sc, name):
         """`x: any Container = make()` gets a hidden type of its own, as a parameter does; `x = a` (or `x: any I = a`) for an `any` parameter or
@@ -2901,11 +2908,13 @@ class Checker:
         arm_ts = []
         tail = id(n) in self.tail_whens and self.fn_ret is not None
         self.warn_unreachable_arms(n)
+        sdn = self.decl_node(n.scrut, sc) if n.scrut is not None else None
         for a in n.arms:
             inner = Sc(sc)
             self.moved = dict(base)
             for p in a.pats or []:
                 self.bind_pat(p, inner, st if n.scrut is not None else None)
+                self.bind_payloads(p, sdn, inner)
                 self.check_pat_names(p, inner)
             if n.scrut.__class__ is Name and len(a.pats or []) == 1:
                 v0 = sc.find(n.scrut.name)
@@ -3097,6 +3106,51 @@ class Checker:
         """Names the prelude provides as functions: a call to one gives its arguments no declared type."""
         return {"println", "print", "show", "dbg", "assert", "assert_eq", "len", "min", "max", "ok", "fail", "swap"}
 
+    def bind_payloads(self, p, dn, sc, depth=0):
+        """A pattern taking apart a value written as `dn` (`Result[V, Error]`, `Option[V]`, a tuple or an enum): each name it binds
+        is written as the matching field is, so a `when` on it knows the union it has."""
+        if p is None or depth > 4:
+            return
+        c = p.__class__
+        if c is PAs:
+            v = sc.vars.get(p.name)
+            if v is not None and dn is not None:
+                self.var_node[v] = dn
+            self.bind_payloads(p.pat, dn, sc, depth + 1)
+            return
+        if dn is None:
+            return
+        if c is PBind:
+            v = sc.vars.get(p.name)
+            if v is not None:
+                self.var_node[v] = dn
+            return
+        if c is not PCon or not p.args:
+            return
+        types = None
+        name = p.path[-1]
+        if dn.__class__ is TName and dn.groups and dn.groups[0]:
+            g = dn.groups[0]
+            if dn.path[-1] == "Result" and name == "Ok" and len(g) >= 1:
+                types = [g[0]]
+            elif dn.path[-1] == "Result" and name == "Err" and len(g) >= 2:
+                types = [g[1]]
+            elif dn.path[-1] == "Option" and name == "Some" and len(g) == 1:
+                types = [g[0]]
+        if types is None and dn.__class__ is TName and len(dn.path) == 1 and not dn.groups:
+            en = dn.path[0]
+            if en in self.enums and not getattr(self.enums[en], "tparams", None) and not getattr(self.enums[en], "header", None):
+                cd = next((x for x in self.enums[en].cases or [] if x.name == name), None)
+                if cd is not None:
+                    types = [f.type for f in cd.fields or []]
+            elif en in self.tuples and name == en and not getattr(self.tuples[en], "tparams", None):
+                types = [f.type for f in self.tuples[en].fields or []]
+        if types is None:
+            return
+        for i, (lbl, sub) in enumerate(p.args):
+            ft = types[i] if lbl is None and i < len(types) else None
+            self.bind_payloads(sub, ft, sc, depth + 1)
+
     def decl_node(self, e, sc, depth=0):
         """The written type of an expression, where one was written: a parameter or annotated local, the result of a function, a
         field of a tuple, an element of a declared List or Array.  The type system does not carry `type union` types, so this
@@ -3107,6 +3161,20 @@ class Checker:
         if c is Name:
             v = sc.find(e.name)
             return self.var_node.get(v) if v is not None else None
+        if c is Q:                                                              # `mk()?` of a `Result[V, E]` or an `Option[V]` is a `V`
+            dn = self.decl_node(e.e, sc, depth + 1)
+            if dn.__class__ is TName and dn.path[-1] in ("Result", "Option") and dn.groups and dn.groups[0]:
+                return dn.groups[0][0]
+            return None
+        if c is Call and e.fn.__class__ is Name and sc.find(e.fn.name) is None and e.fn.name not in self.fns:
+            nm = e.fn.name                                                   # a constructor: `P(a: 1)`, or a bare case `Full(1)`
+            if nm in self.tuples and nm not in self.cases:
+                return TName([nm], [])
+            if nm in self.cases and len(self.cases[nm]) == 1:
+                return TName([self.cases[nm][0]], [])
+        if c is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name and sc.find(e.fn.obj.name) is None \
+                and e.fn.obj.name in self.enums and any(x.name == e.fn.name for x in self.enums[e.fn.obj.name].cases or []):
+            return TName([e.fn.obj.name], [])                                # `Box.Full(1)`
         if c is Call and e.fn.__class__ is Field:                              # a method: `s.shape()`, or `Shape.make()`
             f = e.fn
             tn = None
