@@ -4,7 +4,7 @@ title: "Mixer's Guide"
 ---
 # MIXER'S GUIDE
 
-These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie, the dialect with no garbage collector. A second dialect, moxie/gc, has its own Guide. Outputs were recomputed by hand. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
+These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie, the dialect with no garbage collector. A second dialect, moxie/gc, has its own Guide. Every output was checked by running the example on the reference interpreter. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
 
 **Chapter 1: Bindings, blocks, `if`, loops**
 
