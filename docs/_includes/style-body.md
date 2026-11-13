@@ -7,8 +7,7 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 - Two spaces per level, no tabs, no trailing spaces.
 - Lines break at 80 columns. A long call or list gets one item per line, two spaces deeper, with the closing bracket back at the original level.
 - One space around operators and after a comma, none before a comma.
-- A lambda's colon touches the closing parenthesis and has one space after it: `(x): x + 1`.
-- An inline fiber has a space after `fn`: `run fn (tx)(out): ...`.
+- An inline fiber has a space after `fn`: `run fn (tx)(out) -> ...`.
 - A blank line before each top-level declaration, and no more than two in a row.
 
 ## Names
@@ -21,30 +20,30 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 - Give every function a return type, and write `Unit` for one that returns nothing. The compiler requires it, and the signature then reads as a sentence.
 - Write the types of the parameters. They are the documentation that the body can't give.
 - Keep a function short enough to read without scrolling. When a block grows a second job, give the second job a name.
-- Use the one-line form when the body is one expression: `fn double(x Int) Int: x * 2`.
+- Use the one-line form when the body is one expression: `fn double(x Int) Int = x * 2`.
 - Update with `+=`, `-=`, and `++` rather than `x = x + 1`. A rebinding inside a loop does not leave the loop, so accumulate with a stream terminal such as `reduce` or `sum`, or break out with a value.
 
 ## Lambdas
 
-A lambda is a function with no name, written `(params): body`. It is meant to be small, and it is pure. When the body needs an effect, write an anonymous `fn`, `fn (params): body`, which may print, park, or touch a channel, a file, a socket, or SQL. The `fn` in front is the signal that something happens.
+A lambda is a function with no name, written `(params) -> body`, with a space on each side of the arrow. It is meant to be small, and it is pure. When the body needs an effect, write an anonymous `fn`, `fn (params) -> body`, which may print, park, or touch a channel, a file, a socket, or SQL. The `fn` in front is the signal that something happens.
 
 - **Keep it to one expression, or a few lines.** Past that, declare a function with `fn` and give it a name. A name is documentation.
-- **Anything with an effect is written with `fn`.** `with_stdin(text, fn (): read_line())` takes an anonymous `fn`. When the body is a block, or is used more than once, give it a name: `transaction(conn, move_funds(_, from_id, to_id, amount))`, with a partial call filling in the rest.
-- **Use `_` for the shortest cases.** `xs |> map(_ * 2)` is clearer than `xs |> map((x): x * 2)`. Once the body needs the value twice, or a name would help, write the lambda.
-- **Use a partial call instead of a lambda that only forwards.** `log("ERROR", _)` beats `(m): log("ERROR", m)`.
+- **Anything with an effect is written with `fn`.** `with_stdin(text, fn () -> read_line())` takes an anonymous `fn`. When the body is a block, or is used more than once, give it a name: `transaction(conn, move_funds(_, from_id, to_id, amount))`, with a partial call filling in the rest.
+- **Use `_` for the shortest cases.** `xs |> map(_ * 2)` is clearer than `xs |> map((x) -> x * 2)`. Once the body needs the value twice, or a name would help, write the lambda.
+- **Use a partial call instead of a lambda that only forwards.** `log("ERROR", _)` beats `(m) -> log("ERROR", m)`.
 - **Put the lambda after the call when it is the last argument and the body is longer than a few words:**
 
   ```
   total = scores
     |> to_stream()
-    |> filter()(s): s >= 60
+    |> filter()(s) -> s >= 60
     |> sum()
   ```
 
-  Inside the argument list, a short lambda reads fine: `filter((s): s >= 60)`.
-- **Spread a pair instead of destructuring it.** `zip(xs, ys) |> map((x, y): x * y)` needs one pair of parentheses. A tuple pattern, `((x, y)): ...`, is legal, but it stacks parentheses, and a nested one such as `(((x, y), z)): ...` is hard to read. Past one level of nesting, bind a named lambda with one parameter and take the tuple apart in its body: `sum3 (((Int, Int), Int)) -> Int = (p):`, then `((a, b), c) = p` on the next line. The name documents it, and no parentheses stack.
-- **Bind a lambda with a typed name:** `add (Int, Int) -> Int = (a, b): a + b`. The type on the name gives the lambda its types, so the lambda writes none. If it needs to call itself or be generic, it is a function, so use `fn`.
-- **Parenthesize a lambda at the top level of a condition.** A header's colon belongs to the header, so write `if any(xs, (x): x > 2):`, with the lambda inside the call.
+  Inside the argument list, a short lambda reads fine: `filter((s) -> s >= 60)`.
+- **Spread a pair instead of destructuring it.** `zip(xs, ys) |> map((x, y) -> x * y)` needs one pair of parentheses. A tuple pattern, `((x, y)) -> ...`, is legal, but it stacks parentheses, and a nested one such as `(((x, y), z)) -> ...` is hard to read. Past one level of nesting, bind a named lambda with one parameter and take the tuple apart in its body: `sum3 (((Int, Int), Int)) -> Int = (p) ->` and an indented body, then `((a, b), c) = p` on the next line. The name documents it, and no parentheses stack.
+- **Bind a lambda with a typed name:** `add (Int, Int) -> Int = (a, b) -> a + b`. The type on the name gives the lambda its types, so the lambda writes none. If it needs to call itself or be generic, it is a function, so use `fn`.
+- **Keep a lambda inside brackets in a header.** A lambda body runs to the end of the line, so in a one-line `if` write `if any((x) -> x > 2, xs) then ...`, with the lambda inside the call, and not a bare lambda before `then`.
 
 ## Pipelines
 
@@ -54,8 +53,8 @@ A lambda is a function with no name, written `(params): body`. It is meant to be
 
 ## Choices
 
-- **Write `else:` for the catch-all arm, not `_ ->`.** It is the last arm of a `when`, of a `select`, and of a `seq:`, and it never takes `->`: `else: "big"`, and in a `select` just `else: println("nothing")`, with no `case`. Keep `_` for what it is a pattern for, such as `(_, v)` or `Some(_)`. A catch-all that is the whole `when` (nothing else to match) is usually an `if`.
-- **Start with a field; reach for a `property` when a read or write needs code.** A caller can't tell them apart, so changing a field into a property later breaks nobody. Use a field delegate (`delegate(Percent)`) when one rule belongs to many fields, and a property when the rule is for one field or needs the others. Give a computed property a `get:` that is a short expression, mark a setter `priv set` when only the type's own methods should write, and use `lazy` for a pure value that costs something to compute. Share changing state through an Atom with `on_change`, not through a mutable static (there isn't one).
+- **Write `else` for the catch-all arm, not `_ ->`.** It is the last arm of a `when`, of a `select`, and of a `seq`, and it never takes `->`: `else "big"`, and in a `select` just `else println("nothing")`, with no `case`. Keep `_` for what it is a pattern for, such as `(_, v)` or `Some(_)`. A catch-all that is the whole `when` (nothing else to match) is usually an `if`.
+- **Start with a field; reach for a `property` when a read or write needs code.** A caller can't tell them apart, so changing a field into a property later breaks nobody. Use a field delegate (`delegate(Percent)`) when one rule belongs to many fields, and a property when the rule is for one field or needs the others. Give a computed property a `get ->` that is a short expression, mark a setter `priv set` when only the type's own methods should write, and use `lazy` for a pure value that costs something to compute. Share changing state through an Atom with `on_change`, not through a mutable static (there isn't one).
 
 ## Errors
 
