@@ -751,7 +751,7 @@ print("${transfer(100, 40)} ${transfer(count: 5, dest: 40, source: 100)} ")
 println("${transfer(100, dest: 40)}")
 ```
 
-Output: `70 65 70`. A tuple can fill a parameter list:
+Output: `70 65 70`. The colon in a call marks a value: `transfer(dest: 40, source: 100)` gives `dest` the value `40`. A declaration has no colon, because the type follows the name: `fn transfer(dest Int, source Int)` says `dest` is an `Int`. The two look alike on purpose, and the colon is how the eye tells them apart: a name followed by a type is a declaration, and a name with a colon and a value is an argument. A bare name after a named argument stands for itself, so `transfer(source: 100, dest)` means `dest: dest`. A tuple can fill a parameter list:
 
 ```
 fn sum_squares(x Double, y Double) Double
