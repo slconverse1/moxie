@@ -27,6 +27,8 @@ CASES = [
  ("a bare name after a named argument is a pun", U + 'who = "Al"\nage = 7\nprintln(User(name: who, age))\n', 0, 'User(name: "Al", age: 7)\n'),
  ("a bare name in a Dict is a pun", 'age = 7\nn = 3\nprintln(Dict(age, n))\n', 0, 'Dict("age" -> 7, "n" -> 3)\n'),
  ("positional arguments stay positional", 'fn f(a Int, b Int) Int\n  a - b\na = 10\nb = 1\nprintln(f(a, b))\n', 0, "9\n"),
+ ("a Dict pattern entry is key -> value", 'd = Dict("speed" -> 60, "limit" -> 100)\nwhen d\n  Dict("speed" -> s, "limit" -> 100) -> println("speed ${s}")\n  else println("other")\n', 0, "speed 60\n"),
+ ("the old Dict pattern colon is an error", 'd = Dict("a" -> 1)\nwhen d\n  Dict("a": x) -> println(x)\n  else println("no")\n', 2, "key -> value"),
  ("read takes a Dict in the show form", 'println(read[Dict[String, Int]]("Dict(\\"k\\" -> 3)"))\n', 0, 'Ok(Dict("k" -> 3))\n'),
 ]
 fails = []

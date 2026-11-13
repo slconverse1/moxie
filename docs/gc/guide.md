@@ -1663,7 +1663,7 @@ fn greet[T Named](x T) String
 println(greet(Person(given: "Ada", family: "Lovelace")))
 ```
 
-Output: `Hello, Ada Lovelace`. `name: String` asks for something readable. `property balance: Int` with `get` and `set` underneath asks for something readable and writable (with neither line, it asks for both). `impl Named for T` is a compile error when `T` has no field or property of that name, or its type differs, or it is read-only where the interface asks for `set`.
+Output: `Hello, Ada Lovelace`. `name String` asks for something readable. `property balance Int` with `get` and `set` underneath asks for something readable and writable (with neither line, it asks for both). `impl Named for T` is a compile error when `T` has no field or property of that name, or its type differs, or it is read-only where the interface asks for `set`.
 
 When the tuple is held in an Atom, other code can watch a property, as many listeners as it likes, such as a database handler and a GUI handler:
 
@@ -1894,7 +1894,7 @@ Output: `Success Client Error Server Error Unknown B`. On an unbounded type the 
 ```
 status = Dict("speed" -> 60, "limit" -> 100)
 when status
-  Dict("speed": current, "limit": 100) -> println("moving at $current")
+  Dict("speed" -> current, "limit" -> 100) -> println("moving at $current")
   else println("idle")
 number = 25
 when

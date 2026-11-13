@@ -454,7 +454,7 @@ class PBase:
                 return PTyped(PWild(line=line), TName(path, groups, line=line), line=line)
             if self.at_op("(") and not self.peek().sp or (self.at_op("(") and v[:1].isupper()):
                 self.next()
-                args = self.parse_pattern_args()
+                args = self.parse_pattern_args(path == ["Dict"])
                 return PCon(path, args, line=line)
             if len(path) == 1 and not v[:1].isupper():
                 return PBind(v, line=line)
@@ -549,7 +549,7 @@ class PBase:
             return PRange(lo, hi, op == "..=", line=plit.line)
         return plit
 
-    def parse_pattern_args(self):
+    def parse_pattern_args(self, dict_entries=False):
         args = []
         if self.eat_op(")"):
             return args
@@ -562,7 +562,12 @@ class PBase:
                 nm = self.next().val
                 args.append((None, PRest(nm, line=self.peek().line)))
             else:
-                if (self.peek().kind in ("NAME", "STR")) and self.at_op(":", 1):
+                if dict_entries and self.peek().kind in ("NAME", "STR") and self.at_op(":", 1):
+                    if PBase.RECORD is not None:
+                        PBase.RECORD.append(("dict", self.peek(1)))
+                    else:
+                        self.err("a `Dict` pattern entry is written `key -> value`, not `key: value`", self.peek(1))
+                if (self.peek().kind in ("NAME", "STR")) and (self.at_op(":", 1) or (dict_entries and self.at_op("->", 1))):
                     t = self.next()
                     label = t.val if t.kind == "NAME" else "".join(p for p in t.val if isinstance(p, str))
                     self.next()

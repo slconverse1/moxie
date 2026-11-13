@@ -931,7 +931,7 @@ null
 ],
 [
 1883,
-"status = Dict(\"speed\" -> 60, \"limit\" -> 100)\nwhen status\n  Dict(\"speed\": current, \"limit\": 100) -> println(\"moving at $current\")\n  else println(\"idle\")\nnumber = 25\nwhen\n  number < 0 -> println(\"negative\")\n  number % 2 == 0 -> println(\"even\")\n  else println(\"odd and positive\")\n",
+"status = Dict(\"speed\" -> 60, \"limit\" -> 100)\nwhen status\n  Dict(\"speed\" -> current, \"limit\" -> 100) -> println(\"moving at $current\")\n  else println(\"idle\")\nnumber = 25\nwhen\n  number < 0 -> println(\"negative\")\n  number % 2 == 0 -> println(\"even\")\n  else println(\"odd and positive\")\n",
 [
 "moving at 60",
 "odd and positive"

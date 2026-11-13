@@ -177,11 +177,11 @@ fn make_adder(n Int) (Int) -> Int
   (x) -> x + n
 ```
 
-- **Parameters** are written `name: Type`, with the same colon a tuple field uses, and they're separated by commas with none after the last. A default (`greeting: String = "Hello"`) must come after the parameters without one.
+- **Parameters** are written `name Type`, the same way a tuple field is, and they're separated by commas with none after the last. A default (`greeting String = "Hello"`) must come after the parameters without one.
 - **Calls** can use position, names, or both: `greet("Ada")`, `greet("Ada", greeting: "Hi")`.
 - **The return type is required.** A function that returns nothing says `Unit`, as `announce` does.
-- **Generics** go in the brackets after the function name. `[T: Ordered]` says "any type `T` that has an ordering," which is what lets `largest` use `<`. The bound after the colon names an interface (`Ordered` in this case), and size parameters such as `N` live in the same brackets.
-- **Modifiers** go in front of a parameter (`ref n: Int`, `lazy x: Int`, `using who: String`) or in front of `fn` (`pure fn`, `inline fn`, `fiber fn`, `export fn`).
+- **Generics** go in the brackets after the function name. `[T Ordered]` says "any type `T` that has an ordering," which is what lets `largest` use `<`. The bound after the name names an interface (`Ordered` in this case), and size parameters such as `N` live in the same brackets.
+- **Modifiers** go in front of a parameter (`ref n Int`, `lazy x Int`, `using who String`) or in front of `fn` (`pure fn`, `inline fn`, `fiber fn`, `export fn`).
 - **Short bodies** can sit on the same line after `=`: `fn double(x Int) Int = x * 2`.
 - **Multi-clause function definitions** make one function that matches on its arguments.
 
@@ -478,7 +478,7 @@ You never write the nested-copy boilerplate, and the original `a` is untouched.
 
 ## 8. Tuple and parameter-list unification
 
-This comes straight out of the SML/OCaml playbook: **a tuple and a parameter list are the same idea.** In most languages those live in separate silos, with different syntax, different compiler rules, and boilerplate to convert from one to the other. In moxie, a function's parameter list is a compile-time named tuple. Parameters use the same colon as tuple fields (`fn greet(name String, age Int)`), and the two follow the same rules, so a call stops being a unique, magical event and becomes a structural assignment.
+This comes straight out of the SML/OCaml playbook: **a tuple and a parameter list are the same idea.** In most languages those live in separate silos, with different syntax, different compiler rules, and boilerplate to convert from one to the other. In moxie, a function's parameter list is a compile-time named tuple. Parameters are declared the same way as tuple fields, the name and then its type (`fn greet(name String, age Int)`), and a call names them the way a tuple literal does (`greet(name: "Ada", age: 36)`), so the two follow the same rules, so a call stops being a unique, magical event and becomes a structural assignment.
 
 **How this differs from the classic view.** In Standard ML and OCaml the unification is literal: every function takes exactly one argument, `add(3, 5)` is `add` applied to the tuple `(3, 5)`, and tuples are positional only. Moxie unifies the *rules* rather than the representation. A function still has several parameters, and a tuple can fill the whole list, but a parameter list also gets everything a tuple field gets: names, defaults, spreads, and calls by position, by name, or both. Parameter modifiers such as `ref`, `lazy`, and `using` have no tuple counterpart, so the unification stops there. The unification reaches the type system, too: a function type is just its parameter types, so `(Int, Int) -> Int` and `((Int, Int)) -> Int` are one type, and a function of that type can be called as `f(3, 5)` or `f(pair)`. The modifiers are the exception. A tuple can't fill a `ref` parameter, and a function with modifiers has a type of its own. So a moxie programmer gets more than the ML one does, and the ML programmer's single-argument mental model still holds for everything that isn't a modifier.
 
@@ -600,7 +600,7 @@ Output: `6.0`, then `6.0`. Here `area` is *computed*: it takes no space in the t
 
 If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level: Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Mixer's Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
 
-**Properties in interfaces.** An interface can ask for a property too: `name: Type` means "readable", and `property name: Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 18.
+**Properties in interfaces.** An interface can ask for a property too: `name Type` means "readable", and `property name Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 18.
 
 ## 10. Pattern matching
 
