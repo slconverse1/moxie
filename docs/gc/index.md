@@ -7,7 +7,7 @@ title: "moxie/gc"
 
 # Hello, mixers! (moxie/gc edition)
 
-Allow me to introduce you to moxie/gc.
+Allow us to introduce you to moxie/gc.
 
 Moxie/gc is a (mostly) compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem. Where the compiler can't verify a type, it says so with a warning and shows how to write the code so the check happens at compile time instead of at run time (see the Spec, section 24a).
 
@@ -56,7 +56,7 @@ The [Tutorial](tutorial.html) builds one program step by step and assumes you ha
 
 ## About us
 
-Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer exists on paper alone. It's a software project undertaken by me, Steve Converse (feature selection), in collaboration with Google's generative AI (feature analysis) and Anthropic's Claude (feature selection, analysis, and implementation), without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
+Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer exists on paper alone. It's a software project undertaken by me, Steve Converse (feature selection and documentation), in collaboration with Google's generative AI (feature analysis) and Anthropic's Claude (feature selection, analysis, implementation, and documentation), without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
 
 The interpreter runs both moxie and moxie/gc programs, including the examples in their Mixer's Guides, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the speed in FCFX and the garbage collector's short pauses, are still promises, not demonstrations. **[gc]**
 
@@ -93,18 +93,19 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 
 - **Go:** interfaces, goroutines, channels, and `select`, and (in moxie/gc) the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
 - **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
-- **Kotlin:** scoped receiver blocks, field delegates (`level: Int delegate(Percent)` is Kotlin's `by`), Domain-Specific Languages, and labeled `break` and `continue`.
-- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for operators you define, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
+- **Kotlin:** scoped receiver blocks, field delegates (`level Int delegate(Percent)` is Kotlin's `by`), Domain-Specific Languages, and labeled `break` and `continue`.
+- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
-- **Clojure:** lock-free state through Atoms and `swap`, `cond`, and (in moxie/gc) persistent collections that share structure. **[gc]**
-- **Haskell:** multi-clause function definitions, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, guards on function clauses, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
+- **Clojure:** `cond`, lock-free state through Atoms and `swap`, and (in moxie/gc) persistent collections that share structure. **[gc]**
+- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
-- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`).
+- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`), and backing-field shorthand.
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
+- **C#:** multi-cast delegation.
 
 By synthesizing these features and others into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
 
@@ -240,7 +241,7 @@ add5 = make_adder(5)
 println("${add5(10)} ${apply_curried(add_curried, 3, 4)}")
 ```
 
-Output: `15 7`. Read `make_adder(n: Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n: Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic currying, written out by hand, which is what the prelude's `curry` does for you.
+Output: `15 7`. Read `make_adder(n Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic currying, written out by hand, which is what the prelude's `curry` does for you.
 
 ## Call by value, name, need, and reference
 
@@ -304,7 +305,7 @@ These two names look alike but do different jobs, and you'll meet both in nearly
 
 **`Err` is a case of `Result`.** A `Result[T, E]` is either `Ok(value)`, holding the answer, or `Err(error)`, holding the reason it failed. `Err` is the "it didn't work" wrapper, and it can hold *any* error type `E` you choose.
 
-**`Error` is a built-in tuple** that is the standard moxie error type, `Error(code: Int, message: String)`, where the message is an ordinary `String`. **[gc]** (In no-GC moxie it has to be a fixed string known at compile time.) The function `fail(code, message)` is shorthand for building an `Err` that holds one:
+**`Error` is a built-in tuple** that is the standard moxie error type, `Error(code Int, message String)`, where the message is an ordinary `String`. **[gc]** (In no-GC moxie it has to be a fixed string known at compile time.) The function `fail(code, message)` is shorthand for building an `Err` that holds one:
 
 ```
 fn check_age(age Int) Result[Int, Error]
@@ -501,7 +502,7 @@ This comes straight out of the SML/OCaml playbook: **a tuple and a parameter lis
 
 **How this differs from the classic view.** In Standard ML and OCaml the unification is literal: every function takes exactly one argument, `add(3, 5)` is `add` applied to the tuple `(3, 5)`, and tuples are positional only. Moxie unifies the *rules* rather than the representation. A function still has several parameters, and a tuple can fill the whole list, but a parameter list also gets everything a tuple field gets: names, defaults, spreads, and calls by position, by name, or both. Parameter modifiers such as `ref`, `lazy`, and `using` have no tuple counterpart, so the unification stops there. The unification reaches the type system, too: a function type is just its parameter types, so `(Int, Int) -> Int` and `((Int, Int)) -> Int` are one type, and a function of that type can be called as `f(3, 5)` or `f(pair)`. The modifiers are the exception. A tuple can't fill a `ref` parameter, and a function with modifiers has a type of its own. So a moxie programmer gets more than the ML one does, and the ML programmer's single-argument mental model still holds for everything that isn't a modifier.
 
-**Tuples replace structs.** Moxie has no `struct` or `class`. A declared `tuple` is the record type: named fields, defaults, derived `show`, `eq`, `ord`, `read`, and `hash` (print, compare for equality, order, parse back from text, and use as a Dict key), delegates, and `impl` blocks for methods. Because a tuple follows the same rules as a parameter list, it plugs straight into the rest of the language. A tuple can fill a function's parameters, so it flows through `|>` pipes from stage to stage with no unpacking. It can be spread (`Point(...p, y: 9.0)`), matched by position or by name in a `when`, and handed along a monad sequence: if `lookup` returns a `Result[(Int, Int), Error]` and `total` takes `(a: Int, b: Int)`, then `lookup(id) |>> total` passes the pair inside the `Ok` into `total`, and `|>>` works the same way on any type with a `Monad` impl. A traditional struct is a closed bag of fields with rules of its own. It can't fill a parameter list, so every stage of a pipe or a monad chain would have to take the struct whole and pick it apart by hand, or you'd write adapter code between stages. You can still get the job done that way, but the operators lose most of their expressiveness. That’s why moxie doesn't offer a second way to make records.
+**Tuples replace structs.** Moxie has no `struct` or `class`. A declared `tuple` is the record type: named fields, defaults, derived `show`, `eq`, `ord`, `read`, and `hash` (print, compare for equality, order, parse back from text, and use as a Dict key), delegates, and `impl` blocks for methods. Because a tuple follows the same rules as a parameter list, it plugs straight into the rest of the language. A tuple can fill a function's parameters, so it flows through `|>` pipes from stage to stage with no unpacking. It can be spread (`Point(...p, y: 9.0)`), matched by position or by name in a `when`, and handed along a monad sequence: if `lookup` returns a `Result[(Int, Int), Error]` and `total` takes `(a Int, b Int)`, then `lookup(id) |>> total` passes the pair inside the `Ok` into `total`, and `|>>` works the same way on any type with a `Monad` impl. A traditional struct is a closed bag of fields with rules of its own. It can't fill a parameter list, so every stage of a pipe or a monad chain would have to take the struct whole and pick it apart by hand, or you'd write adapter code between stages. You can still get the job done that way, but the operators lose most of their expressiveness. That’s why moxie doesn't offer a second way to make records.
 
 To make that concrete, take `fn add(x Int, y Int) Int` and `pair = (3, 5)`. In SML there are two ways to call it, and both are positional: `add (3, 5)` and `add pair`. In moxie, all of these work:
 
@@ -617,7 +618,7 @@ println(r.width)
 
 Output: `6.0`, then `6.0`. Here `area` is *computed*: it takes no space in the tuple, and reading it multiplies, while writing it changes `width` to fit. A property can also keep a value of its own and watch it (`did_set(old)` runs after a change, and a setter can refuse a bad value by returning a `Result`), be `lazy` (computed once, on first read), be `static` (belongs to the type), or be made read-only outside the tuple with `priv set`. There is no run-time cost, because every access is specialized and inlined, and moxie/gc and moxie treat properties the same way.
 
-If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level: Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Mixer's Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
+If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Mixer's Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
 
 **Properties in interfaces.** An interface can ask for a property too: `name Type` means "readable", and `property name Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 18.
 
@@ -1606,7 +1607,7 @@ go(0)    // where go calls withdraw(acct, n) with n = 0 at run time
 - **Blame.** A failed `requires` is a caller bug. A failed `ensures` or `invariant` is a supplier bug.
 - **Caught early when it can be.** A `requires` whose arguments are all constants and that fails is a compile error, the same way a constant index out of range is.
 - **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them: put `keep_in_release = true` under `[contracts]` in `Moxie.toml` to leave them on in a release build.
-- **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a Array[T][N]) T` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e: Array[Int][3]`, so the check can happen at compile time instead.
+- **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a Array[T][N]) T` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e Array[Int][3]`, so the check can happen at compile time instead.
 - **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
 - **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
 - **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
