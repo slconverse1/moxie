@@ -236,6 +236,34 @@ println(total(100, 8))
 
 Output: `108`. Use plain indentation for the lines of a block comment and not a column of `*`; `moxie fmt` moves a block comment as one unit and keeps its text exactly. A comment on its own line takes the indentation of the code it belongs to. **Mistakes:** forgetting to close a `/*` (the error points at the line where it opened), and leaving commented-out code in a file once it is no longer needed.
 
+**1e. Where the colon is used**
+
+A colon never starts a block (the line break and the indent do that), and it never separates a name from its type. It has one job: it marks a value or a label. Everything that declares something puts the type after the name, as in Go:
+
+```
+tuple User deriving show
+  name String,
+  age Int
+fn describe(name String, age Int) String = "$name is $age"
+total Int = 0
+```
+
+Those are a tuple field, a parameter, and a binding with a type. A bound (`[T Ord]`), a case (`Circle(r Float)`), a tuple type (`(x Int, y Int)`), `forall xs List[Int]`, and `ref n Int` read the same way. The colon appears when you give a value:
+
+```
+name = "Al"
+age = 36
+u = User(name: name, age: age)
+v = User(name: "Bo", age)
+pt = (x: 1, y: 2)
+one = (:40)
+println("${describe(age: 3, name: "Bo")} $u $v $pt $one")
+```
+
+Output: `Bo is 3 User(name: "Al", age: 36) User(name: "Bo", age: 36) (x: 1, y: 2) (:40)`. A named argument is `name: value`, a tuple literal labels its fields the same way, and `(:40)` is a one-item tuple, shorthand for `(0: 40)`. A bare name after a named argument stands for itself, so `age` in `v` means `age: age`. An `update` line (`port: 443`) and a pattern label (`User(name: n)`) use the colon too.
+
+A call and a declaration can look alike, and the colon is what tells them apart. `describe(age: 3, name: "Bo")` has colons, so it gives values; `fn describe(name String, age Int)` has none, so it declares types. A `Dict` entry is neither: it uses an arrow (`Dict("a" -> 1)`), so a key can be any value without a colon in the way. The colon also stays in a few places that are not about types at all: a format spec (`${price:.2f}`), `sql(c): text`, and the commands of the REPL. Writing the old form, `fn f(x: Int)` or `total: Int = 0`, is a syntax error that tells you to delete the colon.
+
 **Chapter 2: Numbers, text, keywords**
 
 ```
@@ -300,7 +328,7 @@ name = "Ada"
 println("${price:.2f}|${n:08b}|${n:#x}|${name:>6}|${1234567:,}")
 ```
 
-Output: `12.50|11111111|0xff|   Ada|1,234,567`. Align is `<`, `>`, or `^` with an optional fill (`${name:*^7}` gives `**Ada**`), width counts characters, and the types are `d x X o b f e E %`. `${name:.2f}` on a string is a compile error. Widths and precisions are constants; for a computed width use `pad_left(s, width)` or `pad_right`. If the expression contains a colon (a `Dict` literal, say), parenthesize it first: `${(Dict("a": 1)):>5}`. An inline `if` has no colon, so `${if ok then "yes" else "no"}` needs no care. The type `n` uses the `Locale` found by `using`:
+Output: `12.50|11111111|0xff|   Ada|1,234,567`. Align is `<`, `>`, or `^` with an optional fill (`${name:*^7}` gives `**Ada**`), width counts characters, and the types are `d x X o b f e E %`. `${name:.2f}` on a string is a compile error. Widths and precisions are constants; for a computed width use `pad_left(s, width)` or `pad_right`. If the expression contains a colon (a `Dict` literal, say), parenthesize it first: `${(Dict("a" -> 1)):>5}`. An inline `if` has no colon, so `${if ok then "yes" else "no"}` needs no care. The type `n` uses the `Locale` found by `using`:
 
 ```
 using locale = Locale.de_de
@@ -751,7 +779,7 @@ print("${transfer(100, 40)} ${transfer(count: 5, dest: 40, source: 100)} ")
 println("${transfer(100, dest: 40)}")
 ```
 
-Output: `70 65 70`. The colon in a call marks a value: `transfer(dest: 40, source: 100)` gives `dest` the value `40`. A declaration has no colon, because the type follows the name: `fn transfer(dest Int, source Int)` says `dest` is an `Int`. The two look alike on purpose, and the colon is how the eye tells them apart: a name followed by a type is a declaration, and a name with a colon and a value is an argument. A bare name after a named argument stands for itself, so `transfer(source: 100, dest)` means `dest: dest`. A tuple can fill a parameter list:
+Output: `70 65 70`. The colon in a call marks a value, and a declaration has none (section 1e). A bare name after a named argument stands for itself, so `transfer(source: 100, dest)` means `dest: dest`. A tuple can fill a parameter list:
 
 ```
 fn sum_squares(x Double, y Double) Double
