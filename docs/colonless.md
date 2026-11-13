@@ -45,6 +45,10 @@ The colon also stays in format specs (`${x:>5}`), loop labels, `sql(c): text`, a
 
 The result is the same split Go has: `Name string` in a declaration, `Name: "Al"` in a literal. A type follows the name in a declaration, and a value follows the colon in a literal.
 
+## What it costs
+
+A colon made parameter names stand out a little more in a long list, and without it they stand out less. The choice was made knowing that. The colon was one more character to type on every parameter, field and binding, and one more mark to read past, and the name-first order (`x Int`, as in Go) keeps the name at the start of each item. Editors can colour names to make up the difference.
+
 ## Mistakes are errors, not guesses
 
 The old forms are syntax errors that say what to write: a block header with a colon says to delete it, a declaration with a colon says to write the name and then its type, and a `Dict` entry with a colon names the arrow. There is no period in which both forms work.
