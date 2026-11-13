@@ -289,6 +289,37 @@ Output: `Bo is 3 User(name: "Al", age: 36) User(name: "Bo", age: 36) (x: 1, y: 2
 
 A call and a declaration can look alike, and the colon is what tells them apart. `describe(age: 3, name: "Bo")` has colons, so it gives values; `fn describe(name String, age Int)` has none, so it declares types. A `Dict` entry is neither: it uses an arrow (`Dict("a" -> 1)`), so a key can be any value without a colon in the way. The colon also stays in a few places that are not about types at all: a format spec (`${price:.2f}`), `sql(c): text`, and the commands of the REPL. Writing the old form, `fn f(x: Int)` or `total: Int = 0`, is a syntax error that tells you to delete the colon.
 
+**1f. Binding several names at once**
+
+A binding with several names on the left takes the same number of values on the right. The right side is worked out first, and then all the names are bound, so a swap needs no temporary name. A function that returns a tuple can be taken apart the same way, and a tuple with labels can be taken apart by label:
+
+```
+a, b = 1, 2
+a, b = b, a
+println("$a $b")
+fn bounds(mid Int) (Int, Int)
+  (mid - 1, mid + 1)
+lo, hi = bounds(10)
+pt = (x: 3, y: 4)
+(x: px, y: py) = pt
+println("$lo $hi $px $py")
+```
+
+Output: `2 1`, then `9 11 3 4`. A multiple binding is one binding, not several in a row: the values are all evaluated before any name changes. If the counts differ (`a, b = 1, 2, 3`) it is a compile error that says how many names and how many values there are.
+
+To give several names the same value, chain the bindings: `x = y = z` binds `z` to `y` and then `y` to `x`, and `z` is worked out only once. The chain can be spread over lines when the names are long, with each `=` at the end of its line:
+
+```
+base = 5
+x = y = base
+long_name_one =
+long_name_two =
+base
+println("$x $y $long_name_one $long_name_two")
+```
+
+Output: `5 5 5 5`. Each name in a chain is a plain name (the first may carry a type, `n Int = m = 3`). A chain cannot have an `else`, cannot follow `then`, `do` or `->` on the same line, and does not mix with a compound update (`x += y = 3` is an error). For a pattern on the left, or a field, bind in separate lines.
+
 **Chapter 2: Numbers, text, keywords**
 
 ```
@@ -428,7 +459,7 @@ ages = Dict[String, Int][limit]()
 println("$limit")
 ```
 
-Output: `1024`. **Mistakes:** assigning a wider integer to a narrower type without `cast`, `b Percent = 101`, using the `d` suffix for a Double (`d` means Decimal only), and a `Decimal` product you forgot to round.
+Output: `1024`. **Mistakes:** binding a wider integer to a narrower type without `cast`, `b Percent = 101`, using the `d` suffix for a Double (`d` means Decimal only), and a `Decimal` product you forgot to round.
 
 **Chapter 3: Tuples, enums, `impl`**
 
@@ -595,7 +626,7 @@ println("${firm_name(a)} ${a.id} ${(/User/firm/floor)(a)} ${firm_name(b)}")
 println("${firm_name(c)} ${name_of_user(a)}")
 ```
 
-Output: `Initech 1 2 Acme`, then `Initech Ltd Initech`. The first segment is a type name and the rest are fields. `replace` and `modify` need a literal path and rewrite the nested tuples for you (`a` is unchanged). A `/` starts a path only where an operand is expected, and a path has no spaces. **Mistakes:** `type alias` with defaults or `deriving` (aliases are transparent), assigning a `Meters` where a `Feet` is wanted, leaving an arm out of a union `when`, a union that repeats a member after flattening, a path through an enum payload or an array, and a path held in a variable passed to `replace`.
+Output: `Initech 1 2 Acme`, then `Initech Ltd Initech`. The first segment is a type name and the rest are fields. `replace` and `modify` need a literal path and rewrite the nested tuples for you (`a` is unchanged). A `/` starts a path only where an operand is expected, and a path has no spaces. **Mistakes:** `type alias` with defaults or `deriving` (aliases are transparent), using a `Meters` where a `Feet` is wanted, leaving an arm out of a union `when`, a union that repeats a member after flattening, a path through an enum payload or an array, and a path held in a variable passed to `replace`.
 
 **Chapter 5: Collections**
 
@@ -629,7 +660,7 @@ for i in 0..len(numbers)
   println("$i: ${numbers(i)}")
 ```
 
-Compound assignment works on elements and fields: `numbers(0) += 1`, `p.score += 10`. **Mistakes:** `numbers(7)` aborts the fiber (and a constant `7` is a compile error), so use `get(numbers, 7)`.
+A compound update works on elements and fields, and rebinds the name to the changed copy: `numbers(0) += 1`, `p.score += 10`. **Mistakes:** `numbers(7)` aborts the fiber (and a constant `7` is a compile error), so use `get(numbers, 7)`.
 
 **5b. Lists**
 
@@ -1603,7 +1634,7 @@ g.level = -20
 println("${g.level}")
 ```
 
-Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value Int) Result[Unit, Error]`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because an assignment has nowhere to put a failure. Moxie generates `g.set_level(x)` instead, which returns the changed `Gauge` or the `Err`, as for a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
+Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value Int) Result[Unit, Error]`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because a field write has nowhere to put a failure. Moxie generates `g.set_level(x)` instead, which returns the changed `Gauge` or the `Err`, as for a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
 **Chapter 9b: Properties**
 
@@ -1739,7 +1770,7 @@ println(@shared)
 
 Output: `db: 0 -> 5`, `ui: 5`, `db: 5 -> 9`, then `Account(owner: "Ann", balance: 1)`. `on_change(shared, balance, handler)` calls `handler(old, new)` whenever a write through the Atom changes `balance`, in the order the handlers subscribed and after the type's own `did_set`. Writing the same value calls nobody. It returns a token, and `off_change(shared, token)` removes the handler. `shared.balance +% handler` and `shared.balance -% token` mean the same two things. A handler's closure copies what it captures, so it acts through effects: it prints, writes to a channel, or swaps another Atom. A property has room for 8 observers, and `property[16] balance: Int` gives it 16, though the list grows as needed, so the number is only a hint. Only properties can be watched, not plain fields.
 
-**Mistakes:** a setter that never stores into `field`, an `= value` on a property that stores nothing, `did_set` or `will_set` on a computed property, writing to a static or computed-only property, a `priv set` assigned from outside the tuple's `impl`, a `lazy` expression that prints, `on_change` on a plain field, and a property declared on the same line as a one-line tuple (a property goes on its own line).
+**Mistakes:** a setter that never stores into `field`, an `= value` on a property that stores nothing, `did_set` or `will_set` on a computed property, writing to a static or computed-only property, a `priv set` written from outside the tuple's `impl`, a `lazy` expression that prints, `on_change` on a plain field, and a property declared on the same line as a one-line tuple (a property goes on its own line).
 
 **Chapter 10: Operators, `|>>`, Results**
 

@@ -33,6 +33,9 @@ class Parser(ExprParser):
                 self.err("unexpected indent")
             s = self.parse_stmt()
             out.append(s)
+            if getattr(self, "_chain_rest", None):
+                out.extend(self._chain_rest)         # x = y = z: the later bindings follow the first
+                self._chain_rest = []
             if s.__class__ is TupleDecl and s.props:
                 im = expand_props(s)
                 if im is not None:
@@ -95,7 +98,11 @@ class Parser(ExprParser):
         return t.kind == "NAME" and t.val in words
 
     def parse_stmt_inline(self):
-        return self.parse_stmt_core(allow_decl=False)
+        s = self.parse_stmt_core(allow_decl=False)
+        if getattr(self, "_chain_rest", None):
+            self._chain_rest = []
+            self.err("a chain of bindings (`x = y = z`) goes on a line of its own, not after `then`, `do` or `->`")
+        return s
 
     # ------------------------------------------------------------ dispatch
     def parse_stmt_core(self, allow_decl):
@@ -286,18 +293,43 @@ class Parser(ExprParser):
             self.err(f"expected '=' but found {self.describe(opt)}")
         self.next()
         op = opt.val
+        chain = []
+        while op == "=" and pat.__class__ is PBind and not vis and self.chain_link_ahead():
+            self.skip_nl()
+            chain.append(self.next())
+            self.next()                                # the `=`
         value = self.parse_expr()
         if self.at_op(",") and op == "=":
             items = [(None, value, False)]
             while self.eat_op(","):
                 items.append((None, self.parse_expr(), False))
             value = TupleE(items, line=line)
+        if chain and self.at_name("else"):
+            self.err("a chain of bindings (`x = y = z`) can't have an `else`")
         if self.at_name("else") and op == "=":
             self.next()
             self.no_block_colon()
             el = self.parse_block_or_inline()
             return ElseLet(pat, value, el, line=line)
+        if chain:
+            # x = y = z: z is evaluated once, bound to y, and then y to x
+            names = [pat.name] + [t.val for t in chain]
+            first = Assign(PBind(names[-1], line=line), value, None, "=", None, line=line)
+            rest = []
+            for i in range(len(names) - 2, -1, -1):
+                rest.append(Assign(PBind(names[i], line=line), Name(names[i + 1], line=line), ann if i == 0 else None, "=", None, line=line))
+            self._chain_rest = rest
+            return first
         return Assign(pat, value, ann, op, vis, line=line)
+
+    def chain_link_ahead(self):
+        """`name =` next, possibly on the next line: another link of `x = y = z`."""
+        k = 0
+        while self.peek(k).kind == "NL":
+            k += 1
+        t = self.peek(k)
+        return (t.kind == "NAME" and t.val not in HARD and t.val not in ("else", "if", "then", "do", "in", "is", "and", "or", "not")
+                and self.at_op("=", k + 1))
 
     def parse_lhs_item(self):
         t = self.peek()
