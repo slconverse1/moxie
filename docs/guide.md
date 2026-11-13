@@ -260,7 +260,7 @@ one = (:40)
 println("${describe(age: 3, name: "Bo")} $u $v $pt $one")
 ```
 
-Output: `Bo is 3 User(name: "Al", age: 36) User(name: "Bo", age: 36) (x: 1, y: 2) (:40)`. A named argument is `name: value`, a tuple literal labels its fields the same way, and `(:40)` is a one-item tuple, shorthand for `(0: 40)`. A bare name after a named argument stands for itself, so `age` in `v` means `age: age`. An `update` line (`port: 443`) and a pattern label (`User(name: n)`) use the colon too.
+Output: `Bo is 3 User(name: "Al", age: 36) User(name: "Bo", age: 36) (x: 1, y: 2) (:40)`. A named argument is `name: value`, a tuple literal labels its fields the same way, and `(:40)` is a smiley one-tuple, shorthand for `(0: 40)`. A bare name after a named argument stands for itself, so `age` in `v` means `age: age`. An `update` line (`port: 443`) and a pattern label (`User(name: n)`) use the colon too.
 
 A call and a declaration can look alike, and the colon is what tells them apart. `describe(age: 3, name: "Bo")` has colons, so it gives values; `fn describe(name String, age Int)` has none, so it declares types. A `Dict` entry is neither: it uses an arrow (`Dict("a" -> 1)`), so a key can be any value without a colon in the way. The colon also stays in a few places that are not about types at all: a format spec (`${price:.2f}`), `sql(c): text`, and the commands of the REPL. Writing the old form, `fn f(x: Int)` or `total: Int = 0`, is a syntax error that tells you to delete the colon.
 
