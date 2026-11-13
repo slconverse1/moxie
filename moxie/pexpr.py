@@ -414,7 +414,7 @@ class ExprParser(PBase):
         return args
 
     def parse_comprehension(self, first):
-        """Container comprehension: List(x * x for x in xs if x > 1) / Dict(k: v for k in ks)."""
+        """Container comprehension: List(x * x for x in xs if x > 1) / Dict(k -> v for k in ks)."""
         line = self.next().line          # 'for'
         ct = getattr(self, "_colon_of", {}).get(id(first))
         if ct is not None:

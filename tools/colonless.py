@@ -106,7 +106,7 @@ def convert(src, report=None):
 def _convert(src, report=None):
     """Return the colonless text of `src` (or `src` itself when it has no block colon)."""
     toks = tokenize(src, "<convert>")
-    # logical lines: (indent, [token index...]) so an `else:` can find its parent
+    # logical lines: (indent, [token index...]) so an `else` can find its parent
     lines = []
     cur = None
     for i, t in enumerate(toks):

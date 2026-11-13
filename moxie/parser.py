@@ -920,7 +920,7 @@ class Parser(ExprParser):
                     continue
                 self.end_line()
                 continue
-            # property inside an impl:  name: Type = expr  /  name = expr
+            # property inside an impl:  name Type = expr  /  name = expr
             if t.kind == "NAME":
                 a = self.try_assign()
                 if a is not None:

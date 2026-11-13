@@ -274,7 +274,7 @@ class PBase:
 
     # ----------------------------------------------------------- type params
     def parse_tparams(self):
-        """[T, N where N > 0, F[_]: Monad, S: Speaker[T]]"""
+        """[T, N where N > 0, F[_] Monad, S Speaker[T]]"""
         self.expect_op("[")
         out = []
         where = None

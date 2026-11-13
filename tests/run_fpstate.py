@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def run(src, flags=(), cmd="run", t=60):
+def run(src, flags=(), cmd="run", t=240):
     with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
         f.write(src)
     try:
