@@ -82,6 +82,19 @@ fn grade_of(score Int) String
 
 The output is the same. A trailing `if` has no `else` and can't follow a binding (`x = 5 if c` is an error), and there is no `unless` (write `if not cond`). `return` follows the same exit rules as `?`: `ref` parameters are copied out, and resources may move only on an exiting path. A `return` on the last line is redundant, and the compiler warns. In the entry file, before `daemon`, `return` (like `?` and let-else) ends the program early: with `()` it exits normally. `return` is not allowed in a `daemon` cycle, and `return` inside a fiber ends that fiber.
 
+A guard is a trailing `if` on any `Unit` action, not only on `return`: `println("retrying") if attempts > 3` runs the action only when the condition holds, and does nothing otherwise. When the condition is too long for the line, put it on its own line, indented under the action. It means exactly the same, and takes one `if` line, with no `elif`, `else` or body:
+
+```
+attempts = 5
+quiet = false
+println("retrying after a failure that took longer than the usual limit")
+  if attempts > 3 and not quiet
+println("never printed")
+  if attempts > 9
+```
+
+Output: `retrying after a failure that took longer than the usual limit`. A guard never takes a different action when the condition fails; for that, use `return ... if` (as above, including `return fail(1, "negative") if n < 0`), a block `if`, a let-else, or `?`.
+
 **1b. Loops, `break`, `continue`, labels**
 
 `for x in xs` runs once per element, `while cond` tests each time, and `while` alone loops until a `break`. A loop is an expression, and its value comes from its exits:
