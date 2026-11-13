@@ -41,7 +41,9 @@ class Parser(ExprParser):
 
     def parse_stmt(self):
         s = self.parse_stmt_core(allow_decl=True)
-        if s.__class__ in (ExprStmt, Return, Break, Continue) and self.wrapped_if_ahead():
+        if s.__class__ is TrailIf and self.at_name("else"):
+            s = self.parse_guard_else(s.stmt, s.cond, s.line)
+        elif s.__class__ in (ExprStmt, Return, Break, Continue) and self.wrapped_if_ahead():
             s = self.parse_wrapped_if(s)
         self.end_line()
         return s
@@ -52,16 +54,38 @@ class Parser(ExprParser):
         return self.nl_indent_at(0) and t.kind == "NAME" and t.val == "if"
 
     def parse_wrapped_if(self, action):
-        """`action` then, indented under it, `if cond`: the same as `action if cond`, for a condition too long for the line."""
+        """`action` then, indented under it, `if cond` (and optionally `else value`): the same as `action if cond`, for a
+        condition too long for the line."""
         self.next()                                   # NL
         self.next()                                   # INDENT
         line = self.next().line                       # `if`
         cond = self.parse_expr()
-        if self.at_block() or self.nl_then_word(("elif", "else")):
-            self.err_at(line, "a condition under an action holds one `if cond` line: it is `action if cond` wrapped, with no body, `elif` or `else`")
-        self.skip_nl()
+        if self.at_block() or self.nl_then_word(("elif",)):
+            self.err_at(line, "a condition under an action holds one `if cond` line (and an optional `else value`): no body and no `elif`")
+        guard = None
+        if self.at_name("else"):
+            guard = self.parse_guard_else(action, cond, line)
+            self.skip_nl()
+        elif self.nl_then_word(("else",)):
+            self.skip_nl()
+            guard = self.parse_guard_else(action, cond, line)
+            self.skip_nl()
+        else:
+            self.skip_nl()
+        if self.at_block():
+            self.err_at(line, "the `else` of a guard is a value on the same line, not a block")
         self.expect_dedent()
-        return TrailIf(action, cond, line=line)
+        return guard if guard is not None else TrailIf(action, cond, line=line)
+
+    def parse_guard_else(self, action, cond, line):
+        """`action if cond else value`: when the condition fails the action is skipped and the function returns the value,
+        so it means `if cond` with the action in the branch and `return value` in the `else`."""
+        self.next()                                   # else
+        self.no_block_colon()
+        if self.at_block() or self.peek().kind in ("NL", "DEDENT", "EOF"):
+            self.err_at(line, "the `else` of a guard is a value on the same line: `action if cond else value`")
+        value = self.parse_expr()
+        return ExprStmt(IfE([(cond, Block([action], line=line))], Block([Return(value, line=line)], line=line), line=line), line=line)
 
     def nl_then_word(self, words):
         k = 0

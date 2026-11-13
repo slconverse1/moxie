@@ -20,7 +20,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
-**2026-11-13: Wrapped guards.** The condition of a trailing `if` may go on its own indented line under the action, for a condition too long for the line: `action` then `  if cond` means `action if cond`.
+**2026-11-13: Wrapped guards.** The condition of a trailing `if` may go on its own indented line under the action, for a condition too long for the line: `action` then `  if cond` means `action if cond`. A guard may also end with `else value`: if the condition fails the action is skipped and the function returns the value, like a let-else (`println("loading") if ok else fail(1, "bad")`).
 
 **2026-11-12: Colonless syntax.** Blocks no longer start with a colon, and declarations put the type after the name (`x Int`, `fn f(x Int) Int = x * 2`). Typed bindings read the same way (`total Int = 0`). Dict entries use `key -> value`. `(:40)` is a one-item tuple, shorthand for `(0: 40)`. A bare name after a named argument is a pun for `name: name`. Colons stay in values: `User(name: "Al")`, `(x: 1, y: 2)`, `update` lines. The old syntax is on the `oldmain` branch.
 

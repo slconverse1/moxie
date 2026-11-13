@@ -82,7 +82,7 @@ fn grade_of(score Int) String
 
 The output is the same. A trailing `if` has no `else` and can't follow a binding (`x = 5 if c` is an error), and there is no `unless` (write `if not cond`). `return` follows the same exit rules as `?`: `ref` parameters are copied out, and resources may move only on an exiting path. A `return` on the last line is redundant, and the compiler warns. In the entry file, before `daemon`, `return` (like `?` and let-else) ends the program early: with `()` it exits normally. `return` is not allowed in a `daemon` cycle, and `return` inside a fiber ends that fiber.
 
-A guard is a trailing `if` on any `Unit` action, not only on `return`: `println("retrying") if attempts > 3` runs the action only when the condition holds, and does nothing otherwise. When the condition is too long for the line, put it on its own line, indented under the action. It means exactly the same, and takes one `if` line, with no `elif`, `else` or body:
+A guard is a trailing `if` on any `Unit` action, not only on `return`: `println("retrying") if attempts > 3` runs the action only when the condition holds, and does nothing otherwise. When the condition is too long for the line, put it on its own line, indented under the action. It means exactly the same, and takes one `if` line, with no `elif` or body:
 
 ```
 attempts = 5
@@ -93,7 +93,18 @@ println("never printed")
   if attempts > 9
 ```
 
-Output: `retrying after a failure that took longer than the usual limit`. A guard never takes a different action when the condition fails; for that, use `return ... if` (as above, including `return fail(1, "negative") if n < 0`), a block `if`, a let-else, or `?`.
+Output: `retrying after a failure that took longer than the usual limit`. A guard may end with `else value`. If the condition fails, the action is skipped and the function returns that value at once, the way a let-else does (`Ok(h) = f() else -1`), so the check and its failure stay together and the `else` can't fall through:
+
+```
+fn load(n Int) Result[Int, Error]
+  println("loading $n")
+    if n >= 0 and n <= 100
+    else fail(1, "out of range")
+  Ok(n)
+println("${load(5)} ${load(200)}")
+```
+
+Output: `loading 5`, then `Ok(5) Err(Error(code: 1, message: "out of range"))`. The one-line form is `println("loading $n") if n >= 0 else fail(1, "negative")`. The value follows `else` on the same line, and it must match the function's return type. This `else` is not the `else` of a block `if`, which runs a second branch and carries on: here it leaves the function, like `return`. Without an `else`, a guard does nothing when the condition fails; for any other failure handling use a block `if`, a let-else, or `?`.
 
 **1b. Loops, `break`, `continue`, labels**
 
