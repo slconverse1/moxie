@@ -1,4 +1,4 @@
-"""Colonless declarations (`x Int`), the `(%40)` one-item tuple, `key -> value` Dict entries, and puns.  Run: python3 tests/run_decls.py"""
+"""Colonless declarations (`x Int`), the `(:40)` one-item tuple, `key -> value` Dict entries, and puns.  Run: python3 tests/run_decls.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -23,7 +23,7 @@ CASES = [
  ("a binding is a name and a type", 'total Int = 1\nnames List[String] = List("a")\nf (Int) -> Int = (n) -> n + 1\nprintln(total)\nprintln(f(3))\n', 0, "1\n4\n"),
  ("a binding with a destructuring tuple still works", 'a, b = 1, 2\nprintln(a + b)\n', 0, "3\n"),
  ("the old binding colon is an error", 'total: Int = 1\n', 2, "has no colon"),
- ("the one-item tuple", 't = (%40)\nprintln(t)\nprintln(t(0))\nprintln((40))\n', 0, "(%40)\n40\n40\n"),
+ ("the one-item tuple", 't = (:40)\nprintln(t)\nprintln(t(0))\nprintln((40))\nprintln((:3) == (0: 3))\n', 0, "(:40)\n40\n40\ntrue\n"),
  ("a Dict entry is key -> value", 'println(Dict("a" -> 1, "b" -> 2))\n', 0, 'Dict("a" -> 1, "b" -> 2)\n'),
  ("a Dict comprehension", 'println(Dict(w -> len(w) for w in List("aa", "b")))\n', 0, 'Dict("aa" -> 2, "b" -> 1)\n'),
  ("the old Dict entry colon is an error", 'println(Dict("a": 1))\n', 2, "key -> value"),

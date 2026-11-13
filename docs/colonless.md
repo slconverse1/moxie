@@ -25,7 +25,7 @@ This page lists what changed, what did not, and why. The old syntax lives on in 
 | `(x: Int, y: Int)` as a type | `(x Int, y Int)` | a tuple type; function types too |
 | `total: Int = 0` | `total Int = 0` | a binding is a declaration |
 | `Dict("a": 1)` | `Dict("a" -> 1)` | an entry maps a key to a value; also in patterns, `show`, and `read` |
-| `(0: 40)` | `(%40)` | the one-item positional tuple, so it is not mistaken for `(40)` |
+| `(0: 40)` | `(:40)` | shorthand for the one-item positional tuple, so it is not mistaken for `(40)`; the label is left out |
 
 Two forms use a bare name as a shorthand (a *pun*):
 

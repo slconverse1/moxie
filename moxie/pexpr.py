@@ -811,7 +811,7 @@ class ExprParser(PBase):
                 label = tt.val
                 self.next()
                 self.next()
-            elif tt.kind == "OP" and tt.val == "%" and not cur:
+            elif tt.kind == "OP" and tt.val == ":" and not cur:
                 self.next()
                 label = 0
                 one_marker = True
@@ -844,7 +844,7 @@ class ExprParser(PBase):
         self.expect_op(")", "to close the parentheses")
         self.no_trailing, self.stop_bol = save
         if one_marker and (len(cur) != 1 or multi):
-            self.err("`%` marks a one-item tuple: write `(%40)`", t)
+            self.err("`(:` marks a one-item tuple: write `(:40)`", t)
         if multi:
             rows.append((cur, 0))
             return MArr(rows, line=line)

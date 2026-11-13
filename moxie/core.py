@@ -458,7 +458,7 @@ def show(v, interp=None):
         if v.tname:
             return f"{v.tname}({', '.join(inner)})"
         if len(inner) == 1 and not v.names:
-            return f"(%{inner[0]})"                 # a one-item positional tuple, so it is not read as `(40)`, a plain number
+            return f"(:{inner[0]})"                 # a one-item positional tuple, so it is not read as `(40)`, a plain number
         return f"({', '.join(inner)})"
     if t is EnumV:
         if interp is not None:
