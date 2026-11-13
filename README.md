@@ -16,6 +16,12 @@ Moxie is a language-design exercise: (mostly) compile-time type-safe, immutable,
 
 The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and nothing else. `INTERPRETER.md` lists what it checks and what it doesn't yet.
 
+## Changes
+
+Newest first.
+
+**2026-11-12: Colonless syntax.** Blocks no longer start with a colon, and declarations put the type after the name (`x Int`, `fn f(x Int) Int = x * 2`). Typed bindings read the same way (`total Int = 0`). Dict entries use `key -> value`. `(:40)` is a one-item tuple, shorthand for `(0: 40)`. A bare name after a named argument is a pun for `name: name`. Colons stay in values: `User(name: "Al")`, `(x: 1, y: 2)`, `update` lines. The old syntax is on the `oldmain` branch.
+
 ## License
 
 MIT. See `LICENSE`. It covers the interpreter and the documents.
