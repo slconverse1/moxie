@@ -972,9 +972,9 @@ An `Err` instead of an `Ok` ends the stream, and this one never returns an `Err`
 
 ```
 xs = List(1, 2, 3, 4)
-squares: List[Int][8] = List(x * x for x in xs if x > 1)
+squares List[Int][8] = List(x * x for x in xs if x > 1)
 words = List("ab", "cde")
-lens: Dict[String, Int][8] = Dict(w -> len(w) for w in words)
+lens Dict[String, Int][8] = Dict(w -> len(w) for w in words)
 println("${len(squares)} ${squares(0)} ${lens(cde)}")
 ```
 
@@ -1627,11 +1627,11 @@ type alias Pad[N] = when N
   M if big(M) -> Array[Int][M]
   M -> Array[Int][3]
 
-first: Elem[List[String]] = "ada"
-row: Concat[(Int, String), (Bool,)] = (1, "a", true)
-sized: Array[Int][Length[(Int, String)]] = Array(1, 2)
-name: Get[User, "name"] = "Ada"
-grid: Pad[5] = Array(1, 2, 3, 4, 5)
+first Elem[List[String]] = "ada"
+row Concat[(Int, String), (Bool,)] = (1, "a", true)
+sized Array[Int][Length[(Int, String)]] = Array(1, 2)
+name Get[User, "name"] = "Ada"
+grid Pad[5] = Array(1, 2, 3, 4, 5)
 println("${first} ${row} ${sized} ${name} ${grid}")
 ```
 

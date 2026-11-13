@@ -62,7 +62,7 @@ CASES = [
  ("a property[n] limit stops extra observers",
   'tuple A\n  property[1] p Int = 0\ns = Atom[A](A())\n_a = s.p +% fn (o, n) -> println("a")\n_b = s.p +% fn (o, n) -> println("b")\n', "nogc-fail", "already has 1 observers"),
  ("a lazy binding is read like a plain one",
-  'fn sq(n Int) Int\n  n * n\nlazy total = sq(12)\nlazy other: Int = total + 1\nprintln("${total} ${total} ${other}")\n', "run", "144 144 145"),
+  'fn sq(n Int) Int\n  n * n\nlazy total = sq(12)\nlazy other Int = total + 1\nprintln("${total} ${total} ${other}")\n', "run", "144 144 145"),
  ("a lazy binding must be pure",
   'lazy x = println("hi")\nprintln(1)\n', "fail", "must be pure"),
  ("a computed property can't have a default",

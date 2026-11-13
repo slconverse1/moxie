@@ -3,22 +3,22 @@ written on the constructor.  In moxie/gc a size is only a hint, so no error.  Ru
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BAD = [
- ("Set larger than its literal", 'a: Set[Int][8] = Set(1, 2)\n', "the declared size 8 does not match the 2 elements of this Set literal"),
- ("Set smaller than its literal", 'a: Set[Int][1] = Set(1, 2)\n', "the declared size 1 does not match the 2 elements"),
- ("List", 'b: List[Int][5] = List(1, 2, 3)\n', "the declared size 5 does not match the 3 elements of this List literal"),
- ("Dict", 'd: Dict[String, Int][8] = Dict("a" -> 1)\n', "does not match the 1 element of this Dict literal"),
- ("Array tuple", 'x: Array[Int][5] = (1, 2, 3)\n', "an Array has exactly the elements it is written with"),
- ("the message shows the constructor", 'a: Set[Int][8] = Set(1, 2)\n', "`Set[Int][8](...)`"),
+ ("Set larger than its literal", 'a Set[Int][8] = Set(1, 2)\n', "the declared size 8 does not match the 2 elements of this Set literal"),
+ ("Set smaller than its literal", 'a Set[Int][1] = Set(1, 2)\n', "the declared size 1 does not match the 2 elements"),
+ ("List", 'b List[Int][5] = List(1, 2, 3)\n', "the declared size 5 does not match the 3 elements of this List literal"),
+ ("Dict", 'd Dict[String, Int][8] = Dict("a" -> 1)\n', "does not match the 1 element of this Dict literal"),
+ ("Array tuple", 'x Array[Int][5] = (1, 2, 3)\n', "an Array has exactly the elements it is written with"),
+ ("the message shows the constructor", 'a Set[Int][8] = Set(1, 2)\n', "`Set[Int][8](...)`"),
 ]
 OK = [
- ("sizes agree", 'a: Set[Int][2] = Set(1, 2)\nprintln(len(a))\n', "2"),
- ("no size", 'a = Set(1, 2)\nh: Array[Int] = (1, 2, 3)\nprintln("${len(a)} ${len(h)}")\n', "2 3"),
- ("room on the constructor", 'a = Set[Int][8](1, 2)\nb: Set[Int][8] = Set[Int][8](1, 2)\nprintln("${len(a)} ${len(b)}")\n', "2 2"),
- ("a duplicate constant counts once", 'a: Set[Int][1] = Set(1, 1)\nprintln(len(a))\n', "1"),
- ("an empty literal takes the declared size", 'a: List[Int][8] = List()\nprintln(len(a))\n', "0"),
- ("a comprehension takes the declared size", 'words = List("aa", "b")\nz: Dict[String, Int][8] = Dict(w -> len(w) for w in words)\nprintln(len(z))\n', "2"),
+ ("sizes agree", 'a Set[Int][2] = Set(1, 2)\nprintln(len(a))\n', "2"),
+ ("no size", 'a = Set(1, 2)\nh Array[Int] = (1, 2, 3)\nprintln("${len(a)} ${len(h)}")\n', "2 3"),
+ ("room on the constructor", 'a = Set[Int][8](1, 2)\nb Set[Int][8] = Set[Int][8](1, 2)\nprintln("${len(a)} ${len(b)}")\n', "2 2"),
+ ("a duplicate constant counts once", 'a Set[Int][1] = Set(1, 1)\nprintln(len(a))\n', "1"),
+ ("an empty literal takes the declared size", 'a List[Int][8] = List()\nprintln(len(a))\n', "0"),
+ ("a comprehension takes the declared size", 'words = List("aa", "b")\nz Dict[String, Int][8] = Dict(w -> len(w) for w in words)\nprintln(len(z))\n', "2"),
 ]
-GC_OK = [("moxie/gc: a size is a hint", 'a: Set[Int][8] = Set(1, 2)\nprintln(len(a))\n', "2")]
+GC_OK = [("moxie/gc: a size is a hint", 'a Set[Int][8] = Set(1, 2)\nprintln(len(a))\n', "2")]
 fails = []
 
 

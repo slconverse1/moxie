@@ -23,7 +23,7 @@ println("${curved.name} ${curved.score} ${bob == curved}")
 roster = List(ada, bob, Student(name: "Cy", score: 71), Student(name: "Di", score: 58))
 total = roster |> to_stream() |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
-passing: List[Student] = roster |> to_stream() |> filter((s) -> s.score >= 60) |> collect()
+passing List[Student] = roster |> to_stream() |> filter((s) -> s.score >= 60) |> collect()
 for s in passing
   println("${s.name}: ${s.score} ${letter(s.score)}")
 

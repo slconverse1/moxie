@@ -29,10 +29,10 @@ case('do with naming no enum is an error', 'do with Nope\n  println(1)\n', 2, 'n
 case('with stays a plain name', 'with = 3\nprintln(with)\n', 0, '3')
 
 case('a bare case two enums share is an error where nothing says which', 'enum Light\n  Red\n  Green\nenum Signal\n  Red\n  Stop\nprintln(Red)\n', 2, '`Red` could be `Light.Red` or `Signal.Red`')
-case('a declared type says which enum a shared case means', 'enum Light\n  Red\n  Green\nenum Signal\n  Red\n  Stop\nx: Light = Red\nfn f() Signal\n  Red\nprintln(x)\nprintln(f())\n', 0, 'Light.Red\nSignal.Red')
+case('a declared type says which enum a shared case means', 'enum Light\n  Red\n  Green\nenum Signal\n  Red\n  Stop\nx Light = Red\nfn f() Signal\n  Red\nprintln(x)\nprintln(f())\n', 0, 'Light.Red\nSignal.Red')
 case('a parameter, a field and a pattern say which enum', 'enum Light\n  Red\n  Green\nenum Signal\n  Red\n  Stop\nfn f(s Signal) String\n  "${s}"\ntuple T\n  l Light\nfn g(l Light) String\n  when l\n    Red -> "r"\n    Green -> "g"\nprintln(f(Red))\nprintln(T(l: Red))\nprintln(g(Light.Red))\n', 0, 'Signal.Red\nT(l: Light.Red)\nr')
 case("a program's own enum wins over the prelude's bare case", 'enum Dir\n  Up\n  Down\nprintln(Up)\n', 0, 'Dir.Up')
-case("a program's own None wins over Option's unless a type says Option", 'enum Mode\n  None\n  Fast\nprintln(None)\nx: Option[Int] = None\nprintln(x)\n', 0, 'Mode.None\nNone')
+case("a program's own None wins over Option's unless a type says Option", 'enum Mode\n  None\n  Fast\nprintln(None)\nx Option[Int] = None\nprintln(x)\n', 0, 'Mode.None\nNone')
 
 case('a do with that uses a case has no warning', 'enum Light\n  Red\n  Green\nenum Mode\n  Fast\ndo with Light\n  println(Red)\n', 0, 'ok', args=('check',))
 case('a do with that uses none of its cases is a warning', 'enum Light\n  Red\n  Green\nenum Mode\n  Fast\ndo with Light\n  println(1)\n', 0, 'this `do with Light:` block uses none of its cases', args=('check',))

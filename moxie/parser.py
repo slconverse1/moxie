@@ -1,6 +1,6 @@
 """Statement and declaration parser."""
 from .pexpr import ExprParser, ph_lambda
-from .pbase import HARD, ASSIGN_OPS
+from .pbase import HARD, ASSIGN_OPS, PBase
 from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
 
@@ -57,7 +57,7 @@ class Parser(ExprParser):
                 self.err("`\\` discards a value, so an expression must follow it on the same line")
             value = self.parse_expr()
             return self.trail_if(Assign(PWild(line=line), value, None, "=", None, line=line))
-        if t.kind == "NAME" and t.val == "lazy" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2)):
+        if t.kind == "NAME" and t.val == "lazy" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2) or self.type_follows(2)):
             self.next()
             s = self.parse_stmt_core(allow_decl)
             if s.__class__ is not Assign or s.targets.__class__ is not PBind or s.op != "=":
@@ -83,7 +83,7 @@ class Parser(ExprParser):
             if v == "init" and self.nl_indent_at(1):
                 self.next()
                 return InitDecl(self.parse_block(), line=line)
-            if v == "using" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2)):
+            if v == "using" and self.peek(1).kind == "NAME" and (self.at_op("=", 2) or self.at_op(":", 2) or self.type_follows(2)):
                 return self.parse_using()
             if v == "forall" and self.peek(1).kind == "NAME" and (self.at_op(":", 2) or self.type_follows(2)):
                 return self.parse_forall()
@@ -167,6 +167,10 @@ class Parser(ExprParser):
         ann_at = i + 1
         found = None
         seen_ann = False
+        at = self.toks[ann_at]
+        if at.sp and ((at.kind == "NAME" and at.val not in ("if", "else", "and", "or", "in", "is", "fn", "when", "not"))
+                      or (at.kind == "OP" and at.val in ("(", "["))):
+            seen_ann = True                   # `total Int = 0`: a name and then its type
         n = len(self.toks)
         while i < n:
             k = self.toks[i]
@@ -215,8 +219,13 @@ class Parser(ExprParser):
         ann = None
         while True:
             pats.append(self.parse_lhs_item())
-            if self.at_op(":") :
-                self.next()
+            if self.at_op(":"):
+                if PBase.RECORD is not None:
+                    PBase.RECORD.append(("decl", self.next()))
+                else:
+                    self.err("a binding has no colon before its type: write `total Int = 0`")
+                ann = self.parse_type()
+            elif self.type_follows() and not self.at_op("=") and not self.at_op(","):
                 ann = self.parse_type()
             if self.eat_op(","):
                 continue
@@ -276,7 +285,8 @@ class Parser(ExprParser):
     def parse_using(self):
         line = self.next().line
         name = self.next().val
-        if self.eat_op(":"):
+        self.no_decl_colon("a `using` binding")
+        if self.type_follows():
             self.parse_type()
         self.expect_op("=")
         e = self.parse_expr()

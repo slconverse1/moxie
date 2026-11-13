@@ -169,13 +169,13 @@ class Session:
             self.env.vars.pop(name, None)
             self.n += 1
             self.results.insert(0, (ty, vt))
-            self.out.write(f"$res1: {ty} = {vt}\n")
+            self.out.write(f"$res1 {ty} = {vt}\n")
         else:
             for st in new:
                 if st.__class__ is Assign and not isinstance(st.targets, list) and st.targets.__class__ is PBind:
                     nm = st.targets.name
                     val = self.env.vars.get(nm)
-                    self.out.write(f"{nm}: {self.type_of(nm, ck)} = {show(val, self.I)}\n")
+                    self.out.write(f"{nm} {self.type_of(nm, ck)} = {show(val, self.I)}\n")
 
     # ------------------------------------------------------------ commands
     def command(self, line):
@@ -193,7 +193,7 @@ class Session:
             self.out.write("session cleared\n")
         elif word == ":results":
             for i, (ty, vt) in enumerate(self.results):
-                self.out.write(f"$res{i + 1}: {ty} = {vt}\n")
+                self.out.write(f"$res{i + 1} {ty} = {vt}\n")
         elif word == ":type":
             if not rest.strip():
                 self.err.write("error: write an expression after :type\n")

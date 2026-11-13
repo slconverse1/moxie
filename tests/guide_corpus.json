@@ -136,7 +136,7 @@ null
 ],
 [
 242,
-"small: Int8 = 42\nwide: Int32 = small\nnarrow: Int8 = cast[Int8](wide)\nnext = cast[Char](cast[UInt32]('A') + 1)\nmode = #fast\nwait = 5s + 500ms\nflags = 0b1100 ^ 0b1010\nleft = 1 << 3\nright = 256 >> 4\nprintln(\"$next $mode $flags $left $right\")\n",
+"small Int8 = 42\nwide Int32 = small\nnarrow Int8 = cast[Int8](wide)\nnext = cast[Char](cast[UInt32]('A') + 1)\nmode = #fast\nwait = 5s + 500ms\nflags = 0b1100 ^ 0b1010\nleft = 1 << 3\nright = 256 >> 4\nprintln(\"$next $mode $flags $left $right\")\n",
 [
 "B #fast 6 8 16"
 ]
@@ -186,7 +186,7 @@ null
 ],
 [
 321,
-"a: Int8 = 100\nb = wrapping_add(a, 100)\nc = saturating_add(a, 100)\nd = checked_add(a, 100)\nprintln(\"$b $c ${is_err(d)} ${is_err(checked_div(7, 0))}\")\n",
+"a Int8 = 100\nb = wrapping_add(a, 100)\nc = saturating_add(a, 100)\nd = checked_add(a, 100)\nprintln(\"$b $c ${is_err(d)} ${is_err(checked_div(7, 0))}\")\n",
 [
 "-56 127 true true"
 ]
@@ -200,7 +200,7 @@ null
 ],
 [
 337,
-"type alias Percent = Int[0..=100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    1..=99 -> \"partial\"\n    100 -> \"full\"\na: Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
+"type alias Percent = Int[0..=100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    1..=99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
 [
 "partial",
 "out of range",
@@ -216,7 +216,7 @@ null
 ],
 [
 362,
-"price: Decimal[10, 2] = 19.99d\ntotal = price * 3\ntax = round_to[2](total * 0.0825d, #half_even)\nprintln(\"$total $tax ${total + tax}\")\n",
+"price Decimal[10, 2] = 19.99d\ntotal = price * 3\ntax = round_to[2](total * 0.0825d, #half_even)\nprintln(\"$total $tax ${total + tax}\")\n",
 [
 "59.97 4.95 64.92"
 ]
@@ -254,7 +254,7 @@ null
 ],
 [
 425,
-"enum Shape\n  Circle(radius Double),\n  Rect(w Double, h Double),\n  Empty\nimpl Shape\n  fn area() Double\n    when self\n      Circle(r) -> 3.14159 * r * r\n      Rect(w, h) -> w * h\n      Empty -> 0.0\nc = Shape.Circle(radius: 2.0)\nr = Shape.Rect(w: 3.0, h: 4.0)\nunit: Shape = Circle(radius: 1.0)\nprintln(\"${c.area()} ${r.area()} ${unit.area()}\")\n",
+"enum Shape\n  Circle(radius Double),\n  Rect(w Double, h Double),\n  Empty\nimpl Shape\n  fn area() Double\n    when self\n      Circle(r) -> 3.14159 * r * r\n      Rect(w, h) -> w * h\n      Empty -> 0.0\nc = Shape.Circle(radius: 2.0)\nr = Shape.Rect(w: 3.0, h: 4.0)\nunit Shape = Circle(radius: 1.0)\nprintln(\"${c.area()} ${r.area()} ${unit.area()}\")\n",
 [
 "12.56636 12.0 3.14159"
 ]
@@ -300,7 +300,7 @@ null
 ],
 [
 516,
-"xs: List[Int | String] = List(1, \"a\", 2)\nfor x in xs\n  when x\n    Int -> println(\"number $x\")\n    String -> println(\"text $x\")\nsettings: Dict[String, Int | Bool] = Dict(\"retries\" -> 3, \"verbose\" -> true)\nprintln(len(settings))\n",
+"xs List[Int | String] = List(1, \"a\", 2)\nfor x in xs\n  when x\n    Int -> println(\"number $x\")\n    String -> println(\"text $x\")\nsettings Dict[String, Int | Bool] = Dict(\"retries\" -> 3, \"verbose\" -> true)\nprintln(len(settings))\n",
 [
 "number 1",
 "text a",
@@ -318,7 +318,7 @@ null
 ],
 [
 552,
-"numbers: Array[Int] = (10, 20, 30, 40, 50)\nmiddle = numbers(1..=3)\nfixed = set(middle, 1, 99)\nprintln(\"${numbers(0)} ${len(numbers)} ${middle(0)} ${fixed(1)} ${middle(1)}\")\n",
+"numbers Array[Int] = (10, 20, 30, 40, 50)\nmiddle = numbers(1..=3)\nfixed = set(middle, 1, 99)\nprintln(\"${numbers(0)} ${len(numbers)} ${middle(0)} ${fixed(1)} ${middle(1)}\")\n",
 [
 "10 5 20 99 30"
 ]
@@ -385,7 +385,7 @@ null
 ],
 [
 653,
-"grid: MultiArray[Int][2, 3] = (\n  10, 20, 30 ;\n  40, 50, 60\n)\nrow = grid(1, ..)\nkept = grid(1..=1, ..)\ncol = grid(.., 1)\nblock = grid(0..=1, 1..=2)\nprintln(\"${grid(1, 2)} ${row(2)} ${kept(0, 2)} ${col(0)} ${block(1, 1)}\")\npatched = set(row, 2, 99)\nprintln(\"${patched(2)} ${grid(1, 2)}\")\n",
+"grid MultiArray[Int][2, 3] = (\n  10, 20, 30 ;\n  40, 50, 60\n)\nrow = grid(1, ..)\nkept = grid(1..=1, ..)\ncol = grid(.., 1)\nblock = grid(0..=1, 1..=2)\nprintln(\"${grid(1, 2)} ${row(2)} ${kept(0, 2)} ${col(0)} ${block(1, 1)}\")\npatched = set(row, 2, 99)\nprintln(\"${patched(2)} ${grid(1, 2)}\")\n",
 [
 "60 60 60 20 60",
 "99 60"
@@ -393,7 +393,7 @@ null
 ],
 [
 669,
-"voxels: MultiArray[Int][2, 2, 3] = (\n  1, 2, 3 ; 4, 5, 6 ;;\n  7, 8, 9 ; 10, 11, 12\n)\nlayer = voxels(1, .., ..)\nline = voxels(1, 0, ..)\nprintln(\"${voxels(1, 0, 1)} ${layer(1, 2)} ${line(2)}\")\n",
+"voxels MultiArray[Int][2, 2, 3] = (\n  1, 2, 3 ; 4, 5, 6 ;;\n  7, 8, 9 ; 10, 11, 12\n)\nlayer = voxels(1, .., ..)\nline = voxels(1, 0, ..)\nprintln(\"${voxels(1, 0, 1)} ${layer(1, 2)} ${line(2)}\")\n",
 [
 "8 12 9"
 ]
@@ -525,7 +525,7 @@ null
 ],
 [
 863,
-"fn sum_all[N](a Array[Int][N]) Int\n  a |> to_stream() |> reduce(0, _1 + _2)\nfn size_of[N](a Array[Int][N]) Int\n  N\nfn dot[N](a Array[Int][N], b Array[Int][N]) Int\n  zip(a, b) |> map()(x, y) -> x * y\n  |> reduce(0, _1 + _2)\nfn first_of[T, N where N > 0](a Array[T][N]) T\n  a(0)\nx: Array[Int] = (1, 2, 3)\ny: Array[Int] = (1, 2, 3, 4, 5)\nprintln(\"${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}\")\n",
+"fn sum_all[N](a Array[Int][N]) Int\n  a |> to_stream() |> reduce(0, _1 + _2)\nfn size_of[N](a Array[Int][N]) Int\n  N\nfn dot[N](a Array[Int][N], b Array[Int][N]) Int\n  zip(a, b) |> map()(x, y) -> x * y\n  |> reduce(0, _1 + _2)\nfn first_of[T, N where N > 0](a Array[T][N]) T\n  a(0)\nx Array[Int] = (1, 2, 3)\ny Array[Int] = (1, 2, 3, 4, 5)\nprintln(\"${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}\")\n",
 [
 "6 15 14 5 1"
 ]
@@ -632,7 +632,7 @@ null
 ],
 [
 1128,
-"type union Entity = Dog | Robot\ncrowd: Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
+"type union Entity = Dog | Robot\ncrowd Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
 [
 "Woof! My name is Rex",
 "Beep Boep! Serial count is 7"
@@ -704,7 +704,7 @@ null
 ],
 [
 1321,
-"interface Semigroup\n  fn combine(other Self) Self\ninterface Monoid\n  Semigroup\n  static fn empty() Self\nimpl Monoid for Int\n  fn combine(other Int) Int\n    self + other\n  static fn empty() Int\n    0\ntuple Max\n  value Int\nimpl Monoid for Max\n  fn combine(other Max) Max\n    if value > other.value then self else other\n  static fn empty() Max\n    Max(value: -1000000)\nfn mconcat[T Monoid, N](xs Array[T][N]) T\n  xs |> to_stream() |> reduce(T.empty(), (a, b) -> a.combine(b))\nnums: Array[Int] = (1, 2, 3)\nmaxes: Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))\nprintln(\"${mconcat(nums)} ${mconcat(maxes).value}\")\n",
+"interface Semigroup\n  fn combine(other Self) Self\ninterface Monoid\n  Semigroup\n  static fn empty() Self\nimpl Monoid for Int\n  fn combine(other Int) Int\n    self + other\n  static fn empty() Int\n    0\ntuple Max\n  value Int\nimpl Monoid for Max\n  fn combine(other Max) Max\n    if value > other.value then self else other\n  static fn empty() Max\n    Max(value: -1000000)\nfn mconcat[T Monoid, N](xs Array[T][N]) T\n  xs |> to_stream() |> reduce(T.empty(), (a, b) -> a.combine(b))\nnums Array[Int] = (1, 2, 3)\nmaxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))\nprintln(\"${mconcat(nums)} ${mconcat(maxes).value}\")\n",
 [
 "6 9"
 ]
@@ -718,21 +718,21 @@ null
 ],
 [
 1379,
-"fn double_in[F[_] Monad](m F[Int]) F[Int]\n  m.flat_map((x) -> F.pure(x * 2))\nr: Result[Int, Error] = Ok(21)\nprintln(\"${double_in(Box.Full(21))} ${double_in(r)}\")\n",
+"fn double_in[F[_] Monad](m F[Int]) F[Int]\n  m.flat_map((x) -> F.pure(x * 2))\nr Result[Int, Error] = Ok(21)\nprintln(\"${double_in(Box.Full(21))} ${double_in(r)}\")\n",
 [
 "Box.Full(42) Ok(42)"
 ]
 ],
 [
 1388,
-"fn lift2[F[_] Applicative, A, B, C](f (A, B) -> C, a F[A], b F[B]) F[C]\n  a.map(curry(f)).ap(b)\nnone: Box[Int] = Box.Empty\nprint(\"${lift2(add, Box.Full(2), Box.Full(3))} \")\nprintln(\"${lift2(add, none, Box.Full(3))}\")\n",
+"fn lift2[F[_] Applicative, A, B, C](f (A, B) -> C, a F[A], b F[B]) F[C]\n  a.map(curry(f)).ap(b)\nnone Box[Int] = Box.Empty\nprint(\"${lift2(add, Box.Full(2), Box.Full(3))} \")\nprintln(\"${lift2(add, none, Box.Full(3))}\")\n",
 [
 "Box.Full(5) Box.Empty"
 ]
 ],
 [
 1400,
-"fn one[M[_] Monad]() M[Int]\n  M.pure(1)\ntype alias Fail[A] = Result[A, String]\nprintln(\"${one[[A] -> Result[A, String]]()} ${one[Fail]()}\")\nx: ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n",
+"fn one[M[_] Monad]() M[Int]\n  M.pure(1)\ntype alias Fail[A] = Result[A, String]\nprintln(\"${one[[A] -> Result[A, String]]()} ${one[Fail]()}\")\nx ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n",
 [
 "Ok(1) Ok(1)",
 "Ok(3)"
@@ -740,7 +740,7 @@ null
 ],
 [
 1413,
-"type alias Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n\ntype alias Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n\ntype alias Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n\nfn head_of(xs Array[Int][3]) Elem[Array[Int][3]]\n  xs(0)\njoined: Concat[(Int, String), (Bool,)] = (1, \"a\", true)\nsized: Array[Int][Length[(Int, String)]] = Array(1, 2)\nprintln(\"${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}\")\n",
+"type alias Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n\ntype alias Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n\ntype alias Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n\nfn head_of(xs Array[Int][3]) Elem[Array[Int][3]]\n  xs(0)\njoined Concat[(Int, String), (Bool,)] = (1, \"a\", true)\nsized Array[Int][Length[(Int, String)]] = Array(1, 2)\nprintln(\"${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}\")\n",
 null
 ],
 [
@@ -860,7 +860,7 @@ null
 ],
 [
 1750,
-"inc = (x Int) -> x + 1\ntwo: Result[Int, Error] = Ok(2)\nf: Result[(Int) -> Int, Error] = Ok(inc)\nprintln(\"${(inc <$> two)} ${(f <*> two)}\")\n",
+"inc = (x Int) -> x + 1\ntwo Result[Int, Error] = Ok(2)\nf Result[(Int) -> Int, Error] = Ok(inc)\nprintln(\"${(inc <$> two)} ${(f <*> two)}\")\n",
 [
 "Ok(3) Ok(3)"
 ]
@@ -1000,7 +1000,7 @@ null
 ],
 [
 1999,
-"interface Speaker\n  fn speak(self) String\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Speaker for Dog\n  fn speak(self) String\n    \"Woof\"\nimpl Speaker for Robot\n  fn speak(self) String\n    \"Beep\"\ncrowd: List[any Speaker] = List(Dog(name: \"Rex\"), Robot(serial: 7))\nfor s in crowd\n  when s\n    Dog(name) -> println(\"a dog named ${name}\")\n    r@Robot() -> println(\"a robot, ${r}\")\n    _ -> println(\"something else\")\n",
+"interface Speaker\n  fn speak(self) String\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Speaker for Dog\n  fn speak(self) String\n    \"Woof\"\nimpl Speaker for Robot\n  fn speak(self) String\n    \"Beep\"\ncrowd List[any Speaker] = List(Dog(name: \"Rex\"), Robot(serial: 7))\nfor s in crowd\n  when s\n    Dog(name) -> println(\"a dog named ${name}\")\n    r@Robot() -> println(\"a robot, ${r}\")\n    _ -> println(\"something else\")\n",
 [
 "a dog named Rex",
 "a robot, Robot(serial: 7)"
@@ -1008,7 +1008,7 @@ null
 ],
 [
 2026,
-"numbers = Array(10, 20, 30, 40)\nfor v in numbers |> to_stream() |> map(_ * 2)\n  println(\"$v\")\ntotal = numbers |> to_stream() |> reduce(0, _1 + _2)\nbig: List[Int][4] = numbers |> to_stream() |> filter(_ > 15) |> collect()\nprintln(\"$total ${len(big)}\")\n",
+"numbers = Array(10, 20, 30, 40)\nfor v in numbers |> to_stream() |> map(_ * 2)\n  println(\"$v\")\ntotal = numbers |> to_stream() |> reduce(0, _1 + _2)\nbig List[Int][4] = numbers |> to_stream() |> filter(_ > 15) |> collect()\nprintln(\"$total ${len(big)}\")\n",
 [
 "20",
 "40",
@@ -1026,7 +1026,7 @@ null
 ],
 [
 2049,
-"running: List[Int][4] = List(1, 2, 3, 4)\n  |> to_stream()\n  |> scan(0, _1 + _2)\n  |> collect()\nprintln(\"${running(0)} ${running(1)} ${running(2)} ${running(3)}\")\nfor (i, v) in List(10, 20) |> to_stream() |> enumerate()\n  println(\"$i:$v\")\n",
+"running List[Int][4] = List(1, 2, 3, 4)\n  |> to_stream()\n  |> scan(0, _1 + _2)\n  |> collect()\nprintln(\"${running(0)} ${running(1)} ${running(2)} ${running(3)}\")\nfor (i, v) in List(10, 20) |> to_stream() |> enumerate()\n  println(\"$i:$v\")\n",
 [
 "1 3 6 10",
 "0:10",
@@ -1035,7 +1035,7 @@ null
 ],
 [
 2061,
-"ordered: List[Int][4] = nums |> to_stream() |> sort() |> collect()\nflipped: List[Int][4] = nums |> to_stream() |> reverse() |> collect()\nprintln(\"${ordered(0)} ${flipped(0)}\")\n",
+"ordered List[Int][4] = nums |> to_stream() |> sort() |> collect()\nflipped List[Int][4] = nums |> to_stream() |> reverse() |> collect()\nprintln(\"${ordered(0)} ${flipped(0)}\")\n",
 [
 "1 1"
 ]
@@ -1047,7 +1047,7 @@ null
 ],
 [
 2083,
-"nums5 = List(1, 2, 3, 4, 5)\ncs: List[List[Int][2]][3] = nums5 |> to_stream() |> chunks(2) |> collect()\nws: List[Array[Int][2]][4] = nums5 |> to_stream() |> windows(2) |> collect()\nprintln(\"${len(cs)} ${len(cs(0))} ${len(cs(2))}\")\nprintln(\"${len(ws)} ${ws(1)(0)} ${ws(3)(1)}\")\n",
+"nums5 = List(1, 2, 3, 4, 5)\ncs List[List[Int][2]][3] = nums5 |> to_stream() |> chunks(2) |> collect()\nws List[Array[Int][2]][4] = nums5 |> to_stream() |> windows(2) |> collect()\nprintln(\"${len(cs)} ${len(cs(0))} ${len(cs(2))}\")\nprintln(\"${len(ws)} ${ws(1)(0)} ${ws(3)(1)}\")\n",
 [
 "3 2 1",
 "4 2 5"
@@ -1055,7 +1055,7 @@ null
 ],
 [
 2093,
-"readings = List(3, 6, 9, 12, 15)\navg: List[Int][3] = readings\n  |> to_stream()\n  |> windows(3)\n  |> map((w) -> (w |> to_stream() |> sum()) / 3)\n  |> collect()\nprintln(\"${avg(0)} ${avg(1)} ${avg(2)}\")\n",
+"readings = List(3, 6, 9, 12, 15)\navg List[Int][3] = readings\n  |> to_stream()\n  |> windows(3)\n  |> map((w) -> (w |> to_stream() |> sum()) / 3)\n  |> collect()\nprintln(\"${avg(0)} ${avg(1)} ${avg(2)}\")\n",
 [
 "6 9 12"
 ]
@@ -1248,7 +1248,7 @@ null
 ],
 [
 2489,
-"export greeting: String = \"hello\"\ninternal retry_limit = 3\n",
+"export greeting String = \"hello\"\ninternal retry_limit = 3\n",
 null
 ],
 [
@@ -1595,14 +1595,14 @@ null
 ],
 [
 3236,
-"fn inc(x Int) Int = x + 1\nfn twice(x Int) Int = x * 2\nfn square(x Int) Int = x * x\npipeline = inc ~> twice ~> square\nout: List[Int][3] = List(1, 2, 3) |> to_stream() |> map(pipeline) |> collect()\nprintln(\"${pipeline(2)} ${out(0)} ${out(1)} ${out(2)}\")\n",
+"fn inc(x Int) Int = x + 1\nfn twice(x Int) Int = x * 2\nfn square(x Int) Int = x * x\npipeline = inc ~> twice ~> square\nout List[Int][3] = List(1, 2, 3) |> to_stream() |> map(pipeline) |> collect()\nprintln(\"${pipeline(2)} ${out(0)} ${out(1)} ${out(2)}\")\n",
 [
 "36 16 36 64"
 ]
 ],
 [
 3247,
-"steps: Array[(Int) -> Int] = (inc, twice, square)\nresult = steps |> to_stream() |> reduce(0)(acc, f) -> f(acc)\nprintln(\"$result\")\n",
+"steps Array[(Int) -> Int] = (inc, twice, square)\nresult = steps |> to_stream() |> reduce(0)(acc, f) -> f(acc)\nprintln(\"$result\")\n",
 [
 "4"
 ]
@@ -1638,7 +1638,7 @@ null
 ],
 [
 3315,
-"r1: Result[Int, Error] = Ok(1)\nr2: Result[Int, Error] = Ok(2)\nbad: Result[Int, Error] = fail(9, \"bad\")\nprintln(\n  \"${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}\"\n)\n",
+"r1 Result[Int, Error] = Ok(1)\nr2 Result[Int, Error] = Ok(2)\nbad Result[Int, Error] = fail(9, \"bad\")\nprintln(\n  \"${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}\"\n)\n",
 [
 "Ok(3) true"
 ]
@@ -1710,14 +1710,14 @@ null
 ],
 [
 3526,
-"xs = List(1, 2, 3, 4)\nsquares: List[Int][8] = List(x * x for x in xs if x > 1)\nwords = List(\"ab\", \"cde\")\nlens: Dict[String, Int][8] = Dict(w -> len(w) for w in words)\nprintln(\"${len(squares)} ${squares(0)} ${lens(cde)}\")\n",
+"xs = List(1, 2, 3, 4)\nsquares List[Int][8] = List(x * x for x in xs if x > 1)\nwords = List(\"ab\", \"cde\")\nlens Dict[String, Int][8] = Dict(w -> len(w) for w in words)\nprintln(\"${len(squares)} ${squares(0)} ${lens(cde)}\")\n",
 [
 "3 4 Ok(3)"
 ]
 ],
 [
 3540,
-"fn push(ref stack List[Int][8], x Int) Unit\n  stack += x\nfn pop(ref stack List[Int][8]) Int\n  top = stack(len(stack) - 1)\n  stack = remove_at(stack, len(stack) - 1)\n  top\ns: List[Int][8] = List()\npush(ref s, 3)\npush(ref s, 4)\na = pop(ref s)\nb = pop(ref s)\nprintln(\"${a * b} ${len(s)}\")\n",
+"fn push(ref stack List[Int][8], x Int) Unit\n  stack += x\nfn pop(ref stack List[Int][8]) Int\n  top = stack(len(stack) - 1)\n  stack = remove_at(stack, len(stack) - 1)\n  top\ns List[Int][8] = List()\npush(ref s, 3)\npush(ref s, 4)\na = pop(ref s)\nb = pop(ref s)\nprintln(\"${a * b} ${len(s)}\")\n",
 [
 "12 0"
 ]
@@ -1772,7 +1772,7 @@ null
 ],
 [
 3682,
-"import stats\n\nscores: Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)\nprintln(\"mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}\")\nprintln(\"spread ${stats.stddev(scores):.2f}\")\nwhen stats.quantile(scores, 0.9)\n  Ok(q) -> println(\"90th percentile ${q:.1f}\")\n  Err(e) -> println(\"bad quantile\")\n",
+"import stats\n\nscores Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)\nprintln(\"mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}\")\nprintln(\"spread ${stats.stddev(scores):.2f}\")\nwhen stats.quantile(scores, 0.9)\n  Ok(q) -> println(\"90th percentile ${q:.1f}\")\n  Err(e) -> println(\"bad quantile\")\n",
 [
 "mean 77.3, median 75.0",
 "spread 10.69",
@@ -1781,7 +1781,7 @@ null
 ],
 [
 3699,
-"import stats\n\nhours: Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)\nscore: Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)\nwhen stats.fit_line(hours, score)\n  Err(e) -> println(\"cannot fit: ${e.message}\")\n  Ok(line) ->\n    println(\"each hour adds ${line.slope:.1f} points, starting from ${line.intercept:.1f}\")\n    println(\"r squared ${line.r_squared:.3f}\")\n    println(\"6 hours predicts ${stats.predict(line, 6.0):.1f}\")\n    fitted = stats.predict_all(line, hours)\n    println(\"typical error ${stats.rmse(score, fitted):.2f} points\")\n",
+"import stats\n\nhours Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)\nscore Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)\nwhen stats.fit_line(hours, score)\n  Err(e) -> println(\"cannot fit: ${e.message}\")\n  Ok(line) ->\n    println(\"each hour adds ${line.slope:.1f} points, starting from ${line.intercept:.1f}\")\n    println(\"r squared ${line.r_squared:.3f}\")\n    println(\"6 hours predicts ${stats.predict(line, 6.0):.1f}\")\n    fitted = stats.predict_all(line, hours)\n    println(\"typical error ${stats.rmse(score, fitted):.2f} points\")\n",
 [
 "each hour adds 6.4 points, starting from 45.4",
 "r squared 0.996",
@@ -1791,14 +1791,14 @@ null
 ],
 [
 3716,
-"import stats\n\nx: Array[Double] = (3.0, 3.0, 3.0)\ny: Array[Double] = (1.0, 2.0, 3.0)\nwhen stats.fit_line(x, y)\n  Err(e) -> println(e.message)\n  Ok(line) -> println(\"fitted\")\n",
+"import stats\n\nx Array[Double] = (3.0, 3.0, 3.0)\ny Array[Double] = (1.0, 2.0, 3.0)\nwhen stats.fit_line(x, y)\n  Err(e) -> println(e.message)\n  Ok(line) -> println(\"fitted\")\n",
 [
 "fit_line: every x is the same, so there is no line to fit"
 ]
 ],
 [
 3732,
-"import stats\n\nsales: Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)\nprintln(stats.moving_average(sales, 3))\nprintln(\"forecast ${stats.smooth(sales, 0.5):.2f}\")\nprintln(\"slow forecast ${stats.smooth(sales, 0.1):.2f}\")\n",
+"import stats\n\nsales Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)\nprintln(stats.moving_average(sales, 3))\nprintln(\"forecast ${stats.smooth(sales, 0.5):.2f}\")\nprintln(\"slow forecast ${stats.smooth(sales, 0.1):.2f}\")\n",
 [
 "List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)",
 "forecast 29.50",

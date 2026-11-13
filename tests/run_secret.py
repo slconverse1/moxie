@@ -16,7 +16,7 @@ def chk(name, src, rc_want, *wants, absent=(), cmd="run"):
     print(("ok    " if ok else "FAIL  ") + name + ("" if ok else f"  (rc {rc}) {out[:300]!r}"))
     if not ok: fails.append(name)
 
-T = 'token: Secret[String] = secret("hunter2")\n'
+T = 'token Secret[String] = secret("hunter2")\n'
 chk("println shows no secret", T + 'println(token)\n', 0, "Secret(***)", absent=("hunter2",))
 chk("interpolation shows no secret", T + 'println("token is ${token}")\n', 0, "token is Secret(***)", absent=("hunter2",))
 chk("show shows no secret", T + 'println(show(token))\n', 0, "Secret(***)", absent=("hunter2",))

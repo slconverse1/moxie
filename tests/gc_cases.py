@@ -102,7 +102,7 @@ a = Atom[Tree](t)
 println("${size(d("t1").get_or(Leaf))} ${size(@a)}")
 ''', ["2 2"], 0),
 ("dead names hold nothing: a big list summed", '''
-xs: List[Int] = Range(1..=100000, 1) |> to_stream() |> collect()
+xs List[Int] = Range(1..=100000, 1) |> to_stream() |> collect()
 total = xs |> to_stream() |> reduce(0, _1 + _2)
 println("$total")
 ''', ["5000050000"], 0),

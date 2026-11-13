@@ -1,16 +1,16 @@
 """Signatures that differ between moxie and moxie/gc (put), and the ones they share (remove, clear).  Run: python3 tests/run_sigs_dialect.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PRE = 'd: Dict[String, Int] = Dict("a" -> 1)\nxs: List[Int] = List(1, 2)\n'
+PRE = 'd Dict[String, Int] = Dict("a" -> 1)\nxs List[Int] = List(1, 2)\n'
 CASES = [
  # (dialect flags, source, expected text in the output of `check`, or None for a clean run)
- ([], 'a: Int = put(d, "b", 2)\n', "expected `Int`, found `Result[Dict[String, Int]"),
- (["--gc"], 'a: Int = put(d, "b", 2)\n', "expected `Int`, found `Dict[String, Int]`"),
- ([], 'a: Dict[String, Int] = put(d, "b", 2)\n', "expected `Dict[String, Int]`, found `Result"),
+ ([], 'a Int = put(d, "b", 2)\n', "expected `Int`, found `Result[Dict[String, Int]"),
+ (["--gc"], 'a Int = put(d, "b", 2)\n', "expected `Int`, found `Dict[String, Int]`"),
+ ([], 'a Dict[String, Int] = put(d, "b", 2)\n', "expected `Dict[String, Int]`, found `Result"),
  ([], 'a = put(d, 3, 2)\n', "`put` can't take"),
  (["--gc"], 'a = put(d, 3, 2)\n', "`put` can't take"),
- ([], 'a: Int = remove(d, "a")\n', "expected `Int`, found `Dict[String, Int]`"),
- (["--gc"], 'a: Int = clear(xs)\n', "expected `Int`, found `List[Int]`"),
+ ([], 'a Int = remove(d, "a")\n', "expected `Int`, found `Dict[String, Int]`"),
+ (["--gc"], 'a Int = clear(xs)\n', "expected `Int`, found `List[Int]`"),
  ([], 'r = put(d, "a", 5)?\nprintln(r)\n', None),
  (["--gc"], 'r = put(d, "b", 2)\nprintln(r)\n', None),
  ([], 'e = remove(d, "a")\nprintln(e)\n', None),

@@ -57,9 +57,9 @@ chk("a file-local type name is an error", D, ["check", "usetypes.mxi"], 1, "'Loc
 chk("an exported type name is fine", D, ["check", "usetypes.mxi"], 1, absent=("'Pub'",))
 
 chk("doc for one file", D, ["doc", "util.mxi"], 0, "greeting", "Small helpers")
-V = make({"v.mxi": '/// How long to wait.\n///\n/// > wait\n/// 5\nexport wait: Int = 5\n\ninternal knob = 1\n\nscratch = 2\n'})
+V = make({"v.mxi": '/// How long to wait.\n///\n/// > wait\n/// 5\nexport wait Int = 5\n\ninternal knob = 1\n\nscratch = 2\n'})
 chk("doc lists an exported binding, with its examples", V, ["doc", "v.mxi", "--check"], 0, "1 examples ok, 0 failed")
-chk("the binding appears as a value", V, ["doc", "v.mxi"], 0, "value", "wait: Int = 5", absent=("scratch", "knob"))
+chk("the binding appears as a value", V, ["doc", "v.mxi"], 0, "value", "wait Int = 5", absent=("scratch", "knob"))
 chk("--private adds internal bindings but not plain ones without a comment", V, ["doc", "v.mxi", "--private"], 0, "knob", absent=("scratch",))
 chk("doc links a [`name`] to its item (html)", D, ["doc", "shapes", "-o", "out_html"], 0, "wrote")
 rc, out = sh(D, "doc", "shapes", "--format", "md", "-o", "out_md")

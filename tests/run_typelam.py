@@ -23,8 +23,8 @@ def chk(name, src, rc_want, *wants, flags=("--gc",), cmd="run"):
 ONE = """fn one[M[_] Monad]() M[Int]
   M.pure(1)
 """
-chk("a lambda applied where it is written", "x: ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n", 0, "Ok(3)")
-chk("lambdas parse and check in no-GC moxie too", "x: ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n", 0, "Ok(3)", flags=())
+chk("a lambda applied where it is written", 'x ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n', 0, "Ok(3)")
+chk("lambdas parse and check in no-GC moxie too", 'x ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n', 0, "Ok(3)", flags=())
 chk("a lambda passed as a constructor", ONE + "println(one[[A] -> Result[A, String]]())\n", 0, "Ok(1)")
 chk("a generic alias passed as a constructor", "type alias Fail[A] = Result[A, String]\n" + ONE + "println(one[Fail]())\n", 0, "Ok(1)")
 chk("a lambda whose body applies an alias", "type alias Fail[A] = Result[A, String]\n" + ONE + "println(one[[A] -> Fail[A]]())\n", 0, "Ok(1)")
@@ -64,11 +64,11 @@ println(trans.run_except_t(e))
 """, 0, "Ok(1)\nOk((2, List()))\nOk(Ok(3))")
 chk("a program generic in the transformer", 'import fp.trans\nfn wrapped[T[_[_], _] MonadTrans](n Int) T[Result[_, Error], Int]\n  T.lift(Ok(n))\nprintln(trans.run_state_t(wrapped[[M[_], A] -> trans.StateT[M, Int, A]](4), 9))\n', 0, "Ok((4, 9))")
 
-chk("wrong number of arguments to an applied lambda", "x: ([A] -> Result[A, String])[Int, Int] = Ok(1)\n", 1, "this type lambda takes 1 type argument, but 2 given", cmd="check")
-chk("wrong number of arguments to a generic alias", "type alias Fail[A] = Result[A, String]\nx: Fail[Int, Int] = Ok(1)\n", 1, "`Fail` takes 1 type argument, but 2 given", cmd="check")
+chk("wrong number of arguments to an applied lambda", 'x ([A] -> Result[A, String])[Int, Int] = Ok(1)\n', 1, "this type lambda takes 1 type argument, but 2 given", cmd="check")
+chk("wrong number of arguments to a generic alias", 'type alias Fail[A] = Result[A, String]\nx Fail[Int, Int] = Ok(1)\n', 1, "`Fail` takes 1 type argument, but 2 given", cmd="check")
 chk("a lambda of the wrong arity for a constructor parameter", ONE + "println(one[[A, B] -> Result[A, B]]())\n", 1, "is a constructor of 1 type argument, but this one takes 2", cmd="check")
 chk("an alias of the wrong arity for a constructor parameter", "type alias P[A, B] = Result[A, B]\n" + ONE + "println(one[P]())\n", 1, "but this one takes 2", cmd="check")
-chk("a lambda may not repeat a parameter", "x: ([A, A] -> Result[A, A])[Int, Int] = Ok(1)\n", 1, "same parameter twice", cmd="check")
+chk("a lambda may not repeat a parameter", 'x ([A, A] -> Result[A, A])[Int, Int] = Ok(1)\n', 1, "same parameter twice", cmd="check")
 
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)

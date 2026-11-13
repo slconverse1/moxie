@@ -1060,7 +1060,7 @@ class CallsMixin:
                         and type_name(v) in self.impls and type_name(selfval) in self.impls and type_name(v) != type_name(selfval):
                     raise Abort(f"`{p.name}` must have the same type as the receiver (`{type_name(selfval)}`), but this one is a "
                                 f"`{type_name(v)}`: an `any` value hides its type, so use a generic function "
-                                f"`fn f[T: I](a: T, b: T)` or a `when` on the concrete types")
+                                f"`fn f[T I](a T, b T)` or a `when` on the concrete types")
                 if not strict and v.__class__ is not LazyV and p.mod != "lazy":
                     if not self.type_matches(v, p.type, c.env, self.tparam_names(node)):
                         return None

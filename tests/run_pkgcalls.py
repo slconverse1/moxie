@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-A = 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nc: Array[Double] = (1.0, 2.0)\n'
+A = 'import stats\na Array[Double] = (1.0, 2.0, 3.0)\nb Array[Double] = (2.0, 4.0, 7.0)\nc Array[Double] = (1.0, 2.0)\n'
 LIB = 'export fn twice(n Int) Int\n  n * 2\n\nexport fn name_of(s String, k Int = 1) String\n  s\n\nexport tuple Box\n  v Int\n\nexport fn unbox(b Box) Int\n  b.v\n\nexport fn mk(n Int) Box\n  Box(v: n)\n'
 LIB2 = LIB + 'impl Box\n  export fn plus(self Box, n Int) Int\n    self.v + n\n'
 
@@ -10,7 +10,7 @@ LIB2 = LIB + 'impl Box\n  export fn plus(self Box, n Int) Int\n    self.v + n\n'
 CASES = [
  ("a String where the package wants an array", A + 'println(stats.mean("abc"))\n', "fail", "mismatched types", None),
  ("two arrays of different sizes", A + 'println(stats.covariance(a, c))\n', "fail", "Array[Double][2]", None),
- ("a result used as the wrong type", A + 'x: String = stats.mean(a)\n', "fail", "expected `String`, found `Double`", None),
+ ("a result used as the wrong type", A + 'x String = stats.mean(a)\n', "fail", "expected `String`, found `Double`", None),
  ("a piped call is checked", A + 'println("abc" |> stats.mean())\n', "fail", "mismatched types", None),
  ("an import with as is checked", 'import stats as s\nprintln(s.mean(5))\n', "fail", "mismatched types", None),
  ("from-import names are checked", 'import stats (mean)\nprintln(mean("abc"))\n', "fail", "mismatched types", None),
@@ -21,11 +21,11 @@ CASES = [
  ("a local package: too many arguments", 'import lib\nprintln(lib.twice(1, 2))\n', "fail", "takes 1 argument", LIB),
  ("a package type is not a String", 'import lib\nprintln(lib.unbox("x"))\n', "fail", "expected `lib.Box`, found `String`", LIB),
  ("this file's own Box is not the package's Box", 'import lib\ntuple Box\n  v Int\nprintln(lib.unbox(Box(v: 1)))\n', "fail", "expected `lib.Box`, found `Box`", LIB),
- ("a field of a package type is read with its type", 'import lib\nn: Int = lib.mk(2).v\nprintln(n)\ns: String = lib.mk(2).v\n', "fail", "expected `String`, found `Int`", LIB),
+ ("a field of a package type is read with its type", 'import lib\nn Int = lib.mk(2).v\nprintln(n)\ns String = lib.mk(2).v\n', "fail", "expected `String`, found `Int`", LIB),
  ("a missing field of a package type", 'import lib\nprintln(lib.mk(2).nope)\n', "fail", "has no field `nope`", LIB),
- ("a package type in an annotation", 'import lib\nb: lib.Box = lib.mk(5)\nprintln(lib.unbox(b))\nc: lib.Box = 3\n', "fail", "expected `lib.Box`, found `Int`", LIB),
- ("a result holding a package type", 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b)\n  Ok(l) -> println(stats.predict(l, 4.0))\n  Err(e) -> println(e)\n', "run", "9", None),
- ("a package type where a number is wanted", 'import stats\na: Array[Double] = (1.0, 2.0, 3.0)\nb: Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b)\n  Ok(l) -> println(stats.predict(3.0, 4.0))\n  Err(e) -> println(e)\n', "fail", "expected `stats.Line`, found `Double`", None),
+ ("a package type in an annotation", 'import lib\nb lib.Box = lib.mk(5)\nprintln(lib.unbox(b))\nc lib.Box = 3\n', "fail", "expected `lib.Box`, found `Int`", LIB),
+ ("a result holding a package type", 'import stats\na Array[Double] = (1.0, 2.0, 3.0)\nb Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b)\n  Ok(l) -> println(stats.predict(l, 4.0))\n  Err(e) -> println(e)\n', "run", "9", None),
+ ("a package type where a number is wanted", 'import stats\na Array[Double] = (1.0, 2.0, 3.0)\nb Array[Double] = (2.0, 4.0, 7.0)\nwhen stats.fit_line(a, b)\n  Ok(l) -> println(stats.predict(3.0, 4.0))\n  Err(e) -> println(e)\n', "fail", "expected `stats.Line`, found `Double`", None),
  ("a package function used as a value is checked", 'import lib\nxs = List("a", "b")\nprintln(xs |> map(lib.twice) |> collect())\n', "fail", "can't take", LIB),
  ("a package function used as a value runs", 'import lib\nxs = List(1, 2)\nprintln(xs |> map(lib.twice) |> collect())\n', "run", "List(2, 4)", LIB),
  ("a method of a package type is checked", 'import lib\nprintln(lib.mk(1).plus("x"))\n', "fail", "expected `Int`, found `String`", LIB2),

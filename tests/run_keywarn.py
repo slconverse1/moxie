@@ -19,14 +19,14 @@ def chk(name, src, want_warn, manifest=None, *extra):
     if not ok: fails.append(name)
 
 TYPES = 'tuple Big\n  a String[60]\n  b Int\ntuple Small\n  id Int\n'
-chk("a big Dict key warns", TYPES + 'm: Dict[Big, Int] = Dict()\n', True, None, "a Dict key of 80 bytes")
-chk("a big Set element warns", TYPES + 's: Set[Big] = Set()\n', True, None, "a Set element of 80 bytes")
-chk("a small key does not", TYPES + 'm: Dict[Small, Int] = Dict()\n', False)
-chk("an integer key does not", 'm: Dict[Int, String] = Dict()\n', False)
-chk("a String key has no fixed size and does not warn", 'm: Dict[String, Int] = Dict()\n', False)
-chk("the threshold is settable", TYPES + 'm: Dict[Big, Int] = Dict()\n', False, 'name = "k"\n[program]\nkey_warning = "128B"\n')
-chk("a lower threshold warns for a small key", TYPES + 'm: Dict[Small, Int] = Dict()\n', True, 'name = "k"\n[program]\nkey_warning = "4B"\n', "a Dict key of 8 bytes")
-chk("zero turns the warning off", TYPES + 'm: Dict[Big, Int] = Dict()\n', False, 'name = "k"\n[program]\nkey_warning = 0\n')
+chk("a big Dict key warns", TYPES + 'm Dict[Big, Int] = Dict()\n', True, None, "a Dict key of 80 bytes")
+chk("a big Set element warns", TYPES + 's Set[Big] = Set()\n', True, None, "a Set element of 80 bytes")
+chk("a small key does not", TYPES + 'm Dict[Small, Int] = Dict()\n', False)
+chk("an integer key does not", 'm Dict[Int, String] = Dict()\n', False)
+chk("a String key has no fixed size and does not warn", 'm Dict[String, Int] = Dict()\n', False)
+chk("the threshold is settable", TYPES + 'm Dict[Big, Int] = Dict()\n', False, 'name = "k"\n[program]\nkey_warning = "128B"\n')
+chk("a lower threshold warns for a small key", TYPES + 'm Dict[Small, Int] = Dict()\n', True, 'name = "k"\n[program]\nkey_warning = "4B"\n', "a Dict key of 8 bytes")
+chk("zero turns the warning off", TYPES + 'm Dict[Big, Int] = Dict()\n', False, 'name = "k"\n[program]\nkey_warning = 0\n')
 rc, out = check('println(1)\n', 'name = "k"\n[program]\nkey_warning = "big"\n')
 ok = rc != 0 and "key_warning must be a size" in out
 print(("ok    " if ok else "FAIL  ") + "a bad size is refused" + ("" if ok else f"  {out[:200]!r}"))

@@ -13,8 +13,8 @@ CASES = [
  ("operands are not changed", DECL + '_ = union(a, b)\nprintln(len(a))\n', "2", "2"),
 ]
 BAD = [
- ("moxie: union gives a Result", 'a = Set[Int][4](1)\nb = Set[Int][4](2)\ns: Set[Int] = union(a, b)\n', "mismatched types", False),
- ("moxie/gc: union gives the Set", 'a: Set[Int] = Set(1)\nb: Set[Int] = Set(2)\ns: Set[Int] = union(a, b)\nn: Int = union(a, b)\n', "mismatched types", True),
+ ("moxie: union gives a Result", 'a = Set[Int][4](1)\nb = Set[Int][4](2)\ns Set[Int] = union(a, b)\n', "mismatched types", False),
+ ("moxie/gc: union gives the Set", 'a Set[Int] = Set(1)\nb Set[Int] = Set(2)\ns Set[Int] = union(a, b)\nn Int = union(a, b)\n', "mismatched types", True),
 ]
 fails = []
 

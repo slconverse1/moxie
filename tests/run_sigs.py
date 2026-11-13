@@ -4,7 +4,7 @@ run (so no signature gives a type the interpreter does not produce), and each sa
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-PRE = 'xs = List(3, 1, 2)\nws = List("b", "a")\nd: Dict[String, Int] = Dict("a" -> 1)\nr: Result[Int, String] = Ok(4)\nat = Atom[Int](0)\n'
+PRE = 'xs = List(3, 1, 2)\nws = List("b", "a")\nd Dict[String, Int] = Dict("a" -> 1)\nr Result[Int, String] = Ok(4)\nat = Atom[Int](0)\n'
 SAMPLES = [
  ("List[Int]", 'xs |> map((x) -> x + 1) |> collect()'),
  ("List[Int]", 'map((x) -> x + 1, xs)'),
@@ -128,7 +128,7 @@ def run(cmd, src):
 
 
 fails = []
-src = PRE + "".join(f"v{i}: {t} = {e}\n" for i, (t, e) in enumerate(SAMPLES))
+src = PRE + "".join(f"v{i} {t} = {e}\n" for i, (t, e) in enumerate(SAMPLES))
 rc, o = run("run", src)
 ok = rc == 0
 print(("ok    " if ok else "FAIL  ") + f"{len(SAMPLES)} samples check and run" + ("" if ok else "\n" + o[:1500]))
@@ -136,7 +136,7 @@ if not ok:
     fails.append("samples")
 for i, (t, e) in enumerate(SAMPLES):
     wrong = WRONG.get(t, "Bool" if t != "Bool" else "String")
-    rc, o = run("check", PRE + f"v: {wrong} = {e}\n")
+    rc, o = run("check", PRE + f"v {wrong} = {e}\n")
     bad = rc == 0 or "mismatched types" not in o
     if bad:
         print(f"FAIL  {e} is not seen as {t}: rc {rc} {o[:200]!r}")

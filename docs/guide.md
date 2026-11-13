@@ -239,9 +239,9 @@ Output: `108`. Use plain indentation for the lines of a block comment and not a 
 **Chapter 2: Numbers, text, keywords**
 
 ```
-small: Int8 = 42
-wide: Int32 = small
-narrow: Int8 = cast[Int8](wide)
+small Int8 = 42
+wide Int32 = small
+narrow Int8 = cast[Int8](wide)
 next = cast[Char](cast[UInt32]('A') + 1)
 mode = #fast
 wait = 5s + 500ms
@@ -269,7 +269,7 @@ poem = """
 println(poem)
 ```
 
-Output: `roses`, then `  "red" and moxie`. The closing line's indentation is the margin, quotes need no escape, and the final newline is not included. **Mistakes:** `narrow: Int8 = wide` needs `cast`, `'ab'` (a Char is one scalar), a curly quote in source, and a line indented less than the closing `"""`.
+Output: `roses`, then `  "red" and moxie`. The closing line's indentation is the margin, quotes need no escape, and the final newline is not included. **Mistakes:** `narrow Int8 = wide` needs `cast`, `'ab'` (a Char is one scalar), a curly quote in source, and a line indented less than the closing `"""`.
 
 **2a. Raw strings, bytes, and number literals**
 
@@ -318,7 +318,7 @@ The same `Locale` names the days and months when you format a date: with the `de
 Integer arithmetic aborts on overflow (a constant that overflows is a compile error), and division or modulo by zero aborts. The other behaviors are explicit:
 
 ```
-a: Int8 = 100
+a Int8 = 100
 b = wrapping_add(a, 100)
 c = saturating_add(a, 100)
 d = checked_add(a, 100)
@@ -340,7 +340,7 @@ fn describe(p Percent) String
     0 -> "empty"
     1..=99 -> "partial"
     100 -> "full"
-a: Percent = 40
+a Percent = 40
 println(describe(a))
 when try_cast[Percent](a + 70)
   Ok(p) -> println(describe(p))
@@ -359,7 +359,7 @@ println("${factorial(25, 1)}")
 Output: `15511210043330985984000000`. `Decimal[digits, scale]` is exact, and rounding is always explicit:
 
 ```
-price: Decimal[10, 2] = 19.99d
+price Decimal[10, 2] = 19.99d
 total = price * 3
 tax = round_to[2](total * 0.0825d, #half_even)
 println("$total $tax ${total + tax}")
@@ -375,7 +375,7 @@ ages = Dict[String, Int][limit]()
 println("$limit")
 ```
 
-Output: `1024`. **Mistakes:** assigning a wider integer to a narrower type without `cast`, `b: Percent = 101`, using the `d` suffix for a Double (`d` means Decimal only), and a `Decimal` product you forgot to round.
+Output: `1024`. **Mistakes:** assigning a wider integer to a narrower type without `cast`, `b Percent = 101`, using the `d` suffix for a Double (`d` means Decimal only), and a `Decimal` product you forgot to round.
 
 **Chapter 3: Tuples, enums, `impl`**
 
@@ -434,7 +434,7 @@ impl Shape
       Empty -> 0.0
 c = Shape.Circle(radius: 2.0)
 r = Shape.Rect(w: 3.0, h: 4.0)
-unit: Shape = Circle(radius: 1.0)
+unit Shape = Circle(radius: 1.0)
 println("${c.area()} ${r.area()} ${unit.area()}")
 ```
 
@@ -513,12 +513,12 @@ Output: `numeric id 42` then `text id Node-04`. A union may list another union, 
 **Mixing types in a collection.** The elements of a `List`, `Set`, or `Array`, and the keys or values of a `Dict`, share one type, so `List(1, "a")` is a compile error: it is usually a typo, and moxie will not guess a type that fits both. To mix on purpose, name a union in the annotation. The elements convert into it, and a `when` takes them apart again. It works the same in both dialects, because a union has a fixed size.
 
 ```
-xs: List[Int | String] = List(1, "a", 2)
+xs List[Int | String] = List(1, "a", 2)
 for x in xs
   when x
     Int -> println("number $x")
     String -> println("text $x")
-settings: Dict[String, Int | Bool] = Dict("retries" -> 3, "verbose" -> true)
+settings Dict[String, Int | Bool] = Dict("retries" -> 3, "verbose" -> true)
 println(len(settings))
 ```
 
@@ -549,7 +549,7 @@ Output: `Initech 1 2 Acme`, then `Initech Ltd Initech`. The first segment is a t
 **5a. Arrays and slices**
 
 ```
-numbers: Array[Int] = (10, 20, 30, 40, 50)
+numbers Array[Int] = (10, 20, 30, 40, 50)
 middle = numbers(1..=3)
 fixed = set(middle, 1, 99)
 println("${numbers(0)} ${len(numbers)} ${middle(0)} ${fixed(1)} ${middle(1)}")
@@ -650,7 +650,7 @@ Output: `Ok(Set(1, 2, 3))`, `Ok(Dict("a" -> 1, "b" -> 9, "c" -> 3))`, then `Ok(D
 **5e. MultiArrays and their slices**
 
 ```
-grid: MultiArray[Int][2, 3] = (
+grid MultiArray[Int][2, 3] = (
   10, 20, 30 ;
   40, 50, 60
 )
@@ -666,7 +666,7 @@ println("${patched(2)} ${grid(1, 2)}")
 Output: `60 60 60 20 60`, then `99 60`. A bare number drops a dimension, a range keeps it, and `..` is the whole axis. In three dimensions:
 
 ```
-voxels: MultiArray[Int][2, 2, 3] = (
+voxels MultiArray[Int][2, 2, 3] = (
   1, 2, 3 ; 4, 5, 6 ;;
   7, 8, 9 ; 10, 11, 12
 )
@@ -740,7 +740,7 @@ bump(ref n)
 println("${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}")
 ```
 
-An anonymous function is a function with no name, written `(n) -> n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. A function with no `fn` in front is a lambda, and a lambda is pure; with `fn` in front, `fn (line) = println(line)`, it is an anonymous function that may have effects. Bind a lambda with a typed name, `add: (Int, Int) -> Int = (a, b) -> a + b`, and the type supplies its parameter and result types. A lambda can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic; for any of that, write `fn (...)` or declare a function with `fn`.
+An anonymous function is a function with no name, written `(n) -> n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. A function with no `fn` in front is a lambda, and a lambda is pure; with `fn` in front, `fn (line) = println(line)`, it is an anonymous function that may have effects. Bind a lambda with a typed name, `add (Int, Int) -> Int = (a, b) -> a + b`, and the type supplies its parameter and result types. A lambda can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic; for any of that, write `fn (...)` or declare a function with `fn`.
 
 Output: `5 15 2 0`. Every function states its return type. A call may be positional, named, or positional followed by named (named arguments in any order, each parameter supplied once), trailing parameters can have defaults, and a list after the return type renames parameters inside the body:
 
@@ -869,8 +869,8 @@ fn dot[N](a Array[Int][N], b Array[Int][N]) Int
   |> reduce(0, _1 + _2)
 fn first_of[T, N where N > 0](a Array[T][N]) T
   a(0)
-x: Array[Int] = (1, 2, 3)
-y: Array[Int] = (1, 2, 3, 4, 5)
+x Array[Int] = (1, 2, 3)
+y Array[Int] = (1, 2, 3, 4, 5)
 println("${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}")
 ```
 
@@ -890,7 +890,7 @@ fn show_max[T Ordered + Equatable](a T, b T) String
 println("${show_max(3, 9)} ${show_max(4, 4)}")
 ```
 
-Output: `max is 9 same`. When nothing in the arguments fixes a parameter, write all of them: `read[Point](text)`, `cast[Int8](x)`, `Atom[Int](0)`, `Pair[Int, Int](1, 2)`, or use `_` for the ones the arguments can fix, as in `read[_, Int](text)`. A generic function used as a value needs its parameters fixed, either by writing them (`f = swap_pair[Int, String]`) or by an expected type (`g: (Int) -> Int = identity`). Parameters can range over type constructors too (`F[_]`, chapter 8d). **Mistakes:** `dot(x, y)` (sizes `3` and `5` don't match), a bound the type doesn't implement, passing only some of the explicit parameters, and `f = swap_pair` without parameters.
+Output: `max is 9 same`. When nothing in the arguments fixes a parameter, write all of them: `read[Point](text)`, `cast[Int8](x)`, `Atom[Int](0)`, `Pair[Int, Int](1, 2)`, or use `_` for the ones the arguments can fix, as in `read[_, Int](text)`. A generic function used as a value needs its parameters fixed, either by writing them (`f = swap_pair[Int, String]`) or by an expected type (`g (Int) -> Int = identity`). Parameters can range over type constructors too (`F[_]`, chapter 8d). **Mistakes:** `dot(x, y)` (sizes `3` and `5` don't match), a bound the type doesn't implement, passing only some of the explicit parameters, and `f = swap_pair` without parameters.
 
 A type parameter can also stand for a whole argument list. A function type is its parameter types in order, so `(A) -> R` matches `(Int, Int) -> Int` with `A` as `(Int, Int)`, and `(String) -> String` with `A` as `String`. One definition then works for every number of arguments:
 
@@ -1126,7 +1126,7 @@ Output: `Woof! My name is Rover`, `Beep Boep! Serial count is 101`, `Woof! My na
 
 ```
 type union Entity = Dog | Robot
-crowd: Array[Entity] = (Dog(name: "Rex"), Robot(serial: 7))
+crowd Array[Entity] = (Dog(name: "Rex"), Robot(serial: 7))
 for e in crowd
   println(e.speak())
 ```
@@ -1337,8 +1337,8 @@ impl Monoid for Max
     Max(value: -1000000)
 fn mconcat[T Monoid, N](xs Array[T][N]) T
   xs |> to_stream() |> reduce(T.empty(), (a, b) -> a.combine(b))
-nums: Array[Int] = (1, 2, 3)
-maxes: Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
+nums Array[Int] = (1, 2, 3)
+maxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
 println("${mconcat(nums)} ${mconcat(maxes).value}")
 ```
 
@@ -1378,7 +1378,7 @@ A class over a type constructor takes `F[_]`, and an instance names the construc
 ```
 fn double_in[F[_] Monad](m F[Int]) F[Int]
   m.flat_map((x) -> F.pure(x * 2))
-r: Result[Int, Error] = Ok(21)
+r Result[Int, Error] = Ok(21)
 println("${double_in(Box.Full(21))} ${double_in(r)}")
 ```
 
@@ -1387,7 +1387,7 @@ Output: `Box.Full(42) Ok(42)`. And an applicative lift:
 ```
 fn lift2[F[_] Applicative, A, B, C](f (A, B) -> C, a F[A], b F[B]) F[C]
   a.map(curry(f)).ap(b)
-none: Box[Int] = Box.Empty
+none Box[Int] = Box.Empty
 print("${lift2(add, Box.Full(2), Box.Full(3))} ")
 println("${lift2(add, none, Box.Full(3))}")
 ```
@@ -1401,7 +1401,7 @@ fn one[M[_] Monad]() M[Int]
   M.pure(1)
 type alias Fail[A] = Result[A, String]
 println("${one[[A] -> Result[A, String]]()} ${one[Fail]()}")
-x: ([A] -> Result[A, String])[Int] = Ok(3)
+x ([A] -> Result[A, String])[Int] = Ok(3)
 println(x)
 ```
 
@@ -1424,8 +1424,8 @@ type alias Length[T] = when T
 
 fn head_of(xs Array[Int][3]) Elem[Array[Int][3]]
   xs(0)
-joined: Concat[(Int, String), (Bool,)] = (1, "a", true)
-sized: Array[Int][Length[(Int, String)]] = Array(1, 2)
+joined Concat[(Int, String), (Bool,)] = (1, "a", true)
+sized Array[Int][Length[(Int, String)]] = Array(1, 2)
 println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
 ```
 
@@ -1435,7 +1435,7 @@ println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
 
 **Intersections.** `any Named + Aged` is a value that implements both interfaces, written with the `+` that joins bounds (`[T: Equatable + Show]`). `describe(Dog(...))` is a compile error when `Dog` has no `impl Aged`, and a type-function arm can ask the same, `X: Named + Aged -> String`.
 
-**Compile-time evaluation.** A pure function that you declare is also run by the compiler when its arguments are constants and a constant is needed: `a: Array[Int][fib(5)] = Array(1, 2, 3)` is a compile error (`Array[Int][5]` expected, 3 found), `N = fib(6)` makes `N` usable as a size, and `port = parse_port("99999")` fails to compile if `parse_port` aborts on that input. Nothing special is written: there is no keyword, and a function with a print or other effect is simply left until run time. A call that never finishes is stopped (`eval_fuel` in `[program]` sets the step limit).
+**Compile-time evaluation.** A pure function that you declare is also run by the compiler when its arguments are constants and a constant is needed: `a Array[Int][fib(5)] = Array(1, 2, 3)` is a compile error (`Array[Int][5]` expected, 3 found), `N = fib(6)` makes `N` usable as a size, and `port = parse_port("99999")` fails to compile if `parse_port` aborts on that input. Nothing special is written: there is no keyword, and a function with a print or other effect is simply left until run time. A call that never finishes is stopped (`eval_fuel` in `[program]` sets the step limit).
 
 Output: `7 a 2`. `Elem[Array[Int][3]]` is `Int`, because the first arm that matches wins. A bare name in a pattern that is not a known type (`X`, `N`, `H`) is a variable the match binds, and `...Rest` binds the remaining items of a tuple type, as `...rest` does in a list pattern. Numbers are types, so `Length` counts, and `Array[X][N - 1]` computes a size. An arm may have a guard, `M if M > 3 -> Array[Int][M]`, and a string in quotes is a type too, so a schema can be written `"id" -> Int`, `"name" -> String`. An alias may call itself, so a type function can loop over a tuple type. Because that makes the type language a program, the checker limits it: a use that takes more than 64 reductions (`type_fuel` under `[program]` in `Moxie.toml` changes the number) or a type that grows past 4,000 parts is an error that shows the last few steps, and a function that calls itself on a type that is not a piece of what it matched gets a warning. If no arm matches, the compiler says which type had no arm. Inside a generic function the type is not known yet, so `Elem[T]` waits until the call. A type function exists only while the program is checked. **Mistakes:** an arm that does not shrink (it ends only at the limit), and expecting a pattern name to mean a type you declared later in the file (a name that is already a type is a constant, not a variable).
 
@@ -1748,8 +1748,8 @@ Output: `true true 21`. The prelude defines `<$>` (map), `<*>` (apply), and `|>>
 
 ```
 inc = (x Int) -> x + 1
-two: Result[Int, Error] = Ok(2)
-f: Result[(Int) -> Int, Error] = Ok(inc)
+two Result[Int, Error] = Ok(2)
+f Result[(Int) -> Int, Error] = Ok(inc)
 println("${(inc <$> two)} ${(f <*> two)}")
 ```
 
@@ -2008,7 +2008,7 @@ impl Speaker for Dog
 impl Speaker for Robot
   fn speak(self) String
     "Beep"
-crowd: List[any Speaker] = List(Dog(name: "Rex"), Robot(serial: 7))
+crowd List[any Speaker] = List(Dog(name: "Rex"), Robot(serial: 7))
 for s in crowd
   when s
     Dog(name) -> println("a dog named ${name}")
@@ -2027,7 +2027,7 @@ numbers = Array(10, 20, 30, 40)
 for v in numbers |> to_stream() |> map(_ * 2)
   println("$v")
 total = numbers |> to_stream() |> reduce(0, _1 + _2)
-big: List[Int][4] = numbers |> to_stream() |> filter(_ > 15) |> collect()
+big List[Int][4] = numbers |> to_stream() |> filter(_ > 15) |> collect()
 println("$total ${len(big)}")
 ```
 
@@ -2046,7 +2046,7 @@ println("${s |> all(_ > 0)}")
 Output: `17 2 1 true true`. `avg()` gives the mean of numbers as a `Result[Float, Error]` (MISSING when the stream is empty), and `sum()` and `product()` use `+` and `*`, so `sum()` also joins strings and adds your own types that implement `Addable`; the sum of an empty stream is the element type's `zero` (`0`, `0.0`, `""`, or your own type's), and the product's is its `one`. (Each terminal reruns the recipe, so one `s` feeding five terminals is a lint warning; here it is deliberate.) `scan` emits a running value after each element, and `enumerate` pairs each element with its index:
 
 ```
-running: List[Int][4] = List(1, 2, 3, 4)
+running List[Int][4] = List(1, 2, 3, 4)
   |> to_stream()
   |> scan(0, _1 + _2)
   |> collect()
@@ -2058,8 +2058,8 @@ for (i, v) in List(10, 20) |> to_stream() |> enumerate()
 Output: `1 3 6 10`, then `0:10`, `1:20`. Sorting needs every element first:
 
 ```
-ordered: List[Int][4] = nums |> to_stream() |> sort() |> collect()
-flipped: List[Int][4] = nums |> to_stream() |> reverse() |> collect()
+ordered List[Int][4] = nums |> to_stream() |> sort() |> collect()
+flipped List[Int][4] = nums |> to_stream() |> reverse() |> collect()
 println("${ordered(0)} ${flipped(0)}")
 ```
 
@@ -2081,8 +2081,8 @@ The first prints `map 3`, `keep 6`, `map 1`, `keep 2`, `map 2`, `keep 4`, and `h
 
 ```
 nums5 = List(1, 2, 3, 4, 5)
-cs: List[List[Int][2]][3] = nums5 |> to_stream() |> chunks(2) |> collect()
-ws: List[Array[Int][2]][4] = nums5 |> to_stream() |> windows(2) |> collect()
+cs List[List[Int][2]][3] = nums5 |> to_stream() |> chunks(2) |> collect()
+ws List[Array[Int][2]][4] = nums5 |> to_stream() |> windows(2) |> collect()
 println("${len(cs)} ${len(cs(0))} ${len(cs(2))}")
 println("${len(ws)} ${ws(1)(0)} ${ws(3)(1)}")
 ```
@@ -2091,7 +2091,7 @@ Output: `3 2 1`, then `4 2 5`. The chunks are `[1, 2]`, `[3, 4]`, `[5]`, and the
 
 ```
 readings = List(3, 6, 9, 12, 15)
-avg: List[Int][3] = readings
+avg List[Int][3] = readings
   |> to_stream()
   |> windows(3)
   |> map((w) -> (w |> to_stream() |> sum()) / 3)
@@ -2486,7 +2486,7 @@ entry = "main.mxi"
 
 `util.mxi`:
 ```
-export greeting: String = "hello"
+export greeting String = "hello"
 internal retry_limit = 3
 ```
 
@@ -2832,7 +2832,7 @@ m = frexp(8.0, ref e)
 println("$m $e")
 ```
 
-Output: `0.5 4`. An `Array` of any number type is passed as a pointer. A parameter written `n: UInt = len(base)` is C's length, filled in by the call, and `size: UInt = size_of(base)` is the element size. A parameter of function type is a C callback for the length of the call, and `Ptr[T]` in the callback's type is a `const T *` that arrives as the value. That is enough to declare `qsort` and call it with a closure:
+Output: `0.5 4`. An `Array` of any number type is passed as a pointer. A parameter written `n UInt = len(base)` is C's length, filled in by the call, and `size UInt = size_of(base)` is the element size. A parameter of function type is a C callback for the length of the call, and `Ptr[T]` in the callback's type is a `const T *` that arrives as the value. That is enough to declare `qsort` and call it with a closure:
 
 ```
 foreign "c"
@@ -3237,14 +3237,14 @@ fn inc(x Int) Int = x + 1
 fn twice(x Int) Int = x * 2
 fn square(x Int) Int = x * x
 pipeline = inc ~> twice ~> square
-out: List[Int][3] = List(1, 2, 3) |> to_stream() |> map(pipeline) |> collect()
+out List[Int][3] = List(1, 2, 3) |> to_stream() |> map(pipeline) |> collect()
 println("${pipeline(2)} ${out(0)} ${out(1)} ${out(2)}")
 ```
 
 Output: `36 16 36 64`. `~>` composes left to right, so `pipeline(2)` is `square(twice(inc(2)))`, which is 6 squared. A list of plain functions can be folded over a value:
 
 ```
-steps: Array[(Int) -> Int] = (inc, twice, square)
+steps Array[(Int) -> Int] = (inc, twice, square)
 result = steps |> to_stream() |> reduce(0)(acc, f) -> f(acc)
 println("$result")
 ```
@@ -3312,9 +3312,9 @@ when check(500)
 Output: `true false false`, then `too big`. `|>>` and `?` are two spellings of the same sequencing: the first failure stops the chain and is returned. `map_ok` and `<$>` change the value inside, and `<*>` applies a function held in a `Result` (these operators work for any `Functor` or `Applicative`, section 24f):
 
 ```
-r1: Result[Int, Error] = Ok(1)
-r2: Result[Int, Error] = Ok(2)
-bad: Result[Int, Error] = fail(9, "bad")
+r1 Result[Int, Error] = Ok(1)
+r2 Result[Int, Error] = Ok(2)
+bad Result[Int, Error] = fail(9, "bad")
 println(
   "${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}"
 )
@@ -3524,9 +3524,9 @@ Output: `Ok(3)`. The container form is separate (one filter, no nested `for`), a
 
 ```
 xs = List(1, 2, 3, 4)
-squares: List[Int][8] = List(x * x for x in xs if x > 1)
+squares List[Int][8] = List(x * x for x in xs if x > 1)
 words = List("ab", "cde")
-lens: Dict[String, Int][8] = Dict(w -> len(w) for w in words)
+lens Dict[String, Int][8] = Dict(w -> len(w) for w in words)
 println("${len(squares)} ${squares(0)} ${lens(cde)}")
 ```
 
@@ -3543,7 +3543,7 @@ fn pop(ref stack List[Int][8]) Int
   top = stack(len(stack) - 1)
   stack = remove_at(stack, len(stack) - 1)
   top
-s: List[Int][8] = List()
+s List[Int][8] = List()
 push(ref s, 3)
 push(ref s, 4)
 a = pop(ref s)
@@ -3681,7 +3681,7 @@ The **mean** is the average and the **median** is the middle value, so a few ext
 ```
 import stats
 
-scores: Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)
+scores Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)
 println("mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}")
 println("spread ${stats.stddev(scores):.2f}")
 when stats.quantile(scores, 0.9)
@@ -3698,8 +3698,8 @@ Output: `mean 77.3, median 75.0`, then `spread 10.69`, then `90th percentile 89.
 ```
 import stats
 
-hours: Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)
-score: Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)
+hours Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)
+score Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)
 when stats.fit_line(hours, score)
   Err(e) -> println("cannot fit: ${e.message}")
   Ok(line) ->
@@ -3715,8 +3715,8 @@ Output: `each hour adds 6.4 points, starting from 45.4`, then `r squared 0.996`,
 ```
 import stats
 
-x: Array[Double] = (3.0, 3.0, 3.0)
-y: Array[Double] = (1.0, 2.0, 3.0)
+x Array[Double] = (3.0, 3.0, 3.0)
+y Array[Double] = (1.0, 2.0, 3.0)
 when stats.fit_line(x, y)
   Err(e) -> println(e.message)
   Ok(line) -> println("fitted")
@@ -3731,7 +3731,7 @@ A **moving average** replaces each value by the average of the last few, which s
 ```
 import stats
 
-sales: Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)
+sales Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)
 println(stats.moving_average(sales, 3))
 println("forecast ${stats.smooth(sales, 0.5):.2f}")
 println("slow forecast ${stats.smooth(sales, 0.1):.2f}")

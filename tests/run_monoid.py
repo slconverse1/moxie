@@ -18,7 +18,7 @@ CASES = [
 ]
 BAD = [
  ("a bound is checked", 'fn g[T Monoid](x T) T\n  x\nprintln(g(5))\n', "`Int` doesn't implement `Monoid`"),
- ("fold_all gives the item type", 'n: Int = fold_all(List("a", "b"))\n', "expected `Int`, found `String`"),
+ ("fold_all gives the item type", 'n Int = fold_all(List("a", "b"))\n', "expected `Int`, found `String`"),
 ]
 fails = []
 

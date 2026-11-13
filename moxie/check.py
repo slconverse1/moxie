@@ -918,7 +918,7 @@ class Checker:
                 if p.type.__class__ is TName and p.type.path == ["Self"] and not p.type.groups:
                     msg = (f"`{fn.name}` takes a `Self`, so it can't be called on `{fn.obj.name}`, an `any {'`, `'.join(at[1])}` "
                            f"(its type is hidden, so the other value might not have the same type): write a generic function, "
-                           f"`fn f[T: {at[1][0]}](a: T, b: T)`, or branch on the concrete types with `when`")
+                           f"`fn f[T {at[1][0]}](a T, b T)`, or branch on the concrete types with `when`")
                     if not any(x.line == n.line and x.msg == msg for x in self.diags):
                         self.err(n.line, msg)
                     break
@@ -2087,7 +2087,7 @@ class Checker:
         def plain(x):                                    # a type with no union, type parameter, or unknown part anywhere in it
             return x is not None and (x.__class__ is str or (x[0] == "app" and all(plain(a) for a in x[2])))
         if expected is None or plain(expected):
-            hint = "d: Dict[String, Int | Bool] = ..." if "Dict(" in m[1] else "xs: List[Int | String] = ..."
+            hint = "d Dict[String, Int | Bool] = ..." if "Dict(" in m[1] else "xs List[Int | String] = ..."
             self.err(m[0], m[1] + f"; to mix them, declare a union, as in `{hint}`")
 
     def arity_clash(self, ft, count):
@@ -5684,13 +5684,13 @@ class Checker:
             return t.path == n.target.path and t.groups == n.target.groups
         g = fns.get("generate")
         if g is None:
-            self.err(line, "impl Generatable needs `static fn generate(g: Gen) Self`")
+            self.err(line, "impl Generatable needs `static fn generate(g Gen) Self`")
         else:
             if "static" not in (g.flags or ()):
                 self.err(g.line, "generate must be `static`: it makes a value, so there is no value to call it on")
             ps = g.params or []
             if len(ps) != 1 or self._tname(ps[0].type) != "Gen":
-                self.err(g.line, "generate takes one parameter of type Gen: `static fn generate(g: Gen) Self`")
+                self.err(g.line, "generate takes one parameter of type Gen: `static fn generate(g Gen) Self`")
             if g.ret is None or not is_self(g.ret):
                 self.err(g.line, "generate must return Self (the type being generated)")
         sh = fns.get("shrink")

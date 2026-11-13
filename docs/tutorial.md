@@ -89,7 +89,7 @@ roster = List(
 )
 total = roster |> to_stream() |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
-passing: List[Student][4] = roster
+passing List[Student][4] = roster
   |> to_stream()
   |> filter((s) -> s.score >= 60)
   |> collect()
