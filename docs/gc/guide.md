@@ -1374,7 +1374,7 @@ print("${greet(User(id: 1, name: "Ada"))} / ")
 println("${greet(Pet(name: "Rex", owner: "Bo"))}")
 ```
 
-Output: `Hello, Ada / Hello, Rex`. An impl with nothing to define has no body. A field with a delegate makes a computed property, there is no run-time cost, and `any Named` works too. **Mistakes:** `impl Named for T` where `T` has no `name` field of type `String`, a property satisfied by `fn name() String` (it must be a field), writing `x.name = ...` through a `Named` bound, and an enum whose cases carry different payloads.
+Output: `Hello, Ada / Hello, Rex`. An impl with nothing to define has no body. A field with a delegate makes a computed property, the delegate adds no indirection of its own, and `any Named` works too. **Mistakes:** `impl Named for T` where `T` has no `name` field of type `String`, a property satisfied by `fn name() String` (it must be a field), writing `x.name = ...` through a `Named` bound, and an enum whose cases carry different payloads.
 
 **8c. Injection and mocks**
 
@@ -1616,7 +1616,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 
 **Chapter 9: Field delegates**
 
-A delegate adds behavior to a field's reads and writes, with no cost at runtime. It is a declared tuple with one field of the field's type, and it implements `FieldHandler[T]`:
+A delegate adds behavior to a field's reads and writes, and lets you write that behavior once and reuse it on many fields. Kotlin programmers know the idea as a property delegate (`by`), and Swift programmers as a property wrapper. Moxie calls it a field delegate because it attaches to a stored field, and a moxie *property* (Chapter 9b) is something else: a field whose code is written inside the tuple. Use a property when the rule belongs to one field, and a delegate when the same rule belongs to many. A delegate adds no indirection of its own: its state replaces the field in the layout, and every call is specialized and inlined. What you pay is the delegate's own code, such as the clamp below on every write, so a plain field is still the fastest choice when a field needs no behavior. A delegate is a declared tuple with one field of the field's type, and it implements `FieldHandler[T]`:
 
 ```
 tuple Percent
