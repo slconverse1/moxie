@@ -2856,7 +2856,17 @@ class Checker:
                      + " has no function to leave: handle the other shape with `when`")
         vt = self.ev(n.value, sc)[0]
         self.check_pat_fit(n.pat, vt, getattr(n, "line", 0))
-        self.ev(n.else_, sc)
+        if n.pat2 is not None:
+            inner = Sc(sc)
+            self.bind_pat(n.pat2, inner, vt)
+            self.bind_payloads(n.pat2, self.decl_node(n.value, sc), inner)
+            self.check_pat_names(n.pat2, inner)
+            self.check_pat_fit(n.pat2, vt, getattr(n, "line", 0))
+            arms = [Arm([n.pat], None, n.else_, line=n.line), Arm([n.pat2], None, n.else_, line=n.line)]
+            self.exhaustive(WhenE(n.value, arms, line=n.line), vt)        # the two patterns together must cover every shape
+            self.ev(n.else_, inner)
+        else:
+            self.ev(n.else_, sc)
         self.bind_pat(n.pat, sc)
         return None, None
 

@@ -324,8 +324,19 @@ class Parser(ExprParser):
         if self.at_name("else") and op == "=":
             self.next()
             self.no_block_colon()
+            pat2 = None
+            save = self.p
+            try:                      # `else Err(e) -> body`: the failure's own pattern, so its parts are in scope
+                cand = self.parse_pattern()
+                if self.at_op("->"):
+                    self.next()
+                    pat2 = cand
+            except MoxieSyntaxError:
+                pass
+            if pat2 is None:
+                self.p = save
             el = self.parse_block_or_inline()
-            return ElseLet(pat, value, el, line=line)
+            return ElseLet(pat, value, el, pat2, line=line)
         if chain:
             # x = y = z: z is evaluated once, bound to y, and then y to x
             names = [pat.name] + [t.val for t in chain]

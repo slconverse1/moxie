@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: let-else can see the failure.** `Ok(n) = read[Int](t) else Err(e) -> Err(wrap(e))`: the else takes a pattern of its own, so the `Err`'s code and message are in scope (to log, to convert). The two patterns must cover every case together, as in `when`, and the old `else value` form is unchanged. Guide chapter 12, Spec section 1, `tests/run_letelse.py`.
+
 **2026-11-14: `dynamic fn`, `unsafe fn`, `deriving dyn`.** Reading a `Dyn` (`field`, `at`, `as_*`, `from_dyn`) now has to happen in a function marked `dynamic fn`, and calling a foreign function marked `unsafe` (or taking a `Ptr[T]`) in one marked `unsafe fn`; unmarked use is a compile error, top-level script code is exempt, and `dynamic`/`unsafe` stay usable as variable names. Only the function that does the thing is marked, so a checking wrapper can be called from anywhere; `safety = "strict"` under `[program]` in `Moxie.toml` makes callers carry the mark too. `deriving dyn` on a tuple writes `to_dyn()` and a checked `Tuple.from_dyn(d)` (a `Result`, naming the missing key or wrong kind) at compile time from the field types: `Int`, `Float`, `Bool`, `String`, `List` of those, and nested tuples that derive it. Guide chapter on JSON, Spec 23c/23d, `tests/run_safety.py`.
 
 **2026-11-14: `proxy`.** `impl Printer for Logger proxy(printer)` hands a whole interface to a field: the methods the block doesn't write forward to the field, so only the ones that differ are written (Kotlin's class delegation). Guide chapter 9a. Plain methods of an interface declared in the same file only; `static`, `ref`, generic and `Self` members are errors that say to write them by hand.

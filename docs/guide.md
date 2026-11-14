@@ -2147,6 +2147,18 @@ println("${times_ten(Reading.Missing)}")
 
 Output: `Reading.Value(70) Reading.Missing` (using `Reading` from above). **Mistakes:** a `when` that doesn't cover every case, a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
 
+The else can name the failure with a pattern of its own, written `else Pattern -> value`, so the parts of the failure are in scope there. This is how to log an `Err` or use its code, or to turn it into a different error:
+
+```
+fn half(text String) Result[Int, Error]
+  Ok(n) = read[Int](text) else Err(e) -> Err(Error(code: 7, message: "bad number: ${e.message}"))
+  Ok(n / 2)
+println(half("10"))
+println(half("ten"))
+```
+
+Output: `Ok(5)`, then `Err(Error(code: 7, message: "bad number: cannot read"))`. The two patterns must cover every shape of the value between them (the compiler says which case is missing, as for `when`), so the `Err(e)` here is the only thing left once `Ok(n)` has failed to match. A plain name, as in `else other -> ...`, takes the whole value. The names of the first pattern are not in scope in the else, and the names of the second are not in scope after the line. Without the `->`, the else is a value as before. A lambda can't be the else value with a pattern-looking parameter list: write it with a name first.
+
 **12a. Binary patterns**
 
 A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:

@@ -100,7 +100,7 @@ def _defs():
         "Deref": "e",                  # @atom
         # statements
         "Assign": "targets value ann op vis lazy",
-        "ElseLet": "pat value else_",
+        "ElseLet": "pat value else_ pat2",
         "Incr": "target delta",
         "Return": "e",
         "Break": "label e daemon",

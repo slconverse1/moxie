@@ -122,7 +122,14 @@ class PlacesMixin:
                 yield from self.rebind(env, k, v)
             return UNIT
         hint = env.func.ret if env.func is not None else None
-        r = yield from self.ev_body(n.else_, env, hint)
+        scope = env
+        if n.pat2 is not None:
+            b2 = {}
+            if not self.pmatch(n.pat2, value, b2, env):
+                raise Abort("let-else: the value matched neither pattern", n.line)
+            scope = Env(env)
+            scope.vars.update(b2)
+        r = yield from self.ev_body(n.else_, scope, hint)
         raise ReturnEx(r)
 
     def ev_Incr(self, n, env):
