@@ -63,6 +63,31 @@ def names_of(e):
     return out
 
 
+def breaks_with_value(body, label):
+    """The first `break(value)` that leaves the loop whose body is `body` (and whose label is `label`, or None), or None.
+    An unlabeled break belongs to the nearest loop, `do` or `select`, and a function or lambda is a boundary."""
+    found = []
+
+    def walk(x, depth):
+        if found:
+            return
+        if x.__class__ in (list, tuple):
+            for y in x:
+                walk(y, depth)
+            return
+        if not isinstance(x, N) or x.__class__ in (Lambda, FnDecl):
+            return
+        if x.__class__ is Break and x.e is not None and not x.daemon:
+            if (x.label is None and depth == 0) or (x.label is not None and x.label == label):
+                found.append(x)
+                return
+        d = depth + 1 if x.__class__ in (ForE, WhileE, DoE, SelectE, DaemonE) else depth
+        for f in x._fields:
+            walk(getattr(x, f, None), d)
+    walk(body, 0)
+    return found[0] if found else None
+
+
 def show_const(v):
     return ("\"%s\"" % v) if isinstance(v, str) else (("true" if v else "false") if isinstance(v, bool) else str(v))
 
@@ -2784,16 +2809,25 @@ class Checker:
             for (_l, ip), vt in zip(n.pat.items, dn.groups[0]):                # `for k, v in d`: each is written as the Dict says
                 if ip.__class__ is PBind and ip.name in inner.vars:
                     self.var_node[inner.vars[ip.name]] = vt
+        self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], inner, n.label)
         self.else_names.pop()
         self.ev(n.else_, sc)
         return None, None
 
+    def need_loop_else(self, n):
+        if n.else_ is None:
+            b = breaks_with_value(n.body, n.label)
+            if b is not None:
+                self.err(b.line, "this loop uses `break(value)`, so it needs an `else` that gives the value when the loop ends without a `break` "
+                                 "(the `else` lines up with the loop, not with an `if` inside it)")
+
     def e_WhileE(self, n, sc):
         ct = self.t(n.cond, sc)
         if ct is not None and ct != "Bool":
             self.err(n.line, f"`while` condition must be `Bool`, found `{tshow(ct)}`")
+        self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], sc, n.label)
         self.else_names.pop()
