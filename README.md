@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: "Modularity without classes" in both intros, and a `proxy` fix.** A new section before "Moxie's Superpowers" takes Odersky's point that OOP's main gift is modularity and shows the pieces moxie uses for it: interfaces and `impl`s as the boundary, `any` for mixed collections, closures and tuple fields for hidden state, and `proxy` for reuse (the gc intro adds the record-of-closures style, which the no-GC dialect refuses because the captured values would have no owner). Writing the examples found a bug: `proxy` passed an interface member's explicit `self` along as an argument, so forwarding `fn error(self, msg String)` failed at run time. Fixed, with a test.
+
 **2026-11-14: tuples with unnamed fields work.** `tuple Pair(Int, String)` and the block form with one type per line (as the Spec always said) now check and run: construction by position, `p.0`, destructuring, `deriving`, generics, conversion from an anonymous tuple, and an arity error. Mixing named and unnamed fields is an error. `tests/run_postuple.py`.
 
 **2026-11-14: one-line tuples.** `tuple Point(x Int, y Int)` declares the same tuple as the indented block, with `deriving` and defaults as before. A body below it may hold `invariant` lines, not more fields. `tests/run_tuplehead.py`.

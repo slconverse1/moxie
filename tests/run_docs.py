@@ -44,7 +44,7 @@ for page, gc in PAGES:
         used = "alone"; alone = out
         if rc != 0 and "// error" in src:
             tot["skip"] += 1; continue          # a deliberate compile error shown to the reader
-        if rc != 0 and not re.search(r"undefined (name|function)|unexpected indent|unknown type|no field", alone):
+        if rc != 0 and not re.search(r"undefined (name|function)|unexpected indent|unknown type|no field|`proxy` needs the declaration", alone):
             pass                                   # a real error: do not hide it behind context
         elif rc != 0:
             for k in (1, 2, 3, 5, 8, 13, 100):

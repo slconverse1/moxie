@@ -339,6 +339,102 @@ when check_age2(120)
 
 Output: `over 99`. Because the error is an enum, the compiler checks that your `when` covers every case. The `?` operator works with either kind: it passes an `Err` up to your caller, and it can convert one error type into another when you've written a `From` impl that says how.
 
+## Modularity without classes
+
+Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small interface, so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below.
+
+**An interface is the boundary.** The code that needs a logger asks for the interface, not for a particular logger. Any type that has an `impl` of the interface can be passed in, and nothing else about it is visible. Unlike a structural system (Go, TypeScript), a type joins an interface only by an explicit `impl`, so you can always find the place where it agreed to the contract, and you can add an `impl` for a type that you didn't write.
+
+```
+interface Logger
+  fn info(self, msg String) Unit
+  fn error(self, msg String) Unit
+
+tuple ConsoleLogger
+  prefix String
+impl Logger for ConsoleLogger
+  fn info(self, msg String) Unit
+    println("${self.prefix} info: $msg")
+  fn error(self, msg String) Unit
+    println("${self.prefix} ERROR: $msg")
+
+tuple QuietLogger
+  level Int
+impl Logger for QuietLogger
+  fn info(self, msg String) Unit
+    ()
+  fn error(self, msg String) Unit
+    println("error: $msg")
+
+fn save[L Logger](log L, name String) Unit
+  log.info("saving $name")
+  log.error("disk full")
+
+save(ConsoleLogger(prefix: "app"), "report")
+save(QuietLogger(level: 1), "report")
+```
+
+This prints `app info: saving report`, `app ERROR: disk full`, and then `error: disk full`. `save` has no idea which logger it got, and a test can hand it a fake one.
+
+**`any` is dynamic dispatch without a hierarchy.** When you want a mixed collection, say `any Logger`. `ConsoleLogger` is not a subtype of anything. Each value is simply stored together with the way to call its `Logger` methods.
+
+```
+loggers = List[any Logger][2](ConsoleLogger(prefix: "a"), QuietLogger(level: 0))
+for l in loggers
+  l.error("heterogeneous")
+```
+
+This prints `a ERROR: heterogeneous` and `error: heterogeneous`.
+
+**Hiding state is lexical.** Everything in moxie is immutable, so a part's private state is either a field of its tuple or something a closure captured, and the code outside can reach it only through the functions you hand out. A function can return a closure that keeps a private counter, and the counter has no name outside it.
+
+```
+fn make_counter() () -> Int
+  hits = Atom[Int](0)
+  fn () -> swap(hits, (n) -> n + 1)
+
+next = make_counter()
+next()
+next()
+println(next())
+```
+
+This prints `3`.
+
+**Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
+
+```
+tuple Stamped
+  base ConsoleLogger
+impl Logger for Stamped proxy(base)
+  fn info(self, msg String) Unit
+    self.base.info("12:00 $msg")
+
+save(Stamped(base: ConsoleLogger(prefix: "t")), "x")
+```
+
+This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded, and `info` was replaced.
+
+**In this dialect an object can be a record of closures.** With a garbage collector, a closure that captures values can be stored in a tuple field, so Odersky's "an object is a bundle of functions over private state" can be written directly, and the stamped version is an ordinary tuple update with `...`:
+
+```
+tuple Log
+  info (String) -> Unit
+  error (String) -> Unit
+
+fn console_log(prefix String) Log
+  Log(info: fn (m) -> println("$prefix info: $m"), error: fn (m) -> println("$prefix ERROR: $m"))
+
+fn stamped(base Log, time String) Log
+  Log(...base, info: fn (m) -> base.info("$time $m"))
+
+lg = stamped(console_log("app"), "12:00")
+lg.info("started")
+lg.error("failed")
+```
+
+This prints `app info: 12:00 started` and `app ERROR: failed`. The no-GC dialect refuses to store a closure that captures values inside a tuple, because the closure's captured values would have no owner, so there the interface-and-`impl` style above is the way to do it.
+
 # Moxie's Superpowers
 
 What follows is a list of moxie's "superpowers" which, as I see it, run roughly from least to greatest. So here goes:
