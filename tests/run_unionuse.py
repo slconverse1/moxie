@@ -31,6 +31,12 @@ OK = [
  ("or narrows its right side", U + 'fn g(v IT) Bool\n  v is String or v > 0\nprintln(g(1))\nprintln(g(-1))\nprintln(g("a"))\n', "true\nfalse\ntrue\n"),
  ("or keeps a union of what is left", U3 + 'fn h(v IBT) Int = 7\nfn g(v IBT) Int\n  if v is Int or v is String\n    h(v)\n  else\n    0\nprintln(g(1))\nprintln(g(true))\n', "7\n0\n"),
  ("a union of what is left narrows again", U3 + 'fn g(v IBT) Int\n  if v is Bool then return 0\n  if v is Int\n    v + 1\n  else\n    len(v)\nprintln(g(1))\nprintln(g("ab"))\nprintln(g(true))\n', "2\n2\n0\n"),
+ ("a loop variable over a list of a union", U + 'fn g(xs List[IT]) Unit\n  for x in xs\n    if x is Int\n      println(x + 1)\n    else\n      println(len(x))\ng(List(1, "abc"))\n', "2\n3\n"),
+ ("a Dict value in a loop", U + 'fn g(d Dict[String, IT]) Unit\n  for k, v in d\n    if v is Int then println(v + 1)\ng(Dict("a" -> 1))\n', "2\n"),
+ ("an element by literal index", U + 'fn g(xs List[IT]) Int\n  if xs(0) is Int\n    xs(0) + 1\n  else\n    0\nprintln(g(List(4)))\nprintln(g(List("a")))\n', "5\n0\n"),
+ ("an element by a name", U + 'fn g(xs List[IT], i Int) Int\n  if xs(i) is String then return len(xs(i))\n  xs(i) + 1\nprintln(g(List(4, "abc"), 0))\nprintln(g(List(4, "abc"), 1))\n', "5\n3\n"),
+ ("early exit from an elif chain", U3 + 'fn g(v IBT) Int\n  if v is Bool\n    return 0\n  elif v is String\n    return len(v)\n  v + 1\nprintln(g(1))\nprintln(g(true))\nprintln(g("ab"))\n', "2\n0\n2\n"),
+ ("an elif chain where the arms that stay agree", U3 + 'fn h(v IBT) Int = 9\nfn g(v IBT) Int\n  if v is Bool\n    println("b")\n  elif v is Int\n    println("i")\n  else\n    return 0\n  h(v)\nprintln(g(1))\nprintln(g("a"))\n', "i\n9\n0\n"),
 ]
 ERR = [
  ("arithmetic on a union", U + 'fn g(v IT) Int\n  v + 1\n', "test it first"),
@@ -47,6 +53,11 @@ ERR = [
  ("not names the wrong member", U + 'fn g(v IT) Int\n  if not (v is Int)\n    v + 1\n  else\n    0\n', "cannot apply"),
  ("what is left of three is still a union", U3 + 'fn g(v IBT) Int\n  if v is Bool\n    0\n  else\n    v + 1\n', "test it first"),
  ("or does not narrow when only one part holds", U3 + 'fn g(v IBT) Int\n  if v is Int or v is Bool\n    v + 1\n  else\n    0\n', "test it first"),
+ ("a loop variable over a list of a union", U + 'fn g(xs List[IT]) Unit\n  for x in xs\n    println(x + 1)\n', "test it first"),
+ ("an element of a list of a union", U + 'fn g(xs List[IT]) Int\n  xs(0) + 1\n', "test it first"),
+ ("a test of one element says nothing about another", U + 'fn g(xs List[IT]) Int\n  if xs(0) is Int\n    xs(1) + 1\n  else\n    0\n', "test it first"),
+ ("a test of an element by one name does not cover another", U + 'fn g(xs List[IT], i Int, j Int) Int\n  if xs(i) is Int\n    xs(j) + 1\n  else\n    0\n', "test it first"),
+ ("an elif arm that stays and does not narrow", U3 + 'fn g(v IBT) Int\n  if v is Bool\n    return 0\n  elif v is String\n    println("s")\n  v + 1\n', "test it first"),
 ]
 fails = []
 for name, src, want in OK:

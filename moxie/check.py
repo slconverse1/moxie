@@ -1758,16 +1758,30 @@ class Checker:
         return None
 
     def path_key(self, e, sc):
-        """`p.a.b` rooted at a local name: (id of its Var, 'a', 'b'), else None.  Tuples are immutable, so what `p.a` was
-        tested to be stays true in the branch; a new binding of `p` is a new Var and so a new key."""
-        names = []
-        while e.__class__ is Field and isinstance(e.name, str):
-            names.append(e.name)
-            e = e.obj
-        if e.__class__ is not Name or not names:
+        """`p.a.b`, `xs(0)` or `xs(i)` rooted at a local name: (id of its Var, parts...), else None.  Tuples and collections are
+        immutable, so what `p.a` or `xs(0)` was tested to be stays true in the branch; a new binding of `p` or `i` is a new Var and
+        so a new key.  An index is a literal or a local name."""
+        parts = []
+        while True:
+            if e.__class__ is Field and isinstance(e.name, str):
+                parts.append(e.name)
+                e = e.obj
+            elif e.__class__ is Call and e.trailing is None and len(e.args or []) == 1 and hasattr(e.args[0], "expr") \
+                    and not getattr(e.args[0], "label", None) and not getattr(e.args[0], "mod", None) and e.fn.__class__ in (Name, Field):
+                ix = e.args[0].expr
+                if ix.__class__ is IntLit:
+                    parts.append(("lit", ix.v))
+                elif ix.__class__ is Name and sc.find(ix.name) is not None:
+                    parts.append(("var", id(sc.find(ix.name))))
+                else:
+                    return None
+                e = e.fn
+            else:
+                break
+        if e.__class__ is not Name or not parts:
             return None
         v = sc.find(e.name)
-        return None if v is None else (id(v), *reversed(names))
+        return None if v is None else (id(v), *reversed(parts))
 
     def member_of(self, full, p):
         """The name of the member of `full` that pattern `p` names, else None."""
@@ -1866,6 +1880,23 @@ class Checker:
             out[k] = f
         return out
 
+    def join_facts(self, alts):
+        """What holds when at least one of the alternatives `alts` does: for a name or path every alternative speaks about, the
+        members any of them allows."""
+        out = {}
+        first = alts[0]
+        for k, f in first.items():
+            if f[3] is None or f[2] is None:
+                continue
+            others = [g.get(k) for g in alts[1:]]
+            if any(g is None or g[3] is None for g in others):
+                continue
+            allowed = set(f[3])
+            for g in others:
+                allowed |= set(g[3])
+            out[k] = f[:3] + ([m for m in f[2] if m in allowed],) + (None,)
+        return out
+
     def fallthrough_facts(self, st, sc):
         """What is known after statement `st` when it is an early exit: `if c` whose body leaves (return, break, continue) gives not-`c`
         for the rest of the block, an `if c ... else <leaves>` gives `c`, and `return x if c` gives not-`c`."""
@@ -1881,14 +1912,18 @@ class Checker:
             return x.__class__ in (Return, Break, Continue, TodoE)
         if st.__class__ is TrailIf:
             return self.fact_set(st.cond, sc, False) if leaves(st.stmt) else {}
-        if st.__class__ is IfE and len(st.branches) == 1:
-            cond, body = st.branches[0]
+        if st.__class__ is IfE:
+            arms, acc = [], {}                     # what holds at the end of each arm that does not leave
+            for cond, body in st.branches:
+                if not leaves(body):
+                    arms.append(self.merge_facts(acc, self.fact_set(cond, sc, True)))
+                acc = self.merge_facts(acc, self.fact_set(cond, sc, False))
             if st.else_ is None:
-                return self.fact_set(cond, sc, False) if leaves(body) else {}
-            if leaves(st.else_) and not leaves(body):
-                return self.fact_set(cond, sc, True)
-            if leaves(body) and not leaves(st.else_):
-                return self.fact_set(cond, sc, False)
+                arms.append(acc)                   # no `else`: falling through every test is also a way out
+            elif not leaves(st.else_):
+                arms.append(acc)
+            if arms and len(arms) < len(st.branches) + 1:
+                return self.join_facts(arms)
         return {}
 
     def eval_with_paths(self, paths, fn):
@@ -3004,11 +3039,17 @@ class Checker:
         if n.pat.__class__ is PBind and dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring", "Set") and dn.groups \
                 and len(dn.groups[0]) == 1 and n.pat.name in inner.vars:
             self.var_node[inner.vars[n.pat.name]] = dn.groups[0][0]      # the loop variable is written as the elements are
+            lum = self.union_members(dn.groups[0][0])
+            if lum is not None:
+                self.union_vars[inner.vars[n.pat.name]] = lum           # over a list of a union, the variable is one of its members
         if n.pat.__class__ is PTuple and len(n.pat.items) == 2 and dn.__class__ is TName and dn.path[-1] == "Dict" and dn.groups \
                 and len(dn.groups[0]) == 2:
             for (_l, ip), vt in zip(n.pat.items, dn.groups[0]):                # `for k, v in d`: each is written as the Dict says
                 if ip.__class__ is PBind and ip.name in inner.vars:
                     self.var_node[inner.vars[ip.name]] = vt
+                    vum = self.union_members(vt)
+                    if vum is not None:
+                        self.union_vars[inner.vars[ip.name]] = vum
         self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.loop([n.body], inner, n.label)
@@ -4276,6 +4317,16 @@ class Checker:
             return None
         if ct[0] == "app" and ct[1] in ("List", "Array", "Ring") and len(ct[2]) == 1:
             el = ct[2][0]
+            if el is None and f.__class__ is Name and call is not None and ex.__class__ is not RangeE:
+                dn = self.var_node.get(v) if v is not None else None
+                um = self.union_members(dn.groups[0][0]) if dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring") \
+                    and dn.groups and len(dn.groups[0]) == 1 else None
+                if um is not None and self.quiet(ex, sc)[0] == "Int":
+                    self.union_paths[id(call)] = um               # an element of a list of a union: one of its members
+                    pk = self.path_key(call, sc)
+                    if pk is not None and pk in self.narrow_paths:
+                        return self.narrow_paths[pk]
+                    return ("unionv", " | ".join(um))
             if el is None or self.has_unsettled(el):
                 return None
             if ex.__class__ is RangeE:
