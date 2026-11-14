@@ -22,7 +22,7 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 * The `[database]` manifest table (`schema`, `driver`) names a `CREATE TABLE` schema file; `sql` blocks are checked against it: the accepted SQL subset, and that every table and column exists. Column types and row types are not worked out yet. Tests: `tests/run_sqlcheck.py`.
 * Core static checks (see `moxie/check.py`): mismatched types, undefined names, argument counts, `ref` mismatches,
   non-exhaustive `when` (enums, Result, Bool, bounded ranges, literals without `_`), use-after-move and moves inside
-  loops, resource copies, and bounded-integer misuse. It also checks interface bounds at call sites (`best[T: Ordered]`
+  loops, resource copies, and bounded-integer misuse. It also checks interface bounds at call sites (`best[T Ordered]`
   called with a type that has no `Ordered` impl is an error), `deriving` clauses (`hash` needs `eq`; `Hashable` can only
   be derived), and relational patterns (`>= 500 ->`). The checker is conservative: whatever it cannot type is
   unknown and never an error.
@@ -185,7 +185,7 @@ a generator). The thread function must not touch interpreter state.
 
 ## FFI callbacks
 
-A function-typed parameter of a foreign function (`f: (Double) -> Double`) becomes a
+A function-typed parameter of a foreign function (`f (Double) -> Double`) becomes a
 `ctypes.CFUNCTYPE` thunk made per call (`ffi.make_thunk`). The thunk converts C
 arguments, runs the moxie function to completion with `ffi.run_sync` (a callback
 that parks aborts), and converts the result. An exception in a callback is stored,
@@ -198,7 +198,7 @@ todos. Tests: `tests/run_callbacks.py`.
 
 ## Handle out-parameters
 
-A `ref p: H` parameter with `H` a handle type is a `void **` that `call_foreign` fills
+A `ref p H` parameter with `H` a handle type is a `void **` that `call_foreign` fills
 in (`ffi.is_out_handle`); the checker drops it (and length parameters) from the
 caller's argument list (`check.hidden_foreign_param`). A `Result[H, Error]` result
 reads C's `int` status (0 is success; otherwise `Err` with the status as the code,
@@ -220,7 +220,7 @@ peaks can over-count; timers and atoms are never released. Tests: `tests/run_poo
 In a callback's function type, `ffi.cb_plan` maps C's arguments to the moxie function's:
 an `Array[Byte]` followed by an integer type is C's (pointer, length) pair and becomes
 one array (a copy, read from the pointer with `ctypes.string_at`), and `UserData` is a
-`void *` that is not passed on. A `ud: UserData` parameter of the foreign function is
+`void *` that is not passed on. A `ud UserData` parameter of the foreign function is
 hidden from callers (the checker and `effects.py` leave it out of the argument list)
 and C is given NULL. `moxie bindgen` recognizes `void *` next to a callback as
 `UserData` and a byte pointer followed by an integer in a callback as a buffer.
@@ -248,7 +248,7 @@ in the header. Tests: `tests/run_bindgen.py`.
 
 ## Callbacks that C keeps (`Events[T]`)
 
-A foreign parameter `cb: Events[T]` takes a channel write end (`move tx`; the checker
+A foreign parameter `cb Events[T]` takes a channel write end (`move tx`; the checker
 requires `move`). `ffi.make_event_thunk` builds a C-callable thunk that converts the
 arguments (`convert_args`, the same plan as ordinary callbacks) and calls
 `Scheduler.post_event`, which puts the message on the thread-safe queue; the scheduler
@@ -700,7 +700,7 @@ Type functions, second pass: arms may have a guard (`pattern if cond -> result`;
 
 Type functions, third pass: labels and singletons. A tuple type is `("tup", items[, labels])`; labels are ignored by `compatible`/`unify`/`join` (a tuple is checked by position) and used by `tmatch` (`_label_match`: a `("pvar", n)` label binds the field name as a `("slit", name)`; a string type must equal it). `check.tuple_label` turns a label into `("param", n)` (an alias parameter) or `("pvar", n)` (a pattern variable) while a type function is being read (`in_tfun`). `subst` carries labels along, splices a spread tuple's labels, and resolves label variables through the bindings. `tys.UNFOLD` (`check.unfold`) lets `tmatch` read a declared tuple (`named`/`app`) as its labeled fields. `e_StrLit` returns the text as its constant when it has no interpolation, and `structured_call` binds a bare type parameter to `("slit", text)` / `("lit", n)` from a literal argument only when that parameter appears inside a type-function application (`tapp_params`); otherwise the argument is widened as before.
 
-Type functions, fourth pass: `X: Iface` patterns. The parser reads a NAME, `:`, NAME at the start of an arm as `TBound`; `ty_of_type` gives `("bound", ("pvar", X), iface)`; `tmatch` asks `tys.IMPLEMENTS` (`check.implements`): True binds the variable, False is no match, None is unknown (the application stays unreduced).
+Type functions, fourth pass: `X Iface` patterns. The parser reads a NAME followed by a NAME at the start of an arm as `TBound`; `ty_of_type` gives `("bound", ("pvar", X), iface)`; `tmatch` asks `tys.IMPLEMENTS` (`check.implements`): True binds the variable, False is no match, None is unknown (the application stays unreduced).
 
 ## Compile-time evaluation (cteval.py; check.py: CT, const_eval, fold_binding)
 `CtEval` builds a second `Interp` (output discarded, `Perms.none()`) from the program's fn/tuple/enum/alias/iface/impl declarations and runs `name(args)` for a function the effect analysis finds pure. Every `disp` entry is wrapped to count steps; `eval_fuel` (default 200000) ends the run, and Python's RecursionError is reported as "recursed too deeply". `const_eval` gets a `Call` case through the module hook `CT`; `const_int`, `size_expr`, `type_num` and `size_term` use it, and `fold_binding` records top-level constants in `Checker.consts`. Aborts and limits are collected in `CtEval.errors` and added to the diagnostics. Results are Python int/float/bool/str only. Not done: a call whose argument is a type variable (a guard such as `N if big(N)`), which would need a symbolic call node.
@@ -713,7 +713,7 @@ Per-value member types (check.py: any_params, any_vars, any_member_call, any_fn_
 
 Guards that call functions: `type_num` turns a call into `("cfn", name, args)` with `tys.subst_partial`; `tys.subst` runs it through `tys.CALLER` (`check.type_call`, which uses `CtEval`) once every argument is a number or string, giving `("lit", n)`, `("slit", s)` or `("bool", b)`; until then it is symbolic (`_stuck` says "sym"). `eval_guard` has a `Call` case. A call that gives `Err` is recorded in `CtEval.warnings` and shown as a warning. The no-arm error names the outermost application (`tf_trail[0]`).
 
-Intersections: `TAny` and `TBound` carry `also` (the further interfaces of `A + B`); the parser reads `any A + B` and `X: A + B`. The checker's `any` key holds a tuple of interface names (`any_names`); `any_member_call` looks a member up in each; `check_any_args` reports a known argument type that lacks an interface; `tmatch` of a `bound` pattern needs every interface. The interpreter ignores the annotation.
+Intersections: `TAny` and `TBound` carry `also` (the further interfaces of `A + B`); the parser reads `any A + B` and `X A + B`. The checker's `any` key holds a tuple of interface names (`any_names`); `any_member_call` looks a member up in each; `check_any_args` reports a known argument type that lacks an interface; `tmatch` of a `bound` pattern needs every interface. The interpreter ignores the annotation.
 
 Signatures, third batch: `trim`, `starts_with`/`ends_with` (String or Char), `char_count`, `grapheme_count`, `path_join`, `is_ok`/`is_err`, `is_nan`/`is_inf`/`is_finite`, `sqrt`, `cwd`/`hostname`/`os_name`/`temp_dir`, `home_dir`, `list_dir`, `path_exists`, `remove_dir`, `rename_path`, `now`, `monotonic`. Not given a signature on purpose: `len` (it also takes tuples), `put`/`remove`/`clear` (the result differs between moxie and moxie/gc, and the signature table is shared), `hash`, `show`, and the network, process and terminal families, whose argument types are resources the checker does not model.
 
@@ -735,7 +735,7 @@ Observers: `AtomV.watchers` holds `(token, property, handler)`. `swap` and `rese
 
 Checker: `e_Field` types a property read (`prop_in`); `check_prop_write` rejects an assignment to a read-only, static, or (outside the tuple's `impl`, tracked by `impl_ty`) `priv set` property; `check_prop_reqs` compares an interface's property members with the tuple at `impl I for T`. Parse-time errors (`err_at`) cover the declaration rules: storage, setter without `field`, `did_set` on a computed property, static and lazy restrictions. `replace` and `modify` (`path_update`) write a property through its setter. Limits: observer handler types are not checked; `on_change` is typed only at run time; a setter cannot return a `Result` (a delegate's can); `layout.py` does not count a lazy property's cache slot. `rebind(env, "self", v)` writes the receiver cell of a `ref Self` method, and the checker (`method_ref`) rejects `self.n = v` in a method that isn't `ref Self`.
 
-Result-returning setters: `parse_property` reads an optional `Result` type after `set(value: T)` (`PropertyDecl.set` is `(name, type, body, rtype)`); `expand_props` gives `__set_NAME` that return type and `_with_setter` adds the visible `set_NAME` by parsing a three-line template (`c = self`, `c.__set_NAME(value)?`, `Ok(c)`) and patching its types. `prop_set` aborts on an `Err` (a `replace`/`modify` path), and `construct_tuple` returns the `Err`, or wraps the tuple in `Ok` when any property setter or delegate `set_value` returns a `Result` (`delegate_can_fail`). The checker types such a constructor as `Result[T, Error]` (`fallible_ctor`, `delegate_fails`) and `check_prop_write` rejects plain assignment to a fallible property or delegate field. Delegates: `expand_delegates` (parser.py) finds `set_value` impls whose return type is a `Result` in the same module and adds an implicit impl after each tuple with `set_NAME` calling the builtin `__set_delegate`; `delegate_put` (places.py) is the one write path, used by `field_set` (aborts on an `Err`), `__set_delegate`, and `path_update` (so `replace` runs the delegate; it used to store the raw value). Known gap: a delegate declared in another module gets no generated `set_NAME`.
+Result-returning setters: `parse_property` reads an optional `Result` type after `set(value T)` (`PropertyDecl.set` is `(name, type, body, rtype)`); `expand_props` gives `__set_NAME` that return type and `_with_setter` adds the visible `set_NAME` by parsing a three-line template (`c = self`, `c.__set_NAME(value)?`, `Ok(c)`) and patching its types. `prop_set` aborts on an `Err` (a `replace`/`modify` path), and `construct_tuple` returns the `Err`, or wraps the tuple in `Ok` when any property setter or delegate `set_value` returns a `Result` (`delegate_can_fail`). The checker types such a constructor as `Result[T, Error]` (`fallible_ctor`, `delegate_fails`) and `check_prop_write` rejects plain assignment to a fallible property or delegate field. Delegates: `expand_delegates` (parser.py) finds `set_value` impls whose return type is a `Result` in the same module and adds an implicit impl after each tuple with `set_NAME` calling the builtin `__set_delegate`; `delegate_put` (places.py) is the one write path, used by `field_set` (aborts on an `Err`), `__set_delegate`, and `path_update` (so `replace` runs the delegate; it used to store the raw value). Known gap: a delegate declared in another module gets no generated `set_NAME`.
 
 Contextual parameters (`using`), 2026-11-09: `find_using` (calls.py) now looks first in the scope of the call (`self.using_env`, set by `call_closure`), walking outward and taking the nearest scope that has a `using` value whose type fits the parameter, then in the scope where the function was defined. Before, it looked only at the definition scope, so a `using` declared in a function body was never found at a call inside that function. Two fitting values in one scope abort with "ambiguous 'using'", and a `using` parameter is itself a candidate for calls in the body. Matching is by type, never by name. The checker reports the same two errors at compile time (`check_using_args`, `check_using_param`): `Sc.usings` records each scope's `using` values and `using` parameters, a call that writes `using` must find a value of the parameter's type in an enclosing scope, and two values of exactly that type in the nearest such scope are ambiguous. It stays quiet when it can't be sure: an unknown type counts as a fit, a top-level `using` anywhere in the file counts as a possible candidate for a function body, and a call that leaves `using` out entirely (the interpreter allows it) is not checked. The run-time aborts remain as a backstop. `tests/run_using.py` covers it.
 
@@ -747,7 +747,7 @@ Data paths are `PathV` values, so they are first-class; `replace` and `modify` t
 
 A teaching library written in moxie, found by `stdpkg.find_std` like `fp.state` (it is not in `GC_ONLY`, so it runs in both dialects). Everything takes an `Array[Double][N]`. The two-array functions `assert` equal lengths at run time, because calls into an imported package are checked from its signatures (see `import_signatures`), so the size rule below applies to `stats.covariance(a, b)`. `sort` of an array is a stream, so `sorted` collects it back into an array. The expected values in `tests/run_stats.py` were computed independently with Python's `statistics` module and numpy.
 
-Size parameters (2026-11-09): `tys.unify` records the size of the first argument that gives a size to a parameter `N` (key `"#N"` in `binds`, kept apart from the substitution into result types) and returns a clash when another argument gives a different one, so `pair[N](a: Array[Int][N], b: Array[Int][N])` rejects arrays of different sizes. `array_size` (check.py) now also gives `x Array[Int] = (1, 2, 3)` and `x Array[Int] = Array(1, 2, 3)` their size, and the binding's type carries it. `tests/run_sizes.py` covers it. Not done: a `where` clause on a size (`N > 0`) is still only checked at run time.
+Size parameters (2026-11-09): `tys.unify` records the size of the first argument that gives a size to a parameter `N` (key `"#N"` in `binds`, kept apart from the substitution into result types) and returns a clash when another argument gives a different one, so `pair[N](a Array[Int][N], b Array[Int][N])` rejects arrays of different sizes. `array_size` (check.py) now also gives `x Array[Int] = (1, 2, 3)` and `x Array[Int] = Array(1, 2, 3)` their size, and the binding's type carries it. `tests/run_sizes.py` covers it. Not done: a `where` clause on a size (`N > 0`) is still only checked at run time.
 
 Imported-package calls: `Checker.import_signatures(st)` (from `collect`, for each `ImportDecl`) reads the package (`package_program`: a local package, else `stdpkg.find_std`), and for every exported single-clause function adds a signature-only copy to `self.fns` as `pkg.f` (or bare `f` for `import pkg (f)`), recorded in `pkg_calls`. A parameter or result that names a type the package declares is set to untyped, and functions with higher-kinded type parameters are skipped. `pkg_redirect` (top of `_e_Call`) rewrites a copy of the call node to call that name, so the ordinary declared-function checks run (arity, argument types, generic and size unification, constant `requires`). `pipe_plan` also checks a value piped into a generic function of one parameter. `tests/run_pkgcalls.py`.
 

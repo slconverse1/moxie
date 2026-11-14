@@ -99,10 +99,10 @@ Signatures (2026-11-05): finished for the prelude functions whose types are the 
 Decided with the designer: moxie should be first class for type-level programming with no restriction on recursion. Built: type functions (`type alias F[T] = when T` arms), the first matching arm wins, recursion, `(H, ...T)` tuple patterns and `...T` in results (so tuple types can be split and joined, reversing the earlier "no variadic generics" decision), numbers and arithmetic as types, a number computed by a type function as an array size, fuel (64) plus a size limit, and a lint for a self-call that does not shrink. Next on the list: guards on arms, literal types for strings, implicit search and derivation, and `inline`-style compile-time evaluation. See INTERPRETER.md for the design and tests/run_typefun.py for the cases.
 
 ## Labels and singleton inference (done)
-Tuple types keep field names; `(K: T, ...Rest)` looks a field up by name, a bare label variable binds the name as a string type; declared tuples unfold to their fields; literal arguments to a parameter used inside a type function keep their own type. `get(user, "name")` is `String`.
+Tuple types keep field names; `(K T, ...Rest)` looks a field up by name, a bare label variable binds the name as a string type; declared tuples unfold to their fields; literal arguments to a parameter used inside a type function keep their own type. `get(user, "name")` is `String`.
 
 ## Interface patterns (done)
-`X: Iface` in a type-function arm matches a type that implements the interface. `given`/`summon` were not added: `interface`+`impl`+`deriving` already cover instance lookup.
+`X Iface` in a type-function arm matches a type that implements the interface. `given`/`summon` were not added: `interface`+`impl`+`deriving` already cover instance lookup.
 
 ## Compile-time evaluation (done, scalar results)
 User pure functions run at compile time in sizes, type-level numbers and top-level bindings; aborts and fuel are compile errors. Open: calls on type variables inside guards.
@@ -117,7 +117,7 @@ User pure functions run at compile time in sizes, type-level numbers and top-lev
 
 Done: guards that call pure functions on type variables (`M if big(M)`), the no-arm error names the whole application, and a constant that is always an `Err` is a warning.
 
-Intersection types: `any A + B` and `X: A + B`, using the `+` that joins bounds; `&` is not used.
+Intersection types: `any A + B` and `X A + B`, using the `+` that joins bounds; `&` is not used.
 
 ## Run-time enforcement of type functions (decided: none)
 The interpreter does not check ordinary annotations at run time either (`x Array[Int][3] = Array(1, 2)` and `x Int = "s"` run when the static check is skipped), because moxie types are checked once, at compile time, and the run-time values carry no declared type. A type function is the same as any other type here, so there is nothing separate to enforce. What does exist at run time is unchanged: bounded numbers (`cast`, `try_cast`), contracts, and `invariant`. Enforcing declared types at run time would be a feature for every type, not for type functions, and is not planned.

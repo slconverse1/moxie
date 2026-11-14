@@ -591,7 +591,7 @@ println("${(...p, y: 9)}")
 Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here's where each one shows up:
 
 - **Splatting:** `add(...pair)` spreads a tuple across a parameter list, and `total(100, ...values)` spreads an array into a variadic. `(...p, y: 9)` spreads a tuple's fields into a new tuple, with later fields overriding earlier ones. In many cases you don't even need the `...`, because `add(pair)` already works when the shape matches.
-- **Gathering:** `numbers: ...Int` gathers any number of trailing arguments into one list **[gc]**, and zero is fine. A pattern gathers too: in `Array(first, ...rest)` the `rest` collects whatever the pattern didn't name.
+- **Gathering:** `numbers ...Int` gathers any number of trailing arguments into one list **[gc]**, and zero is fine. A pattern gathers too: in `Array(first, ...rest)` the `rest` collects whatever the pattern didn't name.
 - **The limits:** A variadic has a single element type (use a union or a tuple when you need a mix). **[gc]** In moxie/gc a `List` of any length can be splatted into a call, and a `rest` is an ordinary value. (No-GC moxie has to know how many values it is spreading, so it can't splat a `List` of unknown length, and its `rest` is a read-only view that can't be returned or stored.)
 
 **The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
@@ -1095,7 +1095,7 @@ println("${first_of(Array(7, 8, 9))}")
 Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things are going on here:
 
 - **Generics sit beside the tuple, not inside it.** Everything in parentheses is the tuple (or parameter list), and it follows all the unification rules. The square brackets are a separate, compile-time-only list. Type parameters aren't values, so they never exist at run time and you can't pass one around as an argument. But a declared tuple can itself be generic, as `Pair[A, B]` shows, and it keeps every tuple rule.
-- **Type dependencies are spelled out.** `T: Ordered` says that `T` must be orderable, which is what makes `a < b` legal in the body. That is a *bound*. A type meets a bound only through a visible `impl`, and the body of the function may use only what the bound provides (plus what any type allows: bind it, pass it, return it, store it). A parameter with no bound is plain data, so you can't compare it or call methods on it unless you ask for that in a bound. Several requirements join with `+`, as in `[T: Ordered + Equatable]`.
+- **Type dependencies are spelled out.** `T Ordered` says that `T` must be orderable, which is what makes `a < b` legal in the body. That is a *bound*. A type meets a bound only through a visible `impl`, and the body of the function may use only what the bound provides (plus what any type allows: bind it, pass it, return it, store it). A parameter with no bound is plain data, so you can't compare it or call methods on it unless you ask for that in a bound. Several requirements join with `+`, as in `[T Ordered + Equatable]`.
 - **Bounds are checked at the call.** Here's a bound with an interface of your own:
 
   ```
@@ -1157,7 +1157,7 @@ The limits: a type with two or more arguments can have only one hole (`Result[_,
 
 ## 18. Interfaces and impls (a.k.a. typeclasses)
 
-An `interface` says what a type can do, and an `impl` says that a type does it. You can implement your own interface for somebody else's type, so you can extend things you don't own. There are bounds (`[T: Ordered + Equatable]`), default method bodies, associated types, properties (a field that can run code, computed or lazy, with observers), and conditional instances. Everything is specialized per use at compile time, so there are no tables at run time.
+An `interface` says what a type can do, and an `impl` says that a type does it. You can implement your own interface for somebody else's type, so you can extend things you don't own. There are bounds (`[T Ordered + Equatable]`), default method bodies, associated types, properties (a field that can run code, computed or lazy, with observers), and conditional instances. Everything is specialized per use at compile time, so there are no tables at run time.
 
 There is no type hierarchy and no inheritance. An interface works like a club (a set, in mathematical terms), and an `impl` says a type belongs to it. A type can join one club or a hundred, and joining adds nothing to the type: no fields, no hidden pointer, no parent. A generic function can say which clubs its type must belong to, and any member can be used, related or not. Membership can be added after the fact, and by someone else, so even a built-in like `Int` can join. A class language would need a common base class or a wrapper for that. A non-member is a compile error ("`Dog` doesn't implement `Describable`, which `describe_all` requires of `T`").
 
@@ -1656,10 +1656,10 @@ println("${first} ${row} ${sized} ${name} ${grid}")
 
 Output: `ada (1, "a", true) Array(1, 2) Ada Array(1, 2, 3, 4, 5)`. Change any of those annotations to the wrong type and the compiler stops at that line. What you get:
 
-- **Matching on types.** The first arm that matches wins. A bare name in a pattern, like `X` or `N`, is a variable the match fills in; `_` matches anything, and `X: Show` matches any type that implements `Show` (or `X: Show + Eq`, both).
+- **Matching on types.** The first arm that matches wins. A bare name in a pattern, like `X` or `N`, is a variable the match fills in; `_` matches anything, and `X Show` matches any type that implements `Show` (or `X Show + Eq`, both).
 - **Recursion, with no restriction on it.** `Concat` joins two tuple types and `Length` counts the items of one, because an alias may call itself. Since a loop that never ends would hang the compiler, each use has a budget of reductions (`type_fuel` in `Moxie.toml`, 64 by default), and an alias that calls itself on something that doesn't get smaller gets a warning.
 - **Tuples taken apart.** `(H, ...T)` splits a tuple type into its first item and the rest, the type-level twin of `(first, ...rest)`, and a result can splice one back in.
-- **Numbers and strings are types.** `0`, `1 + Length[Rest]`, `Array[X][N - 1]`, and `"name"` all work where a type goes. That is how a size can be computed and how `Get[User, "name"]` finds a field by its name: field names stay in tuple types, and `(K: T, ...Rest)` looks one up.
+- **Numbers and strings are types.** `0`, `1 + Length[Rest]`, `Array[X][N - 1]`, and `"name"` all work where a type goes. That is how a size can be computed and how `Get[User, "name"]` finds a field by its name: field names stay in tuple types, and `(K T, ...Rest)` looks one up.
 - **Guards, and your own functions at compile time.** An arm may carry `if`, and the guard can call any pure function you wrote (`big(M)`), even one from an imported package. The same goes for a size or a constant: `Array[Int][fib(10)]` is worked out by the compiler, in a sandbox with no permissions and a step limit, and a call that aborts there is a compile error.
 - **Types that belong to a value.** An `any Container` hides its type, so each one has an `Item` of its own: `to.put(from.first())` is an error when `to` and `from` are different values, even if both hold the same kind of container. `a.Item` names it, with no new syntax.
 - **No cost, and no run-time rule.** Type functions exist only while the compiler checks; they leave nothing in the program, like every other type.

@@ -15,7 +15,7 @@ Status key: A = recommend, B = worth discussing, C = recommend keeping.
 6. **`any I` can't call `static fn` or `Self`-parameter members** (B). `Self`-parameter members (`==`, `+`) could work when both operands carry the same tag, aborting otherwise. That adds a run-time failure to a compile-time feature, so only with an explicit warning.
 7. **Extension blocks (`impl Int`) never satisfy an interface** (B). Allow a package-local retroactive impl, visible only inside that package and not exported. Reuse: `impl Describable for Int` where you don't own either side, marked `internal`. Coherence stays safe because it can't escape the package.
 8. **Orphan rule** (C). Keep. Item 7 covers the real need.
-9. **Interface property forms** (done): readable `name: Type` and `property` with `get`/`set` both exist. Spec section 12 was stale and is now fixed.
+9. **Interface property forms** (done): readable `name Type` and `property` with `get`/`set` both exist. Spec section 12 was stale and is now fixed.
 
 ## 3. Functions and calls (B)
 10. **Variadic spread needs a compile-time count** (B, both dialects). Allow a `List` spread with a run-time count check (abort with a clear message) plus the standard "annotate to check at compile time" warning.

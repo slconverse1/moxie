@@ -930,7 +930,7 @@ println(retry(2, using))
 println(connect(using))
 ```
 
-Output: `connecting to example.com`, then `connecting to example.com`. `retry` hands its `cfg` on to `connect` by writing `using`, which finds the value of the right type. The other use of `summon` in Scala, getting the instance behind a bound like `[T: Ordering]`, has no counterpart either, because in moxie a type does not hand you an instance. Its `impl` supplies methods that you call on a value of the bounded type, `a.combine(b)`, or on the type itself, `T.empty()`, as `mconcat` does in chapter 8d. A missing or ambiguous `using` value is a compile error, so there is no "which instance did the compiler pick" to ask about.
+Output: `connecting to example.com`, then `connecting to example.com`. `retry` hands its `cfg` on to `connect` by writing `using`, which finds the value of the right type. The other use of `summon` in Scala, getting the instance behind a bound like `[T Ordering]`, has no counterpart either, because in moxie a type does not hand you an instance. Its `impl` supplies methods that you call on a value of the bounded type, `a.combine(b)`, or on the type itself, `T.empty()`, as `mconcat` does in chapter 8d. A missing or ambiguous `using` value is a compile error, so there is no "which instance did the compiler pick" to ask about.
 
 A `todo` stands in for any expression you haven't written yet. The compiler warns and lists it, and running it aborts the fiber:
 
@@ -1534,9 +1534,9 @@ println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
 
 **Field names at the type level.** Tuple types keep their field names, and an arm can look a field up by name: with `type alias Get[R, K] = when R` and the arms `(K T, ...Rest) -> T` and `(_ _, ...Rest) -> Get[Rest, K]`, a function `fn get[R, K](row R, key K) Get[R, K]` called as `get(user, "name")` returns `String` and as `get(user, "zip")` returns `Int`, and `get(user, "nope")` is an error because no arm matches. A literal argument keeps its own type (`"name"`, `3`) when its parameter is used inside a type function; otherwise it is widened to `String` or `Int` as before.
 
-**Asking what a type can do.** An arm may use a bound as its pattern: `X: Named -> String` matches any type that implements `Named` and binds it to `X`, so `type alias Label[T] = when T` with the arms `X: Named -> String` and `else Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T: Named]`, and it reuses the `impl` and `deriving` you already wrote.
+**Asking what a type can do.** An arm may use a bound as its pattern: `X Named -> String` matches any type that implements `Named` and binds it to `X`, so `type alias Label[T] = when T` with the arms `X Named -> String` and `else Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T Named]`, and it reuses the `impl` and `deriving` you already wrote.
 
-**Intersections.** `any Named + Aged` is a value that implements both interfaces, written with the `+` that joins bounds (`[T: Equatable + Show]`). `describe(Dog(...))` is a compile error when `Dog` has no `impl Aged`, and a type-function arm can ask the same, `X: Named + Aged -> String`.
+**Intersections.** `any Named + Aged` is a value that implements both interfaces, written with the `+` that joins bounds (`[T Equatable + Show]`). `describe(Dog(...))` is a compile error when `Dog` has no `impl Aged`, and a type-function arm can ask the same, `X Named + Aged -> String`.
 
 **Compile-time evaluation.** A pure function that you declare is also run by the compiler when its arguments are constants and a constant is needed: `a Array[Int][fib(5)] = Array(1, 2, 3)` is a compile error (`Array[Int][5]` expected, 3 found), `N = fib(6)` makes `N` usable as a size, and `port = parse_port("99999")` fails to compile if `parse_port` aborts on that input. Nothing special is written: there is no keyword, and a function with a print or other effect is simply left until run time. A call that never finishes is stopped (`eval_fuel` in `[program]` sets the step limit).
 
@@ -1615,7 +1615,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 
 **7. Haskell to moxie, at a glance**
 - `class` and `instance` become `interface` and `impl X for T`; `instance Monad Box` becomes `impl Monad[Box]`.
-- Superclasses are embedded interfaces; constraints are bounds like `[T: Monoid]`.
+- Superclasses are embedded interfaces; constraints are bounds like `[T Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
 - Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and monad transformers (in no-GC moxie; moxie/gc has them as the library `fp.trans`).
@@ -2972,7 +2972,7 @@ println(store_get(s, cstr("answer")))
 store_close(move s)
 ```
 
-A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL. Two more shapes cover the rest of the usual C habits. A callback that C **keeps** and calls later, perhaps from a thread of its own, cannot run moxie code on that thread, so it becomes a message: declare `cb: Events[Int32]` and pass the write end of a channel with `move`, and a fiber reads the events with `read`. If C needs an **answer** from the kept callback, declare `cb: Handler[(Int32) -> Int32]` and pass a function; when C calls from its own thread, the function runs in a fiber of its own (it may sleep or read), and the C thread waits for the result. A foreign function that waits for such a thread must be declared `parks`:
+A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL. Two more shapes cover the rest of the usual C habits. A callback that C **keeps** and calls later, perhaps from a thread of its own, cannot run moxie code on that thread, so it becomes a message: declare `cb Events[Int32]` and pass the write end of a channel with `move`, and a fiber reads the events with `read`. If C needs an **answer** from the kept callback, declare `cb Handler[(Int32) -> Int32]` and pass a function; when C calls from its own thread, the function runs in a fiber of its own (it may sleep or read), and the C thread waits for the result. A foreign function that waits for such a thread must be declared `parks`:
 
 ```
 foreign "sensor"
@@ -3249,7 +3249,7 @@ println("$total")
 
 `moxie test` runs each `test` block in its own fiber, one after another, without running the entry file; a failed assertion aborts that test with a diagnostic. A normal run type-checks the test blocks but generates no code for them. In a normal run the program prints `8` to the output, and `dbg` prints something like `[main.mxi:7] double(2) = 4` to the error stream (and warns that `dbg` was left in). `dbg(expr)` returns its argument, so it can wrap any sub-expression, or sit in a pipeline as `|> dbg()`. `assert`, `assert_eq`, and `assert_ne` stay on in `--release` builds, while `debug_assert(cond)` is removed there, and its condition must be pure. **Mistakes:** a `debug_assert` whose condition reads a channel, and leaving `dbg` in committed code.
 
-`moxie repl` starts an interactive session. Type an expression and it prints the result with its type, such as `$res1: Int = 3`, and keeps it as `$res1`; the older results move up (`$res2` is the one before), so `$res1 + $res2` adds the last two. Declarations (`fn`, `tuple`, `enum`, `import`, `x = 5`) join the session, so later lines can use them. A line ending in `:` continues until a blank line. If a line has a compile error, you see the error and the session stays as it was. `:type expr` shows a type without running it, `:results` lists the results, `:reset` starts over, and `:quit` leaves.
+`moxie repl` starts an interactive session. Type an expression and it prints the result with its type, such as `$res1 Int = 3`, and keeps it as `$res1`; the older results move up (`$res2` is the one before), so `$res1 + $res2` adds the last two. Declarations (`fn`, `tuple`, `enum`, `import`, `x = 5`) join the session, so later lines can use them. A line ending in `:` continues until a blank line. If a line has a compile error, you see the error and the session stays as it was. `:type expr` shows a type without running it, `:results` lists the results, `:reset` starts over, and `:quit` leaves.
 
 **Property tests.** A `forall` inside a `test` checks a rule for many values at once, where an `assert` checks it for one. Name the values and their types, and the body runs for 100 generated cases:
 
@@ -3433,7 +3433,7 @@ println("${is_ok(all_ok)} ${is_ok(one_bad)}")
 
 Output: `true false`. The error type is yours, so the same patterns work with an enum and `From` conversions (chapter 18).
 
-`traverse` stops at the first error, which is right for a pipeline and wrong for a form, where you want every problem at once. `validate(f, xs)` runs `f` on every item and gives `Ok` with the list of results, or `Err` with the list of *all* the errors; `collect_errors(rs)` does the same for a stream of `Result`s you already have. `partition_results(rs)` splits them into `(oks, errs)` and keeps going either way, `recover(r, f)` turns an `Err` into an `Ok` with a fallback computed from the error, and `tap(x, f)` runs `f(x)` for its effect and gives `x` back, which is handy for a log line in the middle of a pipeline (`f` may print, so write it `fn (x) = ...`). `retry(n, delay, f)` calls `f` once and calls it again only if it gave an `Err`, waiting `delay` between tries, up to `n` tries in all; the last `Err` comes back if every try fails. It does not repeat an error that a second try can't change (`NOT_FOUND`, `DENIED`, `BAD_ENCODING`, `OUT_OF_RANGE`, `MISSING`, `TOO_LONG`, `TOO_SHORT`), and `when: (e): ...` replaces that rule with your own. Use it for calls that are safe to repeat (reads, lookups, connecting), because a call that half-worked will half-work again:
+`traverse` stops at the first error, which is right for a pipeline and wrong for a form, where you want every problem at once. `validate(f, xs)` runs `f` on every item and gives `Ok` with the list of results, or `Err` with the list of *all* the errors; `collect_errors(rs)` does the same for a stream of `Result`s you already have. `partition_results(rs)` splits them into `(oks, errs)` and keeps going either way, `recover(r, f)` turns an `Err` into an `Ok` with a fallback computed from the error, and `tap(x, f)` runs `f(x)` for its effect and gives `x` back, which is handy for a log line in the middle of a pipeline (`f` may print, so write it `fn (x) = ...`). `retry(n, delay, f)` calls `f` once and calls it again only if it gave an `Err`, waiting `delay` between tries, up to `n` tries in all; the last `Err` comes back if every try fails. It does not repeat an error that a second try can't change (`NOT_FOUND`, `DENIED`, `BAD_ENCODING`, `OUT_OF_RANGE`, `MISSING`, `TOO_LONG`, `TOO_SHORT`), and `when: (e) -> ...` replaces that rule with your own. Use it for calls that are safe to repeat (reads, lookups, connecting), because a call that half-worked will half-work again:
 
 ```
 fn check(n Int) Result[Int, String]

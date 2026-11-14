@@ -183,7 +183,7 @@ skipped Gus: score out of range
 9 pear Ada
 ```
 
-`best[T: Ordered]` is a generic function. The `T` stands for "some type," and `: Ordered` says what that type must be able to do: be compared with `<`. Numbers and strings can already do that, so `best(3, 9)` and `best("pear", "fig")` just work.
+`best[T Ordered]` is a generic function. The `T` stands for "some type," and `: Ordered` says what that type must be able to do: be compared with `<`. Numbers and strings can already do that, so `best(3, 9)` and `best("pear", "fig")` just work.
 
 A `Student` can't be compared until you say how, and that is what the `impl Ordered for Student` block does: it defines `<` as "lower score." After that, `best(ada, bob)` compiles and picks Ada. Leave the `impl` out, and the compiler stops at the call and tells you that `Student` doesn't implement `Ordered`, instead of failing somewhere inside `best`.
 
