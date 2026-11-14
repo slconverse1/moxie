@@ -1338,7 +1338,7 @@ def expand_proxies(stmts, file=None):
                 fail(f"`proxy` can't forward `{iname}.{m.name}`: its parameters are not all plain names; write it in the impl")
             if mentions_self(m.ret) or any(mentions_self(p.type) for p in m.params or []):
                 fail(f"`proxy` can't forward `{iname}.{m.name}`: `Self` in its signature would be the held value's type, not this type; write it in the impl")
-            names = ", ".join(p.name for p in m.params or [])
+            names = ", ".join(p.name for p in m.params or [] if p.name != "self")      # an explicit `self` is the receiver, not an argument
             src = f"fn {m.name}()\n  self.{s.proxy}.{m.name}({names})\n"
             fn = parse_program(src).stmts[0]
             fn.params = copy.deepcopy(m.params)
