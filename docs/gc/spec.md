@@ -755,7 +755,15 @@ A closed data type for data whose shape is not known until it arrives, in both d
 - **`enum Dyn`** has the cases `DNull`, `DBool(b)`, `DInt(i)`, `DFloat(x)`, `DText(s)`, `DList(items List[Dyn])` and `DMap(fields List[Entry])`, and derives `eq` and `show`. `tuple Entry` has `key String` and `value Dyn`. A map is a list of entries in the order written, not a `Dict`, because a `Dict` has a fixed capacity.
 - **Reading:** `json.parse(text) Result[Dyn, Error]` (an `Err` that gives the character position for bad JSON, including text after the value). `d.field(key)`, `d.at(i)`, `d.as_bool()`, `d.as_int()`, `d.as_float()` (an `Int` converts), `d.as_text()` and `d.as_list()` each return a `Result` and never abort. `d.is_null() Bool`.
 - **Writing:** `d.to_json() String`, compact, entries in order, strings escaped for `"`, `\`, newline, tab and return.
-- **Not included:** `\uXXXX` escapes, pretty printing, converting to and from the mixer's own types (see FIXLIST), and anything that looks at a type at run time.
+- **`deriving dyn`** *(built)* on a tuple declaration generates, at compile time and from the field types alone, an inherent `to_dyn(self) json.Dyn` (a `DMap` with one entry per field, in order) and `static dynamic fn from_dyn(d json.Dyn) Result[T, Error]`. A field is `Int`, `Float`, `Bool`, `String`, `List[F]` for such an `F`, or a tuple that derives `dyn`; anything else (`Dict`, `Set`, `Array`, an unnamed or function type) is a compile error at the declaration, as is a generic tuple. `from_dyn` returns the first `Err` (missing key, code 4; wrong kind, code 1). The file must `import json`. `json.list_of(d, f)` is the helper it uses for lists.
+- **Not included:** `\uXXXX` escapes, pretty printing, enums and `Option` fields in `deriving dyn`, and anything that looks at a type at run time.
+
+**23d. `dynamic fn` and `unsafe fn`** *(built)*
+Two declared markers, written before `fn` like an effect, that say where compile-time guarantees stop. They are soft keywords (a variable may be called `dynamic` or `unsafe`).
+- **`dynamic fn`** is required of a function that, in its own body (a lambda counts as part of the enclosing function), calls `field`, `at`, `as_bool`, `as_int`, `as_float`, `as_text` or `as_list` on a `Dyn`, or calls `from_dyn`. Top-level statements are not functions and need no marker.
+- **`unsafe fn`** is required of a function that calls a foreign function (section 19a) declared `unsafe fn`, or one whose declaration mentions `Ptr[T]`. The declaration of a foreign function may carry `unsafe` together with its effect (`unsafe pure fn cos(...)`). `moxie bindgen` does not write it yet.
+- **Direct use must be marked; callers need not be.** A marked wrapper that checks its data or arguments can be called from unmarked code, as a wrapper over a foreign call is (section 19a).
+- **`safety = "strict"`** under `[program]` in `Moxie.toml` (the other value is `"normal"`, the default) makes the marks travel: a function that calls a `dynamic` or `unsafe` function must be marked too, so every path from `main` to the risk is visible. A function is not required to call anything it is marked for.
 
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.

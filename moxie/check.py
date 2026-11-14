@@ -233,6 +233,9 @@ def fields_of(n):
     return n._fields
 
 
+STRICT_SAFETY = [False]          # Moxie.toml `safety = "strict"`
+
+
 class Checker:
     def __init__(self, prelude_names):
         self.diags = []
@@ -3847,7 +3850,72 @@ class Checker:
         elif shape[0] == "uncurried" and len(args) != shape[1] and not any(a.expr.__class__ is TupleE for a in args):
             self.err(n.line, f"`uncurry[{shape[1]}]` makes a function of {shape[1]} arguments, but this call gives {len(args)}")
 
+    DYN_READS = ("field", "at", "as_bool", "as_int", "as_float", "as_text", "as_list", "from_dyn")
+
+    def tag_table(self):
+        """Names of functions and methods declared `unsafe` or `dynamic` (or, for foreign functions, taking a raw pointer)."""
+        t = getattr(self, "_tags", None)
+        if t is None:
+            t = self._tags = {}
+            decls = [c for cl in self.fns.values() for c in cl] + list(self.methods.values())
+            for d in decls:
+                fl = set(getattr(d, "flags", None) or ()) & {"unsafe", "dynamic"}
+                if id(d) in self.foreign_ids and self.mentions_ptr(d.params):
+                    fl.add("unsafe")
+                if fl:
+                    t.setdefault(d.name, set()).update(fl)
+        return t
+
+    def mentions_ptr(self, x):
+        if isinstance(x, (list, tuple)):
+            return any(self.mentions_ptr(y) for y in x)
+        if x.__class__ is TName and x.path and x.path[-1] == "Ptr":
+            return True
+        return hasattr(x, "_fields") and any(self.mentions_ptr(getattr(x, f)) for f in x._fields)
+
+    def is_dyn_ty(self, t):
+        t = self.base(t) if t is not None else None
+        return t.__class__ is tuple and t[0] == "named" and str(t[1]).split(".")[-1] == "Dyn"
+
+    def note_safety(self, n, sc, pipe0, extra):
+        """A call that reads a `Dyn`, or reaches a function that is `unsafe` or `dynamic`, must sit in a function tagged the same way."""
+        fd = getattr(self, "cur_fn", None)
+        if fd is None:
+            return
+        f = n.fn
+        name = f.name if f.__class__ in (Name, Field) else None
+        if name is None:
+            return
+        have = set(fd.flags or ()) & {"unsafe", "dynamic"}
+        need = {}
+        if name in self.DYN_READS:
+            if f.__class__ is Field:
+                recv = self.quick_ty(f.obj, sc)
+            elif extra:
+                recv = pipe0
+            elif n.args:
+                recv = self.quick_ty(n.args[0].expr, sc)
+            else:
+                recv = None
+            if name == "from_dyn" or self.is_dyn_ty(recv):
+                need["dynamic"] = f"reads a `Dyn` with `{name}`"
+        shadow = f.__class__ is Name and sc.find(name) is not None
+        for tag in (() if shadow else self.tag_table().get(name, ())):
+            need.setdefault(tag, f"calls `{name}`, which is `{tag}`")
+        for tag, why in need.items():
+            direct = (tag == "dynamic" and why.startswith("reads")) or (tag == "unsafe" and self.foreign_call(name))
+            if tag in have or fd.name == name:
+                continue
+            if direct:
+                self.err(n.line, f"`{fd.name}` {why}, so it must be declared `{tag} fn`")
+            elif STRICT_SAFETY[0]:
+                self.err(n.line, f"`{fd.name}` {why}; with `safety = \"strict\"` it must be declared `{tag} fn` too")
+
+    def foreign_call(self, name):
+        return any(id(c) in self.foreign_ids for c in self.fns.get(name) or [])
+
     def e_Call(self, n, sc, *a, **k):
+        self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
         for item in self.pending_gone[mark:]:
@@ -6511,10 +6579,11 @@ def check_key_sizes(prog, threshold):
     return diags
 
 
-def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None, eval_fuel=None):
+def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None, eval_fuel=None, strict_safety=False):
     from .cteval import CtEval
     CT[0] = CtEval(prog, search_dir, eval_fuel)
     try:
+        STRICT_SAFETY[0] = strict_safety
         return _check_program(prog, prelude_names, search_dir, key_warn, type_fuel)
     finally:
         CT[0] = None

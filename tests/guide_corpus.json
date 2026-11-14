@@ -1915,5 +1915,14 @@ null
 "{\"name\":\"Al\",\"scores\":[90,85.5],\"admin\":false}",
 "Err(Error(code: 1, message: \"unterminated list at character 5\"))"
 ]
+],
+[
+4004,
+"import json\n\ntuple Addr deriving dyn, show\n  city String,\n  zip Int\ntuple User deriving dyn, show\n  name String,\n  tags List[String],\n  addr Addr\n\ndynamic fn load(text String) Result[User, Error]\n  User.from_dyn(json.parse(text)?)\n\nu = User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150))\nprintln(u.to_dyn().to_json())\nprintln(load(u.to_dyn().to_json()))\nprintln(load(\"{\\\"name\\\": \\\"Al\\\", \\\"tags\\\": [1]}\"))\n",
+[
+"{\"name\":\"Al\",\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Oslo\",\"zip\":150}}",
+"Ok(User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150)))",
+"Err(Error(code: 1, message: \"not a String\"))"
+]
 ]
 ]

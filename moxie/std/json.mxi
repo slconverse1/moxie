@@ -56,6 +56,16 @@ impl Dyn
       DNull -> true
       _ -> false
 
+/// Read every element of a `Dyn` list with `f`: the list of results, or the first `Err`.
+export dynamic fn list_of[T](d Dyn, f (Dyn) -> Result[T, Error]) Result[List[T], Error]
+  items = d.as_list()?
+  list_of_from(items, 0, List(), f)
+
+dynamic fn list_of_from[T](items List[Dyn], i Int, acc List[T], f (Dyn) -> Result[T, Error]) Result[List[T], Error]
+  if i >= len(items) then return Ok(acc)
+  x = f(items(i))?
+  list_of_from(items, i + 1, acc + List(x), f)
+
 fn json_quote(s String) String
   body = s |> chars() |> map((c) -> json_char(c)) |> join("")
   "\"$body\""

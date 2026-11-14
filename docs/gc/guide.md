@@ -4146,6 +4146,30 @@ println(json.parse("[1, 2"))
 
 Output: `Al 90`, then `Err(Error(code: 4, message: "no key \"email\""))`, then `Err(Error(code: 1, message: "not an Int"))`, then `{"name":"Al","scores":[90,85.5],"admin":false}`, then `Err(Error(code: 1, message: "unterminated list at character 5"))`. Each `flat_map` step passes an `Err` along unchanged, so a chain of lookups fails at the first step that can't be done, and the `?` at the end hands that `Err` to the caller. A map is kept as a list of entries in the order they were written, so `to_json()` prints them in that order. It is a list and not a `Dict` because a `Dict` has a fixed capacity and a document's size isn't known in advance.
 
-`Dyn` is for data whose shape you don't control. It does not convert to and from your own types by itself yet: you read the fields you need and build your own tuple from them. It also does not call methods by name, since any method you could call is already in your own types and interfaces.
+`Dyn` is for data whose shape you don't control. It does not look at your types at run time, so the conversion to and from your own tuples is written out at compile time, as `deriving show` is. Put `dyn` in the `deriving` list and the tuple gets `to_dyn()`, which gives a `Dyn`, and `Tuple.from_dyn(d)`, which gives a `Result`: a missing key or a value of the wrong kind is an `Err` that says which, never an abort. A field may be an `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple that derives `dyn`. A tuple that does not derive it, a `Dict`, a function and a closure can't be converted, and the compiler says so.
+
+```
+import json
+
+tuple Addr deriving dyn, show
+  city String,
+  zip Int
+tuple User deriving dyn, show
+  name String,
+  tags List[String],
+  addr Addr
+
+dynamic fn load(text String) Result[User, Error]
+  User.from_dyn(json.parse(text)?)
+
+u = User(name: "Al", tags: List("a", "b"), addr: Addr(city: "Oslo", zip: 150))
+println(u.to_dyn().to_json())
+println(load(u.to_dyn().to_json()))
+println(load("{\"name\": \"Al\", \"tags\": [1]}"))
+```
+
+Output: `{"name":"Al","tags":["a","b"],"addr":{"city":"Oslo","zip":150}}`, then `Ok(User(name: "Al", tags: List("a", "b"), addr: Addr(city: "Oslo", zip: 150)))`, then `Err(Error(code: 1, message: "not a String"))`.
+
+**`dynamic fn` and `unsafe fn`.** Reading a `Dyn` (`field`, `at`, `as_*`, `from_dyn`) moves a type check from compile time to run time, so the function that does it says so: write `dynamic` before `fn`. A function that reads a `Dyn` without the word is a compile error, and so is a function that calls a foreign function marked `unsafe` (or one that takes a `Ptr[T]`) without `unsafe fn`. A lambda belongs to the function around it. Top-level statements are not functions, so a script can read a `Dyn` directly. The words are soft: `dynamic` and `unsafe` are still fine as variable names. By default only the function that does the thing is marked, so a wrapper that checks its data can be called from any function. A project that wants the marks to travel up the call chain sets `safety = "strict"` under `[program]` in `Moxie.toml`: a function that calls a `dynamic` or `unsafe` function must then carry the mark too.
 
 **Mistakes:** treating a number with a `.` or an exponent as an `Int` (it is a `DFloat`, so use `as_float`), expecting `\u` escapes in strings (not supported yet), and expecting a map's keys to come out sorted.

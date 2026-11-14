@@ -3,7 +3,7 @@ import os
 
 FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
-PROGRAM_KEYS = {"memory", "key_warning", "type_fuel", "eval_fuel"}
+PROGRAM_KEYS = {"memory", "key_warning", "type_fuel", "eval_fuel", "safety"}
 DATABASE_KEYS = {"schema", "driver"}
 NATIVE_KEYS = {"libs", "paths"}
 MEMORY_KEYS = {"heap", "slice"}
@@ -75,6 +75,8 @@ def load(path):
         tf = out["program"]["type_fuel"]
         if not isinstance(tf, int) or isinstance(tf, bool) or tf < 1:
             raise ManifestError(f"{m}: [program] type_fuel must be a whole number of reductions, 1 or more (the default is 64)")
+    if "safety" in out["program"] and out["program"]["safety"] not in ("normal", "strict"):
+        raise ManifestError(f"{m}: [program] safety must be \"normal\" or \"strict\"")
     if "eval_fuel" in out["program"]:
         ef = out["program"]["eval_fuel"]
         if not isinstance(ef, int) or isinstance(ef, bool) or ef < 1:

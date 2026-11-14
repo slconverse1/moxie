@@ -4,8 +4,8 @@ from .pbase import HARD, ASSIGN_OPS, PBase
 from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
 
-EFFMODS = ("pure", "tailrec", "prints", "parks", "impure")
-MODS = {"export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure"}
+EFFMODS = ("pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic")        # soft: only modifiers when a declaration follows
+MODS = {"unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure"}
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
@@ -19,6 +19,7 @@ class Parser(ExprParser):
             self.err(f"unexpected {self.describe(self.peek())}")
         stmts = expand_delegates(stmts, self.file)
         stmts = expand_proxies(stmts, self.file)
+        stmts = expand_dyn(stmts, self.file)
         from .withs import expand_withs
         stmts = expand_withs(group_fns(stmts), self.file)
         return Block(stmts, line=1)
@@ -976,7 +977,7 @@ class Parser(ExprParser):
                 members.append(AliasDecl("assoc", nm, [], ty, None, line=t.line))
                 self.end_line()
                 continue
-            if t.kind == "NAME" and t.val in ("fn", "static", "inline", "export", "internal", "fiber", "pure", "prints", "parks", "impure"):
+            if t.kind == "NAME" and t.val in ("fn", "static", "inline", "export", "internal", "fiber", "pure", "prints", "parks", "impure", "unsafe", "dynamic"):
                 d = self.try_decl()
                 if d is None:
                     self.err("expected a method declaration")
@@ -1164,6 +1165,61 @@ def expand_delegates(stmts, file=None):
         if members:
             groups = [[TName([tp.name], []) for tp in s.tparams]] if s.tparams else []
             out.append(ImplDecl(None, TName([s.name], groups), [], members, False, line=s.line))
+    return out
+
+
+def expand_dyn(stmts, file=None):
+    """`type P(name String, age Int) deriving dyn`: an inherent `impl` with `to_dyn(self) json.Dyn` and
+    `static dynamic fn from_dyn(d json.Dyn) Result[P, Error]`, written out at compile time from the field types (no reflection).
+    Fields may be `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple that also derives `dyn`."""
+    out = []
+    for s in stmts:
+        out.append(s)
+        if s.__class__ is not TupleDecl or "dyn" not in (s.derivs or []):
+            continue
+        ln = s.line
+
+        def fail(msg):
+            raise MoxieSyntaxError(f"`deriving dyn` on `{s.name}`: {msg}", ln, 0, file)
+        if s.tparams:
+            fail("a generic tuple can't derive `dyn` yet")
+        if not s.fields:
+            fail("it needs named fields")
+
+        def to_(t, e, depth, fname):
+            if t.__class__ is not TName or not t.path:
+                fail(f"field `{fname}` has a type that has no `Dyn` form (a function, tuple type, or other unnamed type)")
+            n = t.path[-1]
+            if n in ("Int", "Float", "Bool"):
+                return f"json.Dyn.D{n}({e})"
+            if n == "String":
+                return f"json.Dyn.DText({e})"
+            if n == "List" and t.groups and len(t.groups[0]) == 1:
+                v = f"x{depth}"
+                return f"json.Dyn.DList({e} |> map(({v}) -> {to_(t.groups[0][0], v, depth + 1, fname)}) |> collect())"
+            if n in ("Dict", "Set", "Array", "Option", "Result", "Char", "Byte", "Any") or t.groups:
+                fail(f"field `{fname}` is a `{n}`, which has no `Dyn` form yet (use Int, Float, Bool, String, List, or a tuple that derives `dyn`)")
+            return f"{e}.to_dyn()"
+
+        def from_(t, e, depth, fname):
+            n = t.path[-1]
+            conv = {"Int": "as_int", "Float": "as_float", "Bool": "as_bool", "String": "as_text"}
+            if n in conv:
+                return f"{e}.{conv[n]}()"
+            if n == "List":
+                v = f"x{depth}"
+                return f"json.list_of({e}, ({v}) -> {from_(t.groups[0][0], v, depth + 1, fname)})"
+            return f"{n}.from_dyn({e})"
+        entries, reads = [], []
+        for f in s.fields:
+            entries.append(f'json.Entry(key: "{f.name}", value: {to_(f.type, "self." + f.name, 0, f.name)})')
+            reads.append(f'{f.name}: {from_(f.type, f"d.field(\"{f.name}\")?", 0, f.name)}?')
+        src = (f"impl {s.name}\n"
+               f"  fn to_dyn(self) json.Dyn\n    json.Dyn.DMap(List({', '.join(entries)}))\n"
+               f"  static dynamic fn from_dyn(d json.Dyn) Result[{s.name}, Error]\n    Ok({s.name}({', '.join(reads)}))\n")
+        impl = parse_program(src).stmts[0]
+        impl.line = ln
+        out.append(impl)
     return out
 
 
