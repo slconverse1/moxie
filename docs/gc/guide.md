@@ -120,7 +120,27 @@ else
 println("$found")
 ```
 
-Output: `15`. With `xs = List(1, 2)` the loop runs out, and `else` supplies `-1`. A bare `break` gives `()`, `break(value)` needs a matching `else`, and a loop with no `break` takes the `else` value or `()`. `continue` starts the next iteration with the top-level bindings as they stand:
+Output: `15`. With `xs = List(1, 2)` the loop runs out, and `else` supplies `-1`. Look at where that `else` sits: it lines up with `for`, not with the `if`, so it belongs to the loop, and the `if` has none. This is the loop's `else` (Python's `for ... else` is the nearest relative, but in moxie it is also what gives the loop its value). It runs when the loop ends without a `break`: the list ran out, or a `while` condition turned false. An `else` for the `if` would be indented to line up with the `if`, and it would be a different `else`. A `while` works the same way:
+
+```
+n = 0
+first_big = while n < 10
+  if n * n > 30
+    break(n)
+  n = n + 1
+else
+  -1
+m = 0
+none = while m < 3
+  if m * m > 30
+    break(m)
+  m = m + 1
+else
+  -1
+println("$first_big $none")
+```
+
+Output: `6 -1`. In the first loop `break(n)` fires at 6, and the loop's `else` is never reached. In the second the condition turns false first, so the `else` supplies `-1`. A bare `break` gives `()`, `break(value)` needs a matching `else`, and a loop with no `break` takes the `else` value or `()`. `continue` starts the next iteration with the top-level bindings as they stand:
 
 ```
 for n in 1..=6
@@ -150,7 +170,7 @@ found = #search do
   -1
 ```
 
-With `xs` as above, `found` is `15`. `break(outer)` is always a variable, and `break #outer` is always a label. A loop carries its bindings forward like a tail call, so a rebinding inside the body is seen by the next iteration but does not leave the loop (use `break(value)`, `else` (which sees the carried name, so `while j < n` with `j = j + 1` and `else j` returns the final `j`), a stream terminal such as `reduce`, or `gimme.1.name` to write the outer name). A name that is in scope when the loop begins, a parameter or a local, keeps its type: rebinding `n` as a String in the body when it was an Int is an error. **Mistakes:** `break outer` without the `#`, a label used across a function or lambda boundary, and `break(value)` with no `else`.
+With `xs` as above, `found` is `15`. `break(outer)` is always a variable, and `break #outer` is always a label. A loop carries its bindings forward like a tail call, so a rebinding inside the body is seen by the next iteration but does not leave the loop (use `break(value)`, `else` (which sees the carried name, so `while j < n` with `j = j + 1` and `else j` returns the final `j`), a stream terminal such as `reduce`, or `gimme.1.name` to write the outer name). A name that is in scope when the loop begins, a parameter or a local, keeps its type: rebinding `n` as a String in the body when it was an Int is an error. **Mistakes:** `break outer` without the `#`, a label used across a function or lambda boundary, `break(value)` with no `else`, and an `else` indented under the loop body, where it becomes the `if`'s `else` and the loop has none.
 
 To skip the rest of the current item use `continue`; to skip to the next item of an outer loop use `continue #outer`:
 
