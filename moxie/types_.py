@@ -24,7 +24,8 @@ class TypeInfo:
 
     @property
     def names(self):
-        return [f.name for f in self.fields]
+        ns = [f.name for f in self.fields]
+        return None if ns and all(n is None for n in ns) else ns        # unnamed fields: a positional tuple has no names
 
 
 class EnumInfo:

@@ -690,6 +690,7 @@ class Parser(ExprParser):
                     if not self.eat_op(","):
                         break
                 self.expect_op(")")
+                head_fields = [FieldDecl(None, t, None, None, line=line) for t in positional]
         derivs = self.parse_derivs()
         fields = []
         invariants = []
@@ -699,6 +700,8 @@ class Parser(ExprParser):
             self._invariants = invariants
             self._props = props
             fields = self.parse_field_decls()
+        if fields and any(f.name is None for f in fields) and any(f.name is not None for f in fields):
+            self.err(f"`{name}` mixes named and unnamed fields: all of a tuple's fields are named or all are unnamed")
         if head_fields is not None:
             if fields:
                 self.err(f"`{name}` has its fields in the parentheses, so its indented body can hold only `invariant` lines and properties that have no stored value: write the fields in one place")
@@ -879,6 +882,14 @@ class Parser(ExprParser):
                     and not (self.peek(1).kind == "OP" and self.peek(1).val == ":"):
                 got = self.parse_contract_lines(("invariant",))
                 self._invariants.extend(got)
+                continue
+            t0 = self.peek()
+            if (t0.kind == "NAME" and not self.type_follows(1) and not self.at_op(":", 1)) or (t0.kind == "OP" and t0.val == "("):
+                typ = self.parse_type()                    # `Int,` on a line of its own: a positional field
+                fields.append(FieldDecl(None, typ, None, None, line=t0.line))
+                self.eat_op(",")
+                if inline and self.peek().kind in ("NL", "EOF"):
+                    break
                 continue
             t = self.next()
             if t.kind != "NAME":
