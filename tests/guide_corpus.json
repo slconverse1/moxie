@@ -1932,5 +1932,12 @@ null
 "Ok(User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150)))",
 "Err(Error(code: 1, message: \"not a String\"))"
 ]
+],
+[
+4046,
+"interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, text)\n    println(\"${self.prefix}: $text\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
+[
+"app: started"
+]
 ]
 ]

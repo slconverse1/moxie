@@ -477,6 +477,7 @@ class Checker:
             return self.diags
         for st in prog.stmts:
             self.collect(st)
+        self.fill_impl_sigs(prog.stmts)
         self.check_ambiguous_cases(prog)
         self.find_consumers(prog)
         top = Sc()
@@ -903,6 +904,77 @@ class Checker:
             if missing:
                 want = " + ".join([_tn(p.type.iface)] + [_tn(x) for x in p.type.also or []])
                 self.err(n.line, f"`{tshow(t)}` doesn't implement `{missing[0]}`, which `any {want}` needs for `{p.name}`")
+
+    BUILTIN_IFACE_SRC = (
+        "interface Show\n  fn show(self) String\n"
+        "interface Read\n  static fn read(text String) Result[Self, Error]\n"
+        "interface Equatable\n  fn ==(self, other Self) Bool\n"
+        "interface Ordered\n  fn <(self, other Self) Bool\n"
+        "interface Addable\n  fn +(self, other Self) Self\n  static fn zero() Self\n"
+        "interface Numeric\n  fn -(self, other Self) Self\n  fn *(self, other Self) Self\n  fn /(self, other Self) Self\n  static fn one() Self\n")
+
+    def builtin_ifaces(self):
+        """The built-in interfaces that no source declares, as parsed declarations, so an `impl` of one can leave its types out."""
+        t = Checker.__dict__.get("_builtin_ifaces")
+        if t is None:
+            from .parser import parse_program
+            t = {d.name: d for d in parse_program(self.BUILTIN_IFACE_SRC).stmts if d.__class__ is IfaceDecl}
+            Checker._builtin_ifaces = t
+        return t
+
+    def fill_impl_sigs(self, stmts):
+        """An `impl` member may leave out the parameter types and the result type its interface already fixes: `fn info(self, msg)`.
+        They are copied from the interface's member, with `Self` and the interface's own type parameters replaced."""
+        import copy
+
+        def sub(t, mp):
+            if t.__class__ is TName and not t.groups and len(t.path) == 1 and t.path[0] in mp:
+                return copy.deepcopy(mp[t.path[0]])
+            if isinstance(t, list):
+                return [sub(x, mp) for x in t]
+            if isinstance(t, tuple):
+                return tuple(sub(x, mp) for x in t)
+            if hasattr(t, "_fields"):
+                n = copy.copy(t)
+                for f in t._fields:
+                    setattr(n, f, sub(getattr(t, f), mp))
+                return n
+            return t
+        for st in stmts:
+            if st.__class__ is not ImplDecl or st.iface is None or st.iface.__class__ is not TName or not st.iface.path:
+                continue
+            for m in st.members or []:
+                if m.__class__ is not FnDecl or m.body is None:
+                    continue
+                untyped = [p for p in m.params or [] if p.name and p.name != "self" and p.type is None and not p.variadic]
+                if not untyped and m.ret is not None:
+                    continue
+                found = self.iface_member(st.iface.path[-1], m.name)
+                d = self.iface_decls.get(st.iface.path[-1])
+                if found is None:
+                    d = self.builtin_ifaces().get(st.iface.path[-1])
+                    found = next(((x, set()) for x in (d.members if d else []) if x.__class__ is FnDecl and x.name == m.name), None)
+                if found is None:
+                    continue
+                im = found[0]
+                mp = {"Self": st.target}
+                args = st.iface.groups[0] if st.iface.groups else []
+                for tp, a in zip(getattr(d, "tparams", None) or [], args):
+                    mp[tp.name] = a
+                ips, mps = list(im.params or []), list(m.params or [])
+                if ips and ips[0].name == "self":
+                    ips = ips[1:]
+                if mps and mps[0].name == "self":
+                    mps = mps[1:]
+                if len(ips) != len(mps):
+                    continue                                   # the arity check reports it
+                for ip, mpm in zip(ips, mps):
+                    if mpm.name and mpm.name != "self" and mpm.type is None and ip.type is not None:
+                        mpm.type = sub(ip.type, mp)
+                        if mpm.mod is None:
+                            mpm.mod = ip.mod
+                if m.ret is None and im.ret is not None:
+                    m.ret = sub(im.ret, mp)
 
     def iface_member(self, iname, name, seen=None):
         """(the member's FnDecl, the associated-type names of its interface) for `name` in the interface or those it embeds."""

@@ -4039,3 +4039,22 @@ Output: `{"name":"Al","tags":["a","b"],"addr":{"city":"Oslo","zip":150}}`, then 
 **`dynamic fn` and `unsafe fn`.** Reading a `Dyn` (`field`, `at`, `as_*`, `from_dyn`) moves a type check from compile time to run time, so the function that does it says so: write `dynamic` before `fn`. A function that reads a `Dyn` without the word is a compile error, and so is a function that calls a foreign function marked `unsafe` (or one that takes a `Ptr[T]`) without `unsafe fn`. A lambda belongs to the function around it. Top-level statements are not functions, so a script can read a `Dyn` directly. The words are soft: `dynamic` and `unsafe` are still fine as variable names. By default only the function that does the thing is marked, so a wrapper that checks its data can be called from any function. A project that wants the marks to travel up the call chain sets `safety = "strict"` under `[program]` in `Moxie.toml`: a function that calls a `dynamic` or `unsafe` function must then carry the mark too.
 
 **Mistakes:** treating a number with a `.` or an exponent as an `Int` (it is a `DFloat`, so use `as_float`), expecting `\u` escapes in strings (not supported yet), and expecting a map's keys to come out sorted.
+
+**Leaving out the types in an `impl`.** The interface has already said what each member takes and returns, so an `impl` member may skip it: `fn info(self, msg)` is enough where the interface says `fn info(self, msg String) Unit`. The compiler fills in the types, and the parameter names are yours, so `fn info(self, text)` works as well, and the body can read the way you would say it. The receiver is the exception: it is always called `self`. Write a type when you want it in view; the checker still holds it to the interface. This works for your own interfaces and for the built-in ones such as `Show` and `Equatable`, but not for ordinary functions, whose types are their only documentation.
+
+```
+interface Logger
+  fn info(self, msg String) Unit
+
+tuple Console
+  prefix String
+
+impl Logger for Console
+  fn info(self, text)
+    println("${self.prefix}: $text")
+
+Console(prefix: "app").info("started")
+```
+
+Output: `app: started`.
+
