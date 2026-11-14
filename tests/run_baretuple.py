@@ -16,6 +16,7 @@ OK = [
  ("round trip with multiple binding", 'fn swap(a Int, b Int) (Int, Int)\n  b, a\nx, y = swap(1, 2)\nprintln("$x $y")\n', "2 1\n"),
  ("values are expressions", 'fn f(n Int) (Int, String)\n  n * 2, "n=${n}"\nprintln(f(3))\n', '(6, "n=3")\n'),
  ("call arguments are untouched", 'fn add(a Int, b Int) Int = a + b\nprintln(add(1, 2))\n', "3\n"),
+ ("a lambda argument is not a tuple", 'fn ap(f (Int) -> Int, x Int) Int\n  f(x)\nprintln(ap((n) -> n + 1, 1))\n', "2\n"),
  ("a one-item return is untouched", 'fn f() Int\n  return 7\nprintln(f())\n', "7\n"),
 ]
 fails = []

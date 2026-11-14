@@ -364,7 +364,7 @@ println(0 < x < 10)
 println(1 < 2 < 3 < 4)
 ```
 
-Output: `true`, `false`, `true`. Only the four ordering operators chain. `==` and `~=` do not: `a == b == c` still means `(a == b) == c`, which is rarely what you want, so write `a == b and b == c`.
+Output: `true`, `false`, `true`. `==` chains too, so `a == b == c` means all three are equal (`a == b and b == c`), and the two kinds mix (`x == 5 < 9`). `~=` does not chain, because `a ~= b ~= c` would only say that neighbors differ, not that all three do; it is an error that says to write `and`. Any other operator ends a chain, so `(a < b) == flag` needs its parentheses.
 
 **Chapter 2: Numbers, text, keywords**
 

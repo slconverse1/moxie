@@ -6,7 +6,7 @@ from .ast import *   # noqa
 T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_ADD, T_MUL, T_OTHER = range(13)
 
 COMP_OPS = {"==", "~=", "<", ">", "<=", ">=", "<$>", "<*>", "<~"}
-ORDER_OPS = ("<", ">", "<=", ">=")
+ORDER_OPS = ("<", ">", "<=", ">=", "==")      # the operators that chain (`~=` does not: `a ~= b ~= c` would only say neighbors differ)
 BINTIER = {
     "|": T_BOR, "|>>": T_BOR, "^": T_BXOR, "&": T_BAND, "<<": T_SHIFT, ">>": T_SHIFT,
     "+": T_ADD, "-": T_ADD, "*": T_MUL, "/": T_MUL, "%": T_MUL, "~>": T_OTHER, "+%": T_OR, "-%": T_OR,
@@ -244,13 +244,15 @@ class ExprParser(PBase):
             else:
                 self.next()
                 right = self._climb(tier + 1)
-                if t.val in ORDER_OPS and prev_chain is not None and prev_chain[2] is left:
+                if t.val in ORDER_OPS and prev_chain is not None and prev_chain[2] is left and prev_chain[0] != ["~="]:
                     ops, operands = prev_chain[0] + [t.val], prev_chain[1] + [right]
                     left = self.build_chain(ops, operands, line)
                     chain = (ops, operands, left)
                 else:
+                    if t.val in ("~=", "==") and prev_chain is not None and prev_chain[0] == ["~="] and prev_chain[2] is left:
+                        self.err("`~=` doesn't chain: `a ~= b ~= c` would only say that neighbors differ. Write `a ~= b and b ~= c`", t)
                     left = Binary(t.val, left, right, line=line)
-                    if t.val in ORDER_OPS:
+                    if t.val in ORDER_OPS or t.val == "~=":
                         chain = ([t.val], [left.l, left.r], left)
         return left
 

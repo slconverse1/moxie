@@ -148,7 +148,9 @@ class Parser(ExprParser):
                 self.next()
                 e = None
                 if not self._ends_stmt(self.peek()):
-                    e = self.parse_bare_tuple(self.parse_expr(), line)
+                    e = self.parse_expr()
+                    if allow_decl:
+                        e = self.parse_bare_tuple(e, line)
                 return self.trail_if(Return(e, line=line))
             if v == "break":
                 return self.trail_if(self.parse_break())
@@ -167,7 +169,9 @@ class Parser(ExprParser):
         a = self.try_assign()
         if a is not None:
             return a
-        e = self.parse_bare_tuple(self.parse_expr(), line)
+        e = self.parse_expr()
+        if allow_decl:
+            e = self.parse_bare_tuple(e, line)
         if self.at_op("++") or self.at_op("--"):
             op = self.next().val
             return Incr(e, 1 if op == "++" else -1, line=line)

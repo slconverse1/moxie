@@ -19,14 +19,25 @@ OK = [
  ("stops at first false link", T + 'println(t(5) < t(2) < t(3) < t(4))\n', "t5\nt2\nfalse\n"),
  ("all links run when true", T + 'println(t(1) < t(2) < t(3) < t(4))\n', "t1\nt2\nt3\nt4\ntrue\n"),
  ("single comparison unchanged", 'println(1 < 2)\nprintln(2 < 1)\n', "true\nfalse\n"),
- ("equality still left to right", 'println(1 == 1 == true)\nprintln(1 < 2 == true)\n', "true\ntrue\n"),
+ ("all equal", 'println(2 == 2 == 2)\nprintln(2 == 2 == 3)\nprintln(1 == 2 == 2)\n', "true\nfalse\nfalse\n"),
+ ("equal then ordered", 'x = 5\nprintln(x == 5 < 9)\nprintln(x == 5 < 3)\n', "true\nfalse\n"),
+ ("a middle call in an equality chain runs once", T + 'println(3 == t(3) == 3)\n', "t3\ntrue\n"),
  ("in an if", 'x = 7\nif 0 < x < 10 then println("in")\n', "in\n"),
  ("with and", 'x = 7\nprintln(0 < x < 10 and x ~= 8)\n', "true\n"),
+]
+ERR = [
+ ("not-equal does not chain", 'println(1 ~= 2 ~= 1)\n', "doesn't chain"),
 ]
 fails = []
 for name, src, want in OK:
     rc, out = run(src)
     good = rc == 0 and out == want
+    print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} {out.strip()[:200]!r}"))
+    if not good:
+        fails.append(name)
+for name, src, word in ERR:
+    rc, out = run(src, "check")
+    good = rc != 0 and word in out
     print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} {out.strip()[:200]!r}"))
     if not good:
         fails.append(name)
