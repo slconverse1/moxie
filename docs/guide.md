@@ -640,6 +640,25 @@ println(describe("Node-04"))
 
 Output: `numeric id 42` then `text id Node-04`. A union may list another union, which is flattened: `type union Wide = Identifier | Bool` holds an `Int`, a `String`, or a `Bool`, and a member that appears twice after flattening is an error.
 
+A value of a union is one of its members, and the compiler holds you to that: `v + 1` on an `Identifier` is an error, because `v` might be a `String`. Say which member it is first. A `when` does that, and so does `is` in an `if`:
+
+```
+type union Identifier = Int | String
+
+fn weight(id Identifier) Int
+  if id is Int
+    id + 1
+  elif id is String
+    len(id)
+  else
+    0
+
+println(weight(41))
+println(weight("Node-04"))
+```
+
+Output: `42`, then `7`. Inside the `if id is Int` branch `id` is an `Int`. In the `elif` it is a `String`. With two members, the `else` of an `if id is Int` is the other one, so `len(id)` works there without another test. `is` also narrows the right side of `and` (`id is Int and id > 0`) and a field of a tuple (`if p.id is Int`, then `p.id + 1`); the field case is safe because tuples never change. The narrowing ends with the branch: after the `if`, `id` is an `Identifier` again. Only a union's own tests narrow it, so `println(id)`, `"$id"`, `id == 1`, and passing `id` on to something that takes an `Identifier` work without one.
+
 **Mixing types in a collection.** The elements of a `List`, `Set`, or `Array`, and the keys or values of a `Dict`, share one type, so `List(1, "a")` is a compile error: it is usually a typo, and moxie will not guess a type that fits both. To mix on purpose, name a union in the annotation. The elements convert into it, and a `when` takes them apart again. It works the same in both dialects, because a union has a fixed size.
 
 ```

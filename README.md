@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-13: Union values are checked.** A value of a `type union` is one of its members, so using it as one (`v + 1`, `len(v)`) is now a compile error until `is` or a `when` says which. `if v is T` narrows the then-branch, each `elif`, the `else` when one member is left, the right side of `and`, and field paths (`p.f`). `println`, interpolation, `==` and passing the union on need no test. Before this the checker let any use of a union through.
+
 **2026-11-13: Bare tuples.** A function can end with `a, b` (or `return a, b`) instead of `(a, b)`, matching `lo, hi = f()`.
 
 **2026-11-13: `json` package and `Dyn`.** `import json` gives a closed `Dyn` enum with `json.parse(text)`, `d.field(key)`, `d.at(i)`, `as_int()` and friends (all `Result`), and `to_json()`. It is written in moxie, uses no reflection, and works in both dialects. Conversion to and from your own types (`deriving dyn`) and the `dynamic fn` marker are not built yet (FIXLIST).

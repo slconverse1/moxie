@@ -291,6 +291,9 @@ class Checker:
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
+        self.tail_ctx = {}               # id of a tail expression inside a narrowed `if` branch -> (its scope, path overrides)
+        self.narrow_paths = {}           # (id of a Var, field names) -> the narrowed type inside an `if p.f is T` branch
+        self.union_paths = {}            # id of a `p.f` node whose field has a `type union` -> its members
         self.union_vars = {}             # Var of a parameter typed with a `type union` -> the names of its members
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
         self.consts = {}                 # top-level constant bindings the compiler could evaluate
@@ -1607,6 +1610,8 @@ class Checker:
         if v is not None:
             if v in self.moved:
                 self.err(n.line, f"use of moved value `{n.name}` (moved at line {self.moved[v]})")
+            if v in self.union_vars:
+                return ("unionv", " | ".join(self.union_vars[v])), None
             return v.ty, None
         ft = self.fn_value_type(n.name)
         if ft is not None:
@@ -1685,6 +1690,9 @@ class Checker:
 
     def e_Unary(self, n, sc):
         t, c = self.ev(n.e, sc)
+        if n.op == "-" and t.__class__ is tuple and t[0] == "unionv":
+            self.err(n.line, f"`-` can't take `{t[1]}`: test which member it is first (`if x is T` or a `when`)")
+            return None, None
         if n.op == "-" and t is not None and t not in INTS and t not in ("Float", "Decimal") \
                 and not (t.__class__ is tuple and t[0] in ("bounded", "lit", "param", "rigid", "named", "pvar", "bound", "app", "tup")) \
                 and t.__class__ is str:
@@ -1700,7 +1708,11 @@ class Checker:
 
     def e_AndE(self, n, sc):
         for x in (n.l, n.r):
-            t = self.t(x, sc)
+            if x is n.r:
+                rsc, paths = self.narrowed_scope(sc, self.narrowing_of(n.l, sc))
+                t = self.eval_with_paths(paths, lambda: self.t(x, rsc))
+            else:
+                t = self.t(x, sc)
             if t is not None and t != "Bool":
                 self.err(n.line, f"`and` needs `Bool` operands, found `{tshow(t)}`")
         return "Bool", None
@@ -1734,6 +1746,84 @@ class Checker:
             sub = self.union_members(m, depth + 1)
             out.extend(sub if sub is not None else [m.path[0]])
         return out
+
+    def member_ty(self, members, p):
+        """The static type of the member of a union (`members` are the written member names) that pattern `p` names, else None."""
+        if p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is PTyped and p.pat.__class__ is PWild and p.type.__class__ is TName:
+            return self.ty_of_type(p.type) if self.type_node_text(p.type) in members else None
+        if p.__class__ is PCon and len(p.path) == 1 and p.path[0] in members:
+            return self.ty_of_type(TName([p.path[0]], []))
+        return None
+
+    def path_key(self, e, sc):
+        """`p.a.b` rooted at a local name: (id of its Var, 'a', 'b'), else None.  Tuples are immutable, so what `p.a` was
+        tested to be stays true in the branch; a new binding of `p` is a new Var and so a new key."""
+        names = []
+        while e.__class__ is Field and isinstance(e.name, str):
+            names.append(e.name)
+            e = e.obj
+        if e.__class__ is not Name or not names:
+            return None
+        v = sc.find(e.name)
+        return None if v is None else (id(v), *reversed(names))
+
+    def narrowing_of(self, cond, sc):
+        """What a true `cond` tells about names and field paths: [(kind, target, type)].  `x is T` on a union (or `any`) name or a
+        union-typed field path, and `a and b` telling both."""
+        if cond.__class__ is AndE:
+            return self.narrowing_of(cond.l, sc) + self.narrowing_of(cond.r, sc)
+        if cond.__class__ is not IsOp:
+            return []
+        e = cond.e
+        if e.__class__ is Name:
+            v = sc.find(e.name)
+            nt = self.narrowed_type(v, cond.pat) if v is not None else None
+            return [("name", e.name, nt)] if nt is not None else []
+        key = self.path_key(e, sc)
+        if key is not None and id(e) in self.union_paths:
+            nt = self.member_ty(self.union_paths[id(e)], cond.pat)
+            return [("path", key, nt)] if nt is not None else []
+        return []
+
+    def exclusions_of(self, cond, sc):
+        """The union tests a false `cond` rules out: [(kind, target, members, excluded member)] for `x is T` with a plain member."""
+        if cond.__class__ is not IsOp:
+            return []
+        e = cond.e
+        want = self.pattern_type_text(cond.pat)
+        if want is None:
+            return []
+        if e.__class__ is Name:
+            v = sc.find(e.name)
+            ms = self.union_vars.get(v) if v is not None else None
+            return [("name", e.name, ms, want)] if ms and want in ms else []
+        key = self.path_key(e, sc)
+        ms = self.union_paths.get(id(e)) if key is not None else None
+        return [("path", key, ms, want)] if ms and want in ms else []
+
+    def narrowed_scope(self, sc, facts):
+        """A scope in which each name in `facts` has its narrowed type, and the path overrides to switch on while it is used."""
+        if not facts:
+            return sc, {}
+        inner = Sc(sc)
+        paths = {}
+        for kind, target, nt in facts:
+            if kind == "name":
+                v0 = sc.find(target)
+                inner.vars[target] = Var(nt, v0.resource, v0.depth)
+            else:
+                paths[target] = nt
+        return inner, paths
+
+    def eval_with_paths(self, paths, fn):
+        saved = dict(self.narrow_paths)
+        self.narrow_paths.update(paths)
+        try:
+            return fn()
+        finally:
+            self.narrow_paths = saved
 
     def narrowed_type(self, v, p):
         """The type a variable `v` has inside a branch taken by the pattern `p`: for a union, the member the pattern names; for an
@@ -1842,6 +1932,11 @@ class Checker:
         rt, rc = self.ev(n.r, sc)
         a, b = self.base(lt), self.base(rt)
         op = n.op
+        if op not in ("==", "~=") and not (lt.__class__ is tuple and lt[0] == "named") and not (rt.__class__ is tuple and rt[0] == "named"):
+            for x, xt in ((n.l, lt), (n.r, rt)):
+                if xt.__class__ is tuple and xt[0] == "unionv":
+                    self.err(n.line, f"`{op}` can't take `{xt[1]}`: a value of a union is one of its members, so test it first (`if x is T` or a `when`)")
+                    return None, None
         self.check_op_bound(n, sc)
         if n.op in ("==", "~=", "<", ">", "<=", ">=") and a is not None and a == b and a.__class__ is tuple and a[0] == "named" \
                 and (a[1] in self.tuples or a[1] in self.enums):
@@ -2063,6 +2158,13 @@ class Checker:
         if t.__class__ is tuple and t[0] == "named" and t[1] in self.tuples:
             for f in self.tuples[t[1]].fields or []:
                 if f.name == n.name:
+                    fum = self.union_members(f.type)
+                    if fum is not None:
+                        self.union_paths[id(n)] = fum
+                        pk = self.path_key(n, sc)
+                        if pk is not None and pk in self.narrow_paths:
+                            return self.narrow_paths[pk], None
+                        return ("unionv", " | ".join(fum)), None
                     return self.ty_of_type(f.type), None
             pd = self.prop_in(self.tuples[t[1]], n.name)
             if pd is not None:
@@ -2547,6 +2649,8 @@ class Checker:
                             self.lam_ret[sc.vars[tgt.name]] = ln
                 um = self.union_members(n.ann) if n.ann is not None else (
                     self.union_members(TName([t[1]], [])) if t.__class__ is tuple and len(t) == 2 and t[0] == "named" and t[1] in self.aliases else None)
+                if not um and t.__class__ is tuple and len(t) == 2 and t[0] == "unionv":
+                    um = t[1].split(" | ")                           # `w = v` where `v` is a union keeps the union
                 if um and not res:
                     self.union_vars[sc.vars[tgt.name]] = um          # a local of a union type is tracked like a parameter
                 if n.ann.__class__ is TName and len(n.ann.path) == 1 and n.ann.path[0] in self.FIT and n.ann.path[0] not in self.tuples \
@@ -2650,19 +2754,38 @@ class Checker:
 
     def e_IfE(self, n, sc):
         types = []
+        scopes = []                  # the scope and path overrides each body is evaluated in
+        ruled_out = {}               # a union name or path -> (its members, the members the earlier tests ruled out)
+        cur = (sc, {})                # the scope of the `else`: what the tests before it ruled out
         for cond, body in n.branches:
             ct = self.t(cond, sc)
             if ct is not None and ct != "Bool":
                 self.err(n.line, f"`if` condition must be `Bool`, found `{tshow(ct)}`")
+            facts = self.narrowing_of(cond, sc)
+            scopes.append(self.narrowed_scope(sc, facts))
+            for kind, target, ms, want in self.exclusions_of(cond, sc):
+                ent = ruled_out.setdefault((kind, target), [ms, set(), None])
+                ent[1].add(want)
+            rest = []
+            for (kind, target), (ms, out, _x) in ruled_out.items():
+                left = [m for m in ms if m not in out]
+                if len(left) == 1 and "[" not in left[0]:
+                    rest.append((kind, target, self.ty_of_type(TName([left[0]], []))))
+            cur = self.narrowed_scope(sc, rest)
+        if n.else_ is not None:
+            scopes.append(cur)
         bodies = [b for _, b in n.branches] + ([n.else_] if n.else_ is not None else [])
         # evaluate for types separately from move-merging
         base = dict(self.moved)
-        for b in bodies:
+        for b, (bsc, bpaths) in zip(bodies, scopes):
             self.moved = dict(base)
+            if bpaths or bsc is not sc:
+                for te in self.tails(b):
+                    self.tail_ctx[id(te)] = (bsc, bpaths)
             if b.__class__ is Block:
-                types.append(self.e_Block(b, sc))
+                types.append(self.eval_with_paths(bpaths, lambda: self.e_Block(b, bsc)))
             else:
-                types.append(self.ev(b, sc))
+                types.append(self.eval_with_paths(bpaths, lambda: self.ev(b, bsc)))
         self.moved = base
         self.branches_moves(bodies, sc, n.else_ is not None)
         ts = [t for t, _ in types]
@@ -5595,7 +5718,8 @@ class Checker:
         if self.fn_ret is None:
             return
         for e in self.tails(body):
-            t, c = self.quiet(e, sc)
+            esc, epaths = self.tail_ctx.get(id(e), (sc, {}))
+            t, c = self.eval_with_paths(epaths, lambda: self.quiet(e, esc))
             self.settle_mixed(e, self.fn_ret)
             self.compat(self.fn_ret, t, c, e.line)
 
