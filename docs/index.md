@@ -387,16 +387,30 @@ This prints `3`.
 **Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
 
 ```
+interface Logger
+  fn info(self, msg String) Unit
+  fn error(self, msg String) Unit
+
+tuple ConsoleLogger
+  prefix String
+impl Logger for ConsoleLogger
+  fn info(self, msg String) Unit
+    println("${self.prefix} info: $msg")
+  fn error(self, msg String) Unit
+    println("${self.prefix} ERROR: $msg")
+
 tuple Stamped
   base ConsoleLogger
 impl Logger for Stamped proxy(base)
   fn info(self, msg String) Unit
     self.base.info("12:00 $msg")
 
-save(Stamped(base: ConsoleLogger(prefix: "t")), "x")
+s = Stamped(base: ConsoleLogger(prefix: "t"))
+s.info("saving x")
+s.error("disk full")
 ```
 
-This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded, and `info` was replaced.
+This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
 
 One thing the no-GC dialect does not do is store a closure that captures values inside a tuple field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an interface and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
 
