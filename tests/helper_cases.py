@@ -28,7 +28,7 @@ println("${fact(5)}")
 ("an abort in any fiber ends the program", '''
 fiber fn bad(tx ChanW[Int]) Unit
   xs = List(1, 2, 3)
-  _ = write(tx, xs(7))
+  _ = write(tx, xs(len(xs) + 4))
 rx, tx = Chan[Int][1]()
 _ = run bad(tx)
 sleep(1s)

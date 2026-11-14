@@ -1,7 +1,7 @@
 fiber fn server(l Listener) Unit
   c = accept(l)
   xs = List(1)
-  println(xs(5))
+  println(xs(len(xs) + 3))
 
 l = listen(0)?
 port = port_of(l)

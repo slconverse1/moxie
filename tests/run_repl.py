@@ -22,7 +22,7 @@ CASES = [
  (":type shows a type without running", "x = 3\n:type x + 1\n", "Int", None, None),
  (":reset forgets everything", "x = 3\n:reset\nx\n", "session cleared", "undefined name", None),
  (":results lists them", "7\n8\n:results\n", "$res2 Int = 7", None, None),
- ("an abort ends only that input", "xs = List(1, 2)\nxs(5)\n3\n", "$res1 Int = 3", "abort", None),
+ ("an abort ends only that input", "xs = List(1, 2)\nxs(len(xs) + 3)\n3\n", "$res1 Int = 3", "abort", None),
  ("an unknown command", ":nope\n", "", "unknown command", None),
 ]
 fails = []
