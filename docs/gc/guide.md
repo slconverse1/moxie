@@ -537,6 +537,8 @@ println("${item == other}")
 
 Output: `Product(name: "Mechanical Keyboard", price: 120)`, then `true`. Trailing fields can have defaults: any expression the compiler can evaluate at compile time, such as `4000` or `pow2(4, 1)` (from chapter 2c). Omit them by name, or write `UploadOptions()` when all have defaults. A spread supplies every field:
 
+A small tuple can be declared on one line, with its fields in parentheses after the name: `tuple Point(x Int, y Int)`, with `deriving` after it if you want it (`tuple Point(x Int, y Int) deriving show, eq`) and defaults as in the block form (`tuple Box(xs List[Int], n Int = 3)`). It is the same tuple as the block form, so use whichever reads better; a tuple with more than a few fields, or one with an `invariant` or a property, is easier to read in the block form. The fields go in one place or the other: a tuple written with its fields in parentheses may still have an indented body for `invariant` lines, but not for more fields.
+
 ```
 tuple UploadOptions
   host String = "localhost",

@@ -665,14 +665,31 @@ class Parser(ExprParser):
         if self.at_op("["):
             tparams = self.parse_tparams_v2()
         positional = None
+        head_fields = None
         if self.at_op("(") and not self.peek().sp:
             self.next()
-            positional = []
-            while not self.at_op(")"):
-                positional.append(self.parse_type())
-                if not self.eat_op(","):
-                    break
-            self.expect_op(")")
+            if self.peek().kind == "NAME" and self.type_follows(1):
+                head_fields = []              # `tuple Point(x Int, y Int)`: the fields written on the header line
+                while not self.at_op(")"):
+                    ft = self.next()
+                    if ft.kind != "NAME":
+                        self.err("expected a field name", ft)
+                    self.no_decl_colon("a field")
+                    fty = self.parse_type()
+                    fdef = self.parse_expr() if self.eat_op("=") else None
+                    head_fields.append(FieldDecl(ft.val, fty, fdef, None, line=ft.line))
+                    if not self.eat_op(","):
+                        break
+                self.expect_op(")")
+                if not head_fields:
+                    self.err("a tuple needs at least one field")
+            else:
+                positional = []
+                while not self.at_op(")"):
+                    positional.append(self.parse_type())
+                    if not self.eat_op(","):
+                        break
+                self.expect_op(")")
         derivs = self.parse_derivs()
         fields = []
         invariants = []
@@ -682,6 +699,10 @@ class Parser(ExprParser):
             self._invariants = invariants
             self._props = props
             fields = self.parse_field_decls()
+        if head_fields is not None:
+            if fields:
+                self.err(f"`{name}` has its fields in the parentheses, so its indented body can hold only `invariant` lines and properties that have no stored value: write the fields in one place")
+            fields = head_fields
         vis = None
         for m in mods:
             if m in ("export", "internal"):
