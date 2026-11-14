@@ -125,7 +125,7 @@ Two moxie-specific details:
 ```moxie
 fn parse_score(text String) Result[Int, Error]
   n = read[Int](text)?
-  if n < 0 or n > 100 then fail(1, "score out of range") else Ok(n)
+  if 0 <= n <= 100 then Ok(n) else fail(1, "score out of range")
 
 fn make_student(name String, text String) Result[Student, Error]
   score = parse_score(text)?
@@ -154,6 +154,8 @@ skipped Gus: score out of range
 Moxie has no exceptions and no `null`. A function that can fail says so in its type: `Result[Int, Error]` is either `Ok(value)` or `Err(error)`. `fail(1, "message")` makes the failing case, and `when` takes the result apart. You can't use the value without handling the failure, because the compiler won't let you.
 
 The `?` is the shortcut. `read[Int](text)?` means: "if this failed, return the error to my caller right now. Otherwise, give me the number." It saves you from nesting a `when` inside a `when` at every step, which is what other languages call the pyramid of doom.
+
+The range check reads the way you would say it: `0 <= n <= 100` means both comparisons hold, so `n` is between 0 and 100.
 
 ## Step 6. Code that works for any type
 

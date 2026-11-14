@@ -55,11 +55,16 @@ A lambda is a function with no name, written `(params) -> body`, with a space on
 
 - **Write `else` for the catch-all arm, not `_ ->`.** It is the last arm of a `when`, of a `select`, and of a `seq`, and it never takes `->`: `else "big"`, and in a `select` just `else println("nothing")`, with no `case`. Keep `_` for what it is a pattern for, such as `(_, v)` or `Some(_)`. A catch-all that is the whole `when` (nothing else to match) is usually an `if`.
 - **Start with a field; reach for a `property` when a read or write needs code.** A caller can't tell them apart, so changing a field into a property later breaks nobody. Use a field delegate (`delegate(Percent)`) when one rule belongs to many fields, and a property when the rule is for one field or needs the others. Give a computed property a `get ->` that is a short expression, mark a setter `priv set` when only the type's own methods should write, and use `lazy` for a pure value that costs something to compute. Share changing state through an Atom with `on_change`, not through a mutable static (there isn't one).
+- **Return a pair as a bare `a, b`.** A function that ends with `lo, hi` (or `return lo, hi`) gives the tuple, matching `lo, hi = f()` at the call. Name the fields in the result type when the pair is not obvious: `(lo Int, hi Int)`.
+- **Leave early, and keep the main path at the left margin.** Check the unusual cases first and exit: `return Err(...) if bad`, or a one-line `if not (v is Int) then return 0`. What follows then reads straight down with no nesting, and the compiler knows what the test established (a union tested with `is` is narrowed for the rest of the block). A condition too long for the line goes on its own indented `if` line under the action.
+- **Write a range as a chain.** `0 <= x <= 100`, not `x >= 0 and x <= 100`; `a == b == c` for all equal. Don't chain a comparison with a bare Bool (`(a < b) == flag` needs its parentheses), and write `a ~= b and b ~= c` rather than `a ~= b ~= c`.
+- **Test a union before you use it.** Say which member it is with `is` or a `when`, and bind a collection element to a name before testing it if the test is more than one line.
 
 ## Errors
 
 - Handle a `Result` with `?` when the caller can't do anything useful, and with `when` when it can.
-- Discard a result on purpose with `\`, so the next reader knows it was deliberate.
+- Discard a result on purpose with `\`, so the next reader knows it was deliberate. A `Result` dropped as a statement is a compiler warning for this reason.
+- Read outside data (JSON, config) into a `Dyn` with the `json` package, then take what you need with `field` and `as_int`, `as_text` and friends, and build your own tuple from it straight away. Every lookup gives a `Result`, so a missing or wrong-kind value is an `Err`, not an abort.
 - Use assertions and aborts for bugs, never for expected failures such as a missing file or bad input.
 
 ## Fibers and channels
