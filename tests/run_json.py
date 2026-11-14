@@ -10,7 +10,7 @@ def run(src, gc=False):
     return r.returncode, r.stdout + r.stderr
 DOC = 'import json\nd = json.parse("{\\"name\\": \\"Al\\", \\"age\\": 30, \\"tags\\": [1, 2.5, true, null], \\"n\\": {\\"k\\": 3}}")?\n'
 def wrap(body):
-    return 'import json\nfn go() Result[Unit, Error]\n  d = json.parse("{\\"name\\": \\"Al\\", \\"age\\": 30, \\"tags\\": [1, 2.5, true, null], \\"n\\": {\\"k\\": 3}}")?\n' + "".join("  " + l + "\n" for l in body.split("\n")) + "  Ok(())\nprintln(go())\n"
+    return 'import json\ndynamic fn go() Result[Unit, Error]\n  d = json.parse("{\\"name\\": \\"Al\\", \\"age\\": 30, \\"tags\\": [1, 2.5, true, null], \\"n\\": {\\"k\\": 3}}")?\n' + "".join("  " + l + "\n" for l in body.split("\n")) + "  Ok(())\nprintln(go())\n"
 CASES = [
  ("round trip", 'import json\nprintln(json.parse("{\\"a\\": [1, 2.5, true, null, \\"x\\"], \\"b\\": {}}").map((d) -> d.to_json()))\n',
   'Ok("{\\"a\\":[1,2.5,true,null,\\"x\\"],\\"b\\":{}}")'),

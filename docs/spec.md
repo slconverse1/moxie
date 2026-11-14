@@ -741,7 +741,7 @@ A closed data type for data whose shape is not known until it arrives, in both d
 **23d. `dynamic fn` and `unsafe fn`** *(built)*
 Two declared markers, written before `fn` like an effect, that say where compile-time guarantees stop. They are soft keywords (a variable may be called `dynamic` or `unsafe`).
 - **`dynamic fn`** is required of a function that, in its own body (a lambda counts as part of the enclosing function), calls `field`, `at`, `as_bool`, `as_int`, `as_float`, `as_text` or `as_list` on a `Dyn`, or calls `from_dyn`. Top-level statements are not functions and need no marker.
-- **`unsafe fn`** is required of a function that calls a foreign function (section 19a) declared `unsafe fn`, or one whose declaration mentions `Ptr[T]`. The declaration of a foreign function may carry `unsafe` together with its effect (`unsafe pure fn cos(...)`). `moxie bindgen` does not write it yet.
+- **`unsafe fn`** is required of a function that calls a foreign function (section 19a) declared `unsafe fn`, or one whose declaration mentions `Ptr[T]`. The declaration of a foreign function may carry `unsafe` together with its effect (`unsafe pure fn cos(...)`). `moxie bindgen --wrap` marks the wrappers it writes over such a function `unsafe`.
 - **Direct use must be marked; callers need not be.** A marked wrapper that checks its data or arguments can be called from unmarked code, as a wrapper over a foreign call is (section 19a).
 - **`safety = "strict"`** under `[program]` in `Moxie.toml` (the other value is `"normal"`, the default) makes the marks travel: a function that calls a `dynamic` or `unsafe` function must be marked too, so every path from `main` to the risk is visible. A function is not required to call anything it is marked for.
 

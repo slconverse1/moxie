@@ -510,7 +510,9 @@ class Gen:
         eff = sc.get("effects", "impure")
         info.update(eff=eff, rtxt=rtxt.strip(), rk=rk, rt=ret[1] if len(ret) > 1 else None, sc=sc)
         self.fn_info[name] = info
-        return f"internal {eff} fn {name}({', '.join(out)}){rtxt}"
+        text = f"internal {eff} fn {name}({', '.join(out)}){rtxt}"
+        info["mark"] = "unsafe " if "Ptr[" in text else ""         # a raw pointer in the declaration: callers are `unsafe fn` (Spec 23d)
+        return text
 
 
 ZERO = {"Int8": "0i8", "Int16": "0i16", "Int32": "0i32", "Int64": "0i64", "UInt8": "0u8", "UInt16": "0u16",
@@ -622,7 +624,7 @@ def make_wrappers(g, decls, lib, side, comments):
         for cl in comments.get(name, "").split("\n"):
             if cl.strip():
                 lines.append(f"/// {cl.strip()}")
-        head = f"export {info['eff']} fn {w}({', '.join(sig)})"
+        head = f"export {info.get('mark', '')}{info['eff']} fn {w}({', '.join(sig)})"
         callx = f"{name}({', '.join(call)})"
         zero_ok = all(ZERO.get(p[2]) for p in outs)
         if mode == "status" and zero_ok:
@@ -661,7 +663,7 @@ def make_wrappers(g, decls, lib, side, comments):
                     else:
                         sig2.append(f"{p[0]} {clean_cb(p[2])}")
                         call2.append(p[0])
-                head = f"export {info['eff']} fn {w}({', '.join(sig2)})"
+                head = f"export {info.get('mark', '')}{info['eff']} fn {w}({', '.join(sig2)})"
                 callx = f"{name}({', '.join(call2)})"
             r = " " + (info["rtxt"] or "Unit")
             lines.append(f"{head}{r} = {callx}")
