@@ -148,7 +148,7 @@ class Parser(ExprParser):
                 self.next()
                 e = None
                 if not self._ends_stmt(self.peek()):
-                    e = self.parse_expr()
+                    e = self.parse_bare_tuple(self.parse_expr(), line)
                 return self.trail_if(Return(e, line=line))
             if v == "break":
                 return self.trail_if(self.parse_break())
@@ -167,11 +167,20 @@ class Parser(ExprParser):
         a = self.try_assign()
         if a is not None:
             return a
-        e = self.parse_expr()
+        e = self.parse_bare_tuple(self.parse_expr(), line)
         if self.at_op("++") or self.at_op("--"):
             op = self.next().val
             return Incr(e, 1 if op == "++" else -1, line=line)
         return self.trail_if(ExprStmt(e, line=line))
+
+    def parse_bare_tuple(self, first, line):
+        """`a, b` as a whole statement or after `return` is the tuple `(a, b)`, the mirror of `lo, hi = f()`."""
+        if not self.at_op(","):
+            return first
+        items = [(None, first, False)]
+        while self.eat_op(","):
+            items.append((None, self.parse_expr(), False))
+        return TupleE(items, line=line)
 
     def _ends_stmt(self, t):
         if t.kind in ("NL", "DEDENT", "EOF"):

@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-13: Bare tuples.** A function can end with `a, b` (or `return a, b`) instead of `(a, b)`, matching `lo, hi = f()`.
+
 **2026-11-13: Chained comparisons.** `0 <= x <= 100` means `0 <= x and x <= 100`. Any run of `<`, `<=`, `>`, `>=` chains; a middle operand is evaluated once and the chain stops at the first false link. `==` and `~=` do not chain.
 
 **2026-11-13: Loop `else` is checked.** The Spec already said a `for` or `while` that uses `break(value)` needs an `else` of its own, but the checker accepted a loop without one (including one whose `else` was indented so it belonged to the `if`). It is now an error. The Guide points out that a loop's `else` lines up with the loop.

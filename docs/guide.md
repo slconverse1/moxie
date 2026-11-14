@@ -339,6 +339,22 @@ println("$x $y $long_name_one $long_name_two")
 
 Output: `5 5 5 5`. Each name in a chain is a plain name (the first may carry a type, `n Int = m = 3`). A chain cannot have an `else`, cannot follow `then`, `do` or `->` on the same line, and does not mix with a compound update (`x += y = 3` is an error). For a pattern on the left, or a field, bind in separate lines.
 
+The same comma list works on the way out. A function can end with a bare `a, b`, or `return a, b`, and that is the tuple `(a, b)`, the mirror of `lo, hi = f()`:
+
+```
+fn ordered(a Int, b Int) (lo Int, hi Int)
+  if a < b
+    a, b
+  else
+    b, a
+
+lo, hi = ordered(9, 4)
+println("$lo $hi")
+println(ordered(1, 2))
+```
+
+Output: `4 9`, then `(lo: 1, hi: 2)`. The comma list has to be a whole line or follow `return`. Inside a call it still separates arguments, and after `then` or `->` you write the parentheses.
+
 **Chained comparisons.** The ordering operators `<`, `<=`, `>` and `>=` can be chained, as in mathematics: `0 <= x <= 100` means `0 <= x and x <= 100`. A middle operand is worked out once, so `0 < read() < 10` calls `read()` one time, and the chain stops at the first link that is false:
 
 ```
