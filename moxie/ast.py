@@ -116,7 +116,7 @@ def _defs():
         "EnumDecl": "name tparams header cases derivs vis",
         "CaseDecl": "name fields",
         "IfaceDecl": "name tparams members embeds vis",
-        "ImplDecl": "iface target tparams members bodyless",
+        "ImplDecl": "iface target tparams members bodyless proxy",
         "AliasDecl": "kind name tparams type vis",
         "ImportDecl": "pkg alias names",
         "UsingDecl": "name expr",

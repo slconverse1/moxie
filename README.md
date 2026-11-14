@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: `proxy`.** `impl Printer for Logger proxy(printer)` hands a whole interface to a field: the methods the block doesn't write forward to the field, so only the ones that differ are written (Kotlin's class delegation). Guide chapter 9a. Plain methods of an interface declared in the same file only; `static`, `ref`, generic and `Self` members are errors that say to write them by hand.
+
 **2026-11-14: Three more mistakes caught at compile time.** A pattern that can never match its value (`Some(n)` against a `Result`) is an error, in `when`, `is` and let-else. Dropping a `Result` as a statement is a warning (write `\ call()` to drop it on purpose). `cast[UInt8](300)` of a constant that does not fit is an error.
 
 **2026-11-13: Union elements and `elif` chains.** The loop variable over a list of a union is a union (`for x in ids`, then `x + 1` is an error until tested), and so is `ids(i)`; `if ids(0) is Int` narrows that element. An `if`/`elif` chain in which some arms leave now narrows what follows, from the arms that stay.

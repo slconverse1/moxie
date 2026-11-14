@@ -1719,6 +1719,44 @@ println("${g.level}")
 
 Output: `100`, then `0`. The constructor runs `150` through the delegate, so it clamps at creation, and each write does too. A setter may also reject a value by returning a `Result`, as in `fn (ref Self) set_value(new_value Int) Result[Unit, Error]`. Then `Gauge(level: -1)` is a `Result[Gauge, Error]`, and the compiler rejects `g.level = x`, because a field write has nowhere to put a failure. Moxie generates `g.set_level(x)` instead, which returns the changed `Gauge` or the `Err`, as for a property with a `Result` setter (Chapter 9b). **Mistakes:** a delegate on an enum payload or a local (only declared tuple fields), and a delegate field in a tuple used as a Dict key.
 
+**Chapter 9a: Proxies (handing an interface to a field)**
+
+Sometimes a type should do everything another value does, except for a method or two. Writing a forwarding method for each of the rest is boilerplate, and it goes stale when the interface grows. A **proxy** gives the whole interface to a field and leaves you to write only what differs. Kotlin programmers know it as class delegation (`by`). It is not the same as a field delegate (chapter 9), which gives one field its reads and writes.
+
+```
+interface Printer
+  fn print_message(msg String) Unit,
+  fn print_status() Unit
+
+tuple Console
+  prefix String
+
+impl Printer for Console
+  fn print_message(msg String) Unit
+    println("${prefix}: ${msg}")
+  fn print_status() Unit
+    println("${prefix} is ready")
+
+tuple Logger
+  printer Console
+  calls Int
+
+impl Printer for Logger proxy(printer)
+  fn print_message(msg String) Unit
+    println("log: ${calls} earlier calls")
+    printer.print_message(msg)
+
+l = Logger(printer: Console(prefix: "console"), calls: 2)
+l.print_message("hello")
+l.print_status()
+```
+
+Output: `log: 2 earlier calls`, then `console: hello`, then `console is ready`. The header `impl Printer for Logger proxy(printer)` says that `Logger` is a `Printer` by handing it to its `printer` field. `print_message` is written out, so it runs the logging and then calls the field. `print_status` isn't, so the compiler writes `fn print_status() Unit` for you, and it calls `self.printer.print_status()`. If the interface later gains another method, the proxy has it at once. With no methods to override, leave the block off: `impl Printer for Logger proxy(printer)` alone is enough.
+
+The field can hold a concrete type with its own `impl`, or an `any Printer`. A proxy forwards plain methods, and it says why when it can't forward one: a `static` member (there is no value to call it on), a method that changes its receiver, a method that mentions `Self` in its signature (it would be the field's type, not yours), and a generic method. Write those in the block yourself. The interface has to be declared in the same file, because the compiler needs its method list. For one from the prelude, such as `Show`, or from another package, write the forwarders by hand. The compiler also checks the field: the name has to be a real field, and a field whose type is declared in the file has to implement the interface.
+
+**Mistakes:** `proxy` in an `impl` with no `for` (there is no interface to hand over), naming a field that doesn't exist or that doesn't implement the interface, proxying `Show` or another interface from outside the file, and expecting a proxy to forward a `static` or `Self` method.
+
 **Chapter 9b: Properties**
 
 A property reads and writes like a field (`a.balance`, `a.balance = 5`), but it can run code when it is read or written. You declare it in a tuple, written like a field with the word `property` in front, and add accessors underneath only when you need them:

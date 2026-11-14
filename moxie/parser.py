@@ -18,6 +18,7 @@ class Parser(ExprParser):
         if self.peek().kind != "EOF":
             self.err(f"unexpected {self.describe(self.peek())}")
         stmts = expand_delegates(stmts, self.file)
+        stmts = expand_proxies(stmts, self.file)
         from .withs import expand_withs
         stmts = expand_withs(group_fns(stmts), self.file)
         return Block(stmts, line=1)
@@ -942,11 +943,20 @@ class Parser(ExprParser):
             self.next()
             iface = first
             target = self.parse_type()
+        proxy = None
+        if self.at_name("proxy") and self.at_op("(", 1):
+            if iface is None:
+                self.err("`proxy` hands an interface to a field, so it goes in an `impl Interface for Type` header: `impl Printer for Logger proxy(printer)`")
+            self.next()
+            self.next()
+            proxy = self.expect_ident("the name of the field that takes the interface").val
+            if not self.eat_op(")"):
+                self.err("expected ')' after the field name in `proxy(...)`")
         self.no_block_colon()
         if not self.at_block():
-            return ImplDecl(iface, target, tparams, [], True, line=line)
+            return ImplDecl(iface, target, tparams, [], proxy is None, proxy, line=line)
         members, _ = self.parse_members(iface=False)
-        return ImplDecl(iface, target, tparams, members, False, line=line)
+        return ImplDecl(iface, target, tparams, members, False, proxy, line=line)
 
     def parse_members(self, iface):
         members = []
@@ -1155,6 +1165,92 @@ def expand_delegates(stmts, file=None):
             groups = [[TName([tp.name], []) for tp in s.tparams]] if s.tparams else []
             out.append(ImplDecl(None, TName([s.name], groups), [], members, False, line=s.line))
     return out
+
+
+def expand_proxies(stmts, file=None):
+    """`impl Printer for Logger proxy(printer)`: every method of the interface that the impl does not write forwards to the field,
+    as `fn name(params) Ret` with the body `self.printer.name(params)`.  The interface must be declared in this module, with plain
+    methods: a `static` member, a `ref` method, a `Self` in a signature, a property or an associated type can't be forwarded, and
+    the impl says which."""
+    import copy
+    ifaces = {s.name: s for s in stmts if s.__class__ is IfaceDecl}
+    for s in stmts:
+        if s.__class__ is not ImplDecl or s.proxy is None:
+            continue
+        ln = s.line
+
+        def fail(msg):
+            raise MoxieSyntaxError(msg, ln, 0, file)
+        iname = s.iface.path[-1] if s.iface.__class__ is TName else None
+        decl = ifaces.get(iname)
+        if decl is None:
+            fail(f"`proxy` needs the declaration of `{iname}` in this file to know which methods to forward; "
+                 "write the forwarding methods by hand for an interface from the prelude or another package")
+        sub = {}
+        args = s.iface.groups[0] if s.iface.groups else []
+        if len(args) != len(decl.tparams or []):
+            fail(f"`{iname}` takes {len(decl.tparams or [])} type argument(s), but this `proxy` names {len(args)}")
+        for tp, a in zip(decl.tparams or [], args):
+            sub[tp.name] = a
+
+        def subst(t):
+            if t is None:
+                return None
+            if t.__class__ is TName:
+                if len(t.path) == 1 and not t.groups and t.path[0] in sub:
+                    return copy.deepcopy(sub[t.path[0]])
+                return TName(list(t.path), [[subst(x) for x in g] for g in (t.groups or [])])
+            return copy.deepcopy(t)
+
+        def mentions_self(t):
+            if t is None:
+                return False
+            if t.__class__ is TName:
+                return t.path == ["Self"] or any(mentions_self(x) for g in (t.groups or []) for x in g)
+            return "Self" in repr(t)
+        tdecl = next((x for x in stmts if x.__class__ is TupleDecl and s.target.__class__ is TName and x.name == s.target.path[-1]), None)
+        if tdecl is not None:
+            fld = next((f for f in tdecl.fields or [] if f.name == s.proxy), None)
+            if fld is None:
+                fail(f"`proxy({s.proxy})`: `{tdecl.name}` has no field `{s.proxy}`"
+                     + (f"; its fields are {', '.join('`' + f.name + '`' for f in tdecl.fields or [])}" if tdecl.fields else ""))
+            ft = fld.type
+            fname = ft.path[-1] if ft.__class__ is TName and len(ft.path) == 1 else None
+            local = fname is not None and any(x.__class__ in (TupleDecl, EnumDecl) and x.name == fname for x in stmts)
+            if local and fname != iname and not any(x.__class__ is ImplDecl and x.iface.__class__ is TName and x.iface.path[-1] == iname
+                                                    and x.target.__class__ is TName and x.target.path[-1] == fname for x in stmts):
+                fail(f"`proxy({s.proxy})`: the field is a `{fname}`, which has no `impl {iname} for {fname}` in this file, so there is nothing to forward to")
+        have = {m.name for m in s.members if m.__class__ is FnDecl}
+        if decl.embeds:
+            fail(f"`proxy` can't forward `{iname}`: it embeds other interfaces ({', '.join(str(getattr(e, 'path', e)) for e in decl.embeds)}); proxy each one in its own impl")
+        for m in decl.members:
+            if m.__class__ is not FnDecl:
+                fail(f"`proxy` can't forward `{iname}`: it has a property or an associated type, which is not a method; write the impl by hand")
+            if m.name in have:
+                continue
+            flags = m.flags or set()
+            if "static" in flags:
+                fail(f"`proxy` can't forward `{iname}.{m.name}`: it is a `static` member and there is no value to forward it to; write it in the impl")
+            if "ref_self" in flags:
+                fail(f"`proxy` can't forward `{iname}.{m.name}`: a method that changes its receiver can't be forwarded; write it in the impl")
+            if m.tparams:
+                fail(f"`proxy` can't forward `{iname}.{m.name}`: it is generic; write it in the impl")
+            if any(p.name is None or p.mod or p.variadic or p.default is not None for p in m.params or []):
+                fail(f"`proxy` can't forward `{iname}.{m.name}`: its parameters are not all plain names; write it in the impl")
+            if mentions_self(m.ret) or any(mentions_self(p.type) for p in m.params or []):
+                fail(f"`proxy` can't forward `{iname}.{m.name}`: `Self` in its signature would be the held value's type, not this type; write it in the impl")
+            names = ", ".join(p.name for p in m.params or [])
+            src = f"fn {m.name}()\n  self.{s.proxy}.{m.name}({names})\n"
+            fn = parse_program(src).stmts[0]
+            fn.params = copy.deepcopy(m.params)
+            for p in fn.params:
+                p.type = subst(p.type)
+            fn.ret = subst(m.ret)
+            fn.flags = set(fn.flags or ()) | (set(flags) - {"static"}) | {"generated"}
+            fn.line = ln
+            s.members.append(fn)
+        s.bodyless = False
+    return stmts
 
 
 def expand_props(td):
