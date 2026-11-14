@@ -658,7 +658,22 @@ println(weight(41))
 println(weight("Node-04"))
 ```
 
-Output: `42`, then `7`. Inside the `if id is Int` branch `id` is an `Int`. In the `elif` it is a `String`. With two members, the `else` of an `if id is Int` is the other one, so `len(id)` works there without another test. `is` also narrows the right side of `and` (`id is Int and id > 0`) and a field of a tuple (`if p.id is Int`, then `p.id + 1`); the field case is safe because tuples never change. The narrowing ends with the branch: after the `if`, `id` is an `Identifier` again. Only a union's own tests narrow it, so `println(id)`, `"$id"`, `id == 1`, and passing `id` on to something that takes an `Identifier` work without one.
+Output: `42`, then `7`. Inside the `if id is Int` branch `id` is an `Int`. In the `elif` it is a `String`. With two members, the `else` of an `if id is Int` is the other one, so `len(id)` works there without another test. `is` also narrows the right side of `and` (`id is Int and id > 0`) and a field of a tuple (`if p.id is Int`, then `p.id + 1`); the field case is safe because tuples never change. `not` swaps the branches and `or` narrows its right side: `id is String or id > 0` is safe, because the `id` after `or` can't be a `String`. When a test leaves several members (`if v is Int or v is String` on a union of three), the value is a union of those, and later tests narrow it further.
+
+A branch that leaves narrows what follows it. After `return`, `break` or `continue` in the branch, the rest of the block knows the test failed:
+
+```
+type union Identifier = Int | String
+
+fn weight(id Identifier) Int
+  if id is String then return len(id)
+  id + 1
+
+println(weight("Node-04"))
+println(weight(41))
+```
+
+Output: `7`, then `42`. The last line of `weight` can add, because the only way to reach it is with an `Int`. The same goes for the guard forms (`return 0 if id is String`, or `action if id is Int else 0`) and for a field path. A branch that doesn't leave tells the compiler nothing, so the narrowing ends with it: after such an `if`, `id` is an `Identifier` again. Only a union's own tests narrow it, so `println(id)`, `"$id"`, `id == 1`, and passing `id` on to something that takes an `Identifier` work without one.
 
 **Mixing types in a collection.** The elements of a `List`, `Set`, or `Array`, and the keys or values of a `Dict`, share one type, so `List(1, "a")` is a compile error: it is usually a typo, and moxie will not guess a type that fits both. To mix on purpose, name a union in the annotation. The elements convert into it, and a `when` takes them apart again. It works the same in both dialects, because a union has a fixed size.
 

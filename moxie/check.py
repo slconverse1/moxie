@@ -1707,21 +1707,21 @@ class Checker:
         return t if t in ("Int", "Float") else None, None
 
     def e_AndE(self, n, sc):
+        return self.bool_op(n, sc, "and", True)
+
+    def e_OrE(self, n, sc):
+        return self.bool_op(n, sc, "or", False)
+
+    def bool_op(self, n, sc, word, truth):
+        """`a and b`: `b` runs only when `a` is true, so `a is T and b` narrows `b`; `a or b`: `b` runs only when `a` is false."""
         for x in (n.l, n.r):
             if x is n.r:
-                rsc, paths = self.narrowed_scope(sc, self.narrowing_of(n.l, sc))
+                rsc, paths = self.apply_facts(sc, self.fact_set(n.l, sc, truth))
                 t = self.eval_with_paths(paths, lambda: self.t(x, rsc))
             else:
                 t = self.t(x, sc)
             if t is not None and t != "Bool":
-                self.err(n.line, f"`and` needs `Bool` operands, found `{tshow(t)}`")
-        return "Bool", None
-
-    def e_OrE(self, n, sc):
-        for x in (n.l, n.r):
-            t = self.t(x, sc)
-            if t is not None and t != "Bool":
-                self.err(n.line, f"`or` needs `Bool` operands, found `{tshow(t)}`")
+                self.err(n.line, f"`{word}` needs `Bool` operands, found `{tshow(t)}`")
         return "Bool", None
 
     def e_InOp(self, n, sc):
@@ -1769,53 +1769,127 @@ class Checker:
         v = sc.find(e.name)
         return None if v is None else (id(v), *reversed(names))
 
-    def narrowing_of(self, cond, sc):
-        """What a true `cond` tells about names and field paths: [(kind, target, type)].  `x is T` on a union (or `any`) name or a
-        union-typed field path, and `a and b` telling both."""
-        if cond.__class__ is AndE:
-            return self.narrowing_of(cond.l, sc) + self.narrowing_of(cond.r, sc)
-        if cond.__class__ is not IsOp:
-            return []
-        e = cond.e
-        if e.__class__ is Name:
-            v = sc.find(e.name)
-            nt = self.narrowed_type(v, cond.pat) if v is not None else None
-            return [("name", e.name, nt)] if nt is not None else []
-        key = self.path_key(e, sc)
-        if key is not None and id(e) in self.union_paths:
-            nt = self.member_ty(self.union_paths[id(e)], cond.pat)
-            return [("path", key, nt)] if nt is not None else []
-        return []
+    def member_of(self, full, p):
+        """The name of the member of `full` that pattern `p` names, else None."""
+        if p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is PTyped and p.pat.__class__ is PWild and p.type.__class__ is TName:
+            m = self.type_node_text(p.type)
+            return m if m in full else None
+        if p.__class__ is PCon and len(p.path) == 1 and p.path[0] in full:
+            return p.path[0]
+        return None
 
-    def exclusions_of(self, cond, sc):
-        """The union tests a false `cond` rules out: [(kind, target, members, excluded member)] for `x is T` with a plain member."""
-        if cond.__class__ is not IsOp:
-            return []
+    def fact_set(self, cond, sc, truth):
+        """What `cond` having the value `truth` says about union names and field paths: {key: (kind, target, full, possible, type)}.
+        `possible` are the members the value may still be (a union holds what is left after tests), `type` a single type to give
+        it (for `any`).  `not`, `and`, `or` combine the facts of their parts."""
+        c = cond.__class__
+        if c is Unary and cond.op in ("not", "!"):
+            return self.fact_set(cond.e, sc, not truth)
+        if c is AndE or c is OrE:
+            fa, fb = self.fact_set(cond.l, sc, truth), self.fact_set(cond.r, sc, truth)
+            if (c is AndE) == truth:                       # `a and b` true, `a or b` false: both parts hold
+                out = dict(fa)
+                for k, f in fb.items():
+                    if k in out and out[k][3] is not None and f[3] is not None:
+                        f = f[:3] + ([m for m in out[k][3] if m in f[3]],) + f[4:]
+                    out[k] = f
+                return out
+            out = {}                                       # only one part need hold: what both parts say, joined
+            for k, f in fa.items():
+                g = fb.get(k)
+                if g is not None and f[3] is not None and g[3] is not None:
+                    out[k] = f[:3] + ([m for m in f[2] if m in f[3] or m in g[3]],) + (None,)
+            return out
+        if c is not IsOp:
+            return {}
         e = cond.e
         want = self.pattern_type_text(cond.pat)
-        if want is None:
-            return []
         if e.__class__ is Name:
             v = sc.find(e.name)
-            ms = self.union_vars.get(v) if v is not None else None
-            return [("name", e.name, ms, want)] if ms and want in ms else []
-        key = self.path_key(e, sc)
-        ms = self.union_paths.get(id(e)) if key is not None else None
-        return [("path", key, ms, want)] if ms and want in ms else []
+            if v is None:
+                return {}
+            full = self.union_vars.get(v)
+            kind, target, key = "name", e.name, ("name", e.name, id(v))
+            if full is None:
+                nt = self.narrowed_type(v, cond.pat) if truth else None        # an `any` value
+                return {key: (kind, target, None, None, nt)} if nt is not None else {}
+        else:
+            pk = self.path_key(e, sc)
+            full = self.union_paths.get(id(e)) if pk is not None else None
+            if full is None:
+                return {}
+            kind, target, key = "path", pk, ("path", pk)
+        if truth:
+            m = self.member_of(full, cond.pat)
+            if m is None:
+                return {}
+            nt = self.member_ty(full, cond.pat)
+            return {key: (kind, target, full, [m], nt)}
+        if want is not None and want in full:
+            return {key: (kind, target, full, [m for m in full if m != want], None)}
+        return {}
 
-    def narrowed_scope(self, sc, facts):
-        """A scope in which each name in `facts` has its narrowed type, and the path overrides to switch on while it is used."""
+    def apply_facts(self, sc, facts, same_scope=False):
+        """A scope in which each name in `facts` has what the facts say, and the path overrides to switch on while it is used."""
         if not facts:
             return sc, {}
-        inner = Sc(sc)
+        inner = sc if same_scope else Sc(sc)
         paths = {}
-        for kind, target, nt in facts:
+        for kind, target, full, poss, nt in facts.values():
+            if nt is None and poss is not None and full is not None and 0 < len(poss) < len(full):
+                if len(poss) == 1:
+                    nt = None if "[" in poss[0] else self.ty_of_type(TName([poss[0]], []))
+                else:
+                    nt = ("unionv", " | ".join(poss))
+            elif nt is None:
+                continue
+            if poss is not None and full is not None and not (0 < len(poss) < len(full)):
+                continue
             if kind == "name":
                 v0 = sc.find(target)
-                inner.vars[target] = Var(nt, v0.resource, v0.depth)
+                nv = Var(None if nt.__class__ is tuple and nt[0] == "unionv" else nt, v0.resource, v0.depth)
+                if nt.__class__ is tuple and nt[0] == "unionv":
+                    self.union_vars[nv] = poss
+                inner.vars[target] = nv
             else:
                 paths[target] = nt
         return inner, paths
+
+    def merge_facts(self, a, b):
+        """The facts that hold when both `a` and `b` do."""
+        out = dict(a)
+        for k, f in b.items():
+            if k in out and out[k][3] is not None and f[3] is not None:
+                f = f[:3] + ([m for m in out[k][3] if m in f[3]],) + f[4:]
+            out[k] = f
+        return out
+
+    def fallthrough_facts(self, st, sc):
+        """What is known after statement `st` when it is an early exit: `if c` whose body leaves (return, break, continue) gives not-`c`
+        for the rest of the block, an `if c ... else <leaves>` gives `c`, and `return x if c` gives not-`c`."""
+        if st.__class__ is ExprStmt:
+            st = st.e
+        def leaves(x):
+            if x is None:
+                return False
+            if x.__class__ is Block:
+                return self.diverges(x.stmts or [])
+            if x.__class__ is ExprStmt:
+                x = x.e
+            return x.__class__ in (Return, Break, Continue, TodoE)
+        if st.__class__ is TrailIf:
+            return self.fact_set(st.cond, sc, False) if leaves(st.stmt) else {}
+        if st.__class__ is IfE and len(st.branches) == 1:
+            cond, body = st.branches[0]
+            if st.else_ is None:
+                return self.fact_set(cond, sc, False) if leaves(body) else {}
+            if leaves(st.else_) and not leaves(body):
+                return self.fact_set(cond, sc, True)
+            if leaves(body) and not leaves(st.else_):
+                return self.fact_set(cond, sc, False)
+        return {}
 
     def eval_with_paths(self, paths, fn):
         saved = dict(self.narrow_paths)
@@ -2331,8 +2405,20 @@ class Checker:
         saved = self.exit_ctx
         self.exit_ctx = saved or self.diverges(stmts)
         last = (None, None)
+        saved_paths = self.narrow_paths
+        narrowed = False
         for st in stmts:
             last = self.ev(st, inner)
+            ff = self.fallthrough_facts(st, inner)
+            if ff:
+                _sc, paths = self.apply_facts(inner, ff, same_scope=True)
+                if paths:
+                    self.narrow_paths = {**self.narrow_paths, **paths}
+                narrowed = True
+        if narrowed:
+            for te in self.tails(n):
+                self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
+        self.narrow_paths = saved_paths
         self.exit_ctx = saved
         if stmts and stmts[-1].__class__ is not ExprStmt:
             return None, None
@@ -2755,23 +2841,14 @@ class Checker:
     def e_IfE(self, n, sc):
         types = []
         scopes = []                  # the scope and path overrides each body is evaluated in
-        ruled_out = {}               # a union name or path -> (its members, the members the earlier tests ruled out)
-        cur = (sc, {})                # the scope of the `else`: what the tests before it ruled out
+        acc = {}                     # what the tests before this branch being false say
         for cond, body in n.branches:
             ct = self.t(cond, sc)
             if ct is not None and ct != "Bool":
                 self.err(n.line, f"`if` condition must be `Bool`, found `{tshow(ct)}`")
-            facts = self.narrowing_of(cond, sc)
-            scopes.append(self.narrowed_scope(sc, facts))
-            for kind, target, ms, want in self.exclusions_of(cond, sc):
-                ent = ruled_out.setdefault((kind, target), [ms, set(), None])
-                ent[1].add(want)
-            rest = []
-            for (kind, target), (ms, out, _x) in ruled_out.items():
-                left = [m for m in ms if m not in out]
-                if len(left) == 1 and "[" not in left[0]:
-                    rest.append((kind, target, self.ty_of_type(TName([left[0]], []))))
-            cur = self.narrowed_scope(sc, rest)
+            scopes.append(self.apply_facts(sc, self.merge_facts(acc, self.fact_set(cond, sc, True))))
+            acc = self.merge_facts(acc, self.fact_set(cond, sc, False))
+        cur = self.apply_facts(sc, acc)        # the scope of the `else`: what every test before it ruled out
         if n.else_ is not None:
             scopes.append(cur)
         bodies = [b for _, b in n.branches] + ([n.else_] if n.else_ is not None else [])
@@ -2781,7 +2858,7 @@ class Checker:
             self.moved = dict(base)
             if bpaths or bsc is not sc:
                 for te in self.tails(b):
-                    self.tail_ctx[id(te)] = (bsc, bpaths)
+                    self.tail_ctx[id(te)] = (bsc, {**self.narrow_paths, **bpaths})
             if b.__class__ is Block:
                 types.append(self.eval_with_paths(bpaths, lambda: self.e_Block(b, bsc)))
             else:

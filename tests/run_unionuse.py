@@ -21,6 +21,16 @@ OK = [
  ("show and interpolation take any value", U + 'fn g(v IT) String\n  "got $v"\nprintln(g(1))\nprintln(g("a"))\n', "got 1\ngot a\n"),
  ("equality with a member", U + 'fn g(v IT) Bool\n  v == 1\nprintln(g(1))\nprintln(g(2))\n', "true\nfalse\n"),
  ("a bound alias stays a union", U + 'fn g(v IT) Int\n  w = v\n  if w is Int\n    w\n  else\n    0\nprintln(g(5))\n', "5\n"),
+ ("early return narrows the rest", U + 'fn g(v IT) Int\n  if not (v is Int) then return 0\n  v + 1\nprintln(g(4))\nprintln(g("a"))\n', "5\n0\n"),
+ ("early return from a block", U + 'fn g(v IT) Int\n  if v is String\n    return len(v)\n  v + 1\nprintln(g(4))\nprintln(g("abc"))\n', "5\n3\n"),
+ ("a guard that returns", U + 'fn g(v IT) Int\n  return 0 if v is String\n  v + 1\nprintln(g(4))\nprintln(g("a"))\n', "5\n0\n"),
+ ("a guard with else", U + 'fn g(v IT) Int\n  println("int") if v is Int else 0\n  v + 1\nprintln(g(4))\nprintln(g("a"))\n', "int\n5\n0\n"),
+ ("continue narrows the rest of the loop body", U + 'fn g(xs List[IT]) Unit\n  for x in xs\n    if x is String then continue\n    println(x + 1)\ng(List(1, 5))\n', "2\n6\n"),
+ ("early exit on a field path", P + 'fn g(p P) Int\n  if p.v is String then return 0\n  p.v + 1\nprintln(g(P(v: 1)))\nprintln(g(P(v: "a")))\n', "2\n0\n"),
+ ("not swaps the branches", U + 'fn g(v IT) Int\n  if not (v is Int)\n    0\n  else\n    v + 1\nprintln(g(1))\nprintln(g("a"))\n', "2\n0\n"),
+ ("or narrows its right side", U + 'fn g(v IT) Bool\n  v is String or v > 0\nprintln(g(1))\nprintln(g(-1))\nprintln(g("a"))\n', "true\nfalse\ntrue\n"),
+ ("or keeps a union of what is left", U3 + 'fn h(v IBT) Int = 7\nfn g(v IBT) Int\n  if v is Int or v is String\n    h(v)\n  else\n    0\nprintln(g(1))\nprintln(g(true))\n', "7\n0\n"),
+ ("a union of what is left narrows again", U3 + 'fn g(v IBT) Int\n  if v is Bool then return 0\n  if v is Int\n    v + 1\n  else\n    len(v)\nprintln(g(1))\nprintln(g("ab"))\nprintln(g(true))\n', "2\n2\n0\n"),
 ]
 ERR = [
  ("arithmetic on a union", U + 'fn g(v IT) Int\n  v + 1\n', "test it first"),
@@ -33,6 +43,10 @@ ERR = [
  ("a concrete parameter", U + 'fn h(n Int) Int = n\nfn g(v IT) Int\n  h(v)\n', "found `Int | String`"),
  ("negating a union", U + 'fn g(v IT) Int\n  -v\n', "test which member"),
  ("the path is not narrowed once tested elsewhere", P + 'fn g(p P, q P) Int\n  if p.v is Int\n    q.v + 1\n  else\n    0\n', "test it first"),
+ ("a branch that does not leave narrows nothing", U + 'fn g(v IT) Int\n  if v is String\n    println("s")\n  v + 1\n', "test it first"),
+ ("not names the wrong member", U + 'fn g(v IT) Int\n  if not (v is Int)\n    v + 1\n  else\n    0\n', "cannot apply"),
+ ("what is left of three is still a union", U3 + 'fn g(v IBT) Int\n  if v is Bool\n    0\n  else\n    v + 1\n', "test it first"),
+ ("or does not narrow when only one part holds", U3 + 'fn g(v IBT) Int\n  if v is Int or v is Bool\n    v + 1\n  else\n    0\n', "test it first"),
 ]
 fails = []
 for name, src, want in OK:
