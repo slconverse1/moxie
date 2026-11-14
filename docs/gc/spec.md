@@ -748,6 +748,13 @@ A small HTTP/1.1 client and server over the language's own sockets, in both dial
 - **Helpers:** `text(status, body)` makes a plain-text `Response`, `header_value(headers, name)` looks up a header without regard to case (`Err` with `MISSING` when absent), `reason(status)` is the status text, and `read_request(io)` and `write_response(io, response)` are the pieces `serve_one` uses.
 - **Bodies are text.** A body is a `String` in UTF-8, and `Content-Length` counts bytes, not characters. Binary bodies are not supported yet.
 
+**23c. JSON and data from outside (the `json` package)** (a built-in package written in moxie, `moxie/std/json.mxi`; `import json`)
+A closed data type for data whose shape is not known until it arrives, in both dialects. It needs no reflection: `Dyn` is an ordinary enum.
+- **`enum Dyn`** has the cases `DNull`, `DBool(b)`, `DInt(i)`, `DFloat(x)`, `DText(s)`, `DList(items List[Dyn])` and `DMap(fields List[Entry])`, and derives `eq` and `show`. `tuple Entry` has `key String` and `value Dyn`. A map is a list of entries in the order written, not a `Dict`, because a `Dict` has a fixed capacity.
+- **Reading:** `json.parse(text) Result[Dyn, Error]` (an `Err` that gives the character position for bad JSON, including text after the value). `d.field(key)`, `d.at(i)`, `d.as_bool()`, `d.as_int()`, `d.as_float()` (an `Int` converts), `d.as_text()` and `d.as_list()` each return a `Result` and never abort. `d.is_null() Bool`.
+- **Writing:** `d.to_json() String`, compact, entries in order, strings escaped for `"`, `\`, newline, tab and return.
+- **Not included:** `\uXXXX` escapes, pretty printing, converting to and from the mixer's own types (see FIXLIST), and anything that looks at a type at run time.
+
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.
 - **Numbers:** `abs`, `min`, `max`, `pow`, `sqrt`, `cast[T]`, `try_cast[T]`, `wrap_to[T]`, `checked_add/sub/mul/div`, `wrapping_*`, `saturating_*`, `is_nan`, `is_inf`, `is_finite`, `finite(x)`, `round_to[n](x, mode)`, `div(a, b, scale, mode)` (Decimal), `parse_number`.

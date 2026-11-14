@@ -1945,5 +1945,16 @@ null
 "200 you said: hello",
 "404 nothing at /nope"
 ]
+],
+[
+4044,
+"import json\n\ntext = \"{\\\"name\\\": \\\"Al\\\", \\\"scores\\\": [90, 85.5], \\\"admin\\\": false}\"\ndoc = json.parse(text)?\nname = doc.field(\"name\").flat_map((d) -> d.as_text())?\nfirst = doc.field(\"scores\").flat_map((d) -> d.at(0)).flat_map((d) -> d.as_int())?\nprintln(\"$name $first\")\nprintln(doc.field(\"email\"))\nprintln(doc.field(\"name\").flat_map((d) -> d.as_int()))\nprintln(doc.to_json())\nprintln(json.parse(\"[1, 2\"))\n",
+[
+"Al 90",
+"Err(Error(code: 4, message: \"no key \\\"email\\\"\"))",
+"Err(Error(code: 1, message: \"not an Int\"))",
+"{\"name\":\"Al\",\"scores\":[90,85.5],\"admin\":false}",
+"Err(Error(code: 1, message: \"unterminated list at character 5\"))"
+]
 ]
 ]
