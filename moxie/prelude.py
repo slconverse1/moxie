@@ -1542,7 +1542,7 @@ def b_get(I, a, kw, ta):
     if isinstance(x, TupleV):
         return I.index_get(x, [k])
     if r is MISSING:
-        return err_reserved("MISSING" if isinstance(x, DictV) else "OUT_OF_RANGE", "no such element")
+        return err_reserved("MISSING", "no such key" if isinstance(x, DictV) else "no such element")
     return Ok(r)
 
 

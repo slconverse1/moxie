@@ -664,7 +664,7 @@ class CallsMixin:
         if 0 <= i < len(et.order):
             nm = et.order[i]
             return Ok(et.consts[nm] if hasattr(et, "consts") and nm in et.consts else self.enum_instance(et, et.cases[nm], []))
-        return err_reserved("OUT_OF_RANGE")
+        return err_reserved("MISSING", "no such case")
 
     # ------------------------------------------------------------ field access
     # ------------------------------------------------------------ properties

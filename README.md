@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: one code for "not there".** `get(xs, i)` on a List or Array and `Enum.from_index(n)` now give `MISSING` (4), as a Dict key, `first` of nothing and `value_of` already did; they used to give `OUT_OF_RANGE` (6). The rule is in Spec section 4: `MISSING` is an element, key or case the program's own data lacks, `NOT_FOUND` is a thing outside it (file, host, zone), `OUT_OF_RANGE` is a number outside its allowed range. A program that matched `OUT_OF_RANGE` on a failed `get` of a List needs `MISSING`. `tests/run_notfound.py`.
+
 **2026-11-14: constant indexes into Lists.** `xs = List(1, 2, 3)` then `xs(3)` is a compile error (as it already was for an Array), and so is a negative constant index into any List or Array. A List counts only when its name is bound once and never changed through `ref`, a `ref` method or `+=`, so the length is the text's. `xs(i)` stays the element itself and aborts on a bad index; `get(xs, i)` is the version that returns a `Result`. `tests/run_indexcheck.py`.
 
 **2026-11-14: let-else can see the failure.** `Ok(n) = read[Int](t) else Err(e) -> Err(wrap(e))`: the else takes a pattern of its own, so the `Err`'s code and message are in scope (to log, to convert). The two patterns must cover every case together, as in `when`, and the old `else value` form is unchanged. Guide chapter 12, Spec section 1, `tests/run_letelse.py`.
