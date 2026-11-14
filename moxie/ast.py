@@ -90,7 +90,7 @@ def _defs():
         "CompE": "kind elem key pat iter cond",
         "Block": "stmts",
         "Lambda": "params body recv locals ret",
-        "Param": "pat name type default mod variadic",
+        "Param": "pat name type default mod variadic where wtext",
         "RunE": "target limit",
         "TodoE": "msg",
         "PathE": "segs",

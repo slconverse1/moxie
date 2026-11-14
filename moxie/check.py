@@ -182,10 +182,27 @@ class Var:
         self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
 
 
+FORGET = [None]        # called with a name when a scope binds it again (a rebinding or a shadow): facts about the old one are stale
+
+
+class VarDict(dict):
+    __slots__ = ("owner",)
+
+    def __init__(self, owner):
+        super().__init__()
+        self.owner = owner
+
+    def __setitem__(self, k, v):
+        f = FORGET[0]
+        if f is not None and (k in self or (self.owner.parent is not None and self.owner.parent.find(k) is not None)):
+            f(k)
+        super().__setitem__(k, v)
+
+
 class Sc:
     def __init__(self, parent=None, open_=False):
         self.parent = parent
-        self.vars = {}
+        self.vars = VarDict(self)
         self.fnb = False                 # the top scope of a function or lambda body
         self.open = open_ or (parent.open if parent else False)
         self.loopbody = False            # the block that is a loop's body
@@ -236,7 +253,10 @@ def fields_of(n):
 STRICT_SAFETY = [False]          # Moxie.toml `safety = "strict"`
 
 
-class Checker:
+from .refinecheck import RefineMixin
+
+
+class Checker(RefineMixin):
     def __init__(self, prelude_names):
         self.diags = []
         self.prelude = set(prelude_names) | EXTRA_NAMES
@@ -463,6 +483,8 @@ class Checker:
     # ------------------------------------------------------------ entry
     def check(self, prog):
         self.top_prog = prog
+        self.ifacts = []
+        FORGET[0] = self.rf_forget
         tys.REDUCER = self.reduce_tapp
         tys.UNFOLD = self.unfold
         tys.CALLER = self.type_call
@@ -2448,8 +2470,12 @@ class Checker:
         saved_paths = self.narrow_paths
         narrowed = False
         in_loop = id(n) in self.loop_bodies
+        rf_mark = len(self.ifacts)
         for k, st in enumerate(stmts):
             last = self.ev(st, inner)
+            self.rf_push(self.rf_fall(st, inner))
+            if st.__class__ is Assign:
+                self.rf_push(self.rf_bind_fact(st, inner))
             if st.__class__ is ExprStmt and (k < len(stmts) - 1 or in_loop) and last[0].__class__ is tuple and last[0][0] == "app" \
                     and last[0][1] == "Result" and st.e.__class__ in (Call, Pipe):
                 self.diags.append(Diag(getattr(st, "line", 0) or n.line, "this `Result` is dropped, so an `Err` would go unnoticed: "
@@ -2464,6 +2490,7 @@ class Checker:
             for te in self.tails(n):
                 self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
         self.narrow_paths = saved_paths
+        del self.ifacts[rf_mark:]
         self.exit_ctx = saved
         if stmts and stmts[-1].__class__ is not ExprStmt:
             return None, None
@@ -2661,14 +2688,16 @@ class Checker:
             fmt = lambda xs: "[" + ", ".join(str(x) for x in xs) + "]"
             self.err(n.line, f"the declared shape {fmt(dims)} does not match this literal, whose shape is {fmt(shape)}")
 
-    def unstable_names(self):
+    def unstable_names(self, counts=True):
         """Names, in the current function (or the top level), that might not keep one length: bound more than once, passed as a `ref`
         argument, the receiver of a `ref` method, or changed with `+=` and the like.  Cached per function."""
         root = getattr(self, "cur_fn", None) or self.top_prog
         cache = self.__dict__.setdefault("_unstable", {})
-        r = cache.get(id(root))
+        r = cache.get((id(root), counts))
         if r is None:
             r, seen = set(), {}
+            if root.__class__ is FnDecl:
+                r |= {p.name for p in root.params or [] if p.mod == "ref" and p.name}
             ref_methods = {m.name for m in self.methods.values() if "ref_self" in (getattr(m, "flags", None) or ())}
 
             def walk(x):
@@ -2694,8 +2723,9 @@ class Checker:
                 for f in x._fields:
                     walk(getattr(x, f))
             walk(root)
-            r |= {nm for nm, cnt in seen.items() if cnt > 1}
-            cache[id(root)] = r
+            if counts:
+                r |= {nm for nm, cnt in seen.items() if cnt > 1}
+            cache[(id(root), counts)] = r
         return r
 
     def array_size(self, n):
@@ -2951,15 +2981,19 @@ class Checker:
         bodies = [b for _, b in n.branches] + ([n.else_] if n.else_ is not None else [])
         # evaluate for types separately from move-merging
         base = dict(self.moved)
-        for b, (bsc, bpaths) in zip(bodies, scopes):
+        rf_sets = self.rf_if_branches(n, sc)
+        for b, (bsc, bpaths), rf in zip(bodies, scopes, rf_sets):
             self.moved = dict(base)
             if bpaths or bsc is not sc:
                 for te in self.tails(b):
                     self.tail_ctx[id(te)] = (bsc, {**self.narrow_paths, **bpaths})
+            mark = len(self.ifacts)
+            self.ifacts.extend(rf)
             if b.__class__ is Block:
                 types.append(self.eval_with_paths(bpaths, lambda: self.e_Block(b, bsc)))
             else:
                 types.append(self.eval_with_paths(bpaths, lambda: self.ev(b, bsc)))
+            del self.ifacts[mark:]
         self.moved = base
         self.branches_moves(bodies, sc, n.else_ is not None)
         ts = [t for t, _ in types]
@@ -3114,7 +3148,14 @@ class Checker:
                         self.union_vars[inner.vars[ip.name]] = vum
         self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
+        rf_mark = len(self.ifacts)
+        lf = self.rf_loop_facts(n, sc)
+        if lf is not None and n.pat.name in inner.vars:
+            self.__dict__.setdefault("rf_intvars", set()).add(id(inner.vars[n.pat.name]))
+            lf = self.rf_loop_facts(n, sc)
+            self.rf_push(lf)
         self.loop([n.body], inner, n.label)
+        del self.ifacts[rf_mark:]
         self.else_names.pop()
         self.ev(n.else_, sc)
         return None, None
@@ -3968,6 +4009,7 @@ class Checker:
 
     def e_Call(self, n, sc, *a, **k):
         self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
+        self.rf_check_call(n, sc, k.get("extra", a[0] if a else 0))
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
         for item in self.pending_gone[mark:]:
@@ -5866,6 +5908,8 @@ class Checker:
             self.check_type_arity(p.type, n.line)
         for nm in n.locals or []:
             inner.vars[nm] = Var(None, False, 0)
+        saved_ifacts, self.ifacts = self.ifacts, []
+        self.rf_enter_fn(n, inner)
         self.fn_ret = self.ty_of_type(n.ret) if n.ret is not None else None
         self.in_fiber = False
         self.check_type_arity(n.ret, n.line)
@@ -5890,6 +5934,7 @@ class Checker:
             if "tailrec" in (n.flags or ()):
                 self.check_tailrec(n)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
+        self.ifacts = saved_ifacts
         self.any_params = saved_any
         self.cur_fn = saved_fn
         self.tp_decl = saved_decl

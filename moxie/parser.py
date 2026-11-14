@@ -589,6 +589,9 @@ class Parser(ExprParser):
                 stmts = self.parse_stmts_until_dedent()
                 self.expect_dedent()
                 body = Block(stmts, line=bline)
+        for prm in params:
+            if getattr(prm, "where", None) is not None and prm.name and body is not None:
+                contracts = [("requires", prm.where, prm.line, prm.wtext)] + list(contracts)      # also checked on entry, for a function used as a value
         return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, contracts, line=line)
 
     def parse_foreign(self):

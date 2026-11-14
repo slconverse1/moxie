@@ -993,12 +993,21 @@ class ExprParser(PBase):
                 self.next()
                 variadic = True
             typ = self.parse_type()
+        where = None
+        wtext = None
+        if typ is not None and self.at_name("where"):
+            self.next()
+            wstart = self.p
+            where = self.parse_expr()                 # a refinement: a condition the compiler proves at each call (Spec 9c)
+            wtext = ""
+            for tk in self.toks[wstart:self.p]:
+                wtext += (" " if tk.sp and wtext else "") + str(tk.val)
         if self.at_op("="):
             self.next()
             default = self.parse_expr()
         if mod == "using" and (name is None or name == "_"):
             self.err("a `using` parameter needs a name and a type: write `using ctx Context`", t)
-        return Param(pat, name, typ, default, mod, variadic, line=line)
+        return Param(pat, name, typ, default, mod, variadic, where, wtext, line=line)
 
     # ------------------------------------------------------------ blocks
     def expect_nl_indent(self):
