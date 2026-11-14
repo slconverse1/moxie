@@ -6,6 +6,7 @@ from .ast import *   # noqa
 T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_ADD, T_MUL, T_OTHER = range(13)
 
 COMP_OPS = {"==", "~=", "<", ">", "<=", ">=", "<$>", "<*>", "<~"}
+ORDER_OPS = ("<", ">", "<=", ">=")
 BINTIER = {
     "|": T_BOR, "|>>": T_BOR, "^": T_BXOR, "&": T_BAND, "<<": T_SHIFT, ">>": T_SHIFT,
     "+": T_ADD, "-": T_ADD, "*": T_MUL, "/": T_MUL, "%": T_MUL, "~>": T_OTHER, "+%": T_OR, "-%": T_OR,
@@ -168,9 +169,39 @@ class ExprParser(PBase):
                 return T_COMP
         return None
 
+    def build_chain(self, ops, operands, line):
+        """`a < b <= c` is `a < b and b <= c`. A plain name, literal or field is written twice; any other middle operand (a call,
+        say) is bound to a hidden name at the moment its link is reached, so it runs once and a false link stops the chain."""
+        import copy
+
+        def simple(e):
+            if e.__class__ in (Name, IntLit, FloatLit):
+                return True
+            return e.__class__ is Field and isinstance(e.name, str) and simple(e.obj)
+        if len(ops) == 1:
+            return Binary(ops[0], operands[0], operands[1], line=line)
+
+        def link(k, left):
+            nxt = operands[k + 1]
+            if k == len(ops) - 1:
+                return Binary(ops[k], left, nxt, line=line)
+            if simple(nxt):
+                return AndE(Binary(ops[k], left, nxt, line=line), link(k + 1, copy.deepcopy(nxt)), line=line)
+            tmp = f"$c{k + 1}"
+            bind = Assign(PBind(tmp, line=line), nxt, None, "=", None, line=line)
+            test = AndE(Binary(ops[k], left, Name(tmp, line=line), line=line), link(k + 1, Name(tmp, line=line)), line=line)
+            return DoE(Block([bind, ExprStmt(test, line=line)], line=line), None, line=line)
+        first = operands[0]
+        if simple(first):
+            return link(0, first)
+        bind = Assign(PBind("$c0", line=line), first, None, "=", None, line=line)
+        return DoE(Block([bind, ExprStmt(link(0, Name("$c0", line=line)), line=line)], line=line), None, line=line)
+
     def _climb(self, minp):
         left = self.parse_unary()
+        chain = None
         while True:
+            prev_chain, chain = chain, None
             t = self.peek()
             if self.stop_bol and t.bol:
                 break
@@ -213,7 +244,14 @@ class ExprParser(PBase):
             else:
                 self.next()
                 right = self._climb(tier + 1)
-                left = Binary(t.val, left, right, line=line)
+                if t.val in ORDER_OPS and prev_chain is not None and prev_chain[2] is left:
+                    ops, operands = prev_chain[0] + [t.val], prev_chain[1] + [right]
+                    left = self.build_chain(ops, operands, line)
+                    chain = (ops, operands, left)
+                else:
+                    left = Binary(t.val, left, right, line=line)
+                    if t.val in ORDER_OPS:
+                        chain = ([t.val], [left.l, left.r], left)
         return left
 
     def listener_op(self, op, l, r, line):

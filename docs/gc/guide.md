@@ -340,6 +340,17 @@ println("$x $y $long_name_one $long_name_two")
 
 Output: `5 5 5 5`. Each name in a chain is a plain name (the first may carry a type, `n Int = m = 3`). A chain cannot have an `else`, cannot follow `then`, `do` or `->` on the same line, and does not mix with a compound update (`x += y = 3` is an error). For a pattern on the left, or a field, bind in separate lines.
 
+**Chained comparisons.** The ordering operators `<`, `<=`, `>` and `>=` can be chained, as in mathematics: `0 <= x <= 100` means `0 <= x and x <= 100`. A middle operand is worked out once, so `0 < read() < 10` calls `read()` one time, and the chain stops at the first link that is false:
+
+```
+x = 42
+println(0 <= x <= 100)
+println(0 < x < 10)
+println(1 < 2 < 3 < 4)
+```
+
+Output: `true`, `false`, `true`. Only the four ordering operators chain. `==` and `~=` do not: `a == b == c` still means `(a == b) == c`, which is rarely what you want, so write `a == b and b == c`.
+
 **Chapter 2: Numbers, text, keywords**
 
 ```
