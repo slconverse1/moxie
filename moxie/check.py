@@ -5676,6 +5676,11 @@ class Checker:
                 self.err(line, f"`{td.name}` needs a value for " + ", ".join(f"`{x}`" for x in need))
             elif len(unlabeled) > len(pos):
                 self.err(line, f"`{td.name}` has {len(pos)} field{'s' if len(pos) != 1 else ''}, but {len(unlabeled)} values are given")
+        if pos and all(getattr(f, "name", 0) is None for f in pos) and not any(getattr(a, "mod", None) or a.label is not None for a in args) \
+                and not any(x.__class__ in (PH, Slot) for x in (getattr(a, "expr", None) for a in args)) and len(args) != len(pos):
+            one = ats[0][0] if len(args) == 1 and ats else None
+            if not (one.__class__ is tuple and one[0] in ("tup", "named")):         # one bare tuple may be unpacked into the fields
+                self.err(line, f"`{td.name}` has {len(pos)} field{'s' if len(pos) != 1 else ''}, but {len(args)} value{'s' if len(args) != 1 else ''} {'are' if len(args) != 1 else 'is'} given")
         i = 0
         spread = False
         for a, (t, c) in zip(args, ats):

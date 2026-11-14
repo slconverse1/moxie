@@ -15,6 +15,7 @@ OK = [
  ("the proxy is a Shape where one is wanted", B + 'tuple W\n  inner Sq\nimpl Shape for W proxy(inner)\nfn show(x any Shape) String = "${x.name()} ${x.area()}"\nprintln(show(W(inner: Sq(s: 2))))\n', "sq 4\n"),
  ("a generic interface", 'interface Get[T]\n  fn get() T\ntuple A\n  v Int\nimpl Get[Int] for A\n  fn get() Int\n    v\ntuple W\n  a A\nimpl Get[Int] for W proxy(a)\nprintln(W(a: A(v: 7)).get())\n', "7\n"),
  ("methods with arguments", 'interface Add\n  fn plus(a Int, b Int) Int\ntuple C\n  k Int\nimpl Add for C\n  fn plus(a Int, b Int) Int\n    a + b + k\ntuple W\n  c C\nimpl Add for W proxy(c)\nprintln(W(c: C(k: 10)).plus(1, 2))\n', "13\n"),
+ ("an interface written with explicit self", 'interface Logger\n  fn info(self, msg String) String\n  fn error(self, msg String) String\ntuple C\n  p String\nimpl Logger for C\n  fn info(self, msg String) String\n    "${self.p} i $msg"\n  fn error(self, msg String) String\n    "${self.p} E $msg"\ntuple W\n  c C\nimpl Logger for W proxy(c)\n  fn info(self, msg String) String\n    "stamped ${self.c.info(msg)}"\nw = W(c: C(p: "a"))\nprintln(w.info("x"))\nprintln(w.error("y"))\n', "stamped a i x\na E y\n"),
  ("a name that is not a keyword elsewhere", 'proxy = 3\nprintln(proxy)\n', "3\n"),
 ]
 ERR = [
