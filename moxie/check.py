@@ -2022,7 +2022,8 @@ class Checker:
             self.diags.append(Diag(n.line, f"`{n.e.name}` is {'an' if have[:1] in 'AEIOU' else 'a'} `{have}`, never {art} `{want}`, so this `is` test is always false", "warning"))
 
     def e_IsOp(self, n, sc):
-        self.ev(n.e, sc)
+        et = self.ev(n.e, sc)[0]
+        self.check_pat_fit(n.pat, et, n.line)
         self.check_constant_is(n, sc)
         nt = self.narrowed_type(sc.find(n.e.name), n.pat) if n.e.__class__ is Name else None
         for nm in self.pat_names(n.pat):
@@ -2442,8 +2443,13 @@ class Checker:
         last = (None, None)
         saved_paths = self.narrow_paths
         narrowed = False
-        for st in stmts:
+        in_loop = id(n) in self.loop_bodies
+        for k, st in enumerate(stmts):
             last = self.ev(st, inner)
+            if st.__class__ is ExprStmt and (k < len(stmts) - 1 or in_loop) and last[0].__class__ is tuple and last[0][0] == "app" \
+                    and last[0][1] == "Result" and st.e.__class__ in (Call, Pipe):
+                self.diags.append(Diag(getattr(st, "line", 0) or n.line, "this `Result` is dropped, so an `Err` would go unnoticed: "
+                                       "use `?` to pass it on, `when` or `else` to handle it, or write `\\ call()` to drop it on purpose", "warning"))
             ff = self.fallthrough_facts(st, inner)
             if ff:
                 _sc, paths = self.apply_facts(inner, ff, same_scope=True)
@@ -2845,7 +2851,8 @@ class Checker:
         if self.fn_ret is None and (self.in_daemon or self.in_fiber):
             self.err(n.line, "a let-else leaves the whole function, and " + ("a `daemon:` body" if self.in_daemon else "an inline fiber (`run fn`)")
                      + " has no function to leave: handle the other shape with `when`")
-        self.ev(n.value, sc)
+        vt = self.ev(n.value, sc)[0]
+        self.check_pat_fit(n.pat, vt, getattr(n, "line", 0))
         self.ev(n.else_, sc)
         self.bind_pat(n.pat, sc)
         return None, None
@@ -3257,7 +3264,22 @@ class Checker:
                     seen.setdefault(key, line)
 
     def check_pat_fit(self, p, st, line):
-        """A literal or `Ok`/`Err` pattern against a value of a plain scalar type it can never match."""
+        """A literal or `Ok`/`Err` pattern against a value of a plain scalar type it can never match; an `Ok`/`Err` pattern against an
+        `Option` and `Some`/`None` against a `Result`, and the payloads of those patterns against the types they hold."""
+        if p.__class__ is PAs:
+            p = p.pat
+        if st.__class__ is tuple and st[0] == "app" and st[1] in ("Result", "Option") and p.__class__ is PCon and len(p.path) == 1:
+            nm = p.path[0]
+            res = st[1] == "Result"
+            mine, other = (("Ok", "Err"), ("Some", "None")) if res else (("Some", "None"), ("Ok", "Err"))
+            user = lambda x: any(self.enums.get(e) is not getattr(self, "prelude_option", None) for e in self.cases.get(x, [])) or x in self.tuples
+            if nm in other and not user(nm):
+                self.err(line, f"`{nm}` matches {'an `Option`' if res else 'a `Result`'}, but the value is {'a `Result`' if res else 'an `Option`'}, "
+                               f"so it can never match; its cases are `{mine[0]}` and `{mine[1]}`")
+                return
+            if nm in mine and not user(nm) and p.args and len(p.args) == 1 and len(st[2]) > (1 if nm == "Err" else 0):
+                self.check_pat_fit(p.args[0][1], st[2][1 if nm == "Err" else 0], line)
+            return
         if st.__class__ is not str or st not in SCALARS_FOR_PAT:
             return
         if p.__class__ is PLit:
@@ -4569,6 +4591,14 @@ class Checker:
             return None, None
         if fn.__class__ is Field and ufcs:
             return sigres, None                         # the receiver was evaluated above
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "cast" and "cast" not in self.fns and len(args) == 1 \
+                and fn.groups and len(fn.groups[0]) == 1 and fn.groups[0][0].__class__ is TName and fn.groups[0][0].path[-1] in INTS \
+                and hasattr(args[0], "expr") and not getattr(args[0], "label", None):
+            tn = fn.groups[0][0].path[-1]
+            cv = self.const_int(args[0].expr)
+            r = self.FIT.get(tn)
+            if cv is not None and r and not r[0] <= cv <= r[1]:
+                self.err(n.line, f"the constant {cv} does not fit `{tn}`, so this `cast` would abort: write a value that fits, or use `try_cast`")
         if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Atom" and len(args) == 1 and n.trailing is None \
                 and "Atom" not in self.fns and "Atom" not in self.tuples and "Atom" not in self.aliases \
                 and len(fn.groups or []) == 1 and len(fn.groups[0]) == 1 and not extra_bad(args):

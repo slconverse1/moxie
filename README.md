@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: Three more mistakes caught at compile time.** A pattern that can never match its value (`Some(n)` against a `Result`) is an error, in `when`, `is` and let-else. Dropping a `Result` as a statement is a warning (write `\ call()` to drop it on purpose). `cast[UInt8](300)` of a constant that does not fit is an error.
+
 **2026-11-13: Union elements and `elif` chains.** The loop variable over a list of a union is a union (`for x in ids`, then `x + 1` is an error until tested), and so is `ids(i)`; `if ids(0) is Int` narrows that element. An `if`/`elif` chain in which some arms leave now narrows what follows, from the arms that stay.
 
 **2026-11-13: Narrowing after an early exit, and with `not` and `or`.** `if not (v is Int) then return 0` now makes `v` an `Int` on the following lines; `break`, `continue` and the guard forms work the same, as do field paths. `not` and `or` narrow, and a test that leaves several members leaves a union of those. A branch that doesn't leave narrows nothing after it. `==` never narrows.
