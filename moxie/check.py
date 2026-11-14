@@ -462,6 +462,7 @@ class Checker:
 
     # ------------------------------------------------------------ entry
     def check(self, prog):
+        self.top_prog = prog
         tys.REDUCER = self.reduce_tapp
         tys.UNFOLD = self.unfold
         tys.CALLER = self.type_call
@@ -2660,6 +2661,43 @@ class Checker:
             fmt = lambda xs: "[" + ", ".join(str(x) for x in xs) + "]"
             self.err(n.line, f"the declared shape {fmt(dims)} does not match this literal, whose shape is {fmt(shape)}")
 
+    def unstable_names(self):
+        """Names, in the current function (or the top level), that might not keep one length: bound more than once, passed as a `ref`
+        argument, the receiver of a `ref` method, or changed with `+=` and the like.  Cached per function."""
+        root = getattr(self, "cur_fn", None) or self.top_prog
+        cache = self.__dict__.setdefault("_unstable", {})
+        r = cache.get(id(root))
+        if r is None:
+            r, seen = set(), {}
+            ref_methods = {m.name for m in self.methods.values() if "ref_self" in (getattr(m, "flags", None) or ())}
+
+            def walk(x):
+                if isinstance(x, (list, tuple)):
+                    for y in x:
+                        walk(y)
+                    return
+                if not hasattr(x, "_fields"):
+                    return
+                k = x.__class__
+                if k is PBind:
+                    seen[x.name] = seen.get(x.name, 0) + 1
+                elif k is Arg and x.mod in ("ref", "move") and x.expr.__class__ is Name:
+                    r.add(x.expr.name)
+                elif k is Assign and x.op != "=":
+                    for t in (x.targets if isinstance(x.targets, list) else [x.targets]):
+                        if t.__class__ is PBind:
+                            r.add(t.name)
+                elif k is Call and x.fn.__class__ is Field and x.fn.name in ref_methods and x.fn.obj.__class__ is Name:
+                    r.add(x.fn.obj.name)
+                elif k is Incr and x.target.__class__ is Name:
+                    r.add(x.target.name)
+                for f in x._fields:
+                    walk(getattr(x, f))
+            walk(root)
+            r |= {nm for nm, cnt in seen.items() if cnt > 1}
+            cache[id(root)] = r
+        return r
+
     def array_size(self, n):
         """The element count of the Array that the binding `n` creates, when the text gives it: `Array(1, 2, 3)` or `a: Array[T][3] = ...`."""
         a = n.ann
@@ -2668,6 +2706,10 @@ class Checker:
             g = g[0] if isinstance(g, list) and g else g
             sz = self.const_int(g.expr) if g.__class__ is TExpr else None
             return sz if isinstance(sz, int) else None
+        if a is None and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == "List" \
+                and "List" not in self.tuples and "List" not in self.fns and n.targets.__class__ is PBind \
+                and n.targets.name not in self.unstable_names():
+            return self.literal_count("List", n.value)        # a `List` bound once, never changed through `ref`: its length is the text's
         unsized = a.__class__ is TName and a.path == ["Array"] and "Array" not in self.tuples and len(a.groups or []) == 1
         if (a is None or unsized) and n.value.__class__ is Call and n.value.fn.__class__ is Name and n.value.fn.name == "Array" \
                 and "Array" not in self.tuples and "Array" not in self.fns:
@@ -4386,6 +4428,9 @@ class Checker:
                 for b_ in (ex0.lo, ex0.hi):
                     if b_.__class__ is IntLit and 0 < b_.v < len(bs) and (bs[b_.v] & 0xC0) == 0x80:
                         self.err(getattr(b_, "line", 0) or self.cur_line, f"the cut at byte {b_.v} falls inside a multi-byte character of `{f.name}`")
+            if v is not None and ct is not None and self.base(ct).__class__ is tuple and self.base(ct)[0] == "app" and self.base(ct)[1] in ("List", "Array") \
+                    and ex0.__class__ is IntLit and ex0.v < 0:
+                self.err(getattr(ex0, "line", 0) or self.cur_line, f"index {ex0.v} is before the start of `{f.name}`: the first index is 0")
             if v is not None and v.size is not None and ex0.__class__ is IntLit and ex0.v >= v.size:
                 self.err(getattr(ex0, "line", 0) or self.cur_line, f"index {ex0.v} is past the end of `{f.name}`, which has {v.size} element{'' if v.size == 1 else 's'} (the last index is {v.size - 1})")
         elif f.__class__ is Field and f.name not in self.fns and f.name not in self.load_sigs() and self.pure_path(f):
