@@ -3902,3 +3902,28 @@ Output: `200 hello, mixer`, then `200 you said: hello`, then `404 nothing at /no
 
 **Mistakes:** expecting TLS or chunked bodies (neither is there), sending binary data as the body, forgetting the `net.connect` or `net.listen` permission, and calling the client on the browser platform, which has no network.
 
+**Chapter 28: JSON and data from outside (the `json` package)**
+
+Data from outside (a config file, a web response) has a shape you don't know until it arrives. moxie does not look inside your types at run time (there is no reflection), so the `json` package gives you an ordinary closed type for that data: `Dyn`, an enum with the cases `DNull`, `DBool`, `DInt`, `DFloat`, `DText`, `DList` and `DMap`. `json.parse(text)` reads JSON into one, and `to_json()` writes it back. Because `Dyn` is plain data, there is nothing magic about it: you can `when` on it like any enum.
+
+Reading from a `Dyn` is a lookup that returns a `Result`: `field(key)` for a map, `at(i)` for a list, and `as_text()`, `as_int()`, `as_float()`, `as_bool()` and `as_list()` to take the value out (`as_float` also accepts an `Int`). A missing key, an index out of range, and a value of the wrong kind are all an `Err`, never an abort, so a malformed document can't stop your program.
+
+```
+import json
+
+text = "{\"name\": \"Al\", \"scores\": [90, 85.5], \"admin\": false}"
+doc = json.parse(text)?
+name = doc.field("name").flat_map((d) -> d.as_text())?
+first = doc.field("scores").flat_map((d) -> d.at(0)).flat_map((d) -> d.as_int())?
+println("$name $first")
+println(doc.field("email"))
+println(doc.field("name").flat_map((d) -> d.as_int()))
+println(doc.to_json())
+println(json.parse("[1, 2"))
+```
+
+Output: `Al 90`, then `Err(Error(code: 4, message: "no key \"email\""))`, then `Err(Error(code: 1, message: "not an Int"))`, then `{"name":"Al","scores":[90,85.5],"admin":false}`, then `Err(Error(code: 1, message: "unterminated list at character 5"))`. Each `flat_map` step passes an `Err` along unchanged, so a chain of lookups fails at the first step that can't be done, and the `?` at the end hands that `Err` to the caller. A map is kept as a list of entries in the order they were written, so `to_json()` prints them in that order. It is a list and not a `Dict` because a `Dict` has a fixed capacity and a document's size isn't known in advance.
+
+`Dyn` is for data whose shape you don't control. It does not convert to and from your own types by itself yet: you read the fields you need and build your own tuple from them. It also does not call methods by name, since any method you could call is already in your own types and interfaces.
+
+**Mistakes:** treating a number with a `.` or an exponent as an `Int` (it is a `DFloat`, so use `as_float`), expecting `\u` escapes in strings (not supported yet), and expecting a map's keys to come out sorted.

@@ -1,0 +1,241 @@
+//! json: data from outside as an ordinary closed type, with no run-time reflection.
+//!
+//! `Dyn` is a plain enum: null, bool, int, float, text, list, and a map kept as a list of `Entry` in the order written.
+//! `parse(text)` reads JSON into it, and `to_json()` writes it back. Reading from a `Dyn` is a lookup that gives a `Result`
+//! (`d.field("name")`, `d.at(0)`, `d.as_int()`), so a missing key or a value of the wrong kind is an `Err`, never an abort.
+//! A map is a list of entries, not a `Dict`, because a `Dict` has a fixed capacity and a document's size is not known.
+
+export tuple Entry deriving eq, show
+  key String
+  value Dyn
+
+export enum Dyn deriving eq, show
+  DNull
+  DBool(b Bool)
+  DInt(i Int)
+  DFloat(x Float)
+  DText(s String)
+  DList(items List[Dyn])
+  DMap(fields List[Entry])
+
+impl Dyn
+  fn field(self, key String) Result[Dyn, Error]
+    when self
+      DMap(es) ->
+        when es |> to_stream() |> filter((e) -> e.key == key) |> first()
+          Ok(e) -> Ok(e.value)
+          Err(_) -> Err(Error(code: 4, message: "no key \"$key\""))
+      _ -> Err(Error(code: 1, message: "not a map"))
+  fn at(self, i Int) Result[Dyn, Error]
+    when self
+      DList(xs) -> if i >= 0 and i < len(xs) then Ok(xs(i)) else Err(Error(code: 4, message: "no such element"))
+      _ -> Err(Error(code: 1, message: "not a list"))
+  fn as_bool(self) Result[Bool, Error]
+    when self
+      DBool(b) -> Ok(b)
+      _ -> Err(Error(code: 1, message: "not a Bool"))
+  fn as_int(self) Result[Int, Error]
+    when self
+      DInt(i) -> Ok(i)
+      _ -> Err(Error(code: 1, message: "not an Int"))
+  fn as_float(self) Result[Float, Error]
+    when self
+      DFloat(x) -> Ok(x)
+      DInt(i) -> Ok(cast[Float](i))
+      _ -> Err(Error(code: 1, message: "not a number"))
+  fn as_text(self) Result[String, Error]
+    when self
+      DText(s) -> Ok(s)
+      _ -> Err(Error(code: 1, message: "not a String"))
+  fn as_list(self) Result[List[Dyn], Error]
+    when self
+      DList(xs) -> Ok(xs)
+      _ -> Err(Error(code: 1, message: "not a list"))
+  fn is_null(self) Bool
+    when self
+      DNull -> true
+      _ -> false
+
+fn json_quote(s String) String
+  body = s |> chars() |> map((c) -> json_char(c)) |> join("")
+  "\"$body\""
+
+fn json_char(c Char) String
+  when c
+    '"' -> "\\\""
+    '\\' -> "\\\\"
+    '\n' -> "\\n"
+    '\t' -> "\\t"
+    '\r' -> "\\r"
+    _ -> "$c"
+
+impl Dyn
+  fn to_json(self) String
+    when self
+      DNull -> "null"
+      DBool(b) -> "$b"
+      DInt(i) -> "$i"
+      DFloat(x) -> "$x"
+      DText(s) -> json_quote(s)
+      DList(xs) -> "[" + xs.map((d) -> d.to_json()).join(",") + "]"
+      DMap(es) -> "{" + es.map((e) -> json_quote(e.key) + ":" + e.value.to_json()).join(",") + "}"
+
+
+tuple Pr
+  v Dyn
+  i Int
+
+tuple Ps
+  i Int
+  esc Bool
+  acc List[String]
+  stop Bool
+
+fn jerr(msg String, i Int) Error
+  Error(code: 1, message: "$msg at character $i")
+
+fn skip_ws(cs List[Char], i Int) Int
+  for k in i..len(cs)
+    c = cs(k)
+    if not (c == ' ' or c == '\n' or c == '\t' or c == '\r')
+      break(k)
+  else
+    len(cs)
+
+fn lit_at(cs List[Char], i Int, word String) Bool
+  w = word |> chars() |> collect()
+  if i + len(w) > len(cs)
+    return false
+  for k in 0..len(w)
+    if cs(i + k) ~= w(k)
+      break(false)
+  else
+    true
+
+fn unescape(c Char) String
+  when c
+    'n' -> "\n"
+    't' -> "\t"
+    'r' -> "\r"
+    'b' -> "\u{8}"
+    'f' -> "\u{c}"
+    _ -> "$c"
+
+fn str_step(cs List[Char], st Ps) Ps
+  c = cs(st.i)
+  if st.esc
+    Ps(i: st.i + 1, esc: false, acc: st.acc + List(unescape(c)), stop: false)
+  elif c == '\\'
+    Ps(i: st.i + 1, esc: true, acc: st.acc, stop: false)
+  elif c == '"'
+    Ps(i: st.i + 1, esc: false, acc: st.acc, stop: true)
+  else
+    Ps(i: st.i + 1, esc: false, acc: st.acc + List("$c"), stop: false)
+
+fn read_string(cs List[Char], i Int) Result[(String, Int), Error]
+  st0 = Ps(i: i, esc: false, acc: List(), stop: false)
+  st = while not st0.stop and st0.i < len(cs)
+    st0 = str_step(cs, st0)
+  else
+    st0
+  if not st.stop
+    return Err(jerr("unterminated string", i))
+  Ok((st.acc.join(""), st.i))
+
+fn is_num_char(c Char) Bool
+  c >= '0' and c <= '9' or c == '-' or c == '+' or c == '.' or c == 'e' or c == 'E'
+
+fn read_number(cs List[Char], i Int) Result[Pr, Error]
+  j = for k in i..len(cs)
+    if not is_num_char(cs(k))
+      break(k)
+  else
+    len(cs)
+  text = cs |> to_stream() |> drop(i) |> take(j - i) |> map((c) -> "$c") |> join("")
+  if text.contains(".") or text.contains("e") or text.contains("E")
+    when read[Float](text)
+      Ok(x) -> Ok(Pr(v: Dyn.DFloat(x), i: j))
+      Err(_) -> Err(jerr("bad number", i))
+  else
+    when read[Int](text)
+      Ok(n) -> Ok(Pr(v: Dyn.DInt(n), i: j))
+      Err(_) -> Err(jerr("bad number", i))
+
+fn read_value(cs List[Char], i0 Int) Result[Pr, Error]
+  i = skip_ws(cs, i0)
+  if i >= len(cs)
+    return Err(jerr("unexpected end of text", i))
+  c = cs(i)
+  if c == '{'
+    read_object(cs, i + 1)
+  elif c == '['
+    read_array(cs, i + 1)
+  elif c == '"'
+    (s, j) = read_string(cs, i + 1)?
+    Ok(Pr(v: Dyn.DText(s), i: j))
+  elif lit_at(cs, i, "true")
+    Ok(Pr(v: Dyn.DBool(true), i: i + 4))
+  elif lit_at(cs, i, "false")
+    Ok(Pr(v: Dyn.DBool(false), i: i + 5))
+  elif lit_at(cs, i, "null")
+    Ok(Pr(v: Dyn.DNull, i: i + 4))
+  elif is_num_char(c)
+    read_number(cs, i)
+  else
+    Err(jerr("unexpected `$c`", i))
+
+fn read_array(cs List[Char], i0 Int) Result[Pr, Error]
+  i = skip_ws(cs, i0)
+  if i < len(cs) and cs(i) == ']'
+    return Ok(Pr(v: Dyn.DList(List()), i: i + 1))
+  array_rest(cs, i, List())
+
+fn array_rest(cs List[Char], j Int, items List[Dyn]) Result[Pr, Error]
+  p = read_value(cs, j)?
+  all = items + List(p.v)
+  k = skip_ws(cs, p.i)
+  if k >= len(cs)
+    return Err(jerr("unterminated list", k))
+  if cs(k) == ']'
+    return Ok(Pr(v: Dyn.DList(all), i: k + 1))
+  if cs(k) ~= ','
+    return Err(jerr("expected `,` or `]`", k))
+  array_rest(cs, k + 1, all)
+
+fn read_object(cs List[Char], i0 Int) Result[Pr, Error]
+  i = skip_ws(cs, i0)
+  if i < len(cs) and cs(i) == '}'
+    return Ok(Pr(v: Dyn.DMap(List()), i: i + 1))
+  object_rest(cs, i, List())
+
+fn object_rest(cs List[Char], j Int, es List[Entry]) Result[Pr, Error]
+  a = skip_ws(cs, j)
+  if a >= len(cs) or cs(a) ~= '"'
+    return Err(jerr("expected a string key", a))
+  (key, b) = read_string(cs, a + 1)?
+  c = skip_ws(cs, b)
+  if c >= len(cs) or cs(c) ~= ':'
+    return Err(jerr("expected `:`", c))
+  p = read_value(cs, c + 1)?
+  all = es + List(Entry(key: key, value: p.v))
+  k = skip_ws(cs, p.i)
+  if k >= len(cs)
+    return Err(jerr("unterminated map", k))
+  if cs(k) == '}'
+    return Ok(Pr(v: Dyn.DMap(all), i: k + 1))
+  if cs(k) ~= ','
+    return Err(jerr("expected `,` or `}`", k))
+  object_rest(cs, k + 1, all)
+
+/// Read JSON text into a `Dyn`.
+///
+/// > parse("[1, true]")
+/// Ok(DList(List(DInt(1), DBool(true))))
+export fn parse(text String) Result[Dyn, Error]
+  cs = text |> chars() |> collect()
+  p = read_value(cs, 0)?
+  k = skip_ws(cs, p.i)
+  if k < len(cs)
+    return Err(jerr("extra text after the value", k))
+  Ok(p.v)
+

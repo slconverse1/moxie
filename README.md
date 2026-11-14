@@ -22,6 +22,8 @@ Newest first.
 
 **2026-11-13: Bare tuples.** A function can end with `a, b` (or `return a, b`) instead of `(a, b)`, matching `lo, hi = f()`.
 
+**2026-11-13: `json` package and `Dyn`.** `import json` gives a closed `Dyn` enum with `json.parse(text)`, `d.field(key)`, `d.at(i)`, `as_int()` and friends (all `Result`), and `to_json()`. It is written in moxie, uses no reflection, and works in both dialects. Conversion to and from your own types (`deriving dyn`) and the `dynamic fn` marker are not built yet (FIXLIST).
+
 **2026-11-13: Chained comparisons.** `0 <= x <= 100` means `0 <= x and x <= 100`. Any run of `<`, `<=`, `>`, `>=` chains; a middle operand is evaluated once and the chain stops at the first false link. `==` and `~=` do not chain.
 
 **2026-11-13: Loop `else` is checked.** The Spec already said a `for` or `while` that uses `break(value)` needs an `else` of its own, but the checker accepted a loop without one (including one whose `else` was indented so it belonged to the `if`). It is now an error. The Guide points out that a loop's `else` lines up with the loop.

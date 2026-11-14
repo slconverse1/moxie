@@ -368,6 +368,8 @@ Moxie is a general language, but four kinds of application come with the languag
 
 **HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the Mixer's Guide, Chapter 27. Sockets and their permissions are in superpower 22.
 
+**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the Mixer's Guide, Chapter 28.
+
 ## 4. Everything is an expression
 
 The core benefit of an "everything is an expression" language is that code is built from expressions, and every expression returns a value.
