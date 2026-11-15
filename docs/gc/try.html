@@ -66,10 +66,12 @@ async function loadSample(f) {
 }
 sel.onchange = () => loadSample(sel.value);
 
-function show(text, err) {
+function show(text, err, warningsFirst) {
   out.textContent = '';
+  const add = () => { if (err) { const s = document.createElement('span'); s.className = 'err'; s.textContent = err + (warningsFirst && text ? '\n' : ''); if (!warningsFirst && text) s.textContent = '\n' + s.textContent; out.append(s); } };
+  if (warningsFirst) add();
   if (text) out.append(document.createTextNode(text));
-  if (err) { const s = document.createElement('span'); s.className = 'err'; s.textContent = (text ? '\n' : '') + err; out.append(s); }
+  if (!warningsFirst) add();
 }
 function setBusy(busy) {
   running = busy;
@@ -91,7 +93,7 @@ function startWorker() {
     else if (m.type === 'done') {
       let o = m.out;
       if (running && !m.err && !o && lastMode === 'check') o = 'No problems found.';
-      show(o, m.err);
+      show(o, m.err, m.code === 0);   // a run that finished: its warnings come first, then what it printed
       status.textContent = '';
       setBusy(false);
     }

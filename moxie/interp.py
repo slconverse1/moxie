@@ -20,6 +20,9 @@ def declared_names(stmts):
     return {x.name for x in stmts if x.__class__.__name__ in ("TupleDecl", "EnumDecl", "AliasDecl", "IfaceDecl")}
 
 
+WARN_QUIET = [False]            # `--quiet` and `--release`: `run` does not print the compiler's warnings
+
+
 class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def __init__(self, out=None, err=None, search_dir=None, test_mode=False, inp=None):
         self.inp = inp if inp is not None else sys.stdin
@@ -141,7 +144,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             diags = self.static_check(prog)
             errs = [d for d in diags if d.kind == "error"]
             for d in diags:
-                if d.kind == "warning" and getattr(d, "unverified", False):         # a spot whose types are checked at run time
+                if d.kind == "warning" and (getattr(d, "unverified", False) or not WARN_QUIET[0]):   # warnings print before the program runs
                     self.err.write(f"{file}:{d.line}: warning: {d.msg}\n")
             if errs:
                 for d in errs:

@@ -2,7 +2,7 @@
 import os
 import sys
 
-USAGE = """usage: moxie [--gc] [--release] [--pools] run [FILE] [args...]   run a program (--gc: moxie/gc rules; --release: contracts off)
+USAGE = """usage: moxie [--gc] [--release] [--quiet] [--pools] run [FILE] [args...]   run a program (--gc: moxie/gc rules; --release: contracts off; --quiet: no warnings)
                                     with no FILE: the entry in Moxie.toml, else main.mxi (check, test, pools, and doc work the same way)
        moxie [--allow-read[=PATHS]] [--allow-write[=PATHS]] [--allow-connect[=HOST:PORT]] [--allow-listen[=PORTS]]
              [--allow-ffi[=LIBS]] [--allow-run[=PROGRAMS]] [--allow-stdin] [--allow-env] [--allow-all] [--deny-all] run FILE
@@ -87,6 +87,12 @@ def main(argv=None):
         from .values import CONTRACTS
         CONTRACTS[0] = False
         argv = [a for a in argv if a != "--release"]
+        from .interp import WARN_QUIET
+        WARN_QUIET[0] = True
+    if "--quiet" in argv:
+        from .interp import WARN_QUIET
+        WARN_QUIET[0] = True
+        argv = [a for a in argv if a != "--quiet"]
     fa_seed = fa_cases = None
     for opt in ("--seed", "--cases"):
         if opt in argv:

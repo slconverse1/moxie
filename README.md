@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-15: `moxie run` prints warnings.** The compiler's warnings (a shadowed name, a dropped `Result`, and the rest) used to appear only under `moxie check`. `run` now prints them on stderr before the program starts, in the same `file:line: warning:` form, and they never change the exit code. `--quiet` and `--release` leave them out. The Try page shows them above the program's output.
+
 **2026-11-15: no more `total = total + x` that quietly does nothing.** In an inner block (a `for` body, an `if`, a `when` arm), a line that defines a name and also reads the same name from outside (`total += x`, `total = total + x`) is now a compile error, since the new `total` would vanish at the end of the block and the outer one would never change. The message says to write `total@1 += x`, or fold with `reduce`. A plain shadowing line like `x = 5` still only warns. Loops may still carry state on purpose: a name their `while` condition reads, one their `break(value)` or `else` hands out, and the state of a `daemon`. A name carried only for the condition and then read after the loop is an error too. Tests in `tests/run_shadow.py` and `tests/run_gimme.py`.
 
 **2026-11-15: `name@N` replaces `gimme.N.name`.** `total@1` is the nearest enclosing block's `total`, to read or to write (`total@1 += x`), and `n@2` is the next one out. The old spelling is now an error that shows the new one, `gimme` is no longer a soft keyword (30 left), and the Spec, Guide and tests use the new form. At the start of a statement, `name@<number>` is this reference, not an as-pattern with a number; `p@Product(...)` is unchanged. Tests in `tests/run_gimme.py`.
