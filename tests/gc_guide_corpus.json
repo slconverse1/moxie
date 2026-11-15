@@ -175,7 +175,7 @@ null
 ],
 [
 312,
-"total = 0\ncount = 0\naverage = for score in List(70, 85, 90)\n  total, count\n  total += score\n  count += 1\n  if count == 3 then break(total / count)\nelse\n  0\nprintln(\"$average $total $count\")\n",
+"total = 0\ncount = 0\naverage = for score in List(70, 85, 90)\n  in total, count\n  total += score\n  count += 1\n  if count == 3 then break(total / count)\nelse\n  0\nprintln(\"$average $total $count\")\n",
 [
 "81 0 0"
 ]

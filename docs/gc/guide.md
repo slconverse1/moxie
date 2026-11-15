@@ -306,13 +306,13 @@ println(total)
 
 Output: `15 101`, `25 103`, `15 104`, `25 106`, then `106`. Each pass of the outer loop makes its own local `total` (5), `total@1` adds 10 to that one, and `total@outer` adds `j` to the `total` that existed before the loop began. The label has to belong to a loop or `do` around the line, so `total@nope` is an error, and it has to start with a lowercase letter: `p@Product(...)` is still an as-pattern.
 
-**A declaration line: start a loop's locals from the outer ones.** When a block wants its own copy of an outer name, list the names on its first line:
+**The `in` line: start a block's locals from the outer ones.** When a block wants its own copy of an outer name, bring it in on the block's first line:
 
 ```
 total = 0
 count = 0
 average = for score in List(70, 85, 90)
-  total, count
+  in total, count
   total += score
   count += 1
   if count == 3 then break(total / count)
@@ -321,7 +321,7 @@ else
 println("$average $total $count")
 ```
 
-Output: `81 0 0`. The first line `total, count` makes a local `total` and a local `count` that start as the outer values (here `0`); after it, `total += score` is an ordinary update of the local, so no `@1` is needed. In a loop the copy happens once, on the first pass, and later passes carry the values forward like any loop state. The locals end with the block, so the outer `total` and `count` still hold `0`; the answer leaves through `break(...)` or `else`, or you write `total@1 = total` to hand a value back. Each item may name its source: `total@2` copies the second layer out, and `total@serve` copies the `total` outside the loop labeled `#serve`. **Mistakes:** a name with no outer binding to copy, a name listed twice, and putting the line anywhere but first (elsewhere it is just a value).
+Output: `81 0 0`. The first line `in total, count` makes a local `total` and a local `count` that start as the outer values (here `0`); after it, `total += score` is an ordinary update of the local, so no `@1` is needed. In a loop the copy happens once, on the first pass, and later passes carry the values forward like any loop state. The locals end with the block, so the outer `total` and `count` still hold `0`; the answer leaves through `break(...)` or `else`, or you write `total@1 = total` to hand a value back. Each item may name its source: `in total@2` copies the second layer out, and `in total@serve` copies the `total` outside the loop labeled `#serve`. The `in` line is a declaration with no value, so it must be the first line of its block. **Mistakes:** a name with no outer binding to copy, a name listed twice, and an `in` line anywhere but first.
 
 **Module scope and function scope.** A name bound at the top of a file lives in *module scope*: it is created once, when the program starts, and stays for the whole run, so every function in the file can read it. A name bound inside a function, including its parameters and loop variables, lives in *function scope*: it exists in that call's frame and is gone when the call returns, and each call gets its own. A function is a boundary for `name@N`, so it can read a module-level name by writing the name, but it cannot rebind one, which is why there is no `global`. Inside a function, `name@N` counts only that function's own blocks:
 

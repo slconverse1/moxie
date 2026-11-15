@@ -33,7 +33,9 @@ class Parser(ExprParser):
                 break
             if t.kind == "INDENT":
                 self.err("unexpected indent")
-            if not out and not top:
+            if t.kind == "NAME" and t.val == "in":
+                if out or top:
+                    self.err("an `in` line (local copies of outer names) belongs on the first line of a block", t)
                 cd = self.try_carry_decl()
                 if cd is not None:
                     out.append(cd)
@@ -50,39 +52,33 @@ class Parser(ExprParser):
         return group_fns(out)
 
     def try_carry_decl(self):
-        """The first line of a block, `total, count@1, x@lap`: names only, with more lines after it, so each starts as a copy of an outer binding."""
-        k, items = 0, []
+        """The first line of a block, `in total, count@1, x@lap`: each name starts as a copy of an outer binding."""
+        t0 = self.peek()
+        if not (t0.kind in ("NAME", "KW", "OP") and t0.val == "in"):
+            return None
+        self.next()
+        items = []
         while True:
-            t = self.peek(k)
+            t = self.peek()
             if t.kind != "NAME" or t.val in HARD or not (t.val[:1].islower() or t.val[:1] == "_"):
-                return None
+                self.err("`in` is followed by the outer names to start from: `in total, count`", t)
+            self.next()
             name, n = t.val, None
-            k += 1
-            a = self.peek(k)
+            a = self.peek()
             if a.kind == "OP" and a.val == "@" and not a.sp:
-                b = self.peek(k + 1)
+                b = self.peek(1)
                 if b.sp or not ((b.kind == "INT" and isinstance(b.val, int)) or (b.kind == "NAME" and b.val[:1].islower())):
-                    return None
-                n = b.val
-                k += 2
+                    self.err("`@` in an `in` line is followed by a layer number or a loop label: `in total@2`, `in total@serve`", b)
+                self.next()
+                n = self.next().val
             if any(i.name == name for i in items):
-                self.err(f"`{name}` is listed twice on the first line of the block")
+                self.err(f"`{name}` is listed twice on the `in` line")
             items.append(Gimme(n, name, line=t.line))
-            a = self.peek(k)
-            if a.kind == "OP" and a.val == ",":
-                k += 1
+            if self.at_op(","):
+                self.next()
                 continue
             break
-        if self.peek(k).kind != "NL":
-            return None
-        j = k
-        while self.peek(j).kind == "NL":
-            j += 1
-        if self.peek(j).kind in ("DEDENT", "EOF", "INDENT"):
-            return None                                  # a name that opens an indented block (`scope`, `do`) is not a declaration
-        line = self.peek().line
-        for _ in range(k):
-            self.next()
+        line = t0.line
         self.end_line()
         return Carry(items, line=line)
 

@@ -20,7 +20,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
-**2026-11-15: the declaration line.** The first line of a block can be just names, `total, count`: each becomes a local that starts as the outer value, so `total += x` in a loop body no longer needs `@1` and no longer trips the shadowing error. `total@2` and `total@serve` pick a layer or a labeled loop. In a loop the copy happens once; later passes carry the value. The local ends with the block: leave with `break(total)` or `else total`, or write `total@1 = ...`.
+**2026-11-15: the `in` line.** The first line of a block can be `in total, count`: each becomes a local that starts as the outer value, so `total += x` in a loop body no longer needs `@1` and no longer trips the shadowing error. `in total@2` and `in total@serve` pick a layer or a labeled loop. In a loop the copy happens once; later passes carry the value. The local ends with the block: leave with `break(total)` or `else total`, or write `total@1 = ...`.
 
 **2026-11-15: `name@label`.** A label names the scope that `name@N` would count: `total@serve += x` inside `#serve for ...` writes the `total` bound outside that loop, however many blocks lie between. Works for any labeled loop or `do`; an unknown label is an error. A label starts with a lowercase letter, so `p@Product(...)` stays an as-pattern.
 
