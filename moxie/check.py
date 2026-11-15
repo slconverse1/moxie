@@ -3496,7 +3496,8 @@ class Checker(RefineMixin):
                     full = line
                 elif p.__class__ is PLit and p.expr.__class__ in (StrLit, IntLit, CharLit, BoolLit) and not getattr(p.expr, "parts", None) \
                         or p.__class__ is PLit and p.expr.__class__ is StrLit:
-                    key = (p.expr.__class__.__name__, getattr(p.expr, "v", None) if hasattr(p.expr, "v") else repr(getattr(p.expr, "parts", None)))
+                    key = (p.expr.__class__.__name__, getattr(p.expr, "v", None) if hasattr(p.expr, "v")
+                           else getattr(p.expr, "b", None) if hasattr(p.expr, "b") else repr(getattr(p.expr, "parts", None)))
                     if key in seen:
                         self.diags.append(Diag(line, f"this pattern repeats the one at line {seen[key]}, so it can never match", "warning"))
                     seen.setdefault(key, line)
