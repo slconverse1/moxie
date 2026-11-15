@@ -1281,13 +1281,13 @@ tuple Robot
 impl Speaker[String] for Dog
   fn speak() String
     "Woof! My name is ${name}"
-  fn update(new_name String) Dog
-    Self(..., name: new_name)
+  fn update(new_value String) Dog
+    Self(..., name: new_value)
 impl Speaker[Int] for Robot
   fn speak() String
     "Beep Boep! Serial count is ${serial}"
-  fn update(new_serial Int) Robot
-    Self(..., serial: new_serial)
+  fn update(new_value Int) Robot
+    Self(..., serial: new_value)
 fn make_them_speak(item Speaker) Unit
   println(item.speak())
 fn update_speaker[T, S Speaker[T]](item S, new_value T) S

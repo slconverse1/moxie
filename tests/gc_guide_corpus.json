@@ -711,7 +711,7 @@ null
 ],
 [
 1274,
-"interface Speaker[T]\n  fn speak() String,\n  fn update(new_value T) Self\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Speaker[String] for Dog\n  fn speak() String\n    \"Woof! My name is ${name}\"\n  fn update(new_name String) Dog\n    Self(..., name: new_name)\nimpl Speaker[Int] for Robot\n  fn speak() String\n    \"Beep Boep! Serial count is ${serial}\"\n  fn update(new_serial Int) Robot\n    Self(..., serial: new_serial)\nfn make_them_speak(item Speaker) Unit\n  println(item.speak())\nfn update_speaker[T, S Speaker[T]](item S, new_value T) S\n  item.update(new_value)\nmy_dog = Dog(name: \"Rover\")\nmy_robot = Robot(serial: 101)\nmake_them_speak(my_dog)\nmake_them_speak(my_robot)\ns1 = update_speaker(my_dog, \"Max\")\ns2 = update_speaker(my_robot, 500)\nmake_them_speak(s1)\nmake_them_speak(s2)\n",
+"interface Speaker[T]\n  fn speak() String,\n  fn update(new_value T) Self\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Speaker[String] for Dog\n  fn speak() String\n    \"Woof! My name is ${name}\"\n  fn update(new_value String) Dog\n    Self(..., name: new_value)\nimpl Speaker[Int] for Robot\n  fn speak() String\n    \"Beep Boep! Serial count is ${serial}\"\n  fn update(new_value Int) Robot\n    Self(..., serial: new_value)\nfn make_them_speak(item Speaker) Unit\n  println(item.speak())\nfn update_speaker[T, S Speaker[T]](item S, new_value T) S\n  item.update(new_value)\nmy_dog = Dog(name: \"Rover\")\nmy_robot = Robot(serial: 101)\nmake_them_speak(my_dog)\nmake_them_speak(my_robot)\ns1 = update_speaker(my_dog, \"Max\")\ns2 = update_speaker(my_robot, 500)\nmake_them_speak(s1)\nmake_them_speak(s2)\n",
 [
 "Woof! My name is Rover",
 "Beep Boep! Serial count is 101",
