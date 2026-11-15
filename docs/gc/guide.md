@@ -5,7 +5,7 @@ title: "moxie/gc Mixer's Guide"
 ---
 # MOXIE/GC MIXER'S GUIDE
 
-These are compact examples, not a tutorial; a longer teaching Guide comes later. This is the Guide for moxie/gc, the garbage-collected dialect of moxie; no-GC moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from no-GC moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements no-GC moxie, so their outputs were worked out by hand. Every output was checked by running the example on the reference interpreter. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
+These are compact examples, not a tutorial: for one program built step by step, see the [Tutorial](tutorial.html). This is the Guide for moxie/gc, the garbage-collected dialect of moxie; no-GC moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from no-GC moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements no-GC moxie, so their outputs were worked out by hand. Every output was checked by running the example on the reference interpreter. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Indentation is shown with blank braille characters (two per level) so it survives copying.
 
 **Chapter 1: Bindings, blocks, `if`, loops**
 
@@ -298,16 +298,17 @@ rate = 3
 fn price(n Int) Int
   n * rate
 fn tally(scores List[Int]) Int
-  total = 0
+  total = 0                      // the function's total
   for s in scores
-    total = s * 2
-    total@1 += total
+    total = s * 2                // a new total, only for this pass
+    println("this pass: $total")
+    total@1 += total             // add it into the function's total
   total
 println(price(5))
 println(tally(List(1, 2, 3)))
 ```
 
-Output: `15`, then `12`. `price` reads the module-level `rate` with no ceremony. In `tally`, each pass of the loop makes its own local `total` (twice the score), and `total@1` adds it into the function's `total`, which the function returns: `2 + 4 + 6`. **Mistakes:** `rate@1 = 4` inside `price` (a function can't rebind a module-level name; the error says no enclosing block binds it), and expecting a loop variable or a local to still exist after its function returns.
+Output: `15`, `this pass: 2`, `this pass: 4`, `this pass: 6`, then `12`. `price` reads the module-level `rate` with no ceremony. `tally` has two `total`s: the function's own, and a new one that each pass of the loop makes (twice the score, as the printout shows). `total@1` adds the pass's value into the function's `total`, which the function returns: `2 + 4 + 6`. Without the `@1`, the last line would add to the pass's own `total`, and the function would return `0`. **Mistakes:** `rate@1 = 4` inside `price` (a function can't rebind a module-level name; the error says no enclosing block binds it), and expecting a loop variable or a local to still exist after its function returns.
 
 **1d. Comments**
 
