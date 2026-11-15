@@ -362,6 +362,9 @@ class Parser(ExprParser):
         if t.kind == "NAME" and t.val not in HARD or (t.kind == "NAME" and t.val == "self"):
             nt = self.peek(1)
             lower = t.val[:1].islower() or t.val[:1] == "_"
+            if lower and nt.kind == "OP" and nt.val == "@" and not nt.sp and self.peek(2).kind == "INT" and not self.peek(2).sp:
+                e = self.parse_postfix_place()                         # `total@1 = ...`: write the outer binding
+                return PPlace(e, line=t.line)
             if lower and ((nt.kind == "OP" and nt.val == "." ) or (nt.kind == "OP" and nt.val == "(" and not nt.sp)):
                 e = self.parse_postfix_place()
                 return PPlace(e, line=t.line)

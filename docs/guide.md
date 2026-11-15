@@ -169,7 +169,7 @@ found = #search do
   -1
 ```
 
-With `xs` as above, `found` is `15`. `break(outer)` is always a variable, and `break #outer` is always a label. A loop carries its bindings forward like a tail call, so a rebinding inside the body is seen by the next iteration but does not leave the loop (use `break(value)`, `else` (which sees the carried name, so `while j < n` with `j = j + 1` and `else j` returns the final `j`), a stream terminal such as `reduce`, or `gimme.1.name` to write the outer name). A name that is in scope when the loop begins, a parameter or a local, keeps its type: rebinding `n` as a String in the body when it was an Int is an error. **Mistakes:** `break outer` without the `#`, a label used across a function or lambda boundary, `break(value)` with no `else`, and an `else` indented under the loop body, where it becomes the `if`'s `else` and the loop has none.
+With `xs` as above, `found` is `15`. `break(outer)` is always a variable, and `break #outer` is always a label. A loop carries its bindings forward like a tail call, so a rebinding inside the body is seen by the next iteration but does not leave the loop (use `break(value)`, `else` (which sees the carried name, so `while j < n` with `j = j + 1` and `else j` returns the final `j`), a stream terminal such as `reduce`, or `name@1` to write the outer name). A name that is in scope when the loop begins, a parameter or a local, keeps its type: rebinding `n` as a String in the body when it was an Int is an error. **Mistakes:** `break outer` without the `#`, a label used across a function or lambda boundary, `break(value)` with no `else`, and an `else` indented under the loop body, where it becomes the `if`'s `else` and the loop has none.
 
 To skip the rest of the current item use `continue`; to skip to the next item of an outer loop use `continue #outer`:
 
@@ -234,9 +234,9 @@ println("end")
 
 Output: `243`, `0`, `1`, `2`, `3`, `ran out`, `end`. The first call breaks with `243`, the second stops because `n` reaches `cap` first, so the `else` gives `0`. A loop that is not used for a value can have an `else` too, and the same rule applies: the plain `for` prints `ran out` after its last element, and the one that breaks skips its `else`.
 
-**1c. `gimme`: reaching outer bindings**
+**1c. `name@N`: reaching outer bindings**
 
-`gimme.N.name` reaches the binding of `name` that is `N` enclosing layers out. It skips the current block's own binding of the name and counts only the enclosing blocks that bind it. Reading:
+`name@N` reaches the binding of `name` that is `N` enclosing layers out, so `total@1` is the nearest outer `total`. It skips the current block's own binding of the name and counts only the enclosing blocks that bind it. Reading:
 
 ```
 n = 1
@@ -244,7 +244,7 @@ if true
   n = 2
   if true
     n = 3
-    println("${n} ${gimme.1.n} ${gimme.2.n}")
+    println("${n} ${n@1} ${n@2}")
 ```
 
 Output: `3 2 1`. Writing updates the outer binding, which is how a nested block changes a name from outside (like Python's `nonlocal`):
@@ -254,30 +254,30 @@ total = 0
 count = 0
 score = 80
 if score > 50
-  gimme.1.total += score
-  gimme.1.count += 1
+  total@1 += score
+  count@1 += 1
 println("$total $count")
 ```
 
-Output: `80 1`. Without `gimme`, `total += score` would create a new `total` that disappears at the end of the block. When the block has its own binding of the name, `gimme` still reaches the outer one:
+Output: `80 1`. Without `@1`, `total += score` would create a new `total` that disappears at the end of the block. When the block has its own binding of the name, `name@1` still reaches the outer one:
 
 ```
 n = 1
 if true
   n = 2
-  gimme.1.n = 10
-  println("${n} ${gimme.1.n}")
+  n@1 = 10
+  println("${n} ${n@1}")
 println("$n")
 ```
 
-Output: `2 10`, then `10`. A loop is a place where plain rebinding does not leave: `total += score` in a loop body makes a new `total` for the next iteration, and the name outside the loop keeps its old value. `gimme` is how a loop body updates a name bound before the loop:
+Output: `2 10`, then `10`. A loop is a place where plain rebinding does not leave: `total += score` in a loop body makes a new `total` for the next iteration, and the name outside the loop keeps its old value. `name@1` is how a loop body updates a name bound before the loop:
 
 ```
 total = 0
 count = 0
 for score in List(70, 85, 90)
-  gimme.1.total += score
-  gimme.1.count += 1
+  total@1 += score
+  count@1 += 1
 println("$total $count")
 ```
 
@@ -288,7 +288,7 @@ total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s) -> acc + s)
 println(total)
 ```
 
-Output: `245`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do` the outer name has the value from whichever path ran; **functions and closures are boundaries** (a closure copies what it captures), but a loop is not one for `gimme`; there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `gimme.1.x = ...` when no enclosing block binds `x`, and `gimme` inside a function or closure for a name bound outside it.
+Output: `245`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do` the outer name has the value from whichever path ran; **functions and closures are boundaries** (a closure copies what it captures), but a loop is not one for `name@N`; there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `x@1 = ...` when no enclosing block binds `x`, and `name@N` inside a function or closure for a name bound outside it.
 
 **1d. Comments**
 
@@ -3515,7 +3515,7 @@ formatted src/parse.mxi
 - **Errors as values.** `?` needs a `Result` operand in a function that returns a `Result` with the same error (or a `From` impl that converts it), so it is an error in a function that returns `Unit` and inside a `daemon` body (use `when` there), and a `Result` is never used as if it were the value inside.
 - **Ownership.** Use after move, `ref` and `move` mismatches, and a resource that outlives what it may.
 - **Sizes and numbers.** Array and MultiArray shapes (a literal with the wrong size or ragged rows), a constant index past the end of an Array or a List whose length the text gives (a `List` bound once, never changed through `ref` or `+=`), a negative constant index, a literal that does not fit a bounded integer, and division by a constant zero. The `sum` or `product` of nothing is the element type's zero or one, which the checker supplies.
-- **Shadowing (a warning).** A name bound or changed with `=` or `+=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, so `total += i` in a loop leaves the outer `total` alone; the warning points to `gimme.1.total`.
+- **Shadowing (a warning).** A name bound or changed with `=` or `+=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, so `total += i` in a loop leaves the outer `total` alone; the warning points to `total@1`.
 - **Effects and permissions.** What a function prints, parks on, or reaches, checked against its declaration and the manifest's grants, through calls and imported packages.
 
 What it leaves alone: anything that depends on a value at run time (a Dict key that is present, an index that is only known when the program runs), a function used as a value is checked by its types but not by its arity, a `break` outside a loop, a shift of a value whose width the text doesn't state (such as the result of arithmetic on narrow integers; a shift of an annotated variable or parameter by a constant is checked), a two-argument `put` on a container whose kind the text doesn't state (a lambda argument with no type, say), a lambda with untyped parameters that is bound to a name and used later as a Dict key or Set element, and a type name of one or two letters or all capitals is taken to be a type parameter. Those are caught when the code runs, with the same message the checker would have given.
@@ -3984,10 +3984,10 @@ Output: `6`.
 - **Update a field:** `p.score += 10` rebuilds the tuple, and `p.update` changes several fields at once (8a). A function that changes its caller's variable takes `ref` (6b).
 - **Swap:** `a, b = b, a`. **Update an element:** `numbers(i) = v` and `numbers(i) += 1` rebind the array, and an update that rebinds a name to an update of itself never copies when the old value is dead afterwards (`moxie build --report` lists the exceptions).
 - **Push to a list:** `list += 4`. **Null:** there is none; use `Result`, `T | ()`, or an enum of your own.
-- **Outer variable from a nested block:** `gimme.1.x += 1` (1c).
+- **Outer variable from a nested block:** `x@1 += 1` (1c).
 - **Pointers and linked structures:** use a recursive enum (chapter 15), a bounded `Dict` of ids, or a fiber that owns the data.
 - **Exceptions:** return a `Result` and use `?` (chapter 18). There is no `try`.
-The compiler teaches as it goes: `list.push(4)` gives "lists are values; write `list += 4`", a nested-block `x += 1` gives the shadow warning plus the `gimme` hint, and `null` gives "moxie has no null".
+The compiler teaches as it goes: `list.push(4)` gives "lists are values; write `list += 4`", a nested-block `x += 1` gives the shadow warning plus the `name@1` hint, and `null` gives "moxie has no null".
 
 
 **Chapter 26: Statistics and prediction (the `stats` package)**

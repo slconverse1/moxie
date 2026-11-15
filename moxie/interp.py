@@ -589,7 +589,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 count += 1
                 if count == n.n:
                     return e
-        raise Abort(f"no enclosing block binds '{n.name}' at gimme.{n.n}", n.line)
+        raise Abort(f"no enclosing block binds '{n.name}' at {n.name}@{n.n}", n.line)
 
     # ------------------------------------------------------------ compound literals
     def ev_TupleE(self, n, env):

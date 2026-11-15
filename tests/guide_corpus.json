@@ -128,21 +128,21 @@ null
 ],
 [
 242,
-"n = 1\nif true\n  n = 2\n  if true\n    n = 3\n    println(\"${n} ${gimme.1.n} ${gimme.2.n}\")\n",
+"n = 1\nif true\n  n = 2\n  if true\n    n = 3\n    println(\"${n} ${n@1} ${n@2}\")\n",
 [
 "3 2 1"
 ]
 ],
 [
 253,
-"total = 0\ncount = 0\nscore = 80\nif score > 50\n  gimme.1.total += score\n  gimme.1.count += 1\nprintln(\"$total $count\")\n",
+"total = 0\ncount = 0\nscore = 80\nif score > 50\n  total@1 += score\n  count@1 += 1\nprintln(\"$total $count\")\n",
 [
 "80 1"
 ]
 ],
 [
 265,
-"n = 1\nif true\n  n = 2\n  gimme.1.n = 10\n  println(\"${n} ${gimme.1.n}\")\nprintln(\"$n\")\n",
+"n = 1\nif true\n  n = 2\n  n@1 = 10\n  println(\"${n} ${n@1}\")\nprintln(\"$n\")\n",
 [
 "2 10",
 "10"
@@ -150,7 +150,7 @@ null
 ],
 [
 276,
-"total = 0\ncount = 0\nfor score in List(70, 85, 90)\n  gimme.1.total += score\n  gimme.1.count += 1\nprintln(\"$total $count\")\n",
+"total = 0\ncount = 0\nfor score in List(70, 85, 90)\n  total@1 += score\n  count@1 += 1\nprintln(\"$total $count\")\n",
 [
 "245 3"
 ]

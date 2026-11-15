@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-15: `name@N` replaces `gimme.N.name`.** `total@1` is the nearest enclosing block's `total`, to read or to write (`total@1 += x`), and `n@2` is the next one out. The old spelling is now an error that shows the new one, `gimme` is no longer a soft keyword (30 left), and the Spec, Guide and tests use the new form. At the start of a statement, `name@<number>` is this reference, not an as-pattern with a number; `p@Product(...)` is unchanged. Tests in `tests/run_gimme.py`.
+
 **2026-11-14: chained casts.** `[A : B : C](x)` casts to `C` first, then `B`, then `A` (`[Char : Int](65)` is `'A'`). Each step can abort, and a constant that does not fit a step is a compile error. Only in the bracket sugar; `cast[...]` takes one type, and a file may not mix `cast[T](x)` with `[T](x)` (a compile error naming the other line). Tests in `tests/run_castsugar.py`.
 
 **2026-11-14: `[T](x)` for `cast[T](x)`.** A type in brackets followed by an argument in parentheses is sugar for `cast`, with the same abort and the same compile error for a constant that cannot fit. The docs keep spelling out `cast`; `try_cast` and `wrap_to` have no short form. Test: `tests/run_castsugar.py`.

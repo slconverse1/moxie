@@ -1763,7 +1763,7 @@ class Checker(RefineMixin):
         return ("fn", pts, ret)
 
     def gimme_var(self, n, sc, write):
-        """`gimme.N.name`: the N-th enclosing block that binds `name`, counting from the current block and skipping its own binding."""
+        """`name@N`: the N-th enclosing block that binds `name`, counting from the current block and skipping its own binding."""
         s_ = sc
         first = True
         count = 0
@@ -1783,7 +1783,7 @@ class Checker(RefineMixin):
         if found is None:
             if n.name in self.globals or n.name in self.consts:
                 return None                             # a module-level name is an outer binding too
-            self.err(n.line, f"`gimme.{n.n}.{n.name}`: no enclosing block binds `{n.name}`" + (" that far out" if count else ""))
+            self.err(n.line, f"`{n.name}@{n.n}`: no enclosing block binds `{n.name}`" + (" that far out" if count else ""))
             return None
         return found
 
@@ -2832,7 +2832,7 @@ class Checker(RefineMixin):
             if nm in s.vars:
                 if d > 0 and not (d == 1 and s.fnb) and not nm.startswith("_"):      # a function's parameters share its body block
                     self.diags.append(Diag(n.line, f"`{nm}` here is a new `{nm}` that hides the outer one until this block ends; "
-                                                   f"write `gimme.1.{nm}` to change the outer one", "warning"))
+                                                   f"write `{nm}@1` to change the outer one", "warning"))
                 return
             if s.fnb:
                 return

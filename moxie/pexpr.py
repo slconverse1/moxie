@@ -344,7 +344,11 @@ class ExprParser(PBase):
             if self.stop_bol and t.bol and t.val not in (".",):
                 break
             v = t.val
-            if v == "(" and not t.sp:
+            if v == "@" and not t.sp and e.__class__ is Name and self.peek(1).kind == "INT" and not self.peek(1).sp \
+                    and isinstance(self.peek(1).val, int):
+                self.next()                                        # `total@1`: the nearest enclosing block's `total` (Spec 2)
+                e = Gimme(self.next().val, e.name, line=t.line)
+            elif v == "(" and not t.sp:
                 e = self.parse_call(e)
             elif v == "[" and not t.sp and self._can_generic(e):
                 groups = []
@@ -792,15 +796,9 @@ class ExprParser(PBase):
                 self.expect_op(":")
                 tk = self.next()
                 return SqlE(args[0].expr, split_sql(tk.val, self), line=line)
-        if v == "gimme" and self.at_op(".", 1):
-            self.next()
-            self.next()
-            n = self.next()
-            if n.kind != "INT":
-                self.err("expected a layer number after 'gimme.'", n)
-            self.expect_op(".")
-            nm = self.next().val
-            return Gimme(n.val, nm, line=line)
+        if v == "gimme" and self.at_op(".", 1) and self.peek(2).kind == "INT":
+            nm = self.peek(4).val if self.peek(4).kind == "NAME" else "name"
+            self.err(f"`gimme.N.name` is now written `name@N`: write `{nm}@{self.peek(2).val}`")
         if v == "_":
             self.next()
             return PH(1, line=line)

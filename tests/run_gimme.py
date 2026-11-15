@@ -1,12 +1,16 @@
-"""gimme in loops and blocks.  Run: python3 tests/run_gimme.py"""
+"""`name@N` (outer bindings) in loops and blocks.  Run: python3 tests/run_gimme.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES = [
- ("gimme updates names bound before a loop", 'total = 0\ncount = 0\nfor score in List(70, 85, 90)\n  gimme.1.total += score\n  gimme.1.count += 1\nprintln("$total $count")\n', 0, "245 3"),
+ ("name@1 updates names bound before a loop", 'total = 0\ncount = 0\nfor score in List(70, 85, 90)\n  total@1 += score\n  count@1 += 1\nprintln("$total $count")\n', 0, "245 3"),
  ("reduce carries the state with no outer write", 'total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s) -> acc + s)\nprintln(total)\n', 0, "245"),
  ("a plain rebinding in a loop does not leave it", 'total = 0\nfor s in List(1, 2, 3)\n  total += s\nprintln(total)\n', 0, "0"),
- ("gimme in a nested if", 'n = 1\nif true\n  n = 2\n  gimme.1.n = 10\n  println("${n} ${gimme.1.n}")\nprintln("$n")\n', 0, "2 10\n10"),
- ("gimme with nothing to reach is an error", 'fn f() Int\n  gimme.1.x = 5\n  1\nprintln(f())\n', 2, "no enclosing block binds"),
+ ("name@N in a nested if", 'n = 1\nif true\n  n = 2\n  n@1 = 10\n  println("${n} ${n@1}")\nprintln("$n")\n', 0, "2 10\n10"),
+ ("name@N with nothing to reach is an error", 'fn f() Int\n  x@1 = 5\n  1\nprintln(f())\n', 2, "no enclosing block binds"),
+ ("a read in an expression", 'n = 5\nif true\n  n = 7\n  println(n@1 + n)\n', 0, "12"),
+ ("the second layer out", 'n = 1\nif true\n  n = 2\n  if true\n    n = 3\n    println("${n} ${n@1} ${n@2}")\n', 0, "3 2 1"),
+ ("the old spelling points to the new one", 'x = 1\nif true\n  x = 2\n  println(gimme.1.x)\n', 2, "x@1"),
+ ("a field name after the number still works", 'tuple P\n  a Int\np = P(a: 4)\nif true\n  p = P(a: 9)\n  println(p@1.a + p.a)\n', 0, "13"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:
