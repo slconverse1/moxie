@@ -826,6 +826,52 @@ class ExprParser(PBase):
         body = self.parse_lambda_body()
         return Lambda(params, body, None, None, ret, line=line)
 
+    SECT_OPS = frozenset(o for o in BINTIER if o not in ("..", "..=", "+%", "-%"))
+
+    def section_op(self, t, nt):
+        """Is token `t` (followed by `nt`) an operator that can name a section?  `(- 4)` with a space is the section, `(-4)` and `(-x)`
+        are negation, and `(/dir)` is a path."""
+        if t.kind == "BTICK":
+            return True
+        if t.kind != "OP" or t.val not in self.SECT_OPS:
+            return False
+        if nt.kind == "OP" and nt.val == ")":
+            return False
+        if t.val == "-":
+            return nt.sp
+        if t.val == "/" and nt.kind == "NAME" and not nt.sp:
+            return False
+        return True
+
+    def sect_body(self, t, left, right):
+        if t.kind == "BTICK":
+            return Tick(left, t.val, right, line=t.line)
+        return Binary(t.val, left, right, line=t.line)
+
+    def left_section_end(self):
+        """At the `(` already consumed: the index of the `)` that closes it when the last thing before it is a binary operator, as in
+        `(10 -)`, else None."""
+        depth, i = 0, 0
+        while True:
+            k = self.peek(i)
+            if k.kind == "EOF":
+                return None
+            if k.kind == "OP" and k.val in ("(", "[", "{"):
+                depth += 1
+            elif k.kind == "OP" and k.val in (")", "]", "}"):
+                if depth == 0:
+                    if k.val != ")" or i == 0:
+                        return None
+                    p = self.peek(i - 1)
+                    pp = self.peek(i - 2) if i >= 2 else None
+                    ok = (p.kind == "BTICK" or (p.kind == "OP" and p.val in self.SECT_OPS)) and i >= 2 \
+                        and not (pp.kind == "OP" and pp.val in ("(", "[", "{", ",", ":", "->", "=")) and pp.kind != "NL"
+                    return i if ok else None
+                depth -= 1
+            elif k.kind == "OP" and k.val in (",", ";") and depth == 0:
+                return None
+            i += 1
+
     def parse_paren(self):
         t = self.next()
         line = t.line
@@ -833,6 +879,30 @@ class ExprParser(PBase):
         self.no_trailing = False
         self.stop_bol = 0
         self.skip_nl()
+        o, nt = self.peek(), self.peek(1)
+        if self.section_op(o, nt):                                           # `(+ 1)`, `(`div` 2)`
+            self.next()
+            right = self._climb((BINTIER.get(o.val) if o.kind == "OP" else T_BT) + 1)
+            self.skip_nl()
+            self.expect_op(")", "to close the section")
+            self.no_trailing, self.stop_bol = save
+            if contains_ph(right):
+                self.err("a section already has its hole: write `(+ 1)`, not `(+ _)`", o)
+            return ph_lambda(self.sect_body(o, PH(1, line=o.line), right), line)
+        end = self.left_section_end()
+        if end is not None:                                                   # `(10 -)`
+            op = self.peek(end - 1)
+            fake = (op.kind, op.val)
+            op.kind, op.val = "OP", ")"
+            left = self.parse_expr()
+            self.skip_nl()
+            self.expect_op(")")
+            op.kind, op.val = fake
+            self.next()
+            self.no_trailing, self.stop_bol = save
+            if contains_ph(left):
+                self.err("a section already has its hole: write `(10 -)`, not `(_ -)`", op)
+            return ph_lambda(self.sect_body(op, left, PH(1, line=op.line)), line)
         if self.eat_op(")"):
             self.no_trailing, self.stop_bol = save
             return UnitLit(line=line)
