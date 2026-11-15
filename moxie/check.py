@@ -2828,13 +2828,21 @@ class Checker(RefineMixin):
         return None
 
     def warn_shadow(self, nm, sc, n):
-        """Binding a name in a deeper block (or `+=` on an outer name there) hides the outer one until the block ends (Spec section 1)."""
+        """Binding a name in a deeper block hides the outer one until the block ends, a warning (Spec section 1).  When the line also
+        reads the outer name (`total = total + x`, `total += x`), it is an error: one name would mean the old value on the right and
+        a new variable on the left."""
         s, d = sc, 0
         while s is not None:
             if nm in s.vars:
                 if d > 0 and not (d == 1 and s.fnb) and not nm.startswith("_"):      # a function's parameters share its body block
-                    self.diags.append(Diag(n.line, f"`{nm}` here is a new `{nm}` that hides the outer one until this block ends; "
-                                                   f"write `{nm}@1` to change the outer one", "warning"))
+                    from .tally import names_in
+                    if n.op != "=" or nm in names_in(n.value):
+                        form = f"{nm} {n.op} ..." if n.op != "=" else f"{nm} = ... {nm} ..."
+                        self.err(n.line, f"`{form}` reads the outer `{nm}` but defines a new `{nm}` that disappears when this block ends, so the outer one never changes: "
+                                         f"write `{nm}@1 {n.op} ...` to change the outer one (or `reduce` to fold a stream)")
+                    else:
+                        self.diags.append(Diag(n.line, f"`{nm}` here is a new `{nm}` that hides the outer one until this block ends; "
+                                                       f"write `{nm}@1` to change the outer one", "warning"))
                 return
             if s.fnb:
                 return
