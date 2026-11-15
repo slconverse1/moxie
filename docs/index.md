@@ -99,11 +99,11 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond` and lock-free state through Atoms and `swap`.
-- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
+- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections (here a placeholder: `_ + 1` and `10 - _`), and QuickCheck-style property tests (`forall`).
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
-- **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`), and backing-field shorthand.
+- **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`), backing-field shorthand, and the idea that a function parameter has a name for the body and a label for the call (in moxie one name does both, and an `impl` has to keep its interface's names).
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 - **C#:** multi-cast delegation.
