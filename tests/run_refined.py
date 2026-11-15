@@ -23,6 +23,15 @@ CASES = [
  ("a fact dies when the name is rebound", GET + 'fn f(xs List[Int], i Int) Int\n  if i >= 0 and i < len(xs)\n    i = 7\n    get(xs, i)\n  else\n    0\n', BAD, "can't prove"),
  ("a fact from a `+=` target is dropped", POS + 'fn f(n Int) Int\n  k = 5\n  k += n\n  half(k - 5)\n', BAD, "can't prove"),
  ("a function value is checked at run time", GET + 'f (List[Int], Int) -> Int = get\nprintln(f(List(1, 2), 5))\n', RUN, "requires failed"),
+ ("a refined alias on a parameter", 'type alias Pos = Int where self > 0\nfn half(n Pos) Int\n  n / 2\nfn f(k Int) Int\n  if k > 0 then half(k) else 0\nprintln(f(9))\n', OK, "4"),
+ ("a refined alias must be proved", 'type alias Pos = Int where self > 0\nfn half(n Pos) Int\n  n / 2\nfn f(k Int) Int\n  half(k)\n', BAD, "can't prove `n > 0`"),
+ ("a refined alias passes on from a parameter", 'type alias Pos = Int where self > 0\nfn half(n Pos) Int\n  n / 2\nfn twice_half(m Pos) Int\n  half(m) * 2\nprintln(twice_half(8))\n', OK, "8"),
+ ("a refined alias with a two-sided condition", 'type alias Pct = Int where self >= 0 and self <= 100\nfn show_pct(p Pct) Int\n  p\nfn f(k Int) Int\n  if k >= 0 and k <= 100 then show_pct(k) else -1\nprintln(f(50))\nprintln(f(500))\n', OK, "-1"),
+ ("a refined alias on a method", 'type alias Pos = Int where self > 0\ntuple B\n  x Int\nimpl B\n  fn over(self, d Pos) Int\n    self.x / d\nprintln(B(x: 9).over(3))\n', OK, "3"),
+ ("a refined alias on a method is proved", 'type alias Pos = Int where self > 0\ntuple B\n  x Int\nimpl B\n  fn over(self, d Pos) Int\n    self.x / d\nfn f(b B, k Int) Int\n  b.over(k)\n', BAD, "can't prove"),
+ ("a refined alias through a function value", 'type alias Pos = Int where self > 0\nfn half(n Pos) Int\n  n / 2\nf (Int) -> Int = half\nprintln(f(0))\n', RUN, "requires failed in half"),
+ ("an alias plus a written where", 'type alias Pos = Int where self > 0\nfn between(n Pos where n < 10) Int\n  n\nfn f(k Int) Int\n  if k > 0 and k < 10 then between(k) else 0\nprintln(f(5))\n', OK, "5"),
+ ("an alias plus a written where, half proved", 'type alias Pos = Int where self > 0\nfn between(n Pos where n < 10) Int\n  n\nfn f(k Int) Int\n  if k > 0 then between(k) else 0\n', BAD, "can't prove"),
  ("no refinement means no cost", 'fn add(a Int, b Int) Int\n  a + b\nprintln(add(1, 2))\n', OK, "3"),
 ]
 fails = []

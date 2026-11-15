@@ -1940,6 +1940,24 @@ println(f(List(1, 2), 1))
 
 Output: `2`. A call `f(List(1, 2), 5)` here would abort with `requires failed in pick`, naming the caller as the bug. **Mistakes:** calling a refined function with no test in front of it, testing only half of a condition (`i >= 0` for `i >= 0 and i < len(xs)`), changing the name between the test and the call (`i = 7`), putting a float or a string in a `where` that the solver can't read (only integer comparisons are proved), and expecting a `where` on a `ref` parameter (it is checked at run time only).
 
+A condition you use often can have a name. A **refined alias** adds `where` to a type alias, and `self` stands for the value:
+
+```
+type alias Pos = Int where self > 0
+type alias Pct = Int where self >= 0 and self <= 100
+fn half(n Pos) Int
+  n / 2
+fn twice_half(m Pos) Int
+  half(m) * 2
+fn describe(p Pct) String
+  "${p} percent"
+println(twice_half(8))
+println(half(7))
+println(describe(40))
+```
+
+Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, so only parameters are checked: a field or a local of type `Pos` is an `Int` as far as the checker goes, and a function that returns a `Pos` promises nothing until you add an `ensures`. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, and expecting a field of type `Pct` to reject 101.
+
 **Chapter 10: Operators, `|>>`, Results**
 
 An operator is defined in an `impl` block: the receiver is the left operand and the parameter is the right one.

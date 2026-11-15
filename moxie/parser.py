@@ -430,7 +430,15 @@ class Parser(ExprParser):
             typ = self.parse_type_match()
         else:
             typ = self.parse_type()
-        return AliasDecl(kind, name, tparams, typ, mods[0] if mods else None, line=line)
+        where = wtext = None
+        if kind == "alias" and self.at_name("where"):
+            self.next()
+            wstart = self.p
+            where = self.parse_expr()                  # a refined alias: `type alias Pos = Int where self > 0` (Spec 9c)
+            wtext = ""
+            for tk in self.toks[wstart:self.p]:
+                wtext += (" " if tk.sp and wtext else "") + str(tk.val)
+        return AliasDecl(kind, name, tparams, typ, mods[0] if mods else None, where, wtext, line=line)
 
     def parse_arm_result(self):
         """The result of an arm of a type function: a type, or arithmetic on types and numbers (`1 + Length[Rest]`)."""
@@ -1418,6 +1426,66 @@ def _has_pattern_params(fn):
     return False
 
 
+def apply_refined_aliases(prog):
+    """A parameter declared with a refined alias (`type alias Pos = Int where self > 0`) gets the alias's condition as its own
+    `where`, `self` replaced by the parameter's name, so the call-site proof and the run-time `requires` treat it like a written one."""
+    import copy
+    import re
+    ref = {}
+
+    def find(n):
+        if isinstance(n, AliasDecl) and n.where is not None and not n.tparams:
+            ref[n.name] = n
+        elif isinstance(n, list):
+            for x in n:
+                find(x)
+        elif hasattr(n, "_fields"):
+            for f in n._fields:
+                find(getattr(n, f, None))
+
+    def subst(e, nm):
+        if isinstance(e, Name) and e.name == "self":
+            return Name(nm, line=e.line)
+        if isinstance(e, list):
+            return [subst(x, nm) for x in e]
+        if isinstance(e, tuple):
+            return tuple(subst(x, nm) for x in e)
+        if hasattr(e, "_fields"):
+            c = copy.copy(e)
+            for f in e._fields:
+                setattr(c, f, subst(getattr(e, f), nm))
+            return c
+        return e
+
+    def walk(n):
+        if isinstance(n, FnDecl):
+            extra = []
+            for prm in n.params or []:
+                t = prm.type
+                if prm.name and prm.name != "self" and t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in ref:
+                    a = ref[t.path[0]]
+                    cond = acond = subst(a.where, prm.name)
+                    text = atext = re.sub(r"\bself\b", prm.name, a.wtext or "")
+                    if prm.where is not None:
+                        cond = AndE(prm.where, cond, line=prm.line)
+                        text = f"{prm.wtext} and {text}"
+                    prm.where, prm.wtext = cond, text
+                    if n.body is not None:
+                        extra.append(("requires", acond, prm.line, atext))
+            if extra:
+                n.contracts = extra + list(n.contracts or [])
+        if isinstance(n, list):
+            for x in n:
+                walk(x)
+        elif hasattr(n, "_fields"):
+            for f in n._fields:
+                walk(getattr(n, f, None))
+    find(prog)
+    if ref:
+        walk(prog)
+    return prog
+
+
 def parse_program(src, file="<input>"):
     toks = tokenize(src, file)
-    return Parser(toks, file).parse_module()
+    return apply_refined_aliases(Parser(toks, file).parse_module())

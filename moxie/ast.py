@@ -117,7 +117,7 @@ def _defs():
         "CaseDecl": "name fields",
         "IfaceDecl": "name tparams members embeds vis",
         "ImplDecl": "iface target tparams members bodyless proxy",
-        "AliasDecl": "kind name tparams type vis",
+        "AliasDecl": "kind name tparams type vis where wtext",
         "ImportDecl": "pkg alias names",
         "UsingDecl": "name expr",
         "InitDecl": "body",
