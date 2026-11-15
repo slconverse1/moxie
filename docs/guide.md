@@ -207,6 +207,33 @@ println("${clamp(10)} ${clamp(20)} ${clamp(-5)}")
 
 Output: `10 20 0`. There is no `forEach`: use a `for` loop with `continue`, and an unused label is a warning.
 
+`while` has the same `else`. It runs when the condition turns false and is skipped when a `break` fires, so a search can say what it found and what it does when it finds nothing:
+
+```
+fn triple_past(limit Int, cap Int) Int
+  n = 1
+  while n < cap
+    n = n * 3
+    if n > limit
+      break(n)
+  else
+    0
+println(triple_past(100, 1000))
+println(triple_past(100, 50))
+for x in List(1, 2, 3)
+  println(x)
+else
+  println("ran out")
+for x in List(1, 2, 3)
+  if x == 2
+    break
+else
+  println("not printed")
+println("end")
+```
+
+Output: `243`, `0`, `1`, `2`, `3`, `ran out`, `end`. The first call breaks with `243`, the second stops because `n` reaches `cap` first, so the `else` gives `0`. A loop that is not used for a value can have an `else` too, and the same rule applies: the plain `for` prints `ran out` after its last element, and the one that breaks skips its `else`.
+
 **1c. `gimme`: reaching outer bindings**
 
 `gimme.N.name` reaches the binding of `name` that is `N` enclosing layers out. It skips the current block's own binding of the name and counts only the enclosing blocks that bind it. Reading:
