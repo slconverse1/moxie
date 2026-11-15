@@ -3,7 +3,11 @@ import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = tempfile.mkdtemp()
 CASES = [
- ("same as cast", 'x = 70\nprintln([Int8](x))\nprintln(cast[Int8](x))\n', 0, "70"),
+ ("sugar", 'x = 70\nprintln([Int8](x))\n', 0, "70"),
+ ("the long spelling", 'x = 70\nprintln(cast[Int8](x))\n', 0, "70"),
+ ("mixing the two in one file is an error", 'x = 70\nprintln([Int8](x))\nprintln(cast[Int8](x))\n', 2, "one spelling of a conversion per file"),
+ ("mixing, long spelling first", 'x = 70\nprintln(cast[Int8](x))\nprintln([Int8](x))\n', 2, "already converts with `cast[T](x)`"),
+ ("mixing inside a string interpolation", 'x = 70\nprintln(cast[Int8](x))\nprintln("${[Int8](x)}")\n', 2, "one spelling"),
  ("to a bounded alias", 'type alias Pct = Int[0..=100]\nx = 70\np = [Pct](x)\nprintln([Int](p) + 1)\n', 0, "71"),
  ("in a lambda", 'println(List(1, 2).map((n) -> [Int32](n)))\n', 0, "List(1, 2)"),
  ("aborts like cast", 'x = 300\nprintln([Int8](x))\n', 1, "abort"),
@@ -12,7 +16,7 @@ CASES = [
  ("a space before the argument is an error", 'x = [Int] (3)\n', 2, "converts a value"),
  ("a chain casts the last type first", 'println([Char : Int](65))\n', 0, "A"),
  ("a chain of three", 'x = 66\nprintln([Char : Int : Int32](x))\n', 0, "B"),
- ("a chain equals nested casts", 'x = 67\nprintln([Char : Int](x) == cast[Char](cast[Int](x)))\n', 0, "true"),
+ ("a chain equals nested casts", 'x = 67\nprintln([Char : Int](x) == [Char]([Int](x)))\n', 0, "true"),
  ("a chain step can abort", 'x = 300\nprintln([Char : Int8](x))\n', 1, "abort"),
  ("a chain step with a constant that cannot fit", 'println([Char : Int8](300))\n', 2, "does not fit"),
  ("generic type arguments still work", 'x = List[Int](1, 2)\nprintln(x)\n', 0, "List(1, 2)"),

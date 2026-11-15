@@ -86,8 +86,20 @@ def ph_lambda(body, line):
     return Lambda(params, body, None, None, None, line=line)
 
 
+CAST_STYLE = {}
+
+
 class ExprParser(PBase):
     stop_bol = 0
+
+    def note_cast_style(self, kind, line):
+        """A file spells its conversions one way: `cast[T](x)` everywhere, or `[T](x)` everywhere (Spec 3)."""
+        seen = CAST_STYLE.setdefault(self.file, {})
+        seen.setdefault(kind, line)
+        if len(seen) > 1:
+            other = "cast" if kind == "sugar" else "sugar"
+            what = {"cast": "`cast[T](x)`", "sugar": "`[T](x)`"}
+            self.err_at(line, f"this file already converts with {what[other]} (line {seen[other]}), so use {what[other]} here too: one spelling of a conversion per file")
 
     # ------------------------------------------------------------ entry
     def parse_expr(self):
@@ -339,6 +351,8 @@ class ExprParser(PBase):
                 while self.at_op("[") and not self.peek().sp:
                     groups.append(self.parse_targ_group())
                 e = GenApp(e, groups, line=t.line)
+                if e.base.__class__ is Name and e.base.name == "cast":
+                    self.note_cast_style("cast", t.line)
             elif v == ".":
                 nt = self.peek(1)
                 if nt.kind == "NAME":
@@ -654,6 +668,7 @@ class ExprParser(PBase):
             self.expect_op("]", "to close the conversion type")
             if not (self.at_op("(") and not self.peek().sp):
                 self.err("a type in brackets converts a value: write `[Int](x)`, or `cast[Int](x)`", t)
+            self.note_cast_style("sugar", line)
             args = self.parse_args()
             e = Call(GenApp(Name("cast", line=line), [[tys[-1]]], line=line), args, None, line=line)
             for ty in reversed(tys[:-1]):

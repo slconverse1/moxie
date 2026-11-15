@@ -483,7 +483,7 @@ d = checked_add(a, 100)
 println("$b $c ${is_err(d)} ${is_err(checked_div(7, 0))}")
 ```
 
-Output: `-56 127 true true`. `cast[T]` aborts when the value doesn't fit, `wrap_to[T]` truncates, and `try_cast[T]` returns a `Result`. If you prefer brevity, `[T](x)` means exactly `cast[T](x)` (it aborts the same way, and `try_cast` and `wrap_to` have no short form). Colons chain casts, innermost first: `[Char : Int](x)` casts `x` to `Int` and then that to `Char`; the examples here keep the word `cast`, because it says what happens. Floats follow IEEE, with no abort:
+Output: `-56 127 true true`. `cast[T]` aborts when the value doesn't fit, `wrap_to[T]` truncates, and `try_cast[T]` returns a `Result`. If you prefer brevity, `[T](x)` means exactly `cast[T](x)` (it aborts the same way, and `try_cast` and `wrap_to` have no short form). Colons chain casts, innermost first: `[Char : Int](x)` casts `x` to `Int` and then that to `Char`. Pick one spelling per file: using both `cast[T](x)` and `[T](x)` in one file is a compile error; the examples here keep the word `cast`, because it says what happens. Floats follow IEEE, with no abort:
 
 ```
 println("${is_inf(1.0 / 0.0)} ${is_nan(0.0 / 0.0)}")

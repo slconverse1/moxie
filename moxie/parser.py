@@ -1487,5 +1487,7 @@ def apply_refined_aliases(prog):
 
 
 def parse_program(src, file="<input>"):
+    from . import pexpr
+    pexpr.CAST_STYLE.pop(file, None)
     toks = tokenize(src, file)
     return apply_refined_aliases(Parser(toks, file).parse_module())
