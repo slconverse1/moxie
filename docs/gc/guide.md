@@ -1358,7 +1358,7 @@ run_op(ops, "times", 2, 8)
 
 Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14). **[gc]** Because a closure can go anywhere, the next example, which no-GC moxie rejects, is fine:
 
-**Operator sections.** An operator with one side missing is a function of the other side, as in Haskell: `(+ 1)` adds one, `(10 -)` subtracts from ten, `(* 2)` doubles, `(> 2)` asks whether something is above two, and ``(`div_by` 2)`` does the same for a backtick function. They are the same as the placeholder forms (`_ + 1`) and work wherever those do. Subtraction needs one rule. `(-4)` and `(-x)` are negation, and a space after the minus makes the section, `(- 4)`, so moxie needs no `subtract`.
+**Operator sections.** An operator with one side missing is a function of the other side, as in Haskell: `(+ 1)` adds one, `(10 -)` subtracts from ten, `(* 2)` doubles, `(> 2)` asks whether something is above two, and ``(`div_by` 2)`` does the same for a backtick function. The words `and`, `or` and `in` make sections too: `(in allowed)` asks whether something is in `allowed`, and `(and ok)` joins it to `ok`. They are the same as the placeholder forms (`_ + 1`) and work wherever those do. Subtraction needs one rule. `(-4)` and `(-x)` are negation, and a space after the minus makes the section, `(- 4)`, so moxie needs no `subtract`.
 
 ```
 fn div_by(a Int, b Int) Int
@@ -1369,9 +1369,10 @@ println(List(1, 2, 3).map((- 1)))
 println(List(8, 9).map((`div_by` 2)))
 println((-4))
 println((- 4)(10))
+println(List(1, 2, 3, 4).filter((in List(2, 4))).collect())
 ```
 
-Output: `List(2, 3, 4)`, `List(9, 8, 7)`, `List(0, 1, 2)`, `List(4, 4)`, `-4`, `6`. **Mistakes:** `(+ _)` (a section already has its hole), `(-4)` when you meant "subtract 4" (write `(- 4)`), and `(/dir)` for division (a `/` followed at once by a name is a path, so write `(/ 2)`).
+Output: `List(2, 3, 4)`, `List(9, 8, 7)`, `List(0, 1, 2)`, `List(4, 4)`, `-4`, `6`, `List(2, 4)`. **Mistakes:** `(+ _)` (a section already has its hole), `(-4)` when you meant "subtract 4" (write `(- 4)`), and `(/dir)` for division (a `/` followed at once by a name is a path, so write `(/ 2)`).
 
 ```
 fn pick(flag Bool, k Int) (Int) -> Int

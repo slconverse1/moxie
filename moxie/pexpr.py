@@ -953,9 +953,15 @@ class ExprParser(PBase):
             return False
         return True
 
+    WORD_SECT = ("and", "or", "in")
+
     def sect_body(self, t, left, right):
         if t.kind == "BTICK":
             return Tick(left, t.val, right, line=t.line)
+        if t.kind == "NAME" and t.val in self.WORD_SECT:                # `(and ok)`, `(or x)`, `(in xs)`
+            if t.val == "in":
+                return InOp(left, right, False, line=t.line)
+            return (AndE if t.val == "and" else OrE)(left, right, line=t.line)
         return Binary(t.val, left, right, line=t.line)
 
     def left_section_end(self):
@@ -974,7 +980,7 @@ class ExprParser(PBase):
                         return None
                     p = self.peek(i - 1)
                     pp = self.peek(i - 2) if i >= 2 else None
-                    ok = (p.kind == "BTICK" or (p.kind == "OP" and p.val in self.SECT_OPS)) and i >= 2 \
+                    ok = (p.kind == "BTICK" or (p.kind == "OP" and p.val in self.SECT_OPS) or (p.kind == "NAME" and p.val in self.WORD_SECT)) and i >= 2 \
                         and not (pp.kind == "OP" and pp.val in ("(", "[", "{", ",", ":", "->", "=")) and pp.kind != "NL"
                     return i if ok else None
                 depth -= 1
@@ -990,9 +996,10 @@ class ExprParser(PBase):
         self.stop_bol = 0
         self.skip_nl()
         o, nt = self.peek(), self.peek(1)
-        if self.section_op(o, nt):                                           # `(+ 1)`, `(`div` 2)`
+        word = o.kind == "NAME" and o.val in self.WORD_SECT and not (nt.kind == "OP" and nt.val == ")")
+        if word or self.section_op(o, nt):                                   # `(+ 1)`, `(`div` 2)`, `(and ok)`, `(in xs)`
             self.next()
-            right = self._climb((BINTIER.get(o.val) if o.kind == "OP" else T_BT) + 1)
+            right = self._climb((self._tier_of(o) if word else BINTIER.get(o.val) if o.kind == "OP" else T_BT) + 1)
             self.skip_nl()
             self.expect_op(")", "to close the section")
             self.no_trailing, self.stop_bol = save

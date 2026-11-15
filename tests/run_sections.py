@@ -4,6 +4,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = tempfile.mkdtemp()
 PRE = 'fn plus(a Int, b Int) Int\n  a + b\n'
 CASES = [
+ ("in is a section", 'println(List(1, 2, 3, 4).filter((in List(2, 4))).collect())\n', 0, "List(2, 4)"),
+ ("a left in section", 'println(List(List(1, 2), List(3)).map((2 in)).collect())\n', 0, "List(true, false)"),
+ ("and and or are sections", 'println(List(true, false).map((and true)).collect())\nprintln(List(true, false).map((or false)).collect())\nprintln(List(true, false).map((true and)).collect())\n', 0, "List(true, false)"),
+ ("a for header over a parenthesized value is not a section", 'for x in (List(1, 2))\n  println(x)\n', 0, "1\n2"),
  ("right section", 'println(List(1, 2, 3).map((+ 1)))\n', 0, "List(2, 3, 4)"),
  ("left section", 'println(List(1, 2, 3).map((10 -)))\n', 0, "List(9, 8, 7)"),
  ("right subtraction needs the space", 'println(List(1, 2, 3).map((- 1)))\n', 0, "List(0, 1, 2)"),
