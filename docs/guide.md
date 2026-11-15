@@ -1898,6 +1898,48 @@ Output: `db: 0 -> 5`, `ui: 5`, `db: 5 -> 9`, then `Account(owner: "Ann", balance
 
 **Mistakes:** a setter that never stores into `field`, an `= value` on a property that stores nothing, `did_set` or `will_set` on a computed property, writing to a static or computed-only property, a `priv set` written from outside the tuple's `impl`, a `lazy` expression that prints, `on_change` on a plain field, and a property declared on the same line as a one-line tuple (a property goes on its own line).
 
+**Chapter 9c: Refined parameters (`where`)**
+
+A `requires` line says what a function needs, and a bad call fails when it runs. A **refined parameter** says it in the signature, and a bad call fails when you compile. Write `where` and a condition after the parameter's type:
+
+```
+fn get(xs List[Int], i Int where i >= 0 and i < len(xs)) Int
+  xs(i)
+fn first_or(xs List[Int], fallback Int) Int
+  if len(xs) > 0 then get(xs, 0) else fallback
+fn last_or(xs List[Int], fallback Int) Int
+  n = len(xs)
+  if n > 0 then get(xs, n - 1) else fallback
+println(first_or(List(4, 5, 6), 0))
+println(last_or(List(4, 5, 6), 0))
+println(last_or(List(), 7))
+```
+
+Output: `4`, `6`, `7`. Each call to `get` has to be *proved*. In `first_or`, the test `len(xs) > 0` is enough to show that index `0` is in range. In `last_or`, `n` is bound to `len(xs)`, so `n - 1` is in range when `n > 0`. Remove either test and the call is a compile error that shows the condition it could not prove. The checker uses what it can see: the function's own `where` clauses, the tests of an `if`/`elif`/`else`, an early `return ... if`, the range of `for i in 0..len(xs)`, a name bound once to a sum or difference, constants, and the range of a bounded integer (`k Int[1..=10]`). It reasons about whole numbers with `+`, `-`, a constant factor, and comparisons, and it is exact for those. Anything else, such as a product of two variables, is "unknown", and unknown is an error, with the same message: check it first, or give the caller the same `where`.
+
+```
+fn half(n Int where n > 0) Int
+  n / 2
+fn safe_half(n Int) Int
+  if n > 0 then half(n) else 0
+fn pct_half(p Int[1..=100]) Int
+  half(p)
+println(safe_half(9))
+println(safe_half(-3))
+println(pct_half(50))
+```
+
+Output: `4`, `0`, `25`. The bounded type `Int[1..=100]` already says `p > 0`, so `pct_half` needs no test. Rebinding a name forgets what was known about it, and so does `+=`, a `ref` argument, or a `ref` method on it. The condition is also kept as a `requires`, so a call the compiler can't see, such as one through a function value, is still checked when it runs:
+
+```
+fn pick(xs List[Int], i Int where i >= 0 and i < len(xs)) Int
+  xs(i)
+f (List[Int], Int) -> Int = pick
+println(f(List(1, 2), 1))
+```
+
+Output: `2`. A call `f(List(1, 2), 5)` here would abort with `requires failed in pick`, naming the caller as the bug. **Mistakes:** calling a refined function with no test in front of it, testing only half of a condition (`i >= 0` for `i >= 0 and i < len(xs)`), changing the name between the test and the call (`i = 7`), putting a float or a string in a `where` that the solver can't read (only integer comparisons are proved), and expecting a `where` on a `ref` parameter (it is checked at run time only).
+
 **Chapter 10: Operators, `|>>`, Results**
 
 An operator is defined in an `impl` block: the receiver is the left operand and the parameter is the right one.

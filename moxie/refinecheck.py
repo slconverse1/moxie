@@ -142,7 +142,7 @@ class RefineMixin:
         for p in fd.params or []:
             if p.name and p.type is not None:
                 t = self.ty_of_type(p.type)
-                b = self.base(t) if t is not None else None
+                b = t
                 if b.__class__ is tuple and b[0] == "bounded" and p.mod != "ref" and self.rf_stable(p.name):
                     a = R.atom(p.name)
                     self.rf_push(R.compare(">=", a, R.const(b[1])))
