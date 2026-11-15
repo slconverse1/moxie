@@ -10,6 +10,11 @@ CASES = [
  ("a constant that cannot fit is a compile error", 'println([Int8](300))\n', 2, "does not fit"),
  ("a bare type in brackets is an error", 'x = [Int]\n', 2, "converts a value"),
  ("a space before the argument is an error", 'x = [Int] (3)\n', 2, "converts a value"),
+ ("a chain casts the last type first", 'println([Char : Int](65))\n', 0, "A"),
+ ("a chain of three", 'x = 66\nprintln([Char : Int : Int32](x))\n', 0, "B"),
+ ("a chain equals nested casts", 'x = 67\nprintln([Char : Int](x) == cast[Char](cast[Int](x)))\n', 0, "true"),
+ ("a chain step can abort", 'x = 300\nprintln([Char : Int8](x))\n', 1, "abort"),
+ ("a chain step with a constant that cannot fit", 'println([Char : Int8](300))\n', 2, "does not fit"),
  ("generic type arguments still work", 'x = List[Int](1, 2)\nprintln(x)\n', 0, "List(1, 2)"),
 ]
 fails = []

@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: chained conversions.** `[A : B : C](x)` casts to `C` first, then `B`, then `A` (`[Char : Int](65)` is `'A'`). Each step can abort, and a constant that does not fit a step is a compile error. Only in the bracket sugar; `cast[...]` takes one type. Tests in `tests/run_castsugar.py`.
+
 **2026-11-14: `[T](x)` for `cast[T](x)`.** A type in brackets followed by an argument in parentheses is sugar for `cast`, with the same abort and the same compile error for a constant that cannot fit. The docs keep spelling out `cast`; `try_cast` and `wrap_to` have no short form. Test: `tests/run_castsugar.py`.
 
 **2026-11-14: refined aliases.** `type alias Pos = Int where self > 0` names a condition. A parameter declared with it (`fn half(n Pos) Int`) is a parameter with that `where`, so each call proves it, and a `Pos` parameter in the caller counts as a fact. Only parameters are checked, since the alias is still an `Int`. Spec 9c, Guide 9c, tests in `tests/run_refined.py`.

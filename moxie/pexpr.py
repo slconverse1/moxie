@@ -648,11 +648,17 @@ class ExprParser(PBase):
         line = t.line
         if k == "OP" and t.val == "[":                   # `[Int](x)` is `cast[Int](x)` (Spec 3)
             self.next()
-            ty = self.parse_type()
+            tys = [self.parse_type()]
+            while self.eat_op(":"):                        # `[A : B : C](x)`: first C, then B, then A
+                tys.append(self.parse_type())
             self.expect_op("]", "to close the conversion type")
             if not (self.at_op("(") and not self.peek().sp):
                 self.err("a type in brackets converts a value: write `[Int](x)`, or `cast[Int](x)`", t)
-            return GenApp(Name("cast", line=line), [[ty]], line=line)
+            args = self.parse_args()
+            e = Call(GenApp(Name("cast", line=line), [[tys[-1]]], line=line), args, None, line=line)
+            for ty in reversed(tys[:-1]):
+                e = Call(GenApp(Name("cast", line=line), [[ty]], line=line), [Arg(None, e, None, line=line)], None, line=line)
+            return e
         if k == "INT":
             self.next()
             return IntLit(t.val, t.extra, line=line)
