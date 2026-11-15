@@ -78,8 +78,8 @@ class Parser(ExprParser):
         j = k
         while self.peek(j).kind == "NL":
             j += 1
-        if self.peek(j).kind in ("DEDENT", "EOF"):
-            return None
+        if self.peek(j).kind in ("DEDENT", "EOF", "INDENT"):
+            return None                                  # a name that opens an indented block (`scope`, `do`) is not a declaration
         line = self.peek().line
         for _ in range(k):
             self.next()
