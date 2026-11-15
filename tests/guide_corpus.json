@@ -1935,7 +1935,7 @@ null
 ],
 [
 4046,
-"interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, text)\n    println(\"${self.prefix}: $text\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
+"interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, msg)\n    println(\"${self.prefix}: $msg\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
 [
 "app: started"
 ]

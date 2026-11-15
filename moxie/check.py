@@ -947,9 +947,8 @@ class Checker:
                 if m.__class__ is not FnDecl or m.body is None:
                     continue
                 untyped = [p for p in m.params or [] if p.name and p.name != "self" and p.type is None and not p.variadic]
-                if not untyped and m.ret is not None:
-                    continue
                 found = self.iface_member(st.iface.path[-1], m.name)
+                user_iface = found is not None
                 d = self.iface_decls.get(st.iface.path[-1])
                 if found is None:
                     d = self.builtin_ifaces().get(st.iface.path[-1])
@@ -957,6 +956,8 @@ class Checker:
                 if found is None:
                     continue
                 im = found[0]
+                if not untyped and m.ret is not None and not user_iface:
+                    continue
                 mp = {"Self": st.target}
                 args = st.iface.groups[0] if st.iface.groups else []
                 for tp, a in zip(getattr(d, "tparams", None) or [], args):
@@ -968,6 +969,10 @@ class Checker:
                     mps = mps[1:]
                 if len(ips) != len(mps):
                     continue                                   # the arity check reports it
+                if user_iface:
+                    for ip, mpm in zip(ips, mps):
+                        if ip.name and mpm.name and ip.name != mpm.name and ip.name != "self":
+                            self.err(m.line, f"parameter `{mpm.name}` of `{m.name}` is called `{ip.name}` in interface `{st.iface.path[-1]}`: an impl keeps the interface's parameter names, so that a call is labeled the same way through the interface and on the type")
                 for ip, mpm in zip(ips, mps):
                     if mpm.name and mpm.name != "self" and mpm.type is None and ip.type is not None:
                         mpm.type = sub(ip.type, mp)
@@ -4837,6 +4842,12 @@ class Checker:
         if decl is None or m is None or getattr(decl, "tparams", None) or m.tparams or m.alias is not None:
             return None
         ps = list(m.params or [])
+        if ps and ps[0].name == "self" and not any(p.variadic for p in ps):
+            known = {p.name for p in ps[1:]}
+            for a in args:
+                if isinstance(a.label, str) and a.label not in known:
+                    self.err(n.line, f"`{fn.name}` has no parameter named `{a.label}`" + (f" (its parameters are {', '.join('`'+p.name+'`' for p in ps[1:])})" if ps[1:] else ""))
+                    return None
         if not ps or ps[0].name != "self" or any(p.variadic or p.mod for p in ps) or any(a.label or getattr(a, "mod", None) for a in args):
             return None
         ps = ps[1:]

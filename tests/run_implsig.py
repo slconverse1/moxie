@@ -18,9 +18,11 @@ CASES = [
  ("an ordinary function still needs its types", 'fn f(x)\n  x\n', 2, "no return type"),
  ("an inherent impl still needs its types", 'tuple P\n  x Int\nimpl P\n  fn twice(self)\n    self.x * 2\n', 2, "no return type"),
  ("a wrong written type is still an error", LOG + 'impl Logger for C\n  fn info(self, msg Int)\n    ()\n  fn error(self, msg)\n    ()\nC(p: "a").info("x")\n', 2, "mismatched"),
- ("the impl may rename parameters", LOG + 'impl Logger for C\n  fn info(self, text)\n    println("${self.p} i $text")\n  fn error(self, why)\n    println("E $why")\nC(p: "a").info("x")\nC(p: "a").error("y")\n', 0, "a i x"),
+ ("an impl keeps the interface's parameter names", LOG + 'impl Logger for C\n  fn info(self, text)\n    println(text)\n  fn error(self, msg)\n    println(msg)\n', 2, "is called `msg` in interface"),
+ ("a label works on the type and through the interface", LOG + 'impl Logger for C\n  fn info(self, msg)\n    println("i $msg")\n  fn error(self, msg)\n    println("E $msg")\nC(p: "a").info(msg: "x")\nC(p: "a").error(msg: "y")\n', 0, "E y"),
+ ("a label that names no parameter", LOG + 'impl Logger for C\n  fn info(self, msg)\n    ()\n  fn error(self, msg)\n    ()\nC(p: "a").info(text: "x")\n', 2, "no parameter named `text`"),
  ("the receiver cannot be renamed", LOG + 'impl Logger for C\n  fn info(this, msg)\n    ()\n  fn error(self, msg)\n    ()\n', 2, "no return type"),
- ("renamed parameters, types written", LOG + 'impl Logger for C\n  fn info(self, text String) Unit\n    println("i $text")\n  fn error(self, why)\n    println("E $why")\nC(p: "a").info("x")\n', 0, "i x"),
+ ("a renamed parameter with the type written is an error too", LOG + 'impl Logger for C\n  fn info(self, text String) Unit\n    ()\n  fn error(self, msg)\n    ()\n', 2, "is called `msg`"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:
