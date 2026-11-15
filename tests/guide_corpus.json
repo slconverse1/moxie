@@ -1380,16 +1380,16 @@ null
 ],
 [
 2735,
-"fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit\n  while true\n    select\n      case cancelled(stop) ->\n        \\write(out, \"worker ${id} stopping\")\n        return\n      else\n        sleep(10ms)\nrx, tx = Chan[String][4]()\nscope s\n  \\run worker(1, clone(tx), s)\n  \\run worker(2, tx, s)\n  sleep(50ms)\n  cancel(s)\nprintln(\"scope over\")\nprintln(read(rx))\nprintln(read(rx))\n",
+"fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit\n  while true\n    select\n      case cancelled(stop) ->\n        \\write(out, \"worker ${id} stopping\")\n        return\n      else\n        sleep(10ms)\nrx, tx = Chan[String][4]()\nwait s\n  \\run worker(1, clone(tx), s)\n  \\run worker(2, tx, s)\n  sleep(50ms)\n  cancel(s)\nprintln(\"wait over\")\nprintln(read(rx))\nprintln(read(rx))\n",
 [
-"scope over",
+"wait over",
 "Ok(\"worker 1 stopping\")",
 "Ok(\"worker 2 stopping\")"
 ]
 ],
 [
 2757,
-"fn parse(text String) Result[Int, Error]\n  if text == \"\" then fail(7, \"no input\") else Ok(1)\nfn job(out ChanW[String]) Result[Int, Error]\n  scope s\n    \\run worker(1, out, s)\n    n = parse(\"\")?\n    Ok(n)\n",
+"fn parse(text String) Result[Int, Error]\n  if text == \"\" then fail(7, \"no input\") else Ok(1)\nfn job(out ChanW[String]) Result[Int, Error]\n  wait s\n    \\run worker(1, out, s)\n    n = parse(\"\")?\n    Ok(n)\n",
 null
 ],
 [

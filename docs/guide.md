@@ -2723,13 +2723,13 @@ fn start_counter(tx ChanW[Int], start Int) Unit
     \write(out, first + 1)
 ```
 
-Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5) -> ...`). To wait for fibers, use a `scope` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), carrying a runtime string through the loop, an inline fiber body that ends in a value other than `Unit`, a capturing closure passed to `run`, `return` in a daemon cycle (before `daemon` in the entry file it ends the program), and a literal in the short form (`run fn (5) ->` needs the full form, `run fn (5)(x) ->`).
+Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5) -> ...`). To wait for fibers, use a `wait` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), carrying a runtime string through the loop, an inline fiber body that ends in a value other than `Unit`, a capturing closure passed to `run`, `return` in a daemon cycle (before `daemon` in the entry file it ends the program), and a literal in the short form (`run fn (5) ->` needs the full form, `run fn (5)(x) ->`).
 
-**17a. Cancelling fibers, and waiting for them with `scope`**
+**17a. Cancelling fibers, and waiting for them with `wait`**
 
 A fiber that loops forever, such as a worker or a ticker, needs a way to be told to stop. Moxie gives you a `Cancel` token. You pass it to the fiber like any other argument, and the fiber looks at it when it is ready to: `is_cancelled(c)` says whether `cancel(c)` has been called, and `case cancelled(c) ->` is a `select` arm that fires once it has. Cancelling is a request, not a kill: nothing stops a fiber in the middle of a statement, and a fiber that never looks at the token runs on. A `Cancel` copies like an `Atom` handle, and cancelling twice is harmless.
 
-A `scope` block waits for every fiber started inside it (and every fiber those start) before the block ends. `scope name` also binds `name` to the block's own `Cancel`:
+A `wait` block waits for every fiber started inside it (and every fiber those start) before the block ends. `wait token` also binds the name `token` to the block's own `Cancel`:
 
 ```
 fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
@@ -2741,29 +2741,29 @@ fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
       else
         sleep(10ms)
 rx, tx = Chan[String][4]()
-scope s
+wait s
   \run worker(1, clone(tx), s)
   \run worker(2, tx, s)
   sleep(50ms)
   cancel(s)
-println("scope over")
+println("wait over")
 println(read(rx))
 println(read(rx))
 ```
 
-Output: `scope over`, then `Ok("worker 1 stopping")` and `Ok("worker 2 stopping")`. Leaving the block early, with `?`, `return`, `break`, or `continue`, cancels its token first and then waits, so no fiber outlives the block:
+Output: `wait over`, then `Ok("worker 1 stopping")` and `Ok("worker 2 stopping")`. Leaving the block early, with `?`, `return`, `break`, or `continue`, cancels its token first and then waits, so no fiber outlives the block:
 
 ```
 fn parse(text String) Result[Int, Error]
   if text == "" then fail(7, "no input") else Ok(1)
 fn job(out ChanW[String]) Result[Int, Error]
-  scope s
+  wait s
     \run worker(1, out, s)
     n = parse("")?
     Ok(n)
 ```
 
-Here `job` returns the error only after the worker has seen the cancel and finished. Reaching the end of a `scope` normally does not cancel anything, so call `cancel(s)` yourself when a fiber would otherwise run forever. A fiber parked in a plain `read` or `sleep` can't see the token, so for fibers that must stop promptly wait in a `select` with a `cancelled` arm, and use `after(d)` for a sleep that can be cut short. A `scope` parks, so it can't be in a pure function, and an abort in any fiber still ends the whole program.
+Here `job` returns the error only after the worker has seen the cancel and finished. Reaching the end of a `wait` block normally does not cancel anything, so call `cancel(s)` yourself when a fiber would otherwise run forever. A fiber parked in a plain `read` or `sleep` can't see the token, so for fibers that must stop promptly wait in a `select` with a `cancelled` arm, and use `after(d)` for a sleep that can be cut short. A `wait` block parks, so it can't be in a pure function, and an abort in any fiber still ends the whole program.
 
 **Chapter 18: Errors and `?`**
 
@@ -3065,7 +3065,7 @@ close(tx)
 
 Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn () = ...`, as a plain lambda must be pure.
 
-**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `scope`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c Cancel) ...`; a plain lambda must be pure.
+**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `wait`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c Cancel) ...`; a plain lambda must be pure.
 
 ```
 fn polite(c Cancel) Result[Int, Error]

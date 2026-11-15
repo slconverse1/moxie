@@ -3370,7 +3370,7 @@ class Checker(RefineMixin):
         self.in_daemon -= 1
         return None, None
 
-    def e_ScopeE(self, n, sc):
+    def e_WaitE(self, n, sc):
         inner = Sc(sc)
         if n.name:
             inner.vars[n.name] = Var(None, False, self.loop_depth)
@@ -3672,7 +3672,7 @@ class Checker(RefineMixin):
             if c is ExprStmt:
                 walk(x.e, hinted)
                 return
-            if c in (DoE, ScopeE, DaemonE, WhileE, ForE):
+            if c in (DoE, WaitE, DaemonE, WhileE, ForE):
                 for f in x._fields:
                     walk(getattr(x, f), hinted if f == "body" else False)
                 return

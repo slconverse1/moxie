@@ -767,9 +767,11 @@ class ExprParser(PBase):
             self.next()
             return DoE(self.parse_block(), None, line=line)
         if v == "scope" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
+            self.err("`scope` is now `wait`: write `wait` (or `wait token`) before the block")
+        if v == "wait" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
             self.next()
             name = self.next().val if self.peek().kind == "NAME" else None
-            return ScopeE(name, self.parse_block(), line=line)
+            return WaitE(name, self.parse_block(), line=line)
         if v == "select" and self.nl_indent_at(1):
             return self.parse_select()
         if v == "daemon" and self.nl_indent_at(1):

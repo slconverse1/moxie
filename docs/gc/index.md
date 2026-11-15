@@ -1862,7 +1862,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 - **Operators aren't values, but they have sections.** `(+ 1)` and `(10 -)` are functions, and `(- 4)` with a space is "subtract 4" (`(-4)` is the number). There is no `curry(+)`: write `curry(add)`.
 - **No mixing `_` and `_1` in one partial call.** The two numbering schemes together read like a puzzle.
 - **Unused imports and module-level rebinding are errors.** The link report stays honest, and a program's top-level names stay stable.
-- **A fiber abort still ends the whole program.** `scope` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
+- **A fiber abort still ends the whole program.** `wait` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
 - **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..=100]` values can leave the range, so you say when to narrow it again.
 - **Transactions don't nest.** It keeps the commit-or-roll-back rule simple to state.
 - **Delegates apply only to declared tuple fields.** The field's layout has to be known.

@@ -1,4 +1,4 @@
-"""Structured concurrency and cancellation: Cancel, cancel, is_cancelled, `case cancelled(c)`, `scope:`.
+"""Structured concurrency and cancellation: Cancel, cancel, is_cancelled, `case cancelled(c)`, `wait`.
 Run: python3 tests/run_concurrency.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -33,7 +33,7 @@ def chk(name, src, rc_want, *wants, absent=(), cmd="run"):
     if not ok: fails.append(name)
 
 chk("cancel wakes a worker waiting in select", WORKER + '''rx, tx = Chan[String][10]()
-scope s
+wait s
   _ = run worker(1, clone(tx), s)
   _ = run worker(2, tx, s)
   sleep(50ms)
@@ -43,21 +43,21 @@ println(read(rx))
 println("after")
 ''', 0, 'worker 1 stopping', 'worker 2 stopping', 'after')
 
-chk("a scope waits for its fibers at the end", '''fiber fn slow(out ChanW[String]) Unit
+chk("a wait block waits for its fibers at the end", '''fiber fn slow(out ChanW[String]) Unit
   sleep(100ms)
   \\write(out, "slow done")
 
 rx, tx = Chan[String][1]()
-scope
+wait
   _ = run slow(tx)
   println("body done")
-println("after scope")
+println("after wait")
 println(read(rx))
-''', 0, 'body done\nafter scope\nOk("slow done")')
+''', 0, 'body done\nafter wait\nOk("slow done")')
 
 chk("an early exit with ? cancels, then waits", WORKER + '''fn job() Result[Int, Error]
   rx, tx = Chan[String][4]()
-  scope s
+  wait s
     _ = run worker(1, tx, s)
     x = Err(Error(MISSING, "no"))?
     Ok(1)
@@ -65,9 +65,9 @@ chk("an early exit with ? cancels, then waits", WORKER + '''fn job() Result[Int,
 println(job())
 ''', 0, 'Err(Error(code:', 'no')
 
-chk("return from a scope cancels it", WORKER + '''fn job() Int
+chk("return from a wait block cancels it", WORKER + '''fn job() Int
   rx, tx = Chan[String][4]()
-  scope s
+  wait s
     _ = run worker(1, tx, s)
     return 7
   0
@@ -90,20 +90,20 @@ select
   case _ -> println("default")
 ''', 0, 'seen')
 
-chk("nested scopes wait for their own fibers", '''fiber fn task(name String, ms Int, out ChanW[String]) Unit
+chk("nested wait blocks wait for their own fibers", '''fiber fn task(name String, ms Int, out ChanW[String]) Unit
   sleep(ms * 1ms)
   \\write(out, name)
 
 rx, tx = Chan[String][4]()
-scope
-  scope
+wait
+  wait
     _ = run task("inner", 20, clone(tx))
-  println("inner scope over")
+  println("inner wait over")
   _ = run task("outer", 40, tx)
-println("outer scope over")
+println("outer wait over")
 println(read(rx))
 println(read(rx))
-''', 0, 'inner scope over\nouter scope over', 'Ok("inner")', 'Ok("outer")')
+''', 0, 'inner wait over\nouter wait over', 'Ok("inner")', 'Ok("outer")')
 
 chk("a fiber started by a scoped fiber is waited for too", '''fiber fn leaf(out ChanW[String]) Unit
   sleep(30ms)
@@ -113,7 +113,7 @@ fiber fn mid(out ChanW[String]) Unit
   _ = run leaf(out)
 
 rx, tx = Chan[String][2]()
-scope
+wait
   _ = run mid(tx)
 println("after")
 println(read(rx))
@@ -122,27 +122,31 @@ println(read(rx))
 chk("an abort in a scoped fiber still ends the program", '''fiber fn bad() Unit
   todo("boom")
 
-scope
+wait
   _ = run bad()
   sleep(10ms)
 println("not reached")
 ''', 1, 'boom', absent=('not reached',))
 
-chk("scope gives the value of its body", '''x = scope
+chk("wait gives the value of its body", '''x = wait
   21 * 2
 println(x)
 ''', 0, '42')
 
-chk("a scope parks, so a pure function may not use one", '''pure fn f() Int
-  scope
+chk("a wait block parks, so a pure function may not use one", '''pure fn f() Int
+  wait
     1
 
 println(f())
-''', 1, 'scope', cmd="check")
+''', 1, 'wait', cmd="check")
 
-chk("scope is still usable as a name", '''scope = 3
-println(scope + 1)
+chk("wait is still usable as a name", '''wait = 3
+println(wait + 1)
 ''', 0, '4')
+
+chk("the old spelling points to the new one", '''scope
+  println(1)
+''', 2, '`scope` is now `wait`', cmd="check")
 
 print()
 print("FAILURES: " + ", ".join(fails) if fails else "all concurrency tests passed")

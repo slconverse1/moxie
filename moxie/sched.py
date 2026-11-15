@@ -72,7 +72,7 @@ class CancelV:
 
 
 class ScopeState:
-    """The fibers started inside a `scope:` block: counted until they end, so the block can wait for them."""
+    """The fibers started inside a `wait` block: counted until they end, so the block can wait for them."""
 
     def __init__(self, parent, token):
         self.parent = parent
@@ -751,7 +751,7 @@ def _arm_body(I, arm, v, env):
 
 
 def scope_op(I, n, env):
-    """`scope:` runs its body, then waits for every fiber started inside it.
+    """`wait` runs its body, then waits for every fiber started inside it.
     Leaving early (return, break, continue, or `?`) cancels the scope's token first."""
     S = I.sched
     f = S.cur

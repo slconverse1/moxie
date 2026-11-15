@@ -2842,7 +2842,7 @@ def b_with_timeout(I, a, kw, ta):
 
 
 def _par_run(I, f, items, limit, stop_on_err):
-    """Run f on every item, at most `limit` at once, each in its own fiber of an implicit scope; the results in input order.
+    """Run f on every item, at most `limit` at once, each in its own fiber of an implicit `wait` block; the results in input order.
     With stop_on_err, an Err stops new items from starting (the running ones finish) and the Err of the earliest item wins."""
     S, me = I.sched, I.sched.cur
     n = min(limit, len(items))

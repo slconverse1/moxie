@@ -82,7 +82,7 @@ def _defs():
         "WhileE": "cond body else_ label",
         "ForAll": "binds body",          # binds: list of (name, type)
         "DaemonE": "body",
-        "ScopeE": "name body",         # scope NAME: ... (NAME is the scope's Cancel token, or None)
+        "WaitE": "name body",         # wait NAME: ... (NAME is the block's Cancel token, or None)
         "DoE": "body label",
         "WithE": "enums body",        # with A, B: ... (a block with the cases of enums A and B open; rewritten before checking)
         "DoRecv": "recv kind body",    # kind: do | update
