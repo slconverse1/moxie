@@ -181,7 +181,7 @@ How the heap behaves:
 - Integer `/` and `%` by zero abort, or are compile errors when the zero is a constant.
 - **Explicit variants**, as prelude functions on every integer type: `wrapping_add`, `wrapping_sub`, `wrapping_mul` (silent wraparound, for hashes and checksums), `saturating_add` and friends (stick at the limit), and `checked_add`, `checked_sub`, `checked_mul`, `checked_div` (return a `Result`, with OUT_OF_RANGE on overflow or a zero divisor).
 - **Floats** follow IEEE 754: overflow and division by zero give `INF` or `NAN`, and nothing aborts. `is_nan(x)`, `is_inf(x)`, `is_finite(x)` test them. `NAN` is never equal to anything, including itself, and the compiler warns when a float is compared with `==`. The `checked_` family also works on floats and returns an `Err` when the result is not finite, and `finite(x)` turns a float into `Ok(x)` or `Err`.
-- **Conversions.** `cast[T](x)` aborts if the value doesn't fit `T`. `wrap_to[T](x)` keeps the low bits. `try_cast[T](x)` returns a `Result` (OUT_OF_RANGE).
+- **Conversions.** `cast[T](x)` aborts if the value doesn't fit `T`. `[T](x)` is sugar for it (a type in brackets, then the argument in parentheses with no space), in the spirit of C's `(int)x`; it is exactly `cast[T](x)`, aborting the same way, and the Guide and Spec examples spell out `cast`. `try_cast` and `wrap_to` have no short form. `wrap_to[T](x)` keeps the low bits. `try_cast[T](x)` returns a `Result` (OUT_OF_RANGE).
 - **Shifts.** `>>` is arithmetic on signed types and logical on unsigned types. A shift count at or above the width is a compile error when constant and aborts otherwise.
 
 **Bounded integers**
