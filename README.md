@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-14: operator sections.** `(+ 1)`, `(10 -)`, `(* 2)`, `(> 2)` and ``(`f` 2)`` are one-parameter functions, the same as the placeholder forms. Subtraction follows whitespace inside the parentheses: `(-4)` is the number and `(- 4)` is the section, so there is no `subtract`. Test: `tests/run_sections.py`. The Spec and both intros no longer say that moxie has no sections.
+
+**2026-11-14: `impl` members can leave out their types.** `fn info(self, msg)` is enough when the interface already says `msg String` and `Unit`; the compiler copies the types. The parameter names must be the interface's (Steve's rule, so a labeled call means the same on the type and through the interface), and a different name is an error. A label that names no parameter of a method is now a compile error, not a run-time abort. Covers your own interfaces and the built-in `Show`, `Read`, `Equatable`, `Ordered`, `Addable` and `Numeric`. Written types are still allowed and checked. Ordinary functions still need theirs. Test: `tests/run_implsig.py`.
+
 **2026-11-14: "Modularity without classes" in both intros, and a `proxy` fix.** A new section before "Moxie's Superpowers" takes Odersky's point that OOP's main gift is modularity and shows the pieces moxie uses for it: interfaces and `impl`s as the boundary, `any` for mixed collections, closures and tuple fields for hidden state, and `proxy` for reuse (the gc intro adds the record-of-closures style, which the no-GC dialect refuses because the captured values would have no owner). Writing the examples found a bug: `proxy` passed an interface member's explicit `self` along as an argument, so forwarding `fn error(self, msg String)` failed at run time. Fixed, with a test.
 
 **2026-11-14: tuples with unnamed fields work.** `tuple Pair(Int, String)` and the block form with one type per line (as the Spec always said) now check and run: construction by position, `p.0`, destructuring, `deriving`, generics, conversion from an anonymous tuple, and an arity error. Mixing named and unnamed fields is an error. `tests/run_postuple.py`.

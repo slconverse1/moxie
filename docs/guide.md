@@ -1256,6 +1256,21 @@ run_op(ops, "times", 2, 8)
 
 Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** storing a capturing closure in a Dict, tuple field, or channel (error: "closure captures `factor`, and only plain functions can be stored"), `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14).
 
+**Operator sections.** An operator with one side missing is a function of the other side, as in Haskell: `(+ 1)` adds one, `(10 -)` subtracts from ten, `(* 2)` doubles, `(> 2)` asks whether something is above two, and ``(`div_by` 2)`` does the same for a backtick function. They are the same as the placeholder forms (`_ + 1`) and work wherever those do. Subtraction needs one rule. `(-4)` and `(-x)` are negation, and a space after the minus makes the section, `(- 4)`, so moxie needs no `subtract`.
+
+```
+fn div_by(a Int, b Int) Int
+  a / b
+println(List(1, 2, 3).map((+ 1)))
+println(List(1, 2, 3).map((10 -)))
+println(List(1, 2, 3).map((- 1)))
+println(List(8, 9).map((`div_by` 2)))
+println((-4))
+println((- 4)(10))
+```
+
+Output: `List(2, 3, 4)`, `List(9, 8, 7)`, `List(0, 1, 2)`, `List(4, 4)`, `-4`, `6`. **Mistakes:** `(+ _)` (a section already has its hole), `(-4)` when you meant "subtract 4" (write `(- 4)`), and `(/dir)` for division (a `/` followed at once by a name is a path, so write `(/ 2)`).
+
 **Chapter 8: `impl` blocks and interfaces**
 
 ```
@@ -1269,13 +1284,13 @@ tuple Robot
 impl Speaker[String] for Dog
   fn speak() String
     "Woof! My name is ${name}"
-  fn update(new_name String) Dog
-    Self(..., name: new_name)
+  fn update(new_value String) Dog
+    Self(..., name: new_value)
 impl Speaker[Int] for Robot
   fn speak() String
     "Beep Boep! Serial count is ${serial}"
-  fn update(new_serial Int) Robot
-    Self(..., serial: new_serial)
+  fn update(new_value Int) Robot
+    Self(..., serial: new_value)
 fn make_them_speak(item Speaker) Unit
   println(item.speak())
 fn update_speaker[T, S Speaker[T]](item S, new_value T) S
@@ -4039,3 +4054,22 @@ Output: `{"name":"Al","tags":["a","b"],"addr":{"city":"Oslo","zip":150}}`, then 
 **`dynamic fn` and `unsafe fn`.** Reading a `Dyn` (`field`, `at`, `as_*`, `from_dyn`) moves a type check from compile time to run time, so the function that does it says so: write `dynamic` before `fn`. A function that reads a `Dyn` without the word is a compile error, and so is a function that calls a foreign function marked `unsafe` (or one that takes a `Ptr[T]`) without `unsafe fn`. A lambda belongs to the function around it. Top-level statements are not functions, so a script can read a `Dyn` directly. The words are soft: `dynamic` and `unsafe` are still fine as variable names. By default only the function that does the thing is marked, so a wrapper that checks its data can be called from any function. A project that wants the marks to travel up the call chain sets `safety = "strict"` under `[program]` in `Moxie.toml`: a function that calls a `dynamic` or `unsafe` function must then carry the mark too.
 
 **Mistakes:** treating a number with a `.` or an exponent as an `Int` (it is a `DFloat`, so use `as_float`), expecting `\u` escapes in strings (not supported yet), and expecting a map's keys to come out sorted.
+
+**Leaving out the types in an `impl`.** The interface has already said what each member takes and returns, so an `impl` member may skip it: `fn info(self, msg)` is enough where the interface says `fn info(self, msg String) Unit`. The compiler fills in the types, and the parameter names must be the interface's (`fn info(self, text)` is an error), so a labeled call such as `info(msg: "x")` means the same on the type and through the interface. The receiver is always `self`. Write a type when you want it in view; the checker still holds it to the interface. This works for your own interfaces and for the built-in ones such as `Show` and `Equatable`, but not for ordinary functions, whose types are their only documentation.
+
+```
+interface Logger
+  fn info(self, msg String) Unit
+
+tuple Console
+  prefix String
+
+impl Logger for Console
+  fn info(self, msg)
+    println("${self.prefix}: $msg")
+
+Console(prefix: "app").info("started")
+```
+
+Output: `app: started`.
+

@@ -98,11 +98,11 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond`, lock-free state through Atoms and `swap`, and (in moxie/gc) persistent collections that share structure. **[gc]**
-- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
+- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections (`(+ 1)`, `(10 -)`, and `(- 4)` with a space for subtraction, which Haskell can't write), and QuickCheck-style property tests (`forall`).
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code (code that runs when the module loads).
-- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`), and backing-field shorthand.
+- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`), backing-field shorthand, and the idea that a function parameter has a name for the body and a label for the call (in moxie one name does both, and an `impl` has to keep its interface's names).
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 - **C#:** multi-cast delegation.
@@ -404,16 +404,30 @@ This prints `3`.
 **Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
 
 ```
+interface Logger
+  fn info(self, msg String) Unit
+  fn error(self, msg String) Unit
+
+tuple ConsoleLogger
+  prefix String
+impl Logger for ConsoleLogger
+  fn info(self, msg String) Unit
+    println("${self.prefix} info: $msg")
+  fn error(self, msg String) Unit
+    println("${self.prefix} ERROR: $msg")
+
 tuple Stamped
   base ConsoleLogger
 impl Logger for Stamped proxy(base)
   fn info(self, msg String) Unit
     self.base.info("12:00 $msg")
 
-save(Stamped(base: ConsoleLogger(prefix: "t")), "x")
+s = Stamped(base: ConsoleLogger(prefix: "t"))
+s.info("saving x")
+s.error("disk full")
 ```
 
-This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded, and `info` was replaced.
+This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
 
 **In this dialect an object can be a record of closures.** With a garbage collector, a closure that captures values can be stored in a tuple field, so Odersky's "an object is a bundle of functions over private state" can be written directly, and the stamped version is an ordinary tuple update with `...`:
 
@@ -1845,7 +1859,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 
 - **No orphan impls.** An impl lives with the type or the interface, so it's never ambiguous which one applies.
 - **One hole in partial type application.** `Result[_, E]` is plenty, and it keeps type inference simple.
-- **Operators aren't values, and there are no operator sections.** Write a lambda or a placeholder call instead; it's clearer and needs no new rules.
+- **Operators aren't values, but they have sections.** `(+ 1)` and `(10 -)` are functions, and `(- 4)` with a space is "subtract 4" (`(-4)` is the number). There is no `curry(+)`: write `curry(add)`.
 - **No mixing `_` and `_1` in one partial call.** The two numbering schemes together read like a puzzle.
 - **Unused imports and module-level rebinding are errors.** The link report stays honest, and a program's top-level names stay stable.
 - **A fiber abort still ends the whole program.** `scope` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
