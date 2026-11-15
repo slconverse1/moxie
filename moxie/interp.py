@@ -577,6 +577,22 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         e = self.gimme_scope(n, env)
         return Done(e.vars[n.name])
 
+    def ev_Carry(self, n, env):
+        """A block's first line `total, count`: each name starts as a copy of the outer one.  In a loop only the first pass copies; later
+        passes already have the carried value."""
+        par = env.parent
+        for it in n.items:
+            if par is not None and par.hidden and it.name in par.vars:
+                continue
+            if it.n is None:
+                v = env.lookup(it.name, None)
+                if v is MISSING:
+                    raise Abort(f"no outer '{it.name}' to start from", n.line)
+            else:
+                v = self.gimme_scope(it, env).vars[it.name]
+            env.vars[it.name] = v
+        return Done(UNIT)
+
     def gimme_scope(self, n, env):
         layers = []
         e = env

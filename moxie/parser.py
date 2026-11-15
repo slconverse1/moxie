@@ -33,6 +33,11 @@ class Parser(ExprParser):
                 break
             if t.kind == "INDENT":
                 self.err("unexpected indent")
+            if not out and not top:
+                cd = self.try_carry_decl()
+                if cd is not None:
+                    out.append(cd)
+                    continue
             s = self.parse_stmt()
             out.append(s)
             if getattr(self, "_chain_rest", None):
@@ -43,6 +48,43 @@ class Parser(ExprParser):
                 if im is not None:
                     out.append(im)           # the methods behind the tuple's properties, as an impl right after it
         return group_fns(out)
+
+    def try_carry_decl(self):
+        """The first line of a block, `total, count@1, x@lap`: names only, with more lines after it, so each starts as a copy of an outer binding."""
+        k, items = 0, []
+        while True:
+            t = self.peek(k)
+            if t.kind != "NAME" or t.val in HARD or not (t.val[:1].islower() or t.val[:1] == "_"):
+                return None
+            name, n = t.val, None
+            k += 1
+            a = self.peek(k)
+            if a.kind == "OP" and a.val == "@" and not a.sp:
+                b = self.peek(k + 1)
+                if b.sp or not ((b.kind == "INT" and isinstance(b.val, int)) or (b.kind == "NAME" and b.val[:1].islower())):
+                    return None
+                n = b.val
+                k += 2
+            if any(i.name == name for i in items):
+                self.err(f"`{name}` is listed twice on the first line of the block")
+            items.append(Gimme(n, name, line=t.line))
+            a = self.peek(k)
+            if a.kind == "OP" and a.val == ",":
+                k += 1
+                continue
+            break
+        if self.peek(k).kind != "NL":
+            return None
+        j = k
+        while self.peek(j).kind == "NL":
+            j += 1
+        if self.peek(j).kind in ("DEDENT", "EOF"):
+            return None
+        line = self.peek().line
+        for _ in range(k):
+            self.next()
+        self.end_line()
+        return Carry(items, line=line)
 
     def parse_stmt(self):
         s = self.parse_stmt_core(allow_decl=True)

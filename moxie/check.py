@@ -1827,6 +1827,25 @@ class Checker(RefineMixin):
             return None
         return found
 
+    def e_Carry(self, n, sc):
+        """`total, count` as a block's first line: each name becomes a local that starts as the outer binding's value."""
+        import copy
+        for it in n.items:
+            if it.n is None:
+                v = sc.parent.find(it.name) if sc.parent is not None else None
+                if v is None and not (it.name in self.globals or it.name in self.consts):
+                    self.err(it.line, f"no outer `{it.name}` to start from: `{it.name}` has to be bound before this block (or drop it from the first line)")
+                    continue
+            else:
+                probe = Gimme(it.n, it.name, line=it.line)
+                v = self.gimme_var(probe, Sc(sc), False)
+                if v is None and not (it.name in self.globals or it.name in self.consts):
+                    continue                              # the error is already reported
+                if isinstance(it.n, str):
+                    it.n = probe.n                        # a label becomes the layer count it stands for
+            sc.vars[it.name] = copy.copy(v) if v is not None else Var(None)
+        return None, None
+
     def e_Gimme(self, n, sc):
         self.gimme_var(n, sc, False)
         return None, None

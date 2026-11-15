@@ -53,6 +53,7 @@ def _defs():
         "PH": "idx",               # _ or _1 _2 ... placeholder
         "Slot": "",                # & in a pipe call
         "Gimme": "n name",
+        "Carry": "items",          # first line of a block: `total, count@1, x@lap`: local copies of outer bindings; items: list of Gimme (n is None for the nearest)
         "Dollar": "expr",          # $name : variable used as a Dict key
         # compound
         "TupleE": "items",         # items: list of (label, expr, spread)
