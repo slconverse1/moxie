@@ -226,6 +226,7 @@ class Sc:
         self.fnb = False                 # the top scope of a function or lambda body
         self.open = open_ or (parent.open if parent else False)
         self.loopbody = False            # the block that is a loop's body
+        self.label = None                # the label of the loop or `do` whose body this block is
         self.usings = None               # name -> type of each `using` value declared in this scope (or a `using` parameter)
 
     def find(self, name):
@@ -313,6 +314,7 @@ class Checker(RefineMixin):
         self.in_fiber = False
         self.fiber_lams = set()
         self.loop_bodies = set()
+        self.loop_labels = {}
         self.cur_sc = None
         self.pipe_rest = {}
         self.trail_ty = {}
@@ -1787,11 +1789,14 @@ class Checker(RefineMixin):
         return ("fn", pts, ret)
 
     def gimme_var(self, n, sc, write):
-        """`name@N`: the N-th enclosing block that binds `name`, counting from the current block and skipping its own binding."""
+        """`name@N`: the N-th enclosing block that binds `name`, counting from the current block and skipping its own binding.
+        `name@label`: the nearest binding of `name` outside the loop or `do` labeled `#label`; it becomes the number it stands for."""
         s_ = sc
         first = True
         count = 0
         found = None
+        by_label = isinstance(n.n, str)
+        passed = False
         while s_ is not None:
             v = s_.vars.get(n.name)
             if v is not None:
@@ -1799,17 +1804,26 @@ class Checker(RefineMixin):
                     pass                                # the current block's own binding is skipped
                 else:
                     count += 1
-                    if count == n.n:
+                    if by_label and passed:
+                        found = v
+                        n.n = count                     # the interpreter counts layers, so it gets the number
+                        break
+                    if not by_label and count == n.n:
                         found = v
                         break
+            if by_label and s_.label == n.n:
+                passed = True
             first = False
             if s_.fnb:
                 break                                   # a function or closure is a boundary: `name@N` does not reach out of it
             s_ = s_.parent
         if found is None:
-            if (n.name in self.globals or n.name in self.consts) and getattr(self, "cur_fn", None) is None:
+            if by_label and not passed:
+                self.err(n.line, f"`{n.name}@{n.n}`: no enclosing loop or `do` is labeled `#{n.n}`")
+                return None
+            if (n.name in self.globals or n.name in self.consts) and getattr(self, "cur_fn", None) is None and not by_label:
                 return None                             # a module-level name is an outer binding too, but a function is a boundary
-            self.err(n.line, f"`{n.name}@{n.n}`: no enclosing block binds `{n.name}`" + (" that far out" if count else ""))
+            self.err(n.line, f"`{n.name}@{n.n}`: no enclosing block binds `{n.name}`" + (" that far out" if count else "" if not by_label else " outside `#" + str(n.n) + "`"))
             return None
         return found
 
@@ -2566,6 +2580,7 @@ class Checker(RefineMixin):
         inner = Sc(sc) if new_scope else sc
         if new_scope and id(n) in self.loop_bodies:
             inner.loopbody = True
+            inner.label = self.loop_labels.get(id(n))
         stmts = n.stmts or []
         saved = self.exit_ctx
         self.exit_ctx = saved or self.diverges(stmts)
@@ -2965,6 +2980,8 @@ class Checker(RefineMixin):
                             or (shape(ov.ty) and nt in self.SCAL) or (ov.ty in self.SCAL and shape(nt))):
                         self.err(n.line, f"`{tgt.name}` is {'an' if str(tshow(ov.ty))[0] in 'AEIOU' else 'a'} `{tshow(ov.ty)}` when the loop begins, so the loop body can't make it {'an' if str(tshow(nt))[0] in 'AEIOU' else 'a'} `{tshow(nt)}`: a name that enters a loop keeps its type")
         if n.op != "=":
+            if n.targets.__class__ is PPlace and n.targets.expr.__class__ is Gimme:
+                self.gimme_var(n.targets.expr, sc, True)          # `total@serve += x`: the label becomes a layer number
             return None, None
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PBind:
@@ -3244,6 +3261,7 @@ class Checker(RefineMixin):
         for b in body_nodes:
             if b.__class__ is Block:
                 self.loop_bodies.add(id(b))
+                self.loop_labels[id(b)] = label
             self.ev(b, sc)
         self.labels.pop()
         self.loop_depth, self.exit_ctx = saved

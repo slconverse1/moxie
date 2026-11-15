@@ -586,6 +586,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             if e.parent is None or e is e.mod:
                 break
             e = e.parent
+        if isinstance(n.n, str):
+            raise Abort(f"`{n.name}@{n.n}` needs the program to be checked first", n.line)
         count = 0
         for e in layers[1:]:
             if n.name in e.vars:

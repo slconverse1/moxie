@@ -15,6 +15,12 @@ CASES = [
  ("a function is a boundary for a module-level name", 'rate = 3\nfn bump() Int\n  rate@1 = 4\n  rate\nprintln(bump())\n', 2, "no enclosing block binds `rate`"),
  ("a closure is a boundary", 'fn f() Int\n  x = 1\n  g = () -> x@1\n  g()\nprintln(f())\n', 2, "no enclosing block binds `x`"),
  ("a function reads a module-level name without @", 'rate = 3\nfn price(n Int) Int\n  n * rate\nprintln(price(5))\n', 0, "15"),
+ ("a label names the scope", 'total = 0\n#serve for x in List(1, 2, 3)\n  if x > 0\n    total@serve += x\nprintln(total)\n', 0, "6"),
+ ("a label reaches past a shadow", 'total = 100\n#outer for i in List(1, 2)\n  total = 5\n  for j in List(1, 2)\n    total@outer += j\n    total@1 += 10\n    println("${total} ${total@outer}")\nprintln(total)\n', 0, "106"),
+ ("a label on a while loop", 'count = 0\n#w while count < 3\n  count@w += 1\nprintln(count)\n', 0, "3"),
+ ("an unknown label is an error", 'total = 0\nfor x in List(1)\n  total@nope += x\nprintln(total)\n', 2, "no enclosing loop or `do` is labeled `#nope`"),
+ ("a label with nothing outside it", '#serve for x in List(1)\n  y@serve = 1\n', 2, "no enclosing block binds `y`"),
+ ("an as-pattern is not a label", 'tuple P\n  a Int\n  b Int\nq = P(a: 1, b: 2)\nr@P(a, b) = q\nprintln("${r} ${a}")\n', 0, "P(a: 1, b: 2) 1"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

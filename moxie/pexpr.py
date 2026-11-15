@@ -348,6 +348,10 @@ class ExprParser(PBase):
                     and isinstance(self.peek(1).val, int):
                 self.next()                                        # `total@1`: the nearest enclosing block's `total` (Spec 2)
                 e = Gimme(self.next().val, e.name, line=t.line)
+            elif v == "@" and not t.sp and e.__class__ is Name and self.peek(1).kind == "NAME" and not self.peek(1).sp \
+                    and (self.peek(1).val[:1].islower()) and not self.at_op("(", 2):
+                self.next()                                        # `total@serve`: the `total` outside the loop labeled `#serve`
+                e = Gimme(self.next().val, e.name, line=t.line)
             elif v == "(" and not t.sp:
                 e = self.parse_call(e)
             elif v == "[" and not t.sp and self._can_generic(e):

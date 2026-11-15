@@ -291,6 +291,21 @@ println(total)
 
 Output: `245`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do` the outer name has the value from whichever path ran; **functions and closures are boundaries** (a closure copies what it captures), but a loop is not one for `name@N`; there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `x@1 = ...` when no enclosing block binds `x`, and `name@N` inside a function or closure for a name bound outside it.
 
+**Naming the scope: `name@label`.** A number counts layers, and a label names one. A loop or `do` with a label (`#serve for ...`, the same label `break #serve` uses) gives `name@serve` a meaning: the `name` bound outside that loop, however many blocks lie between:
+
+```
+total = 100
+#outer for i in List(1, 2)
+  total = 5
+  for j in List(1, 2)
+    total@outer += j
+    total@1 += 10
+    println("${total} ${total@outer}")
+println(total)
+```
+
+Output: `15 101`, `25 103`, `15 104`, `25 106`, then `106`. Each pass of the outer loop makes its own local `total` (5), `total@1` adds 10 to that one, and `total@outer` adds `j` to the `total` that existed before the loop began. The label has to belong to a loop or `do` around the line, so `total@nope` is an error, and it has to start with a lowercase letter: `p@Product(...)` is still an as-pattern.
+
 **Module scope and function scope.** A name bound at the top of a file lives in *module scope*: it is created once, when the program starts, and stays for the whole run, so every function in the file can read it. A name bound inside a function, including its parameters and loop variables, lives in *function scope*: it exists in that call's frame and is gone when the call returns, and each call gets its own. A function is a boundary for `name@N`, so it can read a module-level name by writing the name, but it cannot rebind one, which is why there is no `global`. Inside a function, `name@N` counts only that function's own blocks:
 
 ```

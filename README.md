@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-15: `name@label`.** A label names the scope that `name@N` would count: `total@serve += x` inside `#serve for ...` writes the `total` bound outside that loop, however many blocks lie between. Works for any labeled loop or `do`; an unknown label is an error. A label starts with a lowercase letter, so `p@Product(...)` stays an as-pattern.
+
 **2026-11-15: `moxie run` prints warnings.** The compiler's warnings (a shadowed name, a dropped `Result`, and the rest) used to appear only under `moxie check`. `run` now prints them on stderr before the program starts, in the same `file:line: warning:` form, and they never change the exit code. `--quiet` and `--release` leave them out. The Try page shows them above the program's output.
 
 **2026-11-15: no more `total = total + x` that quietly does nothing.** In an inner block (a `for` body, an `if`, a `when` arm), a line that defines a name and also reads the same name from outside (`total += x`, `total = total + x`) is now a compile error, since the new `total` would vanish at the end of the block and the outer one would never change. The message says to write `total@1 += x`, or fold with `reduce`. A plain shadowing line like `x = 5` still only warns. Loops may still carry state on purpose: a name their `while` condition reads, one their `break(value)` or `else` hands out, and the state of a `daemon`. A name carried only for the condition and then read after the loop is an error too. Tests in `tests/run_shadow.py` and `tests/run_gimme.py`.
