@@ -880,6 +880,18 @@ when cells((0, 0))
 
 Output: `start 2`. Values can be any storable type, including functions and closures **[gc]** (chapter 7). `put(d, k, v)` is the function form of `d(k) = v` and returns the updated Dict **[gc]**; it can't fail for lack of room. **Mistakes:** matching only `Ok`, and a Float key.
 
+**Updating a Dict by spread.** A Dict is a value too, so an update is a new Dict. Spread the old one into a literal and write the entries that change after it:
+
+```
+ages = Dict(alice -> 30, bob -> 25, carol -> 41)
+older = Dict(...ages, alice -> 31, dave -> 7)
+for (name, age) in older
+  println("$name is $age")
+println("${len(ages)} ${len(older)}")
+```
+
+Output: `alice is 31`, `bob is 25`, `carol is 41`, `dave is 7`, then `3 4`. The spread comes first and keeps the old order; `alice -> 31` replaces the old `alice` in place, and `dave` is a new key at the end. `ages` itself is unchanged. For a single change, `put(ages, "alice", 31)` gives `Ok` of the updated Dict, or an `Err` when the Dict is full.
+
 **Combining collections.** **[gc]** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Nothing can be full, so each returns the plain collection, as `put` does, and a program meant to run in both dialects handles the `Result` that no-GC moxie returns.
 
 ```

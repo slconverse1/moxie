@@ -879,6 +879,18 @@ when cells((0, 0))
 
 Output: `start 2`. Values can be any storable type, including plain functions (chapter 7). **Mistakes:** matching only `Ok`, a Float key, and adding a third key to a full `Dict` (it aborts; `put` returns NO_SLOT instead).
 
+**Updating a Dict by spread.** A Dict is a value too, so an update is a new Dict. Spread the old one into a literal and write the entries that change after it:
+
+```
+ages = Dict(alice -> 30, bob -> 25, carol -> 41)
+older = Dict(...ages, alice -> 31, dave -> 7)
+for (name, age) in older
+  println("$name is $age")
+println("${len(ages)} ${len(older)}")
+```
+
+Output: `alice is 31`, `bob is 25`, `carol is 41`, `dave is 7`, then `3 4`. The spread comes first and keeps the old order; `alice -> 31` replaces the old `alice` in place, and `dave` is a new key at the end. `ages` itself is unchanged. For a single change, `put(ages, "alice", 31)` gives `Ok` of the updated Dict, or an `Err` when the Dict is full.
+
 **Combining collections.** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Each keeps `a`'s capacity, so each returns a `Result`: `Err` with `NO_SLOT` when the combined collection does not fit, as `put` does. Unlike `combine` on a `String` or a `List`, these are not `Semigroup` instances, because a collection that can run out of room has no total, associative `combine`; fold several with `reduce` and `?`.
 
 ```

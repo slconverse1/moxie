@@ -1732,11 +1732,11 @@ def _coll_ctor(kind):
             cap = I.const_of(groups[1][0], I.module_env)
         if kind == "Dict":
             d = {}
-            for k, v in kw.items():
-                d[k] = v
             for x in a:
                 if isinstance(x, TupleV):
                     d[x.vals[0]] = x.vals[1]
+            for k, v in kw.items():
+                d[k] = v                                  # a spread's entries come first; a named entry replaces one in place
             if cap is None:
                 cap = len(d)
             if len(d) > cap:

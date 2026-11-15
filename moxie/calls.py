@@ -520,6 +520,8 @@ class CallsMixin:
                     ins = list(sv.vals)
             elif isinstance(sv, Seq):
                 ins = list(sv.items)
+            elif isinstance(sv, DictV):
+                ins = [TupleV([k, v], None) for k, v in sv.d.items()]       # `Dict(...old, k -> v)`: the entries come first, later ones override
             pos[at + shift:at + shift] = ins
             shift += len(ins)
         return pos, named
