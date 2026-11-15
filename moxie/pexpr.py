@@ -416,7 +416,13 @@ class ExprParser(PBase):
     # ------------------------------------------------------------ calls
     def parse_call(self, fn):
         line = self.peek().line
-        args = self.parse_args()
+        base = fn.base if fn.__class__ is GenApp else fn
+        saved_dc = getattr(self, "dict_call", False)
+        self.dict_call = base.__class__ is Name and base.name == "Dict"      # inside `Dict(...)` a `(k) -> v` is a key, not a lambda
+        try:
+            args = self.parse_args()
+        finally:
+            self.dict_call = saved_dc
         call = self.finish_call(fn, args, line)
         # trailing lambda forms
         while True:
@@ -462,6 +468,13 @@ class ExprParser(PBase):
         args = []
         self.skip_nl()
         while not self.at_op(")"):
+            if self.at_op("{") and getattr(self, "dict_call", False):
+                args.extend(self.parse_multi_entry())
+                self.skip_nl()
+                if not self.eat_op(","):
+                    break
+                self.skip_nl()
+                continue
             a0 = self.parse_arg()
             if not args and self.at_name("for") and a0.mod is None:
                 a0 = self.parse_comprehension(a0)
@@ -474,6 +487,50 @@ class ExprParser(PBase):
         self.expect_op(")", "to close the argument list")
         self.no_trailing, self.stop_bol = save
         return args
+
+    def parse_multi_entry(self):
+        """`{alice, bob} -> (31, 26)` inside a `Dict(...)`: several entries at once, the keys and the values paired by position."""
+        line = self.next().line                  # {
+        keys = []
+        self.skip_nl()
+        while not self.at_op("}"):
+            t = self.peek()
+            nt = self.peek(1)
+            if t.kind in ("NAME", "INT") and nt.kind == "OP" and nt.val in (",", "}"):
+                self.next()
+                keys.append((t.val, None))
+            elif t.kind == "STR" and nt.kind == "OP" and nt.val in (",", "}"):
+                self.next()
+                keys.append((("str", "".join(p for p in t.val if isinstance(p, str))), None))
+            else:
+                keys.append((None, self.parse_expr()))
+            self.skip_nl()
+            if not self.eat_op(","):
+                break
+            self.skip_nl()
+        self.expect_op("}", "to close the list of keys")
+        if not keys:
+            self.err("`{}` needs at least one key before `->`")
+        self.expect_op("->", "after the keys: `{a, b} -> (1, 2)`")
+        val = self.parse_expr()
+        if len(keys) == 1:
+            vals = [val.items[0][1]] if False else [val]
+        elif val.__class__ is TupleE and len(val.items) == len(keys) and not any(it[2] or it[0] is not None for it in val.items):
+            vals = [it[1] for it in val.items]
+        else:
+            n = len(val.items) if val.__class__ is TupleE else 1
+            self.err_at(line, f"`{{...}} -> (...)` pairs keys and values by position: {len(keys)} keys need a tuple of {len(keys)} values, found {n}")
+        out = []
+        for (lab, kexpr), v in zip(keys, vals):
+            if lab is not None:
+                a = Arg(lab, v, None, line=line)
+            else:
+                a = Arg(None, TupleE([(None, kexpr, False), (None, v, False)], line=line), None, line=line)
+            out.append(a)
+            if not hasattr(self, "_arrow_args"):
+                self._arrow_args = {}
+            self._arrow_args[id(a)] = a
+        return out
 
     def parse_comprehension(self, first):
         """Container comprehension: List(x * x for x in xs if x > 1) / Dict(k -> v for k in ks)."""
@@ -506,6 +563,22 @@ class ExprParser(PBase):
     def parse_expr_until_if(self):
         return self.parse_expr()
 
+    def paren_arrow_ahead(self):
+        """A `(` that opens a key: its matching `)` is followed by `->`."""
+        depth, k = 0, 0
+        while True:
+            t = self.peek(k)
+            if t.kind == "EOF":
+                return False
+            if t.kind == "OP" and t.val in ("(", "[", "{"):
+                depth += 1
+            elif t.kind == "OP" and t.val in (")", "]", "}"):
+                depth -= 1
+                if depth == 0:
+                    n = self.peek(k + 1)
+                    return n.kind == "OP" and n.val == "->"
+            k += 1
+
     def parse_arg(self):
         t = self.peek()
         arrow = t.kind in ("NAME", "INT", "STR") and self.at_op("->", 1)
@@ -528,6 +601,11 @@ class ExprParser(PBase):
         t = self.peek()
         line = t.line
         label = None
+        if t.kind == "OP" and t.val == "(" and getattr(self, "dict_call", False) and self.paren_arrow_ahead():
+            key = self.parse_paren()                      # `(1, 2) -> "a"`: a tuple key, written like any other key
+            self.expect_op("->")
+            val = self.parse_expr()
+            return Arg(None, TupleE([(None, key, False), (None, val, False)], line=line), None, line=line)
         if t.kind in ("NAME", "INT") and self.at_op("->", 1):
             label = t.val
             self.next()
