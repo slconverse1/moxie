@@ -900,7 +900,7 @@ for (name, age) in older
   println("$name is $age")
 ```
 
-Output: `alice is 31`, `bob is 26`, `carol is 41`, `dave is 7`. Braces mark a list of keys, so a tuple on the left of a plain `->` is still a single key: `Dict((0, 0) -> "start")` has the key `(0, 0)`. A count that doesn't match, as in `{a, b, c} -> (1, 2)`, is a compile error.
+Output: `alice is 31`, `bob is 26`, `carol is 41`, `dave is 7`. Braces mark a list of keys, so a tuple on the left of a plain `->` is still a single key: `Dict((0, 0) -> "start")` has the key `(0, 0)`. A count that doesn't match, as in `{a, b, c} -> (1, 2)`, is a compile error. Only a Dict can be spread into a `Dict(...)`; spreading a `List` there is a compile error. In the other direction, `List(...ages)` gives the `(key, value)` pairs.
 
 **Combining collections.** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Each keeps `a`'s capacity, so each returns a `Result`: `Err` with `NO_SLOT` when the combined collection does not fit, as `put` does. Unlike `combine` on a `String` or a `List`, these are not `Semigroup` instances, because a collection that can run out of room has no total, associative `combine`; fold several with `reduce` and `?`.
 

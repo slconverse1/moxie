@@ -4190,12 +4190,25 @@ class Checker(RefineMixin):
     def e_Call(self, n, sc, *a, **k):
         self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
         self.rf_check_call(n, sc, k.get("extra", a[0] if a else 0))
+        self.check_dict_spread(n, sc)
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
         for item in self.pending_gone[mark:]:
             self.mark_gone(*item)          # the receiver is gone once the call has been checked
         del self.pending_gone[mark:]
         return r
+
+    def check_dict_spread(self, n, sc):
+        """`Dict(...x)`: only a Dict can be spread into a Dict literal; anything else used to be dropped without a word."""
+        base = n.fn.base if n.fn.__class__ is GenApp else n.fn
+        if base.__class__ is not Name or base.name != "Dict" or "Dict" in self.tuples or "Dict" in self.enums:
+            return
+        for a in n.args:
+            if a.mod != "spread" or a.expr is None:
+                continue
+            t = self.ev(a.expr, sc)[0]
+            if t is not None and not (t.__class__ is tuple and t[0] == "app" and t[1] == "Dict"):
+                self.err(getattr(a, "line", 0) or n.line, f"`Dict(...x)` spreads a `Dict`, but this is a `{tshow(t)}`: only a Dict's entries can go into a Dict literal")
 
     def delegate_fails(self, f):
         d = f.delegate
@@ -4535,6 +4548,13 @@ class Checker(RefineMixin):
                 and f.name not in self.fns and f.name not in self.tuples and f.name not in self.enums and f.name not in self.aliases \
                 and sc.find(f.name) is None and not extra:
             r = (("app", f.name, (None,) * (1 if f.name == "Set" else 2)), None)         # an empty collection: its kind is known, its elements are not yet
+        if f.__class__ is GenApp and f.base.__class__ is Name and f.base.name in ("Dict", "List", "Set", "Array") and (r is None or r[0] is None) \
+                and f.groups and f.groups[0] and f.base.name not in self.fns and f.base.name not in self.tuples and f.base.name not in self.enums \
+                and f.base.name not in self.aliases and sc.find(f.base.name) is None and not extra \
+                and len(f.groups[0]) == (2 if f.base.name == "Dict" else 1) and not any(g.__class__ is THole for g in f.groups[0]):
+            decl = tuple(self.ty_of_type(g) for g in f.groups[0])             # `Dict[String, Int][10](...)`: the written types are the type
+            if None not in decl:
+                r = (("app", f.base.name, decl), None)
         if f.__class__ is Name and f.name in self.BOUND_FNS and f.name not in self.fns and sc.find(f.name) is None:
             self.check_value_bound(n, f, sc, pipe0)
         if f.__class__ is Name and f.name in ("Set", "put") and f.name not in self.fns and f.name not in self.tuples and sc.find(f.name) is None and n.args:
@@ -5040,12 +5060,16 @@ class Checker(RefineMixin):
     def dict_ctor(self, args, ats, n=None):
         """`Dict(1: 2)` is `Dict[Int, Int]`: a number key is an Int, and a string or a bare name is a String key; `Dict((k, v), ...)`
         takes both from the pairs.  Anything not known leaves that part unknown."""
-        if any(getattr(a, "mod", None) for a in args):
+        if any(getattr(a, "mod", None) not in (None, "spread") for a in args):
             return None
         kt = vt = None
         for a, (t, _c) in zip(args, ats):
             t = self.base(t)
-            if getattr(a, "label", None) is not None:
+            if getattr(a, "mod", None) == "spread":                  # `Dict(...old, k -> v)`: the old Dict's key and value types count too
+                if t is None or t.__class__ is not tuple or t[0] != "app" or t[1] != "Dict" or None in t[2]:
+                    return ("app", "Dict", (None, None))
+                k, v = t[2]
+            elif getattr(a, "label", None) is not None:
                 lb = a.label
                 k = "Int" if isinstance(lb, int) and not isinstance(lb, bool) else "String" if isinstance(lb, (str, tuple)) else None
                 v = t
