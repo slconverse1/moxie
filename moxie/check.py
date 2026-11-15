@@ -63,6 +63,26 @@ def names_of(e):
     return out
 
 
+def break_value_names(body):
+    """The names a loop body hands out in `break(value)`: state carried through the iterations and given back that way."""
+    from .tally import names_in
+    out = set()
+
+    def walk(x):
+        if x.__class__ in (list, tuple):
+            for y in x:
+                walk(y)
+            return
+        if not isinstance(x, N) or x.__class__ in (Lambda, FnDecl):
+            return
+        if x.__class__ is Break and x.e is not None:
+            out.update(names_in(x.e))
+        for f in x._fields:
+            walk(getattr(x, f, None))
+    walk(body)
+    return out
+
+
 def breaks_with_value(body, label):
     """The first `break(value)` that leaves the loop whose body is `body` (and whose label is `label`, or None), or None.
     An unlabeled break belongs to the nearest loop, `do` or `select`, and a function or lambda is a boundary."""
@@ -278,6 +298,10 @@ class Checker(RefineMixin):
         self._later = False
         self.loop_depth = 0
         self.else_names = []              # for each enclosing loop, the names its `else:` mentions
+        self.cond_names = []              # for each enclosing loop, the names its `while` condition reads (a `for` has none)
+        self.break_names = []             # for each enclosing loop, the names its `break(value)` hands out
+        self.loop_lost = []               # for each enclosing loop, the outer names its body rebinds only for the loop's own condition
+        self.last_loop_lost = set()       # ... the set of the loop that just ended
         self.exit_ctx = False
         self.fn_ret = None
         self.fn_tparams = ()
@@ -2550,8 +2574,22 @@ class Checker(RefineMixin):
         narrowed = False
         in_loop = id(n) in self.loop_bodies
         rf_mark = len(self.ifacts)
+        lost = {}
         for k, st in enumerate(stmts):
+            if lost:
+                from .tally import names_in
+                used = set(names_in(st))
+                for nm in [x for x in lost if x in used]:
+                    self.err(getattr(st, "line", 0) or n.line, f"`{nm}` is changed inside the loop (line {lost[nm]}) only for the loop's own condition, so here it still has "
+                                                              f"its old value: write `{nm}@1` in the loop to change this one, or give it back with `else {nm}`")
+                    del lost[nm]
+                if st.__class__ is Assign and st.targets.__class__ is PBind:
+                    lost.pop(st.targets.name, None)
+            self.last_loop_lost = {}
             last = self.ev(st, inner)
+            if self.last_loop_lost:
+                lost = {**lost, **self.last_loop_lost}
+            self.last_loop_lost = {}
             self.rf_push(self.rf_fall(st, inner))
             if st.__class__ is Assign:
                 self.rf_push(self.rf_bind_fact(st, inner))
@@ -2908,8 +2946,13 @@ class Checker(RefineMixin):
                 if sp is not None and sp.static:
                     self.err(n.line, f"`{tgt.path[1]}` is a static property, which is read-only")
             if tgt.__class__ is PBind:
-                carried = n.op == "=" and sc.loopbody and tgt.name not in sc.vars and self.else_names and tgt.name in self.else_names[-1] \
-                    and sc.parent is not None and sc.parent.find(tgt.name) is not None
+                carried = sc.loopbody and tgt.name not in sc.vars and self.else_names and sc.parent is not None \
+                    and sc.parent.find(tgt.name) is not None \
+                    and ((n.op == "=" and tgt.name in self.else_names[-1]) or tgt.name in self.cond_names[-1])
+                if carried and self.loop_lost and not (n.op == "=" and tgt.name in self.else_names[-1]) and tgt.name not in self.break_names[-1]:
+                    self.loop_lost[-1].setdefault(tgt.name, n.line)      # carried for the condition only: the loop does not hand it back
+                if self.in_daemon and sc.parent is not None and sc.parent.find(tgt.name) is not None:
+                    carried = True                # a daemon never ends: rebinding at its body level is how its state advances
                 if not carried:                  # the loop's `else:` reads the name, so the rebinding is meant to be carried forward
                     self.warn_shadow(tgt.name, sc, n)
                 if n.op == "=" and sc.loopbody and tgt.name not in sc.vars and not isinstance(n.targets, list):
@@ -3235,6 +3278,9 @@ class Checker(RefineMixin):
                         self.union_vars[inner.vars[ip.name]] = vum
         self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
+        self.break_names.append(break_value_names(n.body))
+        self.cond_names.append(self.break_names[-1])
+        self.loop_lost.append({})
         rf_mark = len(self.ifacts)
         lf = self.rf_loop_facts(n, sc)
         if lf is not None and n.pat.name in inner.vars:
@@ -3244,6 +3290,9 @@ class Checker(RefineMixin):
         self.loop([n.body], inner, n.label)
         del self.ifacts[rf_mark:]
         self.else_names.pop()
+        self.cond_names.pop()
+        self.break_names.pop()
+        self.last_loop_lost = self.loop_lost.pop()
         self.ev(n.else_, sc)
         return None, None
 
@@ -3260,8 +3309,14 @@ class Checker(RefineMixin):
             self.err(n.line, f"`while` condition must be `Bool`, found `{tshow(ct)}`")
         self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
+        self.break_names.append(break_value_names(n.body))
+        self.cond_names.append(names_of(n.cond) | self.break_names[-1])
+        self.loop_lost.append({})
         self.loop([n.body], sc, n.label)
         self.else_names.pop()
+        self.cond_names.pop()
+        self.break_names.pop()
+        self.last_loop_lost = self.loop_lost.pop()
         self.ev(n.else_, sc)
         return None, None
 

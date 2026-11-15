@@ -10,13 +10,19 @@ def check(src):
     return r.stdout.decode() + r.stderr.decode()
 
 WARN = [
- ("+= in a loop", 'total = 0\nfor i in List(1, 2)\n  total += i\nprintln(total)\n'),
- ("= in a loop", 'total = 0\nfor i in List(1, 2)\n  total = total + i\nprintln(total)\n'),
  ("= in an if", 'j = 0\nif true\n  j = 9\nprintln(j)\n'),
  ("= in a when arm", 'i = 0\nwhen 1\n  1 -> i = 2\n  _ -> i = 5\nprintln(i)\n'),
  ("shadowing a parameter", 'fn f(n Int) Int\n  if n > 0\n    n = 1\n  n\n'),
 ]
+ERR = [
+ ("+= in a loop", 'total = 0\nfor i in List(1, 2)\n  total += i\nprintln(total)\n', "`total += ...` reads the outer `total`"),
+ ("= reading itself in a loop", 'total = 0\nfor i in List(1, 2)\n  total = total + i\nprintln(total)\n', "`total = ... total ...` reads the outer `total`"),
+ ("= reading itself in an if", 'n = 1\nif true\n  n = n + 1\nprintln(n)\n', "reads the outer `n`"),
+ ("a while counter used after the loop", 'fn f(c Int) Int\n  i = 0\n  while i < c\n    i += 1\n  i\n', "only for the loop's own condition"),
+]
 QUIET = [
+ ("a while loop whose condition reads the counter", 'fn f(c Int) Int\n  i = 0\n  while i < c\n    i += 1\n  c\nprintln(f(3))\n'),
+ ("a while counter given back by else", 'fn f(c Int) Int\n  i = 0\n  while i < c\n    i += 1\n  else\n    i\nprintln(f(3))\n'),
  ("rebinding in the same block", "x = 1\nx = x + 1\nprintln(x)\n"),
  ("gimme reaches the outer name", 'total = 0\nfor i in List(1, 2)\n  total@1 += i\nprintln(total)\n'),
  ("a function local named like a global", 'n = 1\nfn f() Int\n  n = 2\n  n\nprintln(f() + n)\n'),
@@ -30,6 +36,11 @@ for name, src in WARN:
     out = check(src)
     ok = "warning" in out and "hides the outer one" in out and "error" not in out
     print(("ok    " if ok else "FAIL  ") + "warns: " + name + ("" if ok else f"  {out.strip()[:160]!r}"))
+    if not ok: fails.append(name)
+for name, src, word in ERR:
+    out = check(src)
+    ok = "error" in out and word in out
+    print(("ok    " if ok else "FAIL  ") + "error: " + name + ("" if ok else f"  {out.strip()[:200]!r}"))
     if not ok: fails.append(name)
 for name, src in QUIET:
     out = check(src)

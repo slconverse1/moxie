@@ -4,7 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES = [
  ("name@1 updates names bound before a loop", 'total = 0\ncount = 0\nfor score in List(70, 85, 90)\n  total@1 += score\n  count@1 += 1\nprintln("$total $count")\n', 0, "245 3"),
  ("reduce carries the state with no outer write", 'total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s) -> acc + s)\nprintln(total)\n', 0, "245"),
- ("a plain rebinding in a loop does not leave it", 'total = 0\nfor s in List(1, 2, 3)\n  total += s\nprintln(total)\n', 0, "0"),
+ ("a plain rebinding in a loop is an error", 'total = 0\nfor s in List(1, 2, 3)\n  total += s\nprintln(total)\n', 2, "reads the outer `total`"),
  ("name@N in a nested if", 'n = 1\nif true\n  n = 2\n  n@1 = 10\n  println("${n} ${n@1}")\nprintln("$n")\n', 0, "2 10\n10"),
  ("name@N with nothing to reach is an error", 'fn f() Int\n  x@1 = 5\n  1\nprintln(f())\n', 2, "no enclosing block binds"),
  ("a read in an expression", 'n = 5\nif true\n  n = 7\n  println(n@1 + n)\n', 0, "12"),
