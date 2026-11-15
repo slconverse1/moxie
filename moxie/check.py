@@ -2620,6 +2620,10 @@ class Checker(RefineMixin):
                 if st.__class__ is Assign and st.targets.__class__ is PBind:
                     lost.pop(st.targets.name, None)
             self.last_loop_lost = {}
+            if st.__class__ is ExprStmt and st.e.__class__ is TupleE and (k < len(stmts) - 1 or in_loop) and len(st.e.items) > 0 \
+                    and all(it[0] is None and not it[2] and it[1].__class__ in (Name, Gimme) for it in st.e.items):
+                self.err(getattr(st, "line", 0) or n.line, "a line of only names does nothing here; a declaration (`total, count`, local copies of outer names) "
+                                                           "belongs on the first line of a block")
             last = self.ev(st, inner)
             if self.last_loop_lost:
                 lost = {**lost, **self.last_loop_lost}
