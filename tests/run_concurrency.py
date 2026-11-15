@@ -148,6 +148,21 @@ chk("the old spelling points to the new one", '''scope
   println(1)
 ''', 2, '`scope` is now `wait`', cmd="check")
 
+# The Try page runs under the browser platform, whose permission check must ignore the walk's effect kinds (parks, uses a resource).
+_rc, _out = run('''fiber fn task(name String, ms Int, out ChanW[String]) Unit
+  sleep(ms * 1ms)
+  \\write(out, name)
+
+rx, tx = Chan[String][4]()
+wait
+  _ = run task("a", 20, clone(tx))
+  _ = run task("b", 40, tx)
+println("both are done")
+''', flags=("--platform=browser",))
+_ok = _rc == 0 and "both are done" in _out and "KeyError" not in _out
+print(("ok    " if _ok else "FAIL  ") + "a wait block runs under the browser platform" + ("" if _ok else f"  (rc {_rc}) {_out[:300]!r}"))
+if not _ok: fails.append("browser platform")
+
 print()
 print("FAILURES: " + ", ".join(fails) if fails else "all concurrency tests passed")
 sys.exit(1 if fails else 0)

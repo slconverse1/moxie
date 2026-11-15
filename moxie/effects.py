@@ -619,7 +619,8 @@ class Needs(Effects):
 def permission_needs(prog, search_dir=None):
     """{kind: (line, name)} for what the program's top-level code can reach."""
     acc = Needs(prog, search_dir).solve()
-    return {k: (w[1], w[2]) for k, w in acc.items()}
+    effect_kinds = (PARKS, PRINTS, SYSTEM, RESOURCE)      # the walk also notes these effects; they are not permissions
+    return {k: (w[1], w[2]) for k, w in acc.items() if k not in effect_kinds and not k.startswith("uses ")}
 
 
 def check_effects(prog, search_dir=None):
