@@ -291,6 +291,24 @@ println(total)
 
 Output: `245`. The rules: a write keeps the type; after an `if`, `when`, `select`, or `do` the outer name has the value from whichever path ran; **functions and closures are boundaries** (a closure copies what it captures), but a loop is not one for `name@N`; there is no `global`; and an outer resource name follows the move rules. **Mistakes:** `x@1 = ...` when no enclosing block binds `x`, and `name@N` inside a function or closure for a name bound outside it.
 
+**Module scope and function scope.** A name bound at the top of a file lives in *module scope*: it is created once, when the program starts, and stays for the whole run, so every function in the file can read it. A name bound inside a function, including its parameters and loop variables, lives in *function scope*: it exists in that call's frame and is gone when the call returns, and each call gets its own. A function is a boundary for `name@N`, so it can read a module-level name by writing the name, but it cannot rebind one, which is why there is no `global`. Inside a function, `name@N` counts only that function's own blocks:
+
+```
+rate = 3
+fn price(n Int) Int
+  n * rate
+fn tally(scores List[Int]) Int
+  total = 0
+  for s in scores
+    total = s * 2
+    total@1 += total
+  total
+println(price(5))
+println(tally(List(1, 2, 3)))
+```
+
+Output: `15`, then `12`. `price` reads the module-level `rate` with no ceremony. In `tally`, each pass of the loop makes its own local `total` (twice the score), and `total@1` adds it into the function's `total`, which the function returns: `2 + 4 + 6`. **Mistakes:** `rate@1 = 4` inside `price` (a function can't rebind a module-level name; the error says no enclosing block binds it), and expecting a loop variable or a local to still exist after its function returns.
+
 **1d. Comments**
 
 A `//` comment runs to the end of the line, and it is the one to use almost everywhere: on its own line above the code, or after it for a short note. Say why, not what: a comment that repeats the code is noise. `///` is for documentation; it sits directly above a declaration and `moxie doc` and the doctests read it (section on tooling). A `/* ... */` block comment nests, so it is the right tool for switching off a region of code that may already contain block comments:

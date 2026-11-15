@@ -1779,10 +1779,12 @@ class Checker(RefineMixin):
                         found = v
                         break
             first = False
+            if s_.fnb:
+                break                                   # a function or closure is a boundary: `name@N` does not reach out of it
             s_ = s_.parent
         if found is None:
-            if n.name in self.globals or n.name in self.consts:
-                return None                             # a module-level name is an outer binding too
+            if (n.name in self.globals or n.name in self.consts) and getattr(self, "cur_fn", None) is None:
+                return None                             # a module-level name is an outer binding too, but a function is a boundary
             self.err(n.line, f"`{n.name}@{n.n}`: no enclosing block binds `{n.name}`" + (" that far out" if count else ""))
             return None
         return found

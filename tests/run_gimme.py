@@ -11,6 +11,10 @@ CASES = [
  ("the second layer out", 'n = 1\nif true\n  n = 2\n  if true\n    n = 3\n    println("${n} ${n@1} ${n@2}")\n', 0, "3 2 1"),
  ("the old spelling points to the new one", 'x = 1\nif true\n  x = 2\n  println(gimme.1.x)\n', 2, "x@1"),
  ("a field name after the number still works", 'tuple P\n  a Int\np = P(a: 4)\nif true\n  p = P(a: 9)\n  println(p@1.a + p.a)\n', 0, "13"),
+ ("a function keeps its own total and updates the outer one", 'fn tally(scores List[Int]) Int\n  total = 0\n  for s in scores\n    total = s * 2\n    total@1 += total\n  total\nprintln(tally(List(1, 2, 3)))\n', 0, "12"),
+ ("a function is a boundary for a module-level name", 'rate = 3\nfn bump() Int\n  rate@1 = 4\n  rate\nprintln(bump())\n', 2, "no enclosing block binds `rate`"),
+ ("a closure is a boundary", 'fn f() Int\n  x = 1\n  g = () -> x@1\n  g()\nprintln(f())\n', 2, "no enclosing block binds `x`"),
+ ("a function reads a module-level name without @", 'rate = 3\nfn price(n Int) Int\n  n * rate\nprintln(price(5))\n', 0, "15"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:
