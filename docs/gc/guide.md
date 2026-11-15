@@ -260,7 +260,7 @@ if score > 50
 println("$total $count")
 ```
 
-Output: `80 1`. Without `@1`, `total += score` would create a new `total` that disappears at the end of the block. When the block has its own binding of the name, `name@1` still reaches the outer one:
+Output: `80 1`. Without `@1`, `total += score` would create a new `total` that disappears at the end of the block, and the compiler rejects the line for that reason: it reads the outer `total` but defines a new one. When the block has its own binding of the name, `name@1` still reaches the outer one:
 
 ```
 n = 1
@@ -271,7 +271,7 @@ if true
 println("$n")
 ```
 
-Output: `2 10`, then `10`. A loop is a place where plain rebinding does not leave: `total += score` in a loop body makes a new `total` for the next iteration, and the name outside the loop keeps its old value. `name@1` is how a loop body updates a name bound before the loop:
+Output: `2 10`, then `10`. A loop is a place where plain rebinding does not leave: `total += score` in a loop body would make a new `total` for the next iteration and leave the name outside the loop with its old value, so the compiler rejects it: write `total@1 += score`. `name@1` is how a loop body updates a name bound before the loop:
 
 ```
 total = 0
@@ -3514,7 +3514,7 @@ formatted src/parse.mxi
 - **Errors as values.** `?` needs a `Result` operand in a function that returns a `Result` with the same error (or a `From` impl that converts it), so it is an error in a function that returns `Unit` and inside a `daemon` body (use `when` there), and a `Result` is never used as if it were the value inside.
 - **Ownership.** Use after move, `ref` and `move` mismatches, and a resource that outlives what it may.
 - **Sizes and numbers.** Array and MultiArray shapes (a literal with the wrong size or ragged rows; a List has no size to check), a constant index past the end of an Array or a List whose length the text gives (a `List` bound once, never changed through `ref` or `+=`), a negative constant index, a literal that does not fit a bounded integer, and division by a constant zero. The `sum` or `product` of nothing is the element type's zero or one, which the checker supplies.
-- **Shadowing (a warning).** A name bound or changed with `=` or `+=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, so `total += i` in a loop leaves the outer `total` alone; the warning points to `total@1`.
+- **Shadowing (a warning, or an error).** A name bound with `=` in a deeper block (a loop body, an `if`, a `when` arm) is a new name that hides the outer one until the block ends, and the compiler warns. When the line also reads that name (`total += i`, `total = total + i`), it is an error that points to `total@1`, since the outer `total` would stay as it was. A `while` loop is allowed to carry a name its condition reads, or one its `break(value)` or `else` hands out.
 - **Effects and permissions.** What a function prints, parks on, or reaches, checked against its declaration and the manifest's grants, through calls and imported packages.
 
 What it leaves alone: anything that depends on a value at run time (a Dict key that is present, an index that is only known when the program runs), a function used as a value is checked by its types but not by its arity, a `break` outside a loop, a shift of a value whose width the text doesn't state (such as the result of arithmetic on narrow integers; a shift of an annotated variable or parameter by a constant is checked), a two-argument `put` on a container whose kind the text doesn't state (a lambda argument with no type, say), a lambda with untyped parameters that is bound to a name and used later as a Dict key or Set element, and a type name of one or two letters or all capitals is taken to be a type parameter. Those are caught when the code runs, with the same message the checker would have given.
@@ -4097,7 +4097,7 @@ Output: `6`.
 - **Outer variable from a nested block:** `x@1 += 1` (1c).
 - **Pointers and linked structures:** use a recursive enum (chapter 15), a `Dict` of ids, or a fiber that owns the data.
 - **Exceptions:** return a `Result` and use `?` (chapter 18). There is no `try`.
-The compiler teaches as it goes: `list.push(4)` gives "lists are values; write `list += 4`", a nested-block `x += 1` gives the shadow warning plus the `name@1` hint, and `null` gives "moxie has no null".
+The compiler teaches as it goes: `list.push(4)` gives "lists are values; write `list += 4`", a nested-block `x += 1` is an error with the `name@1` hint, and `null` gives "moxie has no null".
 
 
 **Chapter 26: Memory in moxie/gc** **[gc]**
