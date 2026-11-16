@@ -20,6 +20,9 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (operator sections)
+- **Placeholders and operator sections are typed**: `_`, `_2` and the missing side of `(+ 1)`, `(> "x")`, `(and true)` take the type of the lambda parameter they stand for, so `xs.map((+ 1))` on Strings is an error. tests/run_sections.py.
+
 ### 2026-11-16 (lambda and `is` fixes)
 - **Untyped lambdas in GADT calls** take their parameter types from the case's field once the other payloads bind its variables (`Packed(Num(1), (b) -> if b ...)` is an error: `b` is an `Int`). tests/run_gadt.py.
 - **`is` tests**: generic tuples (`b is Box(x)` on a `Box[Int]` is always true) and tuple patterns with refutable parts (`c is Dog("rex")` on a `Cat` is always false) are judged; a refutable part on the right type is left alone. tests/run_isjudge.py.

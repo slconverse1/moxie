@@ -8,7 +8,7 @@
 * `is` tests: tuple patterns with sub-patterns and generic tuples are judged (2026-11-16, `pattern_head`). Left: enum-case patterns (`Circle(r)`) and aliases.
 * `when` exhaustiveness: nested patterns, tuples, Bool and literals are built (2026-11-16, `nested_cover`). Left: patterns with ranges, relations, `is`-types or binary patterns (the check stops without an error), and GADT enums (skipped).
 * Late-tagged collections: 2026-11-16 probes (`+=`, concatenation, `List[Data](e)`, declared Dict values) all tag correctly; no failing case found. A lambda with no expected function type is untagged.
-* `(+ 1)` on a String is not caught (operator sections have the placeholder's typing); `and`, `or`, `in` sections.
+* Operator sections and placeholders are typed (2026-11-16, `e_PH`). Left: `x in set` does not check that `x` fits the element type (plain or as a section).
 * A `with` closure whose captured type is unknown is skipped; a closure returned from inside a loop or `do` isn't checked; `&` inside a lambda inside an `update` line refers to the field.
 * Refined aliases: across packages built 2026-11-16 (exported, condition of `self` and literals only; `imported_refined`). Left: type parameters, a condition that names constants, proving a result at its return sites, a field read as a fact.
 
