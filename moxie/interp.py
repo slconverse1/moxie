@@ -567,6 +567,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             raise Abort("placeholder used outside a function literal", n.line)
         return Done(v)
 
+    def ev_UpdCur(self, n, env):
+        cell = self.find_recv(env)
+        return Done(self.field_get(cell.value, n.name, n.line))
+
     def ev_Slot(self, n, env):
         return Done(SLOT)
 

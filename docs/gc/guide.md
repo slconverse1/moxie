@@ -1480,7 +1480,7 @@ Output: `42 2`. **Mistakes:** the old `fn (Dog) speak()` form, an `impl` of some
 
 **8a. Receiver blocks**
 
-A block can run with a value as its receiver, so its fields are in scope without the object name. `x.do` gives the block's value, and `x.update` builds a changed copy with `field: value` lines (`=` always means a binding, so it isn't used here):
+A block can run with a value as its receiver, so its fields are in scope without the object name. `x.do` gives the block's value (the block is on the lines below, with no `->`), and `x.update` builds a changed copy with `field: value` lines (`=` always means a binding, so it isn't used here). As in a constructor, a comma ends each line except the last, and `&` stands for the field's current value, so `retries: & * 2` doubles it without repeating the name:
 
 ```
 tuple Limits
@@ -1495,16 +1495,17 @@ base = Config(
   port: 80,
   limits: Limits(retries: 3, timeout: 30)
 )
-label = base.do -> "$host:$port"
+label = base.do
+  "$host:$port"
 secure = base.update
-  port: 443
+  port: 443,
   limits:
-    retries: retries * 2
+    retries: & * 2
 print("$label ${secure.host} ${secure.port} ${secure.limits.retries} ")
 println("${secure.limits.timeout} ${base.port}")
 ```
 
-Output: `localhost:80 localhost 443 6 30 80`. `base` is unchanged, `retries` inside the nested block is the old `3`, and `timeout` is carried over. Every right-hand side sees the original value, so the order of the lines doesn't matter. A function can take a receiver function and call it on a value:
+Output: `localhost:80 localhost 443 6 30 80`. `base` is unchanged, `&` inside the nested block is the old `3`, and `timeout` is carried over. A `&` that is the slot of a pipe stage (`names: & |> take(2)` or `take(&, 2)`) keeps that meaning, and an update line that needs the current value inside a call can use `&` as the receiver (`names: &.reverse()`) or the field's name. Every right-hand side sees the original value, so the order of the lines doesn't matter. A function can take a receiver function and call it on a value:
 
 ```
 fn apply(base Config, change Config.() -> Config) Config

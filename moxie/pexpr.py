@@ -1511,11 +1511,9 @@ class ExprParser(PBase):
     def parse_recv_block(self, recv, kind, line):
         if kind == "do":
             if self.at_op("->"):
-                self.next()
-                body = self.parse_block_or_inline()
-            else:
-                self.expect_nl_indent_block()
-                body = self.parse_block()
+                self.err("`do` takes its block on the lines below, with no `->` (`->` is for lambdas, Dict entries, and arms)", self.peek())
+            self.expect_nl_indent_block()
+            body = self.parse_block()
             return DoRecv(recv, "do", body, line=line)
         lines = self.parse_upd_lines()
         return DoRecv(recv, "update", lines, line=line)
@@ -1524,14 +1522,24 @@ class ExprParser(PBase):
         if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
             self.expect_nl_indent()
             out = []
+            had = False
             while True:
                 self.skip_nl()
                 if self.peek().kind in ("DEDENT", "EOF"):
                     break
-                out.append(self.parse_upd_line())
+                ln = self.parse_upd_line()
+                out.append(ln)
+                had = self.upd_comma
+                self.skip_nl()
+                if self.peek().kind in ("DEDENT", "EOF"):
+                    break
+                if not had:
+                    self.err(f"an update line ends with a comma unless it is the last one: write `,` after `{ln.name}`", self.peek())
             self.expect_dedent()
+            self.upd_comma = had            # a comma after the last line of a nested block also ends the nested entry itself
             return out
         # single inline: field: value
+        self.upd_comma = False
         return [self.parse_upd_line(inline=True)]
 
     def parse_upd_line(self, inline=False):
@@ -1542,7 +1550,36 @@ class ExprParser(PBase):
         if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
             nested = self.parse_upd_lines()
             return UpdLine(t.val, None, nested, line=t.line)
-        e = self.parse_expr()
-        if not inline:
+        e = self.cur_value(self.parse_expr(), t.val)
+        self.upd_comma = False
+        if not inline and self.at_op(","):
+            self.next()
+            self.upd_comma = True
+        if not inline and (not self.upd_comma or self.peek().kind == "NL"):
             self.end_line()
         return UpdLine(t.val, e, None, line=t.line)
+
+    def cur_value(self, x, name, keep=False):
+        """In an update line `field: ...`, a `&` that is not the slot of a pipe stage is the field's current value."""
+        if x.__class__ is Slot:
+            return x if keep else UpdCur(name, line=getattr(x, "line", 0))
+        if isinstance(x, list):
+            return [self.cur_value(y, name) for y in x]
+        if isinstance(x, tuple):
+            return tuple(self.cur_value(y, name) for y in x)
+        if not hasattr(x, "_fields"):
+            return x
+        if x.__class__ is Pipe:
+            x.l = self.cur_value(x.l, name)
+            st = x.stage
+            if st.__class__ is Call:
+                st.fn = self.cur_value(st.fn, name)
+                for a in st.args or []:
+                    if a.expr.__class__ is not Slot:
+                        a.expr = self.cur_value(a.expr, name)
+            else:
+                x.stage = self.cur_value(st, name)
+            return x
+        for f in x._fields:
+            setattr(x, f, self.cur_value(getattr(x, f), name))
+        return x

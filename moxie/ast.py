@@ -87,6 +87,7 @@ def _defs():
         "WithE": "enums body",        # with A, B: ... (a block with the cases of enums A and B open; rewritten before checking)
         "DoRecv": "recv kind body",    # kind: do | update
         "UpdLine": "name expr nested",
+        "UpdCur": "name",         # `&` in an `update` line: the current value of the field being updated
         "ForM": "lines yield_",        # lines: [(kind, pat, expr, else_)]
         "CompE": "kind elem key pat iter cond",
         "Block": "stmts",

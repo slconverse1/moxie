@@ -796,7 +796,7 @@ class Lexer:
             if have_line:
                 if depth > 0:
                     is_cont = True
-                elif prev_last is not None and (
+                elif prev_last is not None and not (prev_last.kind == "OP" and prev_last.val == "," and L["indent"] < stmt_indent) and (
                         (prev_last.kind == "OP" and prev_last.val in DANGLING)
                         or (prev_last.kind == "NAME" and prev_last.val in ("and", "or", "not", "in", "is"))):
                     is_cont = True

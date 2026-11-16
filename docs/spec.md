@@ -346,10 +346,11 @@ How S-space and T-space behave:
 - **Receiver function types.** `Config.() -> Config` is a function that runs with a `Config` as its receiver. With parameters: `Config.(Int) -> Config`. A function literal for it is written `(n) -> body`, and the receiver comes from the expected type: `apply(base, () -> Config(...self, port: port + 1))`. There is no `fn Config.()` literal, and a literal with no expected receiver type has no receiver. It is the same mechanism as the body of an `impl` block: the receiver is `self`, and its fields and methods can be named without a prefix.
 - **Name lookup inside a receiver body:** locals first, then the receiver's fields and methods, then the module. `self` always means the innermost receiver. A local that hides a receiver member gets a shadow warning, and `self.name` reaches the member anyway. In a `fn (ref Self)` method, `self.n = v` rebuilds the receiver exactly as a bare `n = v` does; in any other method it is a compile error, because it would change only a local copy.
 - **Running a block on a value.** `x.do` runs the indented block with `x` as the receiver and gives the block's value. `x.update` runs the block to build a changed copy of `x`.
+- **Commas and `&` in `update` lines.** As in a constructor call, a comma ends each `update` line except the last (a trailing comma on the last is allowed, and a comma after the final line of a nested block ends the nested entry too). A line without its comma is a compile error. In a right-hand side, `&` is the current value of the field being updated (`retries: & * 2`, `names: &.reverse()`); a `&` that is the slot of a pipe stage keeps its pipe meaning. `x.do` takes its block on the lines below, with no `->`: `->` belongs to lambdas, Dict entries and arms.
 - **`update` lines.** Inside `x.update` each line is `field: value` and the right-hand side sees the *original* `x`, so `width: height` and `height: width` swap cleanly. A field line `field:` with nothing after it and an indented block below updates a nested tuple the same way.
   - `config = base.update`
-  - `⠀⠀host: "localhost"`
-  - `⠀⠀port: 443`
+  - `⠀⠀host: "localhost",`
+  - `⠀⠀port: 443,`
   - `⠀⠀retry:`
   - `⠀⠀⠀⠀count: port / 100`
 - **Why `field: value` and not `=`.** In a body `=` is always a binding, so `port = 443` would introduce a new local. The colon form can't be mistaken for one.

@@ -2656,6 +2656,9 @@ class Checker(RefineMixin):
         self.ev(n.body, inner)
         return None, None
 
+    def e_UpdCur(self, n, sc):
+        return None, None
+
     def e_UpdLine(self, n, sc):
         self.ev(n.expr, sc)
         self.ev(n.nested, sc)
