@@ -31,7 +31,13 @@ CHAN_BAD = 'fn go(a Int, s String) Unit\n  rx, tx = Chan[(Int) -> Int with (Int)
 CHAN_PLAIN = 'fn go(a Int) Unit\n  rx, tx = Chan[(Int) -> Int][2]()\n  \\write(tx, (v Int) -> v + a)\ngo(2)\n'
 FIELD_VAR = 'tuple H\n  on (Int) -> Int\nfn go(a Int) Unit\n  f = (v Int) -> v + a\n  h = H(on: f)\n  println(h.on(1))\ngo(2)\n'
 DICT_VAR = 'fn go(a Int) Unit\n  f = (v Int) -> v + a\n  t Dict[String, (Int) -> Int] = Dict("x" -> f)\ngo(2)\n'
+RET_IF = 'fn pick(flag Bool, a Int, s String) (Int) -> Int with (Int)\n  if flag then\n    f = (v Int) -> v + a\n    f\n  else\n    (v Int) -> v + len(s)\nprintln(pick(true, 2, "ab")(1))\n'
+RET_IF_OK = 'fn pick(flag Bool, a Int, b Int) (Int) -> Int with (Int)\n  if flag then\n    f = (v Int) -> v + a\n    f\n  else\n    (v Int) -> v * b\nprintln(pick(false, 2, 3)(5))\n'
+RET_WHEN = 'fn pick(n Int, a Int, s String) (Int) -> Int with (Int)\n  when n\n    0 -> (v Int) -> v + a\n    _ -> (v Int) -> v + len(s)\nprintln(pick(0, 2, "ab")(1))\n'
 CASES = [
+ ('a with-result checks every branch of an if', RET_IF, False, 2, 'with (Int)'),
+ ('a with-result accepts matching branches of an if', RET_IF_OK, False, 0, '15'),
+ ('a with-result checks every arm of a when', RET_WHEN, False, 2, 'with (Int)'),
  ('a with-parameter takes a matching closure', PARAM_OK, False, 0, '3'),
  ('a with-parameter refuses another layout', PARAM_BAD, False, 2, 'with (Int)'),
  ('a with-parameter refuses a function that captures nothing', PARAM_PLAIN, False, 2, 'captures nothing'),

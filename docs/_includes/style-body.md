@@ -7,7 +7,7 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 - Two spaces per level, no tabs, no trailing spaces.
 - Lines break at 80 columns. A long call or list gets one item per line, two spaces deeper, with the closing bracket back at the original level.
 - One space around operators and after a comma, none before a comma.
-- An inline fiber has a space after `fn`: `run fn (tx)(out) -> ...`.
+- An inline fiber has a space after `fn`: `run fn (tx)(out)`, with the body indented below.
 - A blank line before each top-level declaration, and no more than two in a row.
 
 ## Names
@@ -25,10 +25,10 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 
 ## Lambdas
 
-A lambda is a function with no name, written `(params) -> body`, with a space on each side of the arrow. It is meant to be small, and it is pure. When the body needs an effect, write an anonymous `fn`, `fn (params) -> body`, which may print, park, or touch a channel, a file, a socket, or SQL. The `fn` in front is the signal that something happens.
+A lambda is a function with no name, written `(params) -> body`, with a space on each side of the arrow. It is meant to be small, and it is pure. When the body needs an effect, write an anonymous `fn`, which may print, park, or touch a channel, a file, a socket, or SQL. It is declared like a named function with the name left out, `fn (line String) Unit`, with the body indented below, and it has no arrow: only lambdas use `->` in their declaration. The `fn` in front is the signal that something happens.
 
 - **Keep it to one expression, or a few lines.** Past that, declare a function with `fn` and give it a name. A name is documentation.
-- **Anything with an effect is written with `fn`.** `with_stdin(text, fn () -> read_line())` takes an anonymous `fn`. When the body is a block, or is used more than once, give it a name: `transaction(conn, move_funds(_, from_id, to_id, amount))`, with a partial call filling in the rest.
+- **Anything with an effect is written with `fn`.** Bind the anonymous `fn` on its own line, then pass it by name (`reader = fn () String`, body indented, then `with_stdin(text, reader)`), because a block can't sit inside a call's parentheses. When the body is used more than once, or is long enough to deserve a name, declare a function: `transaction(conn, move_funds(_, from_id, to_id, amount))`, with a partial call filling in the rest.
 - **Use `_` for the shortest cases.** `xs |> map(_ * 2)` is clearer than `xs |> map((x) -> x * 2)`. Once the body needs the value twice, or a name would help, write the lambda.
 - **Use a partial call instead of a lambda that only forwards.** `log("ERROR", _)` beats `(m) -> log("ERROR", m)`.
 - **Put the lambda after the call when it is the last argument and the body is longer than a few words:**
@@ -54,6 +54,8 @@ A lambda is a function with no name, written `(params) -> body`, with a space on
 ## Choices
 
 - **Write `else` for the catch-all arm, not `_ ->`.** It is the last arm of a `when`, of a `select`, and of a `seq`, and it never takes `->`: `else "big"`, and in a `select` just `else println("nothing")`, with no `case`. Keep `_` for what it is a pattern for, such as `(_, v)` or `Some(_)`. A catch-all that is the whole `when` (nothing else to match) is usually an `if`.
+- **Change several fields with `update`, and end each line with a comma.** `base.update` takes `field: value` lines, and the comma comes after every line but the last, as in a constructor call. Write `&` for the field's current value (`retries: & * 2`) instead of repeating the name. A nested tuple takes an indented block of its own.
+- **Give a closure a `with` type only when it has to be stored.** A function type written `(Int) -> Int with (Int)` holds closures that capture one `Int`, and is needed in a tuple field, a channel or a collection in moxie. Everywhere else, `(Int) -> Int` accepts any closure.
 - **Start with a field; reach for a `property` when a read or write needs code.** A caller can't tell them apart, so changing a field into a property later breaks nobody. Use a field delegate (`delegate(Percent)`) when one rule belongs to many fields, and a property when the rule is for one field or needs the others. Give a computed property a `get ->` that is a short expression, mark a setter `priv set` when only the type's own methods should write, and use `lazy` for a pure value that costs something to compute. Share changing state through an Atom with `on_change`, not through a mutable static (there isn't one).
 - **Return a pair as a bare `a, b`.** A function that ends with `lo, hi` (or `return lo, hi`) gives the tuple, matching `lo, hi = f()` at the call. Name the fields in the result type when the pair is not obvious: `(lo Int, hi Int)`.
 - **Leave early, and keep the main path at the left margin.** Check the unusual cases first and exit: `return Err(...) if bad`, or a one-line `if not (v is Int) then return 0`. What follows then reads straight down with no nesting, and the compiler knows what the test established (a union tested with `is` is narrowed for the rest of the block). A condition too long for the line goes on its own indented `if` line under the action.
