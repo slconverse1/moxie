@@ -1860,7 +1860,7 @@ l.print_status()
 
 Output: `log: 2 earlier calls`, then `console: hello`, then `console is ready`. The header `impl Printer for Logger proxy(printer)` says that `Logger` is a `Printer` by handing it to its `printer` field. `print_message` is written out, so it runs the logging and then calls the field. `print_status` isn't, so the compiler writes `fn print_status() Unit` for you, and it calls `self.printer.print_status()`. If the interface later gains another method, the proxy has it at once. With no methods to override, leave the block off: `impl Printer for Logger proxy(printer)` alone is enough.
 
-The field can hold a concrete type with its own `impl`, or an `any Printer`. A proxy forwards plain methods, and it says why when it can't forward one: a `static` member (there is no value to call it on), a method that changes its receiver, a method that mentions `Self` in its signature (it would be the field's type, not yours), and a generic method. Write those in the block yourself. The interface has to be declared in the same file, because the compiler needs its method list. For one from the prelude, such as `Show`, or from another package, write the forwarders by hand. The compiler also checks the field: the name has to be a real field, and a field whose type is declared in the file has to implement the interface.
+The field can hold a concrete type with its own `impl`, or an `any Printer`. A proxy forwards plain methods, and it says why when it can't forward one: a `static` member (there is no value to call it on), a method that changes its receiver, a method that mentions `Self` in its signature (it would be the field's type, not yours), and a generic method. Write those in the block yourself. The interface has to be declared in the same file, because the compiler needs its method list. `Show` can be proxied too (`impl Show for Pet proxy(dog)`), because the compiler knows its one method; the other built-in interfaces mention `Self`, and one from another package isn't known to `proxy` yet, so write those forwarders by hand. The compiler also checks the field: the name has to be a real field, and a field whose type is declared in the file has to implement the interface.
 
 **Mistakes:** `proxy` in an `impl` with no `for` (there is no interface to hand over), naming a field that doesn't exist or that doesn't implement the interface, proxying `Show` or another interface from outside the file, and expecting a proxy to forward a `static` or `Self` method.
 
@@ -4208,7 +4208,7 @@ println(json.parse("[1, 2"))
 
 Output: `Al 90`, then `Err(Error(code: 4, message: "no key \"email\""))`, then `Err(Error(code: 1, message: "not an Int"))`, then `{"name":"Al","scores":[90,85.5],"admin":false}`, then `Err(Error(code: 1, message: "unterminated list at character 5"))`. Each `flat_map` step passes an `Err` along unchanged, so a chain of lookups fails at the first step that can't be done, and the `?` at the end hands that `Err` to the caller. A map is kept as a list of entries in the order they were written, so `to_json()` prints them in that order. It is a list and not a `Dict` because a `Dict` has a fixed capacity and a document's size isn't known in advance.
 
-`Dyn` is for data whose shape you don't control. It does not look at your types at run time, so the conversion to and from your own tuples is written out at compile time, as `deriving show` is. Put `dyn` in the `deriving` list and the tuple gets `to_dyn()`, which gives a `Dyn`, and `Tuple.from_dyn(d)`, which gives a `Result`: a missing key or a value of the wrong kind is an `Err` that says which, never an abort. A field may be an `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple that derives `dyn`. A tuple that does not derive it, a `Dict`, a function and a closure can't be converted, and the compiler says so.
+`Dyn` is for data whose shape you don't control. It does not look at your types at run time, so the conversion to and from your own tuples is written out at compile time, as `deriving show` is. Put `dyn` in the `deriving` list and the tuple gets `to_dyn()`, which gives a `Dyn`, and `Tuple.from_dyn(d)`, which gives a `Result`: a missing key or a value of the wrong kind is an `Err` that says which, never an abort. A field may be an `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple or enum that derives `dyn`. An enum becomes a map with the case name under `"case"` and the case's named fields beside it, so `Shape.Rect(w: 2.0, h: 3.0)` is `{"case":"Rect","w":2.0,"h":3.0}`, and `from_dyn` gives an `Err` for a case that isn't there. A type that does not derive it, a `Dict`, a function and a closure can't be converted, and the compiler says so.
 
 ```
 import json
@@ -4231,6 +4231,25 @@ println(load("{\"name\": \"Al\", \"tags\": [1]}"))
 ```
 
 Output: `{"name":"Al","tags":["a","b"],"addr":{"city":"Oslo","zip":150}}`, then `Ok(User(name: "Al", tags: List("a", "b"), addr: Addr(city: "Oslo", zip: 150)))`, then `Err(Error(code: 1, message: "not a String"))`.
+
+```
+import json
+
+enum Shape deriving dyn, show
+  Circle(r Float)
+  Rect(w Float, h Float)
+  Empty
+
+dynamic fn parse_shape(text String) Result[Shape, Error]
+  Shape.from_dyn(json.parse(text)?)
+
+s = Shape.Rect(w: 2.0, h: 3.0)
+println(s.to_dyn().to_json())
+println(parse_shape(s.to_dyn().to_json()))
+println(parse_shape("{\"case\": \"Blob\"}"))
+```
+
+Output: `{"case":"Rect","w":2.0,"h":3.0}`, then `Ok(Shape.Rect(2.0, 3.0))`, then `Err(Error(code: 1, message: "unknown case \"Blob\" for Shape"))`.
 
 **`dynamic fn` and `unsafe fn`.** Reading a `Dyn` (`field`, `at`, `as_*`, `from_dyn`) moves a type check from compile time to run time, so the function that does it says so: write `dynamic` before `fn`. A function that reads a `Dyn` without the word is a compile error, and so is a function that calls a foreign function marked `unsafe` (or one that takes a `Ptr[T]`) without `unsafe fn`. A lambda belongs to the function around it. Top-level statements are not functions, so a script can read a `Dyn` directly. The words are soft: `dynamic` and `unsafe` are still fine as variable names. By default only the function that does the thing is marked, so a wrapper that checks its data can be called from any function. A project that wants the marks to travel up the call chain sets `safety = "strict"` under `[program]` in `Moxie.toml`: a function that calls a `dynamic` or `unsafe` function must then carry the mark too.
 

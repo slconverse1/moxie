@@ -16,6 +16,7 @@ OK = [
  ("a generic interface", 'interface Get[T]\n  fn get() T\ntuple A\n  v Int\nimpl Get[Int] for A\n  fn get() Int\n    v\ntuple W\n  a A\nimpl Get[Int] for W proxy(a)\nprintln(W(a: A(v: 7)).get())\n', "7\n"),
  ("methods with arguments", 'interface Add\n  fn plus(a Int, b Int) Int\ntuple C\n  k Int\nimpl Add for C\n  fn plus(a Int, b Int) Int\n    a + b + k\ntuple W\n  c C\nimpl Add for W proxy(c)\nprintln(W(c: C(k: 10)).plus(1, 2))\n', "13\n"),
  ("an interface written with explicit self", 'interface Logger\n  fn info(self, msg String) String\n  fn error(self, msg String) String\ntuple C\n  p String\nimpl Logger for C\n  fn info(self, msg String) String\n    "${self.p} i $msg"\n  fn error(self, msg String) String\n    "${self.p} E $msg"\ntuple W\n  c C\nimpl Logger for W proxy(c)\n  fn info(self, msg String) String\n    "stamped ${self.c.info(msg)}"\nw = W(c: C(p: "a"))\nprintln(w.info("x"))\nprintln(w.error("y"))\n', "stamped a i x\na E y\n"),
+ ("a built-in interface", 'tuple Dog\n  name String\nimpl Show for Dog\n  fn show(self) String\n    "Dog ${self.name}"\ntuple Pet\n  dog Dog\nimpl Show for Pet proxy(dog)\nprintln(Pet(dog: Dog(name: "Rex")).show())\n', "Dog Rex\n"),
  ("a name that is not a keyword elsewhere", 'proxy = 3\nprintln(proxy)\n', "3\n"),
 ]
 ERR = [
@@ -23,7 +24,9 @@ ERR = [
  ("a field that does not implement it", B + 'tuple P\n  n Int\ntuple W\n  p P\nimpl Shape for W proxy(p)\n', "nothing to forward to"),
  ("a static member", 'interface Mk\n  static fn make() Int,\n  fn id() Int\ntuple X\n  n Int\nimpl Mk for X\n  static fn make() Int\n    1\n  fn id() Int\n    n\ntuple Y\n  x X\nimpl Mk for Y proxy(x)\n', "it is a `static` member"),
  ("Self in a signature", 'interface Cmp\n  fn same(other Self) Bool\ntuple X\n  n Int\nimpl Cmp for X\n  fn same(other Self) Bool\n    n == other.n\ntuple Y\n  x X\nimpl Cmp for Y proxy(x)\n', "`Self` in its signature"),
- ("an interface not declared here", 'tuple X\n  n Int\ntuple Y\n  x X\nimpl Show for Y proxy(x)\n', "needs the declaration of `Show`"),
+ ("an interface not declared here", 'tuple X\n  n Int\ntuple Y\n  x X\nimpl Frob for Y proxy(x)\n', "needs the declaration of `Frob`"),
+ ("a built-in interface needs the field to implement it", 'tuple X\n  n Int\ntuple Y\n  x X\nimpl Show for Y proxy(x)\n', "no `impl Show for X`"),
+ ("a built-in interface with Self in a signature", 'tuple A\n  n Int\nimpl Equatable for A\n  fn ==(self, other Self) Bool\n    n == other.n\ntuple B\n  a A\nimpl Equatable for B proxy(a)\n', "`Self` in its signature"),
  ("no interface in the header", 'tuple X\n  n Int\nimpl X proxy(n)\n', "goes in an `impl Interface for Type` header"),
 ]
 fails = []

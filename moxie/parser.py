@@ -1267,19 +1267,21 @@ def expand_delegates(stmts, file=None):
 def expand_dyn(stmts, file=None):
     """`type P(name String, age Int) deriving dyn`: an inherent `impl` with `to_dyn(self) json.Dyn` and
     `static dynamic fn from_dyn(d json.Dyn) Result[P, Error]`, written out at compile time from the field types (no reflection).
-    Fields may be `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple that also derives `dyn`."""
+    Fields may be `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple or enum that also derives `dyn`.
+    An enum is a map with the case name under `"case"` and the case's named fields beside it: `{"case": "Rect", "w": 2.0, "h": 3.0}`."""
     out = []
     for s in stmts:
         out.append(s)
-        if s.__class__ is not TupleDecl or "dyn" not in (s.derivs or []):
+        if s.__class__ not in (TupleDecl, EnumDecl) or "dyn" not in (s.derivs or []):
             continue
         ln = s.line
+        is_enum = s.__class__ is EnumDecl
 
-        def fail(msg):
+        def fail(msg, s=s, ln=ln):
             raise MoxieSyntaxError(f"`deriving dyn` on `{s.name}`: {msg}", ln, 0, file)
-        if s.tparams:
-            fail("a generic tuple can't derive `dyn` yet")
-        if not s.fields:
+        if getattr(s, "tparams", None):
+            fail("a generic type can't derive `dyn` yet (its type parameters would need a `Dyn` form too)")
+        if not is_enum and not s.fields:
             fail("it needs named fields")
 
         def to_(t, e, depth, fname):
@@ -1294,7 +1296,7 @@ def expand_dyn(stmts, file=None):
                 v = f"x{depth}"
                 return f"json.Dyn.DList({e} |> map(({v}) -> {to_(t.groups[0][0], v, depth + 1, fname)}) |> collect())"
             if n in ("Dict", "Set", "Array", "Option", "Result", "Char", "Byte", "Any") or t.groups:
-                fail(f"field `{fname}` is a `{n}`, which has no `Dyn` form yet (use Int, Float, Bool, String, List, or a tuple that derives `dyn`)")
+                fail(f"field `{fname}` is a `{n}`, which has no `Dyn` form yet (use Int, Float, Bool, String, List, or a tuple or enum that derives `dyn`)")
             return f"{e}.to_dyn()"
 
         def from_(t, e, depth, fname):
@@ -1306,13 +1308,38 @@ def expand_dyn(stmts, file=None):
                 v = f"x{depth}"
                 return f"json.list_of({e}, ({v}) -> {from_(t.groups[0][0], v, depth + 1, fname)})"
             return f"{n}.from_dyn({e})"
-        entries, reads = [], []
-        for f in s.fields:
-            entries.append(f'json.Entry(key: "{f.name}", value: {to_(f.type, "self." + f.name, 0, f.name)})')
-            reads.append(f'{f.name}: {from_(f.type, f"d.field(\"{f.name}\")?", 0, f.name)}?')
-        src = (f"impl {s.name}\n"
-               f"  fn to_dyn(self) json.Dyn\n    json.Dyn.DMap(List({', '.join(entries)}))\n"
-               f"  static dynamic fn from_dyn(d json.Dyn) Result[{s.name}, Error]\n    Ok({s.name}({', '.join(reads)}))\n")
+
+        def entry(key, value):
+            return f'json.Entry(key: "{key}", value: {value})'
+        if not is_enum:
+            entries, reads = [], []
+            for f in s.fields:
+                entries.append(entry(f.name, to_(f.type, "self." + f.name, 0, f.name)))
+                reads.append(f'{f.name}: {from_(f.type, f"d.field(\"{f.name}\")?", 0, f.name)}?')
+            src = (f"impl {s.name}\n"
+                   f"  fn to_dyn(self) json.Dyn\n    json.Dyn.DMap(List({', '.join(entries)}))\n"
+                   f"  static dynamic fn from_dyn(d json.Dyn) Result[{s.name}, Error]\n    Ok({s.name}({', '.join(reads)}))\n")
+        else:
+            if not s.cases:
+                fail("it needs at least one case")
+            to_arms, from_arms = [], []
+            for c in s.cases:
+                flds = c.fields or []
+                if any(not getattr(f, "name", None) for f in flds):
+                    fail(f"case `{c.name}` has unnamed fields; name them (`{c.name}(w Float, h Float)`) so the map has a key for each")
+                pat = f"{c.name}({', '.join(f.name for f in flds)})" if flds else c.name
+                ents = [entry("case", f'json.Dyn.DText("{c.name}")')] + [entry(f.name, to_(f.type, f.name, 0, f.name)) for f in flds]
+                to_arms.append(f"      {pat} -> json.Dyn.DMap(List({', '.join(ents)}))")
+                if flds:
+                    args = ", ".join(f'{f.name}: {from_(f.type, f"d.field(\"{f.name}\")?", 0, f.name)}?' for f in flds)
+                    from_arms.append(f'      "{c.name}" -> Ok({s.name}.{c.name}({args}))')
+                else:
+                    from_arms.append(f'      "{c.name}" -> Ok({s.name}.{c.name})')
+            src = (f"impl {s.name}\n"
+                   f"  fn to_dyn(self) json.Dyn\n    when self\n" + "\n".join(to_arms) + "\n"
+                   f"  static dynamic fn from_dyn(d json.Dyn) Result[{s.name}, Error]\n"
+                   f"    tag = d.field(\"case\")?.as_text()?\n    when tag\n" + "\n".join(from_arms) + "\n"
+                   f"      _ -> Err(Error(code: 1, message: \"unknown case \\\"${{tag}}\\\" for {s.name}\"))\n")
         impl = parse_program(src).stmts[0]
         impl.line = ln
         out.append(impl)
@@ -1330,6 +1357,10 @@ def expand_proxies(stmts, file=None):
         if s.__class__ is not ImplDecl or s.proxy is None:
             continue
         ln = s.line
+        if s.iface.__class__ is TName and s.iface.path[-1] not in ifaces:       # a built-in interface (`Show`, ...) has its declaration in the checker
+            from .check import Checker
+            if s.iface.path[-1] in Checker.builtin_ifaces(Checker(())):
+                ifaces[s.iface.path[-1]] = Checker.builtin_ifaces(Checker(()))[s.iface.path[-1]]
 
         def fail(msg):
             raise MoxieSyntaxError(msg, ln, 0, file)
@@ -1337,7 +1368,7 @@ def expand_proxies(stmts, file=None):
         decl = ifaces.get(iname)
         if decl is None:
             fail(f"`proxy` needs the declaration of `{iname}` in this file to know which methods to forward; "
-                 "write the forwarding methods by hand for an interface from the prelude or another package")
+                 "write the forwarding methods by hand for an interface from another package")
         sub = {}
         args = s.iface.groups[0] if s.iface.groups else []
         if len(args) != len(decl.tparams or []):
