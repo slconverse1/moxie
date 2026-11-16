@@ -5,7 +5,7 @@
 **Checker: mistakes still found only at run time**
 * `impl` for a type parameter's bounds beyond one level: embedded interfaces, prelude interfaces such as `Monad`, `where` bounds (`tparam_static_call`).
 * Union members that are not declared tuples, enums or imported types are not checked for a missing method or bound (`union_member_has`).
-* `is` tests with sub-patterns (`Dog(name)`) are not judged always true/false; aliases and generic tuples are skipped.
+* `is` tests: tuple patterns with sub-patterns and generic tuples are judged (2026-11-16, `pattern_head`). Left: enum-case patterns (`Circle(r)`) and aliases.
 * `when` exhaustiveness: nested patterns, tuples, Bool and literals are built (2026-11-16, `nested_cover`). Left: patterns with ranges, relations, `is`-types or binary patterns (the check stops without an error), and GADT enums (skipped).
 * Late-tagged collections: 2026-11-16 probes (`+=`, concatenation, `List[Data](e)`, declared Dict values) all tag correctly; no failing case found. A lambda with no expected function type is untagged.
 * `(+ 1)` on a String is not caught (operator sections have the placeholder's typing); `and`, `or`, `in` sections.
@@ -19,7 +19,7 @@
 * No automatic projection (`:<:`) for open data types: each node answers a small interface such as `AsLit`.
 
 **Language features not built**
-* GADTs built 2026-11-16 (Spec 6, Guide 24o, tests/run_gadt.py). Existential type variables built the same day (one-letter case variables; `case_scheme`, `case_env`, `gadt_call`). Left: case variables with more than one letter, a lambda argument with no written parameter type does not bind a variable, GADTs on header enums.
+* GADTs built 2026-11-16 (Spec 6, Guide 24o, tests/run_gadt.py). Existential type variables built the same day (one-letter case variables; `case_scheme`, `case_env`, `gadt_call`). Left: case variables with more than one letter, GADTs on header enums.
 * `proxy` for a prelude interface other than the six built-ins; a forwarding that adds a `Self`-returning wrapper.
 * Short form `run fn (tx)` only when every argument is a bare name; an anonymous `fn` can't be written inline in a call.
 * Local constants built by a call (`N = fib(10)` inside a function).

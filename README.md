@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (lambda and `is` fixes)
+- **Untyped lambdas in GADT calls** take their parameter types from the case's field once the other payloads bind its variables (`Packed(Num(1), (b) -> if b ...)` is an error: `b` is an `Int`). tests/run_gadt.py.
+- **`is` tests**: generic tuples (`b is Box(x)` on a `Box[Int]` is always true) and tuple patterns with refutable parts (`c is Dog("rex")` on a `Cat` is always false) are judged; a refutable part on the right type is left alone. tests/run_isjudge.py.
+
 ### 2026-11-16 (existential GADT cases)
 - **Case type variables**: a GADT case may use one-letter type variables of its own. A call infers them from the payloads (`Pair(Num(1), Flag(true))` is a `Value[(Int, Bool)]`), and a `when` arm sees one that the result type does not fix as a fresh rigid type (`A'`), so existentials (`Packed(v Value[A], f (A) -> String) Value[String]`) are checked. Guide 24o, Spec 6, tests/run_gadt.py.
 
