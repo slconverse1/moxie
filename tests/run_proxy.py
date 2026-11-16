@@ -43,4 +43,24 @@ for name, src, word in ERR:
     print(("ok    " if good else "FAIL  ") + name + ("" if good else f"  -> rc={rc} {out.strip()[:300]!r}"))
     if not good:
         fails.append(name)
+
+# an interface declared in an imported package
+PKG = "export interface Shape\n  fn area() Int,\n  fn name() String\nexport tuple Sq\n  s Int\nimpl Shape for Sq\n  fn area() Int\n    s * s\n  fn name() String\n    \"sq\"\n"
+PKG_CASES = [
+ ("an interface from an imported package", "import shapes\ntuple W\n  inner shapes.Sq\nimpl shapes.Shape for W proxy(inner)\nw = W(inner: shapes.Sq(s: 3))\nprintln(w.area())\nprintln(w.name())\n", "9\nsq\n"),
+ ("an imported interface with one method written", "import shapes\ntuple W\n  inner shapes.Sq\nimpl shapes.Shape for W proxy(inner)\n  fn name() String\n    \"wrapped\"\nw = W(inner: shapes.Sq(s: 3))\nprintln(w.area())\nprintln(w.name())\n", "9\nwrapped\n"),
+ ("an interface imported by name", "import shapes (Shape, Sq)\ntuple W\n  inner Sq\nimpl Shape for W proxy(inner)\nprintln(W(inner: Sq(s: 4)).area())\n", "16\n"),
+]
+for name, src, want in PKG_CASES:
+    for gc in (False, True):
+        with tempfile.TemporaryDirectory() as d:
+            open(os.path.join(d, "shapes.mxi"), "w").write(PKG)
+            f = os.path.join(d, "main.mxi")
+            open(f, "w").write(src)
+            r = subprocess.run([sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["run", f], cwd=ROOT, capture_output=True, text=True, timeout=120)
+        out = r.stdout + r.stderr
+        good = r.returncode == 0 and out == want
+        print(("ok    " if good else "FAIL  ") + name + (" (gc)" if gc else "") + ("" if good else f"  -> rc={r.returncode} {out.strip()[:300]!r}"))
+        if not good:
+            fails.append(name)
 sys.exit(1 if fails else 0)

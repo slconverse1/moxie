@@ -37,7 +37,7 @@ CASES = [
  ("from_dyn reports a bad list element", PERSON + 'dynamic fn load(t String) Result[Person, Error]\n  Person.from_dyn(json.parse(t)?)\nprintln(load("{\\"name\\": \\"a\\", \\"age\\": 1, \\"tags\\": [1]}"))\n', False, 0, "not a String"),
  ("from_dyn needs the tag", PERSON + 'fn load(t String) Result[Person, Error]\n  Person.from_dyn(json.parse(t)?)\n', False, 2, "must be declared `dynamic fn`"),
  ("a field with no Dyn form is refused", 'import json\ntuple T deriving dyn\n  f Dict[String, Int]\n', False, 2, "no `Dyn` form"),
- ("a generic tuple is refused", 'import json\ntuple T[A] deriving dyn\n  f A\n', False, 2, "generic"),
+ ("a generic tuple may derive dyn", 'import json\ntuple T[A] deriving dyn\n  f A\n', False, 0, ""),
 ]
 fails = []
 for name, src, strict, rc_want, word in CASES:

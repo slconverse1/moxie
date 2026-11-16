@@ -56,6 +56,42 @@ impl Dyn
       DNull -> true
       _ -> false
 
+/// What a type needs to be a field of a generic type that derives `dyn`: a `Dyn` form to write and a way to read it back.
+/// `Int`, `Float`, `Bool`, `String`, `List` of such a type, and every type that derives `dyn` have it.
+export interface Dynable
+  fn to_dyn(self) Dyn,
+  static dynamic fn from_dyn(d Dyn) Result[Self, Error]
+
+impl Dynable for Int
+  fn to_dyn(self) Dyn
+    DInt(self)
+  static dynamic fn from_dyn(d Dyn) Result[Int, Error]
+    d.as_int()
+
+impl Dynable for Float
+  fn to_dyn(self) Dyn
+    DFloat(self)
+  static dynamic fn from_dyn(d Dyn) Result[Float, Error]
+    d.as_float()
+
+impl Dynable for Bool
+  fn to_dyn(self) Dyn
+    DBool(self)
+  static dynamic fn from_dyn(d Dyn) Result[Bool, Error]
+    d.as_bool()
+
+impl Dynable for String
+  fn to_dyn(self) Dyn
+    DText(self)
+  static dynamic fn from_dyn(d Dyn) Result[String, Error]
+    d.as_text()
+
+impl[T Dynable] Dynable for List[T]
+  fn to_dyn(self) Dyn
+    DList(self |> map((x) -> x.to_dyn()) |> collect())
+  static dynamic fn from_dyn(d Dyn) Result[List[T], Error]
+    list_of(d, (x) -> T.from_dyn(x))
+
 /// Read every element of a `Dyn` list with `f`: the list of results, or the first `Err`.
 export dynamic fn list_of[T](d Dyn, f (Dyn) -> Result[T, Error]) Result[List[T], Error]
   items = d.as_list()?

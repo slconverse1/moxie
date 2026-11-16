@@ -1981,14 +1981,53 @@ null
 ]
 ],
 [
-4077,
+4076,
+"interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self,\n  static fn neg(a Self) Self\n\nfn example[R Expr]() R\n  R.add(R.lit(8), R.neg(R.add(R.lit(1), R.lit(2))))\n\ntuple Eval\n  value Int\ntuple Pretty\n  text String\n\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\n  static fn neg(a Eval) Eval\n    Eval(value: 0 - a.value)\n\nimpl Expr for Pretty\n  static fn lit(n Int) Pretty\n    Pretty(text: \"$n\")\n  static fn add(a Pretty, b Pretty) Pretty\n    Pretty(text: \"(${a.text} + ${b.text})\")\n  static fn neg(a Pretty) Pretty\n    Pretty(text: \"-${a.text}\")\n\nprintln(example[Eval]().value)\nprintln(example[Pretty]().text)\n",
+[
+"5",
+"(8 + -(1 + 2))"
+]
+],
+[
+4114,
+"interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self\n\ninterface Mul\n  static fn mul(a Self, b Self) Self\n\nfn sum_sq[R Expr + Mul](x R) R\n  R.add(R.mul(x, x), R.lit(1))\n\ntuple Eval\n  value Int\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\nimpl Mul for Eval\n  static fn mul(a Eval, b Eval) Eval\n    Eval(value: a.value * b.value)\n\ntuple Pretty\n  text String\nimpl Expr for Pretty\n  static fn lit(n Int) Pretty\n    Pretty(text: \"$n\")\n  static fn add(a Pretty, b Pretty) Pretty\n    Pretty(text: \"(${a.text} + ${b.text})\")\nimpl Mul for Pretty\n  static fn mul(a Pretty, b Pretty) Pretty\n    Pretty(text: \"${a.text} * ${b.text}\")\n\nprintln(sum_sq(Eval(value: 3)).value)\nprintln(sum_sq(Pretty(text: \"x\")).text)\n",
+[
+"10",
+"(x * x + 1)"
+]
+],
+[
+4155,
+"interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self\n\nfn total[R Expr](a Int, b Int) R\n  R.add(R.lit(a), R.lit(b))\n\ntuple Eval\n  value Int\ntuple Pretty\n  text String\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\nimpl Expr for Pretty\n  static fn lit(n Int) Pretty\n    Pretty(text: \"$n\")\n  static fn add(a Pretty, b Pretty) Pretty\n    Pretty(text: \"(${a.text} + ${b.text})\")\n\ntuple Both[A, B]\n  first A\n  second B\nimpl[A Expr, B Expr] Expr for Both[A, B]\n  static fn lit(n Int) Both[A, B]\n    Both(first: A.lit(n), second: B.lit(n))\n  static fn add(a Both[A, B], b Both[A, B]) Both[A, B]\n    Both(first: A.add(a.first, b.first), second: B.add(a.second, b.second))\n\nr = total[Both[Eval, Pretty]](4, 5)\nprintln(\"${r.second.text} = ${r.first.value}\")\n",
+[
+"(4 + 5) = 9"
+]
+],
+[
+4195,
+"interface Sym[R[_]]\n  static fn lit(n Int) R[Int],\n  static fn bool(b Bool) R[Bool],\n  static fn add(a R[Int], b R[Int]) R[Int],\n  static fn leq(a R[Int], b R[Int]) R[Bool],\n  static fn cond[A](c R[Bool], t R[A], e R[A]) R[A]\n\ntuple Id[A]\n  value A\ntuple Show[A]\n  text String\n\nfn prog[R[_] Sym]() R[Int]\n  R.cond(R.leq(R.lit(1), R.lit(2)), R.add(R.lit(10), R.lit(5)), R.lit(0))\n\nimpl Sym[Id]\n  static fn lit(n Int) Id[Int]\n    Id(value: n)\n  static fn bool(b Bool) Id[Bool]\n    Id(value: b)\n  static fn add(a Id[Int], b Id[Int]) Id[Int]\n    Id(value: a.value + b.value)\n  static fn leq(a Id[Int], b Id[Int]) Id[Bool]\n    Id(value: a.value <= b.value)\n  static fn cond[A](c Id[Bool], t Id[A], e Id[A]) Id[A]\n    if c.value then t else e\nimpl Sym[Show]\n  static fn lit(n Int) Show[Int]\n    Show(text: \"$n\")\n  static fn bool(b Bool) Show[Bool]\n    Show(text: \"$b\")\n  static fn add(a Show[Int], b Show[Int]) Show[Int]\n    Show(text: \"(${a.text} + ${b.text})\")\n  static fn leq(a Show[Int], b Show[Int]) Show[Bool]\n    Show(text: \"(${a.text} <= ${b.text})\")\n  static fn cond[A](c Show[Bool], t Show[A], e Show[A]) Show[A]\n    Show(text: \"if ${c.text} then ${t.text} else ${e.text}\")\n\nprintln(prog[Id]().value)\nprintln(prog[Show]().text)\n",
+[
+"15",
+"if (1 <= 2) then (10 + 5) else 0"
+]
+],
+[
+4242,
+"interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self,\n  static fn neg(a Self) Self\n\nenum Tree deriving show\n  Lit(n Int)\n  Add(a Tree, b Tree)\n  Neg(a Tree)\n\nimpl Expr for Tree\n  static fn lit(n Int) Tree\n    Tree.Lit(n)\n  static fn add(a Tree, b Tree) Tree\n    Tree.Add(a, b)\n  static fn neg(a Tree) Tree\n    Tree.Neg(a)\n\nfn interpret[R Expr](t Tree) R\n  when t\n    Lit(n) -> R.lit(n)\n    Add(a, b) -> R.add(interpret[R](a), interpret[R](b))\n    Neg(a) -> R.neg(interpret[R](a))\n\nfn example[R Expr]() R\n  R.add(R.lit(8), R.neg(R.add(R.lit(1), R.lit(2))))\n\ntuple Eval\n  value Int\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\n  static fn neg(a Eval) Eval\n    Eval(value: 0 - a.value)\n\nt = example[Tree]()\nprintln(t)\nprintln(interpret[Eval](t).value)\n",
+[
+"Tree.Add(Tree.Lit(8), Tree.Neg(Tree.Add(Tree.Lit(1), Tree.Lit(2))))",
+"5"
+]
+],
+[
+4294,
 "xs = List(1, 2, 3)\nsum = xs |> to_stream() |> reduce(0, _1 + _2)\nprintln(\"$sum\")\n",
 [
 "6"
 ]
 ],
 [
-4102,
+4319,
 "import stats\n\nscores Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)\nprintln(\"mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}\")\nprintln(\"spread ${stats.stddev(scores):.2f}\")\nwhen stats.quantile(scores, 0.9)\n  Ok(q) -> println(\"90th percentile ${q:.1f}\")\n  Err(e) -> println(\"bad quantile\")\n",
 [
 "mean 77.3, median 75.0",
@@ -1997,7 +2036,7 @@ null
 ]
 ],
 [
-4119,
+4336,
 "import stats\n\nhours Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)\nscore Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)\nwhen stats.fit_line(hours, score)\n  Err(e) -> println(\"cannot fit: ${e.message}\")\n  Ok(line) ->\n    println(\"each hour adds ${line.slope:.1f} points, starting from ${line.intercept:.1f}\")\n    println(\"r squared ${line.r_squared:.3f}\")\n    println(\"6 hours predicts ${stats.predict(line, 6.0):.1f}\")\n    fitted = stats.predict_all(line, hours)\n    println(\"typical error ${stats.rmse(score, fitted):.2f} points\")\n",
 [
 "each hour adds 6.4 points, starting from 45.4",
@@ -2007,14 +2046,14 @@ null
 ]
 ],
 [
-4136,
+4353,
 "import stats\n\nx Array[Double] = (3.0, 3.0, 3.0)\ny Array[Double] = (1.0, 2.0, 3.0)\nwhen stats.fit_line(x, y)\n  Err(e) -> println(e.message)\n  Ok(line) -> println(\"fitted\")\n",
 [
 "fit_line: every x is the same, so there is no line to fit"
 ]
 ],
 [
-4152,
+4369,
 "import stats\n\nsales Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)\nprintln(stats.moving_average(sales, 3))\nprintln(\"forecast ${stats.smooth(sales, 0.5):.2f}\")\nprintln(\"slow forecast ${stats.smooth(sales, 0.1):.2f}\")\n",
 [
 "List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)",
@@ -2023,7 +2062,7 @@ null
 ]
 ],
 [
-4167,
+4384,
 "import http\n\nfn handle(req http.Request) http.Response\n  if req.method == \"POST\"\n    http.text(200, \"you said: ${req.body}\")\n  elif req.path == \"/hello\"\n    http.text(200, \"hello, mixer\")\n  else\n    http.text(404, \"nothing at ${req.path}\")\n\nfiber fn server(l Listener, count Int) Unit\n  http.serve_n(l, count, handle)\n\nl = listen(0)?\nport = port_of(l)\nrun server(l, 3)\na = http.get(\"localhost\", port, \"/hello\")?\nprintln(\"${a.status} ${a.body}\")\nb = http.post(\"localhost\", port, \"/echo\", \"hello\")?\nprintln(\"${b.status} ${b.body}\")\nc = http.get(\"localhost\", port, \"/nope\")?\nprintln(\"${c.status} ${c.body}\")\n",
 [
 "200 hello, mixer",
@@ -2032,7 +2071,7 @@ null
 ]
 ],
 [
-4202,
+4419,
 "import json\n\ntext = \"{\\\"name\\\": \\\"Al\\\", \\\"scores\\\": [90, 85.5], \\\"admin\\\": false}\"\ndoc = json.parse(text)?\nname = doc.field(\"name\").flat_map((d) -> d.as_text())?\nfirst = doc.field(\"scores\").flat_map((d) -> d.at(0)).flat_map((d) -> d.as_int())?\nprintln(\"$name $first\")\nprintln(doc.field(\"email\"))\nprintln(doc.field(\"name\").flat_map((d) -> d.as_int()))\nprintln(doc.to_json())\nprintln(json.parse(\"[1, 2\"))\n",
 [
 "Al 90",
@@ -2043,7 +2082,7 @@ null
 ]
 ],
 [
-4220,
+4437,
 "import json\n\ntuple Addr deriving dyn, show\n  city String,\n  zip Int\ntuple User deriving dyn, show\n  name String,\n  tags List[String],\n  addr Addr\n\ndynamic fn load(text String) Result[User, Error]\n  User.from_dyn(json.parse(text)?)\n\nu = User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150))\nprintln(u.to_dyn().to_json())\nprintln(load(u.to_dyn().to_json()))\nprintln(load(\"{\\\"name\\\": \\\"Al\\\", \\\"tags\\\": [1]}\"))\n",
 [
 "{\"name\":\"Al\",\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Oslo\",\"zip\":150}}",
@@ -2052,7 +2091,7 @@ null
 ]
 ],
 [
-4242,
+4459,
 "import json\n\nenum Shape deriving dyn, show\n  Circle(r Float)\n  Rect(w Float, h Float)\n  Empty\n\ndynamic fn parse_shape(text String) Result[Shape, Error]\n  Shape.from_dyn(json.parse(text)?)\n\ns = Shape.Rect(w: 2.0, h: 3.0)\nprintln(s.to_dyn().to_json())\nprintln(parse_shape(s.to_dyn().to_json()))\nprintln(parse_shape(\"{\\\"case\\\": \\\"Blob\\\"}\"))\n",
 [
 "{\"case\":\"Rect\",\"w\":2.0,\"h\":3.0}",
@@ -2061,7 +2100,16 @@ null
 ]
 ],
 [
-4267,
+4480,
+"import json\n\ntuple Pair[A, B] deriving dyn, show\n  first A\n  second B\n\nenum Tree[T] deriving dyn, show\n  Leaf(v T)\n  Node(l Tree[T], r Tree[T])\n\np = Pair(first: 1, second: \"a\")\nprintln(p.to_dyn().to_json())\nprintln(Pair[Int, String].from_dyn(p.to_dyn()))\nt = Tree.Node(l: Tree.Leaf(v: 1), r: Tree.Leaf(v: 2))\nprintln(Tree[Int].from_dyn(t.to_dyn()))\n",
+[
+"{\"first\":1,\"second\":\"a\"}",
+"Ok(Pair(first: 1, second: \"a\"))",
+"Ok(Tree.Node(Tree.Leaf(1), Tree.Leaf(2)))"
+]
+],
+[
+4506,
 "interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, msg)\n    println(\"${self.prefix}: $msg\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
 [
 "app: started"

@@ -1873,7 +1873,7 @@ l.print_status()
 
 Output: `log: 2 earlier calls`, then `console: hello`, then `console is ready`. The header `impl Printer for Logger proxy(printer)` says that `Logger` is a `Printer` by handing it to its `printer` field. `print_message` is written out, so it runs the logging and then calls the field. `print_status` isn't, so the compiler writes `fn print_status() Unit` for you, and it calls `self.printer.print_status()`. If the interface later gains another method, the proxy has it at once. With no methods to override, leave the block off: `impl Printer for Logger proxy(printer)` alone is enough.
 
-The field can hold a concrete type with its own `impl`, or an `any Printer`. A proxy forwards plain methods, and it says why when it can't forward one: a `static` member (there is no value to call it on), a method that changes its receiver, a method that mentions `Self` in its signature (it would be the field's type, not yours), and a generic method. Write those in the block yourself. The interface has to be declared in the same file, because the compiler needs its method list. `Show` can be proxied too (`impl Show for Pet proxy(dog)`), because the compiler knows its one method; the other built-in interfaces mention `Self`, and one from another package isn't known to `proxy` yet, so write those forwarders by hand. The compiler also checks the field: the name has to be a real field, and a field whose type is declared in the file has to implement the interface.
+The field can hold a concrete type with its own `impl`, or an `any Printer`. A proxy forwards plain methods, and it says why when it can't forward one: a `static` member (there is no value to call it on), a method that changes its receiver, a method that mentions `Self` in its signature (it would be the field's type, not yours), and a generic method. Write those in the block yourself. The interface has to be declared in the same file, because the compiler needs its method list. `Show` can be proxied too (`impl Show for Pet proxy(dog)`), because the compiler knows its one method; the other built-in interfaces mention `Self`, and an interface from an imported package works too (`impl shapes.Shape for W proxy(inner)`). The compiler also checks the field: the name has to be a real field, and a field whose type is declared in the file has to implement the interface.
 
 **Mistakes:** `proxy` in an `impl` with no `for` (there is no interface to hand over), naming a field that doesn't exist or that doesn't implement the interface, proxying `Show` or another interface from outside the file, and expecting a proxy to forward a `static` or `Self` method.
 
@@ -4159,6 +4159,223 @@ println(fold_all[Stats](List()))
 
 Output: `abc`, `List(1, 2, 3)`, `Sum(value: 6)`, `List(1, 2, 3)`, `Min(value: 2)`, `Stats(count: 3, total: 18)`, then `Stats(count: 0, total: 0)`. An empty input gives `empty()`, so name the type when nothing else says which one (`fold_all[Stats](List())`). `Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; use `union`, `merge`, and `merge_with` (chapter 6), or write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there is no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
 
+**24m. Tagless final: one program, many interpreters**
+
+Suppose you are writing a tiny language of sums (numbers, `+`, negation) and want to run it, print it, and later do more with it. The usual way is a data type (`enum Tree`) and one function per job that takes it apart with `when`. **Tagless final** turns that around: you write the language as an interface, and a program in it is a generic function that builds its result with the interface's functions. An interpreter is a type that implements the interface, so choosing the interpreter is choosing a type argument, and no tree is built at all.
+
+```
+interface Expr
+  static fn lit(n Int) Self,
+  static fn add(a Self, b Self) Self,
+  static fn neg(a Self) Self
+
+fn example[R Expr]() R
+  R.add(R.lit(8), R.neg(R.add(R.lit(1), R.lit(2))))
+
+tuple Eval
+  value Int
+tuple Pretty
+  text String
+
+impl Expr for Eval
+  static fn lit(n Int) Eval
+    Eval(value: n)
+  static fn add(a Eval, b Eval) Eval
+    Eval(value: a.value + b.value)
+  static fn neg(a Eval) Eval
+    Eval(value: 0 - a.value)
+
+impl Expr for Pretty
+  static fn lit(n Int) Pretty
+    Pretty(text: "$n")
+  static fn add(a Pretty, b Pretty) Pretty
+    Pretty(text: "(${a.text} + ${b.text})")
+  static fn neg(a Pretty) Pretty
+    Pretty(text: "-${a.text}")
+
+println(example[Eval]().value)
+println(example[Pretty]().text)
+```
+
+Output: `5`, then `(8 + -(1 + 2))`. `example` never says which interpreter it uses: `R` stands for the type that will hold the result, and `R.lit(8)` calls `lit` of whatever `R` is. The members are `static` because a `lit` has no value of the type to be called on yet; the result type is `Self`, so `add` takes two of its own results.
+
+**A new operation, with the old code untouched.** With a data type, adding multiplication means editing the `enum` and every `when` over it. Here you add a second interface, and a program that needs both asks for both with `+`:
+
+```
+interface Expr
+  static fn lit(n Int) Self,
+  static fn add(a Self, b Self) Self
+
+interface Mul
+  static fn mul(a Self, b Self) Self
+
+fn sum_sq[R Expr + Mul](x R) R
+  R.add(R.mul(x, x), R.lit(1))
+
+tuple Eval
+  value Int
+impl Expr for Eval
+  static fn lit(n Int) Eval
+    Eval(value: n)
+  static fn add(a Eval, b Eval) Eval
+    Eval(value: a.value + b.value)
+impl Mul for Eval
+  static fn mul(a Eval, b Eval) Eval
+    Eval(value: a.value * b.value)
+
+tuple Pretty
+  text String
+impl Expr for Pretty
+  static fn lit(n Int) Pretty
+    Pretty(text: "$n")
+  static fn add(a Pretty, b Pretty) Pretty
+    Pretty(text: "(${a.text} + ${b.text})")
+impl Mul for Pretty
+  static fn mul(a Pretty, b Pretty) Pretty
+    Pretty(text: "${a.text} * ${b.text}")
+
+println(sum_sq(Eval(value: 3)).value)
+println(sum_sq(Pretty(text: "x")).text)
+```
+
+Output: `10`, then `(x * x + 1)`. Programs that only use `Expr` still compile and run against `Eval` and `Pretty` exactly as before, and a type that has only `Expr` simply can't run `sum_sq`: the compiler says it doesn't implement `Mul`.
+
+**Two interpreters at once.** A pair of interpreters is itself an interpreter, so one run can compute the value and the text together:
+
+```
+interface Expr
+  static fn lit(n Int) Self,
+  static fn add(a Self, b Self) Self
+
+fn total[R Expr](a Int, b Int) R
+  R.add(R.lit(a), R.lit(b))
+
+tuple Eval
+  value Int
+tuple Pretty
+  text String
+impl Expr for Eval
+  static fn lit(n Int) Eval
+    Eval(value: n)
+  static fn add(a Eval, b Eval) Eval
+    Eval(value: a.value + b.value)
+impl Expr for Pretty
+  static fn lit(n Int) Pretty
+    Pretty(text: "$n")
+  static fn add(a Pretty, b Pretty) Pretty
+    Pretty(text: "(${a.text} + ${b.text})")
+
+tuple Both[A, B]
+  first A
+  second B
+impl[A Expr, B Expr] Expr for Both[A, B]
+  static fn lit(n Int) Both[A, B]
+    Both(first: A.lit(n), second: B.lit(n))
+  static fn add(a Both[A, B], b Both[A, B]) Both[A, B]
+    Both(first: A.add(a.first, b.first), second: B.add(a.second, b.second))
+
+r = total[Both[Eval, Pretty]](4, 5)
+println("${r.second.text} = ${r.first.value}")
+```
+
+Output: `(4 + 5) = 9`. Name the pair type when you call (`total[Both[Eval, Pretty]]`): a result type is the only thing that says which `lit` to call, so there is nothing else to infer it from.
+
+**Keeping the types straight.** The language above has one kind of value. When it has two (numbers and booleans, with `if` and `<=`), the interface has to say which is which, or `add(lit(1), bool(true))` would be meaningless. Make the representation a type constructor, as in the constructor classes of 8d (`R[_]`), and give each operation a precise type:
+
+```
+interface Sym[R[_]]
+  static fn lit(n Int) R[Int],
+  static fn bool(b Bool) R[Bool],
+  static fn add(a R[Int], b R[Int]) R[Int],
+  static fn leq(a R[Int], b R[Int]) R[Bool],
+  static fn cond[A](c R[Bool], t R[A], e R[A]) R[A]
+
+tuple Id[A]
+  value A
+tuple Show[A]
+  text String
+
+fn prog[R[_] Sym]() R[Int]
+  R.cond(R.leq(R.lit(1), R.lit(2)), R.add(R.lit(10), R.lit(5)), R.lit(0))
+
+impl Sym[Id]
+  static fn lit(n Int) Id[Int]
+    Id(value: n)
+  static fn bool(b Bool) Id[Bool]
+    Id(value: b)
+  static fn add(a Id[Int], b Id[Int]) Id[Int]
+    Id(value: a.value + b.value)
+  static fn leq(a Id[Int], b Id[Int]) Id[Bool]
+    Id(value: a.value <= b.value)
+  static fn cond[A](c Id[Bool], t Id[A], e Id[A]) Id[A]
+    if c.value then t else e
+impl Sym[Show]
+  static fn lit(n Int) Show[Int]
+    Show(text: "$n")
+  static fn bool(b Bool) Show[Bool]
+    Show(text: "$b")
+  static fn add(a Show[Int], b Show[Int]) Show[Int]
+    Show(text: "(${a.text} + ${b.text})")
+  static fn leq(a Show[Int], b Show[Int]) Show[Bool]
+    Show(text: "(${a.text} <= ${b.text})")
+  static fn cond[A](c Show[Bool], t Show[A], e Show[A]) Show[A]
+    Show(text: "if ${c.text} then ${t.text} else ${e.text}")
+
+println(prog[Id]().value)
+println(prog[Show]().text)
+```
+
+Output: `15`, then `if (1 <= 2) then (10 + 5) else 0`. `cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type); in the tagless style the interface carries the types. **What is not checked yet:** the body of a generic program such as `prog` is not checked against the interface's signatures, so `R.add(R.lit(1), R.bool(true))` compiles and fails when it runs (`cannot apply '+' to Int and Bool`); the `impl`s and the concrete calls around it are checked.
+
+**Back to data, and the way home.** The two styles are the same information. A data type is just one more interpreter, the one that builds a tree, and any tree can be run through any interpreter by walking it:
+
+```
+interface Expr
+  static fn lit(n Int) Self,
+  static fn add(a Self, b Self) Self,
+  static fn neg(a Self) Self
+
+enum Tree deriving show
+  Lit(n Int)
+  Add(a Tree, b Tree)
+  Neg(a Tree)
+
+impl Expr for Tree
+  static fn lit(n Int) Tree
+    Tree.Lit(n)
+  static fn add(a Tree, b Tree) Tree
+    Tree.Add(a, b)
+  static fn neg(a Tree) Tree
+    Tree.Neg(a)
+
+fn interpret[R Expr](t Tree) R
+  when t
+    Lit(n) -> R.lit(n)
+    Add(a, b) -> R.add(interpret[R](a), interpret[R](b))
+    Neg(a) -> R.neg(interpret[R](a))
+
+fn example[R Expr]() R
+  R.add(R.lit(8), R.neg(R.add(R.lit(1), R.lit(2))))
+
+tuple Eval
+  value Int
+impl Expr for Eval
+  static fn lit(n Int) Eval
+    Eval(value: n)
+  static fn add(a Eval, b Eval) Eval
+    Eval(value: a.value + b.value)
+  static fn neg(a Eval) Eval
+    Eval(value: 0 - a.value)
+
+t = example[Tree]()
+println(t)
+println(interpret[Eval](t).value)
+```
+
+Output: `Tree.Add(Tree.Lit(8), Tree.Neg(Tree.Add(Tree.Lit(1), Tree.Lit(2))))`, then `5`. Reach for the tree when the program has to be inspected, stored or rewritten (an optimizer needs to look at the shape), and for tagless final when you only run it, or when you want to add operations and interpreters without touching each other.
+
+**Mistakes:** leaving `static` off the operations (a `lit` with no `self` can't be called on a result), calling `example()` without naming the interpreter (`example[Eval]()`: nothing else says which type `R` is, and today the program stops with `undefined name 'R'` when it runs), and passing a type that lacks `impl Expr` or `impl Mul` to a program that needs it (that one is a compile error: ``OnlyE` doesn't implement `Mul``).
+
 **Chapter 25: Moxie for imperative programmers**
 
 Most habits carry over:
@@ -4404,6 +4621,28 @@ println(parse_shape("{\"case\": \"Blob\"}"))
 ```
 
 Output: `{"case":"Rect","w":2.0,"h":3.0}`, then `Ok(Shape.Rect(2.0, 3.0))`, then `Err(Error(code: 1, message: "unknown case \"Blob\" for Shape"))`.
+
+A generic type can derive `dyn` too. A field whose type is a type parameter is written and read through `json.Dynable`, which `Int`, `Float`, `Bool`, `String`, a `List` of such a type, and every type that derives `dyn` already have. Name the arguments when you read one back:
+
+```
+import json
+
+tuple Pair[A, B] deriving dyn, show
+  first A
+  second B
+
+enum Tree[T] deriving dyn, show
+  Leaf(v T)
+  Node(l Tree[T], r Tree[T])
+
+p = Pair(first: 1, second: "a")
+println(p.to_dyn().to_json())
+println(Pair[Int, String].from_dyn(p.to_dyn()))
+t = Tree.Node(l: Tree.Leaf(v: 1), r: Tree.Leaf(v: 2))
+println(Tree[Int].from_dyn(t.to_dyn()))
+```
+
+Output: `{"first":1,"second":"a"}`, then `Ok(Pair(first: 1, second: "a"))`, then `Ok(Tree.Node(Tree.Leaf(1), Tree.Leaf(2)))`.
 
 **`dynamic fn` and `unsafe fn`.** Reading a `Dyn` (`field`, `at`, `as_*`, `from_dyn`) moves a type check from compile time to run time, so the function that does it says so: write `dynamic` before `fn`. A function that reads a `Dyn` without the word is a compile error, and so is a function that calls a foreign function marked `unsafe` (or one that takes a `Ptr[T]`) without `unsafe fn`. A lambda belongs to the function around it. Top-level statements are not functions, so a script can read a `Dyn` directly. The words are soft: `dynamic` and `unsafe` are still fine as variable names. By default only the function that does the thing is marked, so a wrapper that checks its data can be called from any function. A project that wants the marks to travel up the call chain sets `safety = "strict"` under `[program]` in `Moxie.toml`: a function that calls a `dynamic` or `unsafe` function must then carry the mark too.
 

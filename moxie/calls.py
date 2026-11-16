@@ -261,7 +261,7 @@ class CallsMixin:
         if b.__class__ is Name and self.alias_tps.get(b.name) and env.lookup(b.name) is MISSING:
             return self.targ_value(TName([b.name], n.groups, line=n.line), env)      # `CounterT[Result[_, E], Int]` as a type value
         base = yield from self.ev(n.base, env)
-        return GenV(base, n.groups)
+        return GenV(base, self.close_groups(n.groups, env))      # `Tree[T]` inside a generic impl names the type `T` is bound to
 
     def ev_Field(self, n, env):
         obj = yield from self.ev(n.obj, env)
@@ -430,7 +430,7 @@ class CallsMixin:
                 callee, selfv, has_self = self.field_callee(obj, gb.name, env, n.line)
             else:
                 callee = yield from self.ev(gb, env)
-            targs = fnn.groups
+            targs = self.close_groups(fnn.groups, env)       # `h2[R](n)`: a type parameter of the caller names the type it is bound to
         else:
             callee = yield from self.ev(fnn, env)
         if callee.__class__ is GenV:
