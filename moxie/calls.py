@@ -261,7 +261,7 @@ class CallsMixin:
         if b.__class__ is Name and self.alias_tps.get(b.name) and env.lookup(b.name) is MISSING:
             return self.targ_value(TName([b.name], n.groups, line=n.line), env)      # `CounterT[Result[_, E], Int]` as a type value
         base = yield from self.ev(n.base, env)
-        return GenV(base, self.close_groups(n.groups, env))      # `Tree[T]` inside a generic impl names the type `T` is bound to
+        return GenV(base, self.close_targs(n.groups, env))      # `Tree[T]` inside a generic impl names the type `T` is bound to
 
     def ev_Field(self, n, env):
         obj = yield from self.ev(n.obj, env)
@@ -430,7 +430,7 @@ class CallsMixin:
                 callee, selfv, has_self = self.field_callee(obj, gb.name, env, n.line)
             else:
                 callee = yield from self.ev(gb, env)
-            targs = self.close_groups(fnn.groups, env)       # `h2[R](n)`: a type parameter of the caller names the type it is bound to
+            targs = self.close_targs(fnn.groups, env)       # `h2[R](n)`: a type parameter of the caller names the type it is bound to
         else:
             callee = yield from self.ev(fnn, env)
         if callee.__class__ is GenV:
@@ -1103,7 +1103,7 @@ class CallsMixin:
         if c is TName:
             if len(t.path) == 1 and t.path[0] not in bound and env is not None:
                 v = env.lookup(t.path[0])
-                if v.__class__ is TypeV and not t.groups:
+                if v.__class__ is TypeV and not t.groups and (not self.only_params or v.name != t.path[0]):
                     return v
             if t.groups:
                 return TName(t.path, [[self.close_type(x, env, bound) for x in g] for g in t.groups], line=t.line)
@@ -1154,10 +1154,21 @@ class CallsMixin:
             return self.run_sync(self.ev(ta.expr, env))
         return TypeV("?", None)
 
+    only_params = False
+
     def close_groups(self, groups, env):
         if not groups:
             return groups
         return [[self.close_type(x, env) if x.__class__ is not TExpr else x for x in g] for g in groups]
+
+    def close_targs(self, groups, env):
+        """The explicit type arguments of a call (`f[R](x)`, `Tree[T]`) with each type parameter of the enclosing generic replaced by the
+        type it is bound to; a declared type (`Point`, bound under its own name) stays a name, which is what the built-ins expect."""
+        self.only_params = True
+        try:
+            return self.close_groups(groups, env)
+        finally:
+            self.only_params = False
 
     def find_using(self, cenv, env, p):
         """The value a `using` parameter takes: the nearest enclosing scope of the CALL that has a `using` value of the parameter's
