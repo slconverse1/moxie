@@ -985,6 +985,9 @@ class Parser(ExprParser):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             t = self.expect_ident("a case name")
+            ctps = []
+            if self.at_op("[") and not self.peek().sp:
+                ctps = self.parse_tparams_v2()                 # a case's own type variables, with bounds: `Shown[A Show](v A) Item[String]`
             fields = None
             if self.at_op("(") and not self.peek().sp:
                 if header is not None:
@@ -1008,7 +1011,7 @@ class Parser(ExprParser):
             ret = None
             if tparams and header is None and self.peek().kind == "NAME" and self.peek().line == t.line:
                 ret = self.parse_type()                       # a GADT case states its own result type: `Num(n Int) Value[Int]`
-            cases.append(CaseDecl(t.val, fields, ret, line=t.line))
+            cases.append(CaseDecl(t.val, fields, ret, ctps, line=t.line))
             self.eat_op(",")
         self.expect_dedent()
         vis = None

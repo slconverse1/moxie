@@ -353,6 +353,7 @@ class Checker(RefineMixin):
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
+        self.tail_eq = {}                # id of a tail expression -> the GADT type equations its `if` branch learned
         self.tail_ctx = {}               # id of a tail expression inside a narrowed `if` branch -> (its scope, path overrides)
         self.narrow_paths = {}           # (id of a Var, field names) -> the narrowed type inside an `if p.f is T` branch
         self.union_paths = {}            # id of a `p.f` node whose field has a `type union` -> its members
@@ -1647,6 +1648,29 @@ class Checker(RefineMixin):
             return self.tp_eq[t[1]]
         return t
 
+    @staticmethod
+    def apart(x, y):
+        """True when no choice of the type variables in `x` can make it the type `y`: their outer shapes differ (`(A, B)` against `String`)."""
+        def head(t):
+            if t.__class__ is str:
+                return t
+            if t.__class__ is tuple and t and t[0] in ("tup", "fn", "list"):
+                return t[0]
+            if t.__class__ is tuple and len(t) == 3 and t[0] == "app":
+                return ("app", t[1])
+            return None
+        hx, hy = head(x), head(y)
+        if hx is None or hy is None:
+            return False
+        if hx != hy:
+            return True
+        if hx in ("tup", "fn") or hx.__class__ is tuple:
+            xs, ys = (x[1], y[1]) if hx != "fn" else (x[1], y[1])
+            if hx.__class__ is tuple:
+                xs, ys = x[2], y[2]
+            return len(xs) == len(ys) and any(Checker.apart(a, b) for a, b in zip(xs, ys)) or len(xs) != len(ys)
+        return False
+
     def gadt_impossible(self, enum, st):
         """The cases of a GADT whose result type cannot be the scrutinee's type (`Flag` for a `Value[Int]`), with their result types."""
         ed = self.enums.get(enum)
@@ -1656,15 +1680,24 @@ class Checker(RefineMixin):
         for c in ed.cases:
             if getattr(c, "ret", None) is None:
                 continue
-            ct = self.ty_of_type(c.ret)
+            ct = self.case_scheme(ed, c)[3]
             if ct.__class__ is not tuple or ct[0] != "app" or len(ct[2]) != len(st[2]):
                 continue
             for x, y in zip(ct[2], st[2]):
                 ok = lambda t: t is not None and not self.has_unsettled(t)
-                if ok(x) and ok(y) and x != y:
-                    out[c.name] = ct
+                if ok(y) and ((ok(x) and x != y) or (not ok(x) and self.apart(x, y))):
+                    out[c.name] = ct             # a result type with variables of its own (`(A, B)`) is impossible too when no choice of them can match
                     break
         return out
+
+    def case_bounds(self, p, st):
+        """The bounds of a case's own type variables, under the arm's fresh names: in `Shown(v)` the `v` is an `A'` that is `Show`."""
+        if p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is not PCon or st.__class__ is not tuple or st[0] != "app" or st[1] not in self.enums:
+            return {}
+        cs = next((c for c in self.enums[st[1]].cases if c.name == p.path[-1]), None)
+        return {tp.name + "'": tp for tp in (getattr(cs, "tparams", None) or []) if tp.bounds}
 
     def gadt_facts(self, p, st):
         """The type equations a pattern on a GADT value teaches: `Num(n)` on a `Value[T]` makes `T` an `Int`, and `Pair(a, b)` makes
@@ -1779,7 +1812,7 @@ class Checker(RefineMixin):
 
     def type_pat(self, p, sc, ty, res=False):
         c = p.__class__
-        if ty is None or self.has_unsettled(ty) and not (ty.__class__ is tuple and ty[0] in ("app", "tup", "named")):
+        if ty is None or self.has_unsettled(ty) and not (ty.__class__ is tuple and ty[0] in ("app", "tup", "named")) and not self.mentions_case_rigid(ty):
             return
         if c is PBind:
             sc.vars[p.name] = Var(ty, res, self.loop_depth)
@@ -2415,6 +2448,15 @@ class Checker(RefineMixin):
         else:
             art = "an" if want[:1] in "AEIOU" else "a"
             self.diags.append(Diag(n.line, f"`{n.e.name}` is {'an' if have[:1] in 'AEIOU' else 'a'} `{have}`, never {art} `{want}`, so this `is` test is always false", "warning"))
+
+    def is_eqs(self, cond, sc):
+        """The GADT type equations a true `cond` teaches: `v is Num(n)` on a `Value[T]` makes `T` an `Int` (also under `and`)."""
+        if cond.__class__ is AndE:
+            return {**self.is_eqs(cond.l, sc), **self.is_eqs(cond.r, sc)}
+        if cond.__class__ is not IsOp:
+            return {}
+        st = self.quiet(cond.e, sc)[0]
+        return self.gadt_facts(cond.pat, st)
 
     def e_IsOp(self, n, sc):
         et = self.ev(n.e, sc)[0]
@@ -3541,12 +3583,14 @@ class Checker(RefineMixin):
     def e_IfE(self, n, sc):
         types = []
         scopes = []                  # the scope and path overrides each body is evaluated in
+        eqs = []                     # the type equations each branch's `is` test teaches (GADTs)
         acc = {}                     # what the tests before this branch being false say
         for cond, body in n.branches:
             ct = self.t(cond, sc)
             if ct is not None and ct != "Bool":
                 self.err(n.line, f"`if` condition must be `Bool`, found `{tshow(ct)}`")
             scopes.append(self.apply_facts(sc, self.merge_facts(acc, self.fact_set(cond, sc, True))))
+            eqs.append(self.is_eqs(cond, sc))
             acc = self.merge_facts(acc, self.fact_set(cond, sc, False))
         cur = self.apply_facts(sc, acc)        # the scope of the `else`: what every test before it ruled out
         if n.else_ is not None:
@@ -3555,11 +3599,17 @@ class Checker(RefineMixin):
         # evaluate for types separately from move-merging
         base = dict(self.moved)
         rf_sets = self.rf_if_branches(n, sc)
-        for b, (bsc, bpaths), rf in zip(bodies, scopes, rf_sets):
+        for bi, (b, (bsc, bpaths), rf) in enumerate(zip(bodies, scopes, rf_sets)):
             self.moved = dict(base)
+            old_eq = getattr(self, "tp_eq", {})
+            if bi < len(eqs) and eqs[bi]:
+                self.tp_eq = {**old_eq, **eqs[bi]}
             if bpaths or bsc is not sc:
                 for te in self.tails(b):
                     self.tail_ctx[id(te)] = (bsc, {**self.narrow_paths, **bpaths})
+            if bi < len(eqs) and eqs[bi]:
+                for te in self.tails(b):
+                    self.tail_eq[id(te)] = eqs[bi]
             mark = len(self.ifacts)
             self.ifacts.extend(rf)
             if b.__class__ is Block:
@@ -3567,6 +3617,7 @@ class Checker(RefineMixin):
             else:
                 types.append(self.eval_with_paths(bpaths, lambda: self.ev(b, bsc)))
             del self.ifacts[mark:]
+            self.tp_eq = old_eq
         self.moved = base
         self.branches_moves(bodies, sc, n.else_ is not None)
         ts = [t for t, _ in types]
@@ -3890,10 +3941,12 @@ class Checker(RefineMixin):
             sess_a = len(SESS["vars"])
             old_eq = getattr(self, "tp_eq", {})
             self.tp_eq = dict(old_eq)
+            old_decl = self.tp_decl
             for p in a.pats or []:
                 fx = self.gadt_facts(p, st)
                 gadt = gadt or bool(fx)
                 self.tp_eq.update(fx)
+                self.tp_decl = {**self.tp_decl, **self.case_bounds(p, st)}
             for p in a.pats or []:
                 self.bind_pat(p, inner, st if n.scrut is not None else None)
                 self.bind_payloads(p, sdn, inner)
@@ -3918,6 +3971,7 @@ class Checker(RefineMixin):
                 self.settle_mixed(a.body, self.fn_ret)
                 self.compat(self.fn_ret, at, ac, getattr(a.body, "line", 0) or n.line)       # an arm's value is the function's result
             self.tp_eq = old_eq
+            self.tp_decl = old_decl
         self.moved = base
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
@@ -5404,7 +5458,8 @@ class Checker(RefineMixin):
         names = {tp.name for tp in ed.tparams}
         known = self.known_type_names() | set(self.aliases)
         src = [f.type for f in cs.fields or [] if getattr(f, "type", None) is not None] + [getattr(cs, "ret", None)]
-        return {x for x in self.walk_names(src) if re.fullmatch(r"[A-Z][0-9]?", x) and x not in names and x not in known}
+        own = {t.name for t in (getattr(cs, "tparams", None) or [])}
+        return own | {x for x in self.walk_names(src) if re.fullmatch(r"[A-Z][0-9]?", x) and x not in names and x not in known}
 
     def case_scheme(self, ed, cs):
         """(variables, field types, result type) of a case, with the enum's parameters and the case's own variables as ("param", n)."""
@@ -5469,6 +5524,12 @@ class Checker(RefineMixin):
                     self.err(getattr(a.expr, "line", 0) or n.line, f"mismatched types: expected `{tshow(self.holes(fts[i], binds))}`, found a function taking `{tshow(clash[1])}`")
                 else:
                     self.err(getattr(a.expr, "line", 0) or n.line, f"mismatched types: expected `{tshow(clash[0])}`, found `{tshow(clash[1])}`")
+        if report:
+            for tp in getattr(cs, "tparams", None) or []:
+                t = binds.get(tp.name)
+                for b in tp.bounds or []:
+                    if t is not None and not self.has_unsettled(t) and self.implements(self.base(t), _tn(b)) is False:
+                        self.err(n.line, f"`{tshow(t)}` doesn't implement `{_tn(b)}`, which `{cs.name}` requires of `{tp.name}`")
         return self.holes(rt, binds)
 
     def check_gadt_args(self, ed, cs, n, sc):
@@ -7095,7 +7156,8 @@ class Checker(RefineMixin):
         self.tp_vars = {}
         saved_any, self.any_params = self.any_params, {}
         saved_decl, self.tp_decl = self.tp_decl, {t.name: t for t in (n.tparams or [])}
-        self.fn_tparams = tuple(t.name for t in (n.tparams or []))
+        impl_tps = getattr(self, "impl_tps", ())
+        self.fn_tparams = tuple(t.name for t in (n.tparams or [])) + tuple(x for x in impl_tps if x not in {t.name for t in (n.tparams or [])})
         self.loop_depth, self.exit_ctx, self.moved = 0, False, {}
         for tp in n.tparams or []:
             inner.vars[tp.name] = Var(None, False, 0)
@@ -7103,6 +7165,8 @@ class Checker(RefineMixin):
             res = self.is_res_type(p.type)
             if p.name:
                 pty = self.ty_of_type(p.type)
+                if p.name == "self" and p.type is None and getattr(self, "impl_gadt", None) is not None:
+                    pty = self.ty_of_type(self.impl_gadt)          # `self` of a method in `impl[T] Value[T]`: a `Value[T]` that `when self` can refine
                 if p.type.__class__ is TAny and self.any_names(p.type) and not p.variadic:
                     self.any_params[p.name] = ("any", self.any_names(p.type), f"{p.name}@{n.line}")
                 elif pty.__class__ is tuple and pty[0] in ("named", "app"):
@@ -7331,7 +7395,11 @@ class Checker(RefineMixin):
             esc, epaths = self.tail_ctx.get(id(e), (sc, {}))
             t, c = self.eval_with_paths(epaths, lambda: self.quiet(e, esc))
             self.settle_mixed(e, self.fn_ret)
+            old_eq = getattr(self, "tp_eq", {})
+            if id(e) in self.tail_eq:
+                self.tp_eq = {**old_eq, **self.tail_eq[id(e)]}
             self.compat(self.fn_ret, t, c, e.line)
+            self.tp_eq = old_eq
 
     def tails(self, e):
         c = e.__class__
@@ -7602,10 +7670,15 @@ class Checker(RefineMixin):
             self.diags.append(Diag(n.line, f"an `impl` for the union `{n.target.path[0]}` is never found when a method is called on one of its values: the value "
                                            "dispatches as the member it holds, so write the `impl` for each member", "warning"))
         saved_impl, self.impl_ty = getattr(self, "impl_ty", None), (n.target.path[-1] if n.target.__class__ is TName and n.target.path else None)
+        saved_g = (getattr(self, "impl_tps", ()), getattr(self, "impl_gadt", None))
+        self.impl_tps = tuple(t.name for t in (n.tparams or []))
+        ed = self.enums.get(self.impl_ty) if n.target.__class__ is TName and len(n.target.path) == 1 else None
+        self.impl_gadt = n.target if ed is not None and getattr(ed, "tparams", None) and any(getattr(c, "ret", None) is not None for c in ed.cases) else None
         try:
             return self._impl_members(n, sc)
         finally:
             self.impl_ty = saved_impl
+            self.impl_tps, self.impl_gadt = saved_g
 
     def _impl_members(self, n, sc):
         for m in n.members or []:
@@ -7654,10 +7727,14 @@ class Checker(RefineMixin):
             if nm in names[:i]:
                 self.err(n.line, f"`{n.name}` has the case `{nm}` twice")
         saved, self.tp_decl = self.tp_decl, {**self.tp_decl, **{t.name: t for t in (getattr(n, "tparams", None) or [])}}
+        outer = self.tp_decl
         for c in n.cases or []:
+            self.tp_decl = {**outer, **{t.name: t for t in (getattr(c, "tparams", None) or [])}}
             self.check_dup_fields(f"{n.name}.{c.name}", c.fields, n.line, "field")
             for f in c.fields or []:
                 self.check_type_arity(getattr(f, "type", None), n.line)
+            if getattr(c, "ret", None) is not None:
+                self.check_type_arity(c.ret, n.line)
         self.tp_decl = saved
         return None, None
 
