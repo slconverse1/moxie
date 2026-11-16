@@ -307,6 +307,7 @@ class Checker(RefineMixin):
         self.fn_ret = None
         self.fn_tparams = ()
         self.lam_expect = None
+        self.lam_hint = {}
         self.pipe_ty = None
         self.node_ty = {}
         self.labels = []
@@ -2293,6 +2294,16 @@ class Checker(RefineMixin):
             return p.path[0]               # `Dog(name)`: a tuple pattern whose parts take any value says only that the value is a `Dog`
         return None
 
+    def pattern_head(self, p):
+        """(name, takes_any) for a tuple pattern `Dog(...)`, or `Box(...)` for a generic tuple: the type it names, and whether its parts
+        match every value (so the pattern says only that the value is one).  None for anything else."""
+        while p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is PCon and len(p.path) == 1 and p.args is not None and p.path[0] in self.tuples and p.path[0] not in self.cases \
+                and p.path[0] not in self.enums and p.path[0] not in self.aliases:
+            return p.path[0], all(ap.__class__ is PWild or ap.__class__ is PBind for _l, ap in p.args)
+        return None
+
     def check_constant_is(self, n, sc):
         """`x is T` where the static type of `x` already settles it is a test that cannot vary: a warning."""
         if n.e.__class__ is not Name:
@@ -2301,6 +2312,18 @@ class Checker(RefineMixin):
         if v is None or v in self.any_vars:
             return
         want = self.pattern_type_text(n.pat)
+        head = self.pattern_head(n.pat)
+        if head is not None and v not in self.union_vars and v.ty is not None:
+            t0 = self.base(v.ty)
+            if t0 is not None and (t0.__class__ is str or (t0.__class__ is tuple and t0[0] in ("named", "app"))):
+                have = tshow(t0).replace(" ", "")
+                hh = have.split("[")[0]
+                art = "an" if head[0][:1] in "AEIOU" else "a"
+                if hh != head[0]:
+                    self.diags.append(Diag(n.line, f"`{n.e.name}` is {'an' if have[:1] in 'AEIOU' else 'a'} `{have}`, never {art} `{head[0]}`, so this `is` test is always false", "warning"))
+                elif head[1]:
+                    self.diags.append(Diag(n.line, f"`{n.e.name}` is always {art} `{head[0]}`, so this `is` test is always true", "warning"))
+                return
         if v in self.union_vars:
             p0 = n.pat
             while p0.__class__ is PAs:
@@ -2311,7 +2334,9 @@ class Checker(RefineMixin):
                     self.err(n.line, f"`{p0.path[0]}` could be {' or '.join('`' + h + '`' for h in hs)} here: write the full type")
                     return
             ms = {m.replace(" ", "") for m in self.union_vars[v]}
-            if want is not None and want.replace(" ", "") not in ms:
+            if want is None and head is not None and not any(m.split("[")[0] == head[0] for m in ms):
+                want = head[0]
+            if want is not None and want.replace(" ", "") not in ms and not any(m.split("[")[0] == want for m in ms if "[" in m):
                 art = "an" if want[:1] in "AEIOU" else "a"
                 self.diags.append(Diag(n.line, f"`{n.e.name}` is never {art} `{want}` (its members are {', '.join('`' + m + '`' for m in self.union_vars[v])}), so this `is` test is always false", "warning"))
             return
@@ -2735,6 +2760,8 @@ class Checker(RefineMixin):
         inner = Sc(sc, open_=not n.params)
         inner.fnb = True
         expect, self.lam_expect = self.lam_expect, None
+        if expect is None:
+            expect = self.lam_hint.pop(id(n), None)
         if expect and expect[0] == "fn" and n.params and self.arity_clash(expect, len(n.params)):
             self.err(n.line, f"this function takes {len(n.params)} parameter{'s' if len(n.params) != 1 else ''}, but it is used where one with {len(expect[1])} is expected")
         eps = expect[1] if expect and len(expect[1]) == len(n.params or []) else ()
@@ -4661,6 +4688,7 @@ class Checker(RefineMixin):
         self.check_dict_spread(n, sc)
         self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
+        self.gadt_lambda_hints(n, sc)
         r = self._e_Call(n, sc, *a, **k)
         if n.fn.__class__ is Field:
             self.check_union_method(n, sc)
@@ -5164,6 +5192,41 @@ class Checker(RefineMixin):
                 return et, None                        # `Shape.Circle(1)` and `Circle(1)` are a Shape
         return r
 
+    def resolve_case(self, f, sc):
+        """(enum declaration, case) when `f` names an enum case (`Shape.Circle` or an unambiguous `Circle`), else (None, None)."""
+        if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name in self.enums and sc.find(f.obj.name) is None \
+                and f.obj.name not in self.fns and f.obj.name not in self.tuples and f.obj.name not in self.aliases:
+            ed = self.enums[f.obj.name]
+            return ed, next((c for c in ed.cases if c.name == f.name), None)
+        if f.__class__ is Name and sc.find(f.name) is None and f.name not in self.fns and f.name not in self.tuples \
+                and f.name in self.cases and len(self.cases[f.name]) == 1:
+            ed = self.enums[self.cases[f.name][0]]
+            return ed, next((c for c in ed.cases if c.name == f.name), None)
+        return None, None
+
+    def gadt_lambda_hints(self, n, sc):
+        """`Packed(Num(1), (b) -> ...)`: a lambda whose parameters are not written gets the function type its field gives once the case's
+        variables are bound from the other payloads (`A` is `Int` here, so `b` is an `Int`)."""
+        lams = [a for a in n.args or [] if hasattr(a, "expr") and a.expr.__class__ is Lambda and any(q.type is None for q in a.expr.params or [])]
+        if not lams or n.trailing is not None:
+            return
+        ed, cs = self.resolve_case(n.fn, sc)
+        if cs is None or not getattr(ed, "tparams", None) or (getattr(cs, "ret", None) is None and not self.case_vars(ed, cs)):
+            return
+        vs, flds, fts, rt = self.case_scheme(ed, cs)
+        binds = {}
+        for i, a in enumerate(n.args or []):
+            if not hasattr(a, "expr") or getattr(a, "label", None) or i >= len(fts) or fts[i] is None or a.expr.__class__ is Lambda:
+                continue
+            at = self.quiet(a.expr, sc)[0]
+            if at is not None:
+                tys.unify(fts[i], at, binds)
+        for i, a in enumerate(n.args or []):
+            if a in lams and not getattr(a, "label", None) and i < len(fts) and fts[i] is not None:
+                ex = self.holes(fts[i], binds)
+                if ex.__class__ is tuple and ex[0] == "fn" and all(x is not None and not self.has_unsettled(x) for x in ex[1]):
+                    self.lam_hint[id(a.expr)] = ex
+
     def check_enum_call(self, f, n, sc):
         """`Shape.Tri(1)` when Shape has no such case, and a payload of the wrong type or the wrong count."""
         cs = ed = None
@@ -5243,7 +5306,14 @@ class Checker(RefineMixin):
         for i, a in enumerate(n.args or []):
             if not hasattr(a, "expr") or getattr(a, "label", None) or i >= len(fts) or fts[i] is None:
                 continue
-            at, ac = self.quiet(a.expr, sc)
+            lam = a.expr.__class__ is Lambda
+            if lam:
+                ps = a.expr.params or []
+                if not ps or any(q.type is None for q in ps):
+                    continue                  # an untyped lambda takes its parameter types from the case (gadt_lambda_hints)
+                at, ac = ("fn", tuple(self.ty_of_type(q.type) for q in ps), None), None
+            else:
+                at, ac = self.quiet(a.expr, sc)
             if at is None:
                 continue
             exp = self.holes(fts[i], binds)
@@ -5252,7 +5322,10 @@ class Checker(RefineMixin):
                 self.compat(exp, at, ac, getattr(a.expr, "line", 0) or n.line)
             clash = tys.unify(fts[i], at, binds)
             if clash and report and len(self.diags) == before:
-                self.err(getattr(a.expr, "line", 0) or n.line, f"mismatched types: expected `{tshow(clash[0])}`, found `{tshow(clash[1])}`")
+                if lam:
+                    self.err(getattr(a.expr, "line", 0) or n.line, f"mismatched types: expected `{tshow(self.holes(fts[i], binds))}`, found a function taking `{tshow(clash[1])}`")
+                else:
+                    self.err(getattr(a.expr, "line", 0) or n.line, f"mismatched types: expected `{tshow(clash[0])}`, found `{tshow(clash[1])}`")
         return self.holes(rt, binds)
 
     def check_gadt_args(self, ed, cs, n, sc):

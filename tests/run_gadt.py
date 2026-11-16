@@ -51,6 +51,11 @@ CASES += [
  ("a payload that is not a Value", EX + "x = Pair(Num(1), 5)\n", 2, "found `Int`"),
  ("an arm that returns one half of the pair", EX + "fn bad[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Pair(a, b) -> eval(a)\n  Fst(p) -> eval(p)(0)\n  Same(a, b) -> true\n  Packed(v, f) -> f(eval(v))\n" + EXEVAL.replace("fn eval", "fn eval"), 2, "expected `(A', B')`, found `A'`"),
 ]
+CASES += [
+ ("an untyped lambda gets its parameter type from the case", EX + 'x = Packed(Num(1), (b) -> if b then "y" else "n")\n', 2, "`if` condition must be `Bool`, found `Int`"),
+ ("a typed lambda over the wrong type", EX + 'x = Packed(Num(1), (b Bool) -> "x")\n', 2, "found a function taking `Bool`"),
+ ("an untyped lambda that fits", EX + EXEVAL + 'println(eval(Packed(Num(1), (n) -> "n=${n + 1}")))\n', 0, "n=2"),
+]
 fails = []
 for name, src, rc_want, word in CASES:
     for gc in (False, True):
