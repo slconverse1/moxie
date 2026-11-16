@@ -2045,7 +2045,15 @@ null
 ]
 ],
 [
-4449,
+4443,
+"enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\n  Pair(a Value[A], b Value[B]) Value[(A, B)]\n  Packed(v Value[A], f (A) -> String) Value[String]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Pair(a, b) -> (eval(a), eval(b))\n  Packed(v, f) -> f(eval(v))\n\nprintln(eval(Pair(Num(1), Flag(true))))\nprintln(eval(Packed(Num(41), (n) -> \"n=${n + 1}\")))\n",
+[
+"(1, true)",
+"n=42"
+]
+],
+[
+4471,
 "tuple Open()\ntuple Closed()\ntuple File[S]\n  name String\n\nfn mk(n String) File[Open] = File(name: n)\nfn rd(f File[Open]) String = \"read \" + f.name\nfn cl(f File[Open]) File[Closed] = File(name: f.name)\n\nf = mk(\"a.txt\")\nprintln(rd(f))\ng = cl(f)\nprintln(g.name)\n",
 [
 "read a.txt",
@@ -2053,14 +2061,14 @@ null
 ]
 ],
 [
-4472,
+4494,
 "xs = List(1, 2, 3)\nsum = xs |> to_stream() |> reduce(0, _1 + _2)\nprintln(\"$sum\")\n",
 [
 "6"
 ]
 ],
 [
-4497,
+4519,
 "import stats\n\nscores Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)\nprintln(\"mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}\")\nprintln(\"spread ${stats.stddev(scores):.2f}\")\nwhen stats.quantile(scores, 0.9)\n  Ok(q) -> println(\"90th percentile ${q:.1f}\")\n  Err(e) -> println(\"bad quantile\")\n",
 [
 "mean 77.3, median 75.0",
@@ -2069,7 +2077,7 @@ null
 ]
 ],
 [
-4514,
+4536,
 "import stats\n\nhours Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)\nscore Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)\nwhen stats.fit_line(hours, score)\n  Err(e) -> println(\"cannot fit: ${e.message}\")\n  Ok(line) ->\n    println(\"each hour adds ${line.slope:.1f} points, starting from ${line.intercept:.1f}\")\n    println(\"r squared ${line.r_squared:.3f}\")\n    println(\"6 hours predicts ${stats.predict(line, 6.0):.1f}\")\n    fitted = stats.predict_all(line, hours)\n    println(\"typical error ${stats.rmse(score, fitted):.2f} points\")\n",
 [
 "each hour adds 6.4 points, starting from 45.4",
@@ -2079,14 +2087,14 @@ null
 ]
 ],
 [
-4531,
+4553,
 "import stats\n\nx Array[Double] = (3.0, 3.0, 3.0)\ny Array[Double] = (1.0, 2.0, 3.0)\nwhen stats.fit_line(x, y)\n  Err(e) -> println(e.message)\n  Ok(line) -> println(\"fitted\")\n",
 [
 "fit_line: every x is the same, so there is no line to fit"
 ]
 ],
 [
-4547,
+4569,
 "import stats\n\nsales Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)\nprintln(stats.moving_average(sales, 3))\nprintln(\"forecast ${stats.smooth(sales, 0.5):.2f}\")\nprintln(\"slow forecast ${stats.smooth(sales, 0.1):.2f}\")\n",
 [
 "List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)",
@@ -2095,7 +2103,7 @@ null
 ]
 ],
 [
-4562,
+4584,
 "import http\n\nfn handle(req http.Request) http.Response\n  if req.method == \"POST\"\n    http.text(200, \"you said: ${req.body}\")\n  elif req.path == \"/hello\"\n    http.text(200, \"hello, mixer\")\n  else\n    http.text(404, \"nothing at ${req.path}\")\n\nfiber fn server(l Listener, count Int) Unit\n  http.serve_n(l, count, handle)\n\nl = listen(0)?\nport = port_of(l)\nrun server(l, 3)\na = http.get(\"localhost\", port, \"/hello\")?\nprintln(\"${a.status} ${a.body}\")\nb = http.post(\"localhost\", port, \"/echo\", \"hello\")?\nprintln(\"${b.status} ${b.body}\")\nc = http.get(\"localhost\", port, \"/nope\")?\nprintln(\"${c.status} ${c.body}\")\n",
 [
 "200 hello, mixer",
@@ -2104,7 +2112,7 @@ null
 ]
 ],
 [
-4597,
+4619,
 "import json\n\ntext = \"{\\\"name\\\": \\\"Al\\\", \\\"scores\\\": [90, 85.5], \\\"admin\\\": false}\"\ndoc = json.parse(text)?\nname = doc.field(\"name\").flat_map((d) -> d.as_text())?\nfirst = doc.field(\"scores\").flat_map((d) -> d.at(0)).flat_map((d) -> d.as_int())?\nprintln(\"$name $first\")\nprintln(doc.field(\"email\"))\nprintln(doc.field(\"name\").flat_map((d) -> d.as_int()))\nprintln(doc.to_json())\nprintln(json.parse(\"[1, 2\"))\n",
 [
 "Al 90",
@@ -2115,7 +2123,7 @@ null
 ]
 ],
 [
-4615,
+4637,
 "import json\n\ntuple Addr deriving dyn, show\n  city String,\n  zip Int\ntuple User deriving dyn, show\n  name String,\n  tags List[String],\n  addr Addr\n\ndynamic fn load(text String) Result[User, Error]\n  User.from_dyn(json.parse(text)?)\n\nu = User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150))\nprintln(u.to_dyn().to_json())\nprintln(load(u.to_dyn().to_json()))\nprintln(load(\"{\\\"name\\\": \\\"Al\\\", \\\"tags\\\": [1]}\"))\n",
 [
 "{\"name\":\"Al\",\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Oslo\",\"zip\":150}}",
@@ -2124,7 +2132,7 @@ null
 ]
 ],
 [
-4637,
+4659,
 "import json\n\nenum Shape deriving dyn, show\n  Circle(r Float)\n  Rect(w Float, h Float)\n  Empty\n\ndynamic fn parse_shape(text String) Result[Shape, Error]\n  Shape.from_dyn(json.parse(text)?)\n\ns = Shape.Rect(w: 2.0, h: 3.0)\nprintln(s.to_dyn().to_json())\nprintln(parse_shape(s.to_dyn().to_json()))\nprintln(parse_shape(\"{\\\"case\\\": \\\"Blob\\\"}\"))\n",
 [
 "{\"case\":\"Rect\",\"w\":2.0,\"h\":3.0}",
@@ -2133,7 +2141,7 @@ null
 ]
 ],
 [
-4658,
+4680,
 "import json\n\ntuple Pair[A, B] deriving dyn, show\n  first A\n  second B\n\nenum Tree[T] deriving dyn, show\n  Leaf(v T)\n  Node(l Tree[T], r Tree[T])\n\np = Pair(first: 1, second: \"a\")\nprintln(p.to_dyn().to_json())\nprintln(Pair[Int, String].from_dyn(p.to_dyn()))\nt = Tree.Node(l: Tree.Leaf(v: 1), r: Tree.Leaf(v: 2))\nprintln(Tree[Int].from_dyn(t.to_dyn()))\n",
 [
 "{\"first\":1,\"second\":\"a\"}",
@@ -2142,7 +2150,7 @@ null
 ]
 ],
 [
-4684,
+4706,
 "interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, msg)\n    println(\"${self.prefix}: $msg\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
 [
 "app: started"

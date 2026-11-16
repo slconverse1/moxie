@@ -4437,9 +4437,31 @@ Output: `3`, then `5`. A case with no result type (`If`) means `Value[T]`. Three
 
 Nothing changes at run time: types are erased, so a `Value` is the same enum value it would be without the result types.
 
+**Case variables and existentials.** A case may use type variables of its own, written as one-letter names that the enum doesn't declare. Two shapes are useful.
+
+```
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+  Pair(a Value[A], b Value[B]) Value[(A, B)]
+  Packed(v Value[A], f (A) -> String) Value[String]
+
+fn eval[T](v Value[T]) T = when v
+  Num(n) -> n
+  Flag(b) -> b
+  Pair(a, b) -> (eval(a), eval(b))
+  Packed(v, f) -> f(eval(v))
+
+println(eval(Pair(Num(1), Flag(true))))
+println(eval(Packed(Num(41), (n) -> "n=${n + 1}")))
+```
+
+Output: `(1, true)`, then `n=42`. In `Pair`, `A` and `B` appear in the result type, so building one infers them from the payloads: `Pair(Num(1), Flag(true))` is a `Value[(Int, Bool)]`, and `Pair(Num(1), Num(2))` is not a `Value[(Int, Bool)]`. In `Packed`, `A` appears only in the payloads and not in the result. That is an **existential**: the case hides which `A` it holds. Building a `Packed` still fixes `A` (the two payloads must agree, so `Packed(Num(1), f)` with an `f` that takes a `Bool` is an error), but a `when` arm sees `A` as an unknown, fixed type, shown as `A'`. The arm may use `v` and `f` together, since both mention the same `A'`, but it cannot treat `A'` as an `Int`, and an arm that returns `eval(a)` where the result is `(A', B')` is an error. A variable bound twice in one call must agree.
+
+
 **Which of the three?** Use tagless final (24m) when you only run the program and never look inside it. Use open data types (24n) when you need to inspect and rewrite the data and also to add cases without editing existing code. Use a GADT when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
 
-**Other languages.** Haskell and Scala 3 have GADTs with a general type-equality solver, so a case may refine several parameters at once and a pattern match can introduce new type variables. Kotlin and Rust have no GADTs; the usual workaround is a sealed class or enum with an unchecked cast in each arm, which the compiler cannot verify. Moxie's version is smaller: a case's result type names each parameter either as a plain type (`Int`) or as the enum's own parameter, a `when` arm records one equation per parameter, and there are no existential type variables. A case such as `Pair(a Value[A], b Value[B]) Value[(A, B)]` is not supported yet.
+**Other languages.** Haskell and Scala 3 have GADTs with a general type-equality solver, so a case may refine several parameters at once and a pattern match can introduce new type variables. Kotlin and Rust have no GADTs; the usual workaround is a sealed class or enum with an unchecked cast in each arm, which the compiler cannot verify. Moxie's version is smaller: a case's result type names each parameter either as a plain type (`Int`) or as the enum's own parameter, a `when` arm records one equation per parameter, and there are no existential type variables.
 
 **24p. Typestate: a type that remembers what happened to a value**
 

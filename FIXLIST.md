@@ -19,7 +19,7 @@
 * No automatic projection (`:<:`) for open data types: each node answers a small interface such as `AsLit`.
 
 **Language features not built**
-* GADTs built 2026-11-16 (Spec 6, Guide 24o, tests/run_gadt.py). Left: existential type variables in a case (`Pair(a Value[A], b Value[B]) Value[(A, B)]`), several equations per arm beyond one parameter each, GADTs on header enums.
+* GADTs built 2026-11-16 (Spec 6, Guide 24o, tests/run_gadt.py). Existential type variables built the same day (one-letter case variables; `case_scheme`, `case_env`, `gadt_call`). Left: case variables with more than one letter, a lambda argument with no written parameter type does not bind a variable, GADTs on header enums.
 * `proxy` for a prelude interface other than the six built-ins; a forwarding that adds a `Self`-returning wrapper.
 * Short form `run fn (tx)` only when every argument is a bare name; an anonymous `fn` can't be written inline in a call.
 * Local constants built by a call (`N = fib(10)` inside a function).
