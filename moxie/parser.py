@@ -1530,6 +1530,29 @@ def apply_refined_aliases(prog):
             return c
         return e
 
+    def elem_alias(t):
+        """`List[Pos]`, `Array[Pos][N]`, `Set[Pos]`, `Dict[K, Pos]`: the refined alias of the elements (or values), else None."""
+        if t.__class__ is not TName or len(t.path) != 1 or t.path[0] not in ("List", "Array", "Set", "Dict") or not t.groups:
+            return None
+        g = t.groups[0]
+        if not isinstance(g, list) or not g:
+            return None
+        e = g[-1] if t.path[0] == "Dict" else g[0]
+        if e.__class__ is TName and len(e.path) == 1 and not e.groups and e.path[0] in ref:
+            return ref[e.path[0]], t.path[0]
+        return None
+
+    def all_cond(a, kind, nm, line):
+        """`every element of nm satisfies the alias's condition`, as a call of `all`, checked when the program runs (nothing about a
+        whole collection can be proved at compile time)."""
+        item = "item"
+        lam = Lambda([Param(None, item, None, None, None, False, None, None, line=line)], subst(a.where, item), None, None, None, line=line)
+        src = nm if kind != "Dict" else f"{nm}.values()"
+        target = Name(nm, line=line) if kind != "Dict" else Call(Field(Name(nm, line=line), "values", line=line), [], None, line=line)
+        cond = Call(Name("all", line=line), [Arg(None, lam, None, line=line), Arg(None, target, None, line=line)], None, line=line)
+        text = f"all(({item}) -> {re.sub(r'self', item, a.wtext or '')}, {src})"
+        return cond, text
+
     def walk(n):
         if isinstance(n, FnDecl):
             extra = []
@@ -1545,8 +1568,17 @@ def apply_refined_aliases(prog):
                     prm.where, prm.wtext = cond, text
                     if n.body is not None:
                         extra.append(("requires", acond, prm.line, atext))
+            for prm in n.params or []:
+                ea = elem_alias(prm.type) if prm.name and prm.name != "self" else None
+                if ea is not None and n.body is not None:
+                    cond, text = all_cond(ea[0], ea[1], prm.name, prm.line)      # a run-time `requires`: no `where`, so no compile-time proof is asked for
+                    extra.append(("requires", cond, prm.line, text))
             if extra:
                 n.contracts = extra + list(n.contracts or [])
+            ea = elem_alias(n.ret)
+            if ea is not None and n.body is not None:
+                cond, text = all_cond(ea[0], ea[1], "result", n.line)
+                n.contracts = list(n.contracts or []) + [("ensures", cond, n.line, text)]
             rt = n.ret
             if rt.__class__ is TName and len(rt.path) == 1 and not rt.groups and rt.path[0] in ref and n.body is not None:
                 a = ref[rt.path[0]]                       # a refined result: checked on the way out, as an `ensures` on `result`
@@ -1558,6 +1590,11 @@ def apply_refined_aliases(prog):
                 if f.name and t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in ref:
                     a = ref[t.path[0]]                    # a refined field: an `invariant` on the field, checked at every construction
                     more.append(("invariant", subst(a.where, f.name), f.line if hasattr(f, "line") else n.line, re.sub(r"\bself\b", f.name, a.wtext or "")))
+            for f in n.fields or []:
+                ea = elem_alias(f.type) if f.name else None
+                if ea is not None:
+                    cond, text = all_cond(ea[0], ea[1], f.name, f.line if hasattr(f, "line") else n.line)
+                    more.append(("invariant", cond, f.line if hasattr(f, "line") else n.line, text))
             if more:
                 n.invariants = list(n.invariants or []) + more
         if isinstance(n, list):
@@ -1569,6 +1606,10 @@ def apply_refined_aliases(prog):
                     a = ref[x.ann.path[0]]                # `x Pos = v`: the value entering a refined alias is checked right after the binding
                     nm = x.targets.name
                     out.append(Refine(nm, subst(a.where, nm), re.sub(r"\bself\b", nm, a.wtext or ""), a.name, line=x.line))
+                elif x.__class__ is Assign and x.op == "=" and x.targets.__class__ is PBind and elem_alias(x.ann) is not None:
+                    ea = elem_alias(x.ann)                # `xs List[Pos] = ...`: every element is checked right after the binding, when the program runs
+                    cond, text = all_cond(ea[0], ea[1], x.targets.name, x.line)
+                    out.append(Refine(x.targets.name, cond, text, "", line=x.line))
             n[:] = out
             for x in list(n):
                 walk(x)

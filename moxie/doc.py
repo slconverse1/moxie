@@ -29,6 +29,7 @@ class Item:
         self.implementors = []
         self.declared = []
         self.effects = None    # None for non-functions; a sorted list of effect names (empty = pure)
+        self.marks = []        # `unsafe` and `dynamic`, the markers written before `fn`
 
 
 def indent_of(s):
@@ -177,6 +178,9 @@ def collect(src):
                 it.declared = sorted({m for m in re.findall(r'\b(pure|prints|parks|impure)\b', it.header.split('fn ')[0])})
     except Exception:
         pass
+    for it in items:
+        if it.kind == "fn":
+            it.marks = sorted(set(re.findall(r'\b(unsafe|dynamic)\b', it.header.split('fn ')[0])))
     # implementors
     for it in items:
         if it.kind == "impl":
@@ -261,6 +265,16 @@ def _inline(s):
 
 def _md_links(line):
     return re.sub(r"\[`([^`]+)`\](?!\()", lambda m: f"[`{m.group(1)}`]({_href(m.group(1))})" if _href(m.group(1)) else m.group(0), line)
+
+
+def marked_summary(items):
+    """The functions that carry `unsafe` (they can break type or memory guarantees) or `dynamic` (they work on `Dyn` checked at run time), one line each."""
+    out = []
+    for mark, what in (("unsafe", "can break type or memory guarantees"), ("dynamic", "works on `Dyn`, checked at run time")):
+        names = [it.name for it in items if mark in it.marks]
+        if names:
+            out.append(f"- `{mark}` ({what}): " + ", ".join(f"`{n}`" for n in names))
+    return out
 
 
 def effect_label(it):
@@ -356,6 +370,9 @@ def render_html(title, module_doc, items, results):
          f"<title>{html.escape(title)}</title><style>{CSS}</style><body><h1>{html.escape(title)}</h1>"]
     if module_doc:
         o.append(md_to_html(module_doc))
+    marked = marked_summary(items)
+    if marked:
+        o.append("<h2>Marked functions</h2><ul>" + "".join("<li>" + html.escape(m[2:]) + "</li>" for m in marked) + "</ul>")
     for it in items:
         o.append(f'<h3 id="{html.escape(it.name)}"><span class=k>{it.kind}</span> {html.escape(it.name)}</h3>')
         o.append(f'<pre class=sig>{html.escape(it.header)}</pre>')
@@ -369,6 +386,8 @@ def render_html(title, module_doc, items, results):
                 o.append(f'<div class=c><code>{kw} {html.escape(cond)}</code>{lab}</div>')
         if it.effects is not None:
             o.append("<p><b>Effects:</b> " + html.escape(effect_label(it)) + "</p>")
+        if it.marks:
+            o.append("<p><b>Marked:</b> " + ", ".join(f"<code>{m}</code>" for m in it.marks) + "</p>")
         if it.implementors:
             o.append("<p><b>Implementors</b></p><ul>" + "".join(f"<li><code>{html.escape(i)}</code></li>" for i in it.implementors) + "</ul>")
         if res.get(id(it)):
@@ -386,6 +405,9 @@ def render_md(title, module_doc, items, results):
     o = [f"# {title}", ""]
     if module_doc:
         o += [_md_links(l) for l in module_doc] + [""]
+    marked = marked_summary(items)
+    if marked:
+        o += ["## Marked functions", ""] + marked + [""]
     for it in items:
         o += [f"### {it.kind} `{it.name}`", "", "```", it.header, "```", ""]
         t = [_md_links(l) for l in doc_text_lines(it)]
@@ -400,6 +422,8 @@ def render_md(title, module_doc, items, results):
             o.append("")
         if it.effects is not None:
             o += ["**Effects:** " + effect_label(it), ""]
+        if it.marks:
+            o += ["**Marked:** " + ", ".join(f"`{m}`" for m in it.marks), ""]
         if it.implementors:
             o += ["**Implementors**", ""] + [f"- `{i}`" for i in it.implementors] + [""]
         if res.get(id(it)):

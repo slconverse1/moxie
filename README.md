@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (extras)
+- **Refined elements.** `List[Pos]`, `Array[Pos]`, `Set[Pos]` and `Dict[K, Pos]` in a parameter, result, field or binding are now checked when the program runs, as `all((item) -> item > 0, xs)` (tests/run_refinedelems.py).
+- **`moxie doc` lists marked functions** (effects, `unsafe` and the like) in a "Marked functions" section and on `**Marked:**` lines (tests/run_docmarks.py).
+
 **2026-11-15: `with` capture layouts are checked everywhere.** A parameter, a result (the closure the body returns, inline or held in a local), a channel element, a tuple field and a collection each hold only closures of the layout written. A function name or a lambda that captures nothing has the empty layout, so it is refused where `with (Int)` is written, and a closure that captures values is refused in a slot written without `with`, whether it is written there or held in a variable. Mismatch messages say which side captures what.
 
 **2026-11-15: `update` lines take commas and `&`; `do` has no `->`.** In `x.update`, a comma ends each line except the last, as in a constructor call (a trailing comma is allowed, and a missing one is a compile error). `&` in a right-hand side is the field's current value, so `retries: & * 2` doubles it without repeating the name; a `&` that is the slot of a pipe stage keeps its pipe meaning. The one-line `x.do -> expr` is gone: `x.do` takes its block on the lines below, since `->` belongs to lambdas, Dict entries and arms. A line that ends in a comma and is followed by a dedent now dedents instead of joining the next statement. Spec 9b and the Guide (8a) updated.
