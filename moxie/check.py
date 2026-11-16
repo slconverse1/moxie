@@ -1609,7 +1609,16 @@ class Checker(RefineMixin):
         if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param", "rigid") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param", "rigid"):
             if tys.compatible(exp, act):
                 return
-        self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`")
+        self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`" + self.layout_hint(exp, act))
+
+    def layout_hint(self, exp, act):
+        """Why two function types that print alike differ: one is written with a capture layout."""
+        if exp.__class__ is tuple and act.__class__ is tuple and exp[0] == act[0] == "fn" and len(exp) > 3 and len(act) > 3 and exp[3] != act[3]:
+            if exp[3] and not act[3]:
+                return f" (this function captures nothing, but the type is written `with ({', '.join(exp[3])})`)"
+            if act[3] and not exp[3]:
+                return f" (this closure captures ({', '.join(act[3])}), but the type has no `with`)"
+        return ""
 
     # ------------------------------------------------------------ patterns
     def pat_names(self, p, out=None):
@@ -1725,7 +1734,7 @@ class Checker(RefineMixin):
             self.cur_line = n.line
         if m is not None:
             r = m(n, sc)
-            if n.__class__ is Pipe or n.__class__ is Call or n.__class__ is Name:
+            if n.__class__ is Pipe or n.__class__ is Call or n.__class__ is Name or n.__class__ is Lambda:
                 self.node_ty[id(n)] = r[0] if r else None
                 if n.__class__ is Call and r and r[0] is not None and r[0].__class__ is tuple and r[0][0] == "app":
                     self.tag_creation(n, r[0])
@@ -1804,7 +1813,7 @@ class Checker(RefineMixin):
             return v.ty, None
         ft = self.fn_value_type(n.name)
         if ft is not None:
-            return ft, None
+            return ft + ((),), None            # a function name captures nothing: the empty layout
         bt = self.builtin_value_type(n.name)
         if bt is not None:
             return bt, None
@@ -2613,7 +2622,7 @@ class Checker(RefineMixin):
             return None
         names = self.lambda_captures(lam, sc)
         if not names:
-            return None
+            return ()
         shown = []
         for nm in names:
             v = sc.find(nm)
@@ -2724,6 +2733,9 @@ class Checker(RefineMixin):
                 narrowed = True
         if narrowed:
             for te in self.tails(n):
+                self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
+        elif self.fn_ret.__class__ is tuple and self.fn_ret[0] == "fn" and len(self.fn_ret) > 3:
+            for te in self.tails(n):             # a returned closure variable is looked up where it was bound
                 self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
         self.narrow_paths = saved_paths
         del self.ifacts[rf_mark:]
@@ -4282,6 +4294,10 @@ class Checker(RefineMixin):
         self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
+        if n.fn.__class__ is Name and n.fn.name == "write" and "write" not in self.fns and len(n.args or []) == 2:
+            ct = self.node_ty.get(id(n.args[0].expr))      # `write(tx, closure)`: the channel's element type is the slot
+            if ct.__class__ is tuple and ct[0] == "app" and ct[1] in ("ChanW", "ChanR") and ct[2]:
+                self.check_stored_type(self.node_ty.get(id(n.args[1].expr)), ct[2][0], n.line)
         for item in self.pending_gone[mark:]:
             self.mark_gone(*item)          # the receiver is gone once the call has been checked
         del self.pending_gone[mark:]
@@ -4302,10 +4318,19 @@ class Checker(RefineMixin):
             elif e.__class__ is TupleE:
                 for it in e.items:
                     yield from lams(it[1])
+        def names_of(e):
+            if e.__class__ is Name:
+                yield e.name
+            elif e.__class__ is TupleE:
+                for it in e.items:
+                    yield from names_of(it[1])
         found = []
         for a in n.args or []:
-            for lam in lams(getattr(a, "expr", None)):
+            ex = getattr(a, "expr", None)
+            for lam in lams(ex):
                 found.append((lam, getattr(a, "line", 0) or n.line))
+            for nm in names_of(ex):
+                found.append((nm, getattr(a, "line", 0) or n.line))
         if not found:
             return
         want, written = None, False
@@ -4321,11 +4346,16 @@ class Checker(RefineMixin):
             written = True
             ft = self.ty_of_type(slots[-1])
             want = ft[3] if len(ft) > 3 else None
-        for lam, line in found:
-            names = self.lambda_captures(lam, sc)
+        for item, line in found:
+            if item.__class__ is Lambda:
+                names = self.lambda_captures(item, sc)
+                lay = self.lam_layout(item, sc) if names else ()
+            else:                                         # a variable that holds a closure: its type carries the layout
+                vt = getattr(sc.find(item), "ty", None)
+                lay = vt[3] if vt.__class__ is tuple and vt[0] == "fn" and len(vt) > 3 else ()
+                names = [item] if lay else []
             if not names:
                 continue
-            lay = self.lam_layout(lam, sc)
             if lay is None and not (written and want is None):
                 continue                                  # a captured type is not known yet
             if written:
@@ -4333,7 +4363,7 @@ class Checker(RefineMixin):
                     self.err(line, f"closure captures `{names[0]}`, and only plain functions can be stored here (a tuple field, collection element, Dict value, or channel element of a function type); "
                                    f"to store closures that capture values, write the type with a layout, `(...) -> ... with (Int)`")
                 elif lay != want:
-                    self.err(line, f"this closure captures {self.layout_text(lay)[5:]}, but the type is written {self.layout_text(want)}: every closure stored together has to capture the same kinds of values")
+                    self.err(line, f"this closure captures {self.layout_text(lay)[5:]}, but the closures stored here capture {self.layout_text(want)[5:]}: every closure stored together has to capture the same kinds of values")
             elif want is None:
                 want = lay
             elif lay != want:
@@ -5784,6 +5814,14 @@ class Checker(RefineMixin):
     def globals_nonvar(self):
         return set(self.tuples) | set(self.enums) | set(self.aliases) | set(self.cases)
 
+    def check_stored_type(self, act, slot, line):
+        """A value whose type says it captures (`... with (Int)`) stored in a slot written as a plain function type: not in moxie."""
+        from .values import GC
+        if GC[0] or act.__class__ is not tuple or slot.__class__ is not tuple or act[0] != "fn" or slot[0] != "fn":
+            return
+        if len(act) > 3 and act[3] and len(slot) == 3:
+            self.err(line, f"a closure that captures {self.layout_text(act[3])[5:]} can't be stored in a slot of plain functions: write the type with its layout, `(...) -> ... {self.layout_text(act[3])}`")
+
     def check_stored_closure(self, lam, sc, line, slot=None):
         """A closure stored in a slot of a written function type. `slot` is that type; one written with `with (...)` takes closures of exactly that
         capture layout, and any other takes plain functions only."""
@@ -6103,6 +6141,8 @@ class Checker(RefineMixin):
                 f = pos[i]
                 i += 1
             self.compat(self.ty_of_type(f.type), t, c, line)
+            if f.type.__class__ is TFn and not getattr(td, "tparams", None):
+                self.check_stored_type(t, self.ty_of_type(f.type), line)
             if getattr(a, "expr", None) is not None and not getattr(td, "tparams", None):
                 self.tag_value(a.expr, f.type, t)
                 self.tag_declared(a.expr, f.type)
@@ -6433,6 +6473,8 @@ class Checker(RefineMixin):
             return out + self.tails(e.else_)
         if c in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e):
             return [e]
+        if c is Lambda and self.fn_ret.__class__ is tuple and self.fn_ret[0] == "fn" and len(self.fn_ret) > 3:
+            return [e]                       # a closure returned where the result type is written with a capture layout
         return []
 
     def simple_tail(self, e):
@@ -6460,7 +6502,9 @@ class Checker(RefineMixin):
         n = len(self.diags)
         anyc = (self.any_vars and e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name
                 and sc.find(e.fn.obj.name) in self.any_vars)          # a member call on an `any` parameter has a known type
-        r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or anyc or self.simple_tail(e) else (None, None)
+        fnret = self.fn_ret.__class__ is tuple and self.fn_ret[0] == "fn" and len(self.fn_ret) > 3      # a function that returns a closure of a written capture layout
+        r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or anyc or self.simple_tail(e) \
+            or (fnret and e.__class__ in (Lambda, Name)) else (None, None)
         del self.diags[n:]
         return r
 

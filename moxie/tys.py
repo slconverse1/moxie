@@ -54,7 +54,7 @@ def show(t):
         return f"{t[1]}[{', '.join(show(a) for a in t[2])}]" + (f"[{show_size(t[3])}]" if len(t) > 3 and t[3] is not None else "")
     if tag == "fn":
         ps = "" if tuple(t[1]) == ("Unit",) else ", ".join(show(p) for p in t[1])       # a function of no parameters is written `() -> T`
-        cp = f" with ({', '.join(t[3])})" if len(t) > 3 and t[3] is not None else ""
+        cp = f" with ({', '.join(t[3])})" if len(t) > 3 and t[3] else ""
         return f"({ps}) -> {show(t[2])}{cp}"
     if tag == "tup":
         labs = t[2] if len(t) > 2 else (None,) * len(t[1])
