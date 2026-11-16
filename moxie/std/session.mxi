@@ -1,0 +1,48 @@
+//! Session types: a channel pair whose type says what is sent and received, in order (`import session`).
+export tuple End()
+export tuple Send[T, S]()
+export tuple Recv[T, S]()
+export tuple Pick[A, B]()
+export tuple Offer[A, B]()
+
+export tuple Endpoint[S]
+  w Wire
+
+export fn send[T, S](e Endpoint[Send[T, S]], x T) Result[Endpoint[S], Error]
+  wire_send(e.w, x)?
+  Ok(Endpoint(w: e.w))
+
+export fn recv[T, S](e Endpoint[Recv[T, S]]) Result[(T, Endpoint[S]), Error]
+  v = wire_recv(e.w)?
+  Ok((v, Endpoint(w: e.w)))
+
+export fn finish(e Endpoint[End]) Unit
+  wire_close(e.w)
+
+/// The type of the other end of a conversation: `Peer[Send[Int, End]]` is `Recv[Int, End]`.  The checker works the dual out.
+export tuple Peer[S]()
+
+/// Makes a conversation: your end has the type `S`, and the other end has the dual type `Peer[S]`.
+export fn connect[S]() (Endpoint[S], Endpoint[Peer[S]])
+  a, b = wire_pair()
+  (Endpoint(w: a), Endpoint(w: b))
+
+/// What the other side chose, when it was your turn to listen: `Left` or `Right`, each carrying the endpoint for that branch.
+export enum Branch[A, B]
+  Left(a A)
+  Right(b B)
+
+export fn pick_left[A, B](e Endpoint[Pick[A, B]]) Result[Endpoint[A], Error]
+  wire_send(e.w, 0)?
+  Ok(Endpoint(w: e.w))
+
+export fn pick_right[A, B](e Endpoint[Pick[A, B]]) Result[Endpoint[B], Error]
+  wire_send(e.w, 1)?
+  Ok(Endpoint(w: e.w))
+
+export fn offer[A, B](e Endpoint[Offer[A, B]]) Result[Branch[Endpoint[A], Endpoint[B]], Error]
+  which Int = wire_recv(e.w)?
+  if which == 0
+    Ok(Left(Endpoint(w: e.w)))
+  else
+    Ok(Right(Endpoint(w: e.w)))

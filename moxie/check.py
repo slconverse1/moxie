@@ -196,10 +196,19 @@ class Var:
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
+        if SESS["on"] and _is_endpoint(ty):
+            SESS["vars"].append(self)
         self.size = None                 # the element count of a fixed-size Array known from the text
         self.inttype = None              # the written integer type (`UInt8`) of an annotated binding or parameter: its width for shift checks
         self.fnstore = False             # a List, Array, or Dict whose elements are written functions (`Dict[String, (Int) -> Int][4]()`)
         self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
+
+
+SESS = {"vars": [], "names": {}, "on": False, "line": 0, "escaped": set()}      # session endpoints seen while checking one function (the `session` package)
+
+
+def _is_endpoint(ty):
+    return ty.__class__ is tuple and len(ty) > 2 and ty[0] == "app" and (ty[1] == "Endpoint" or ty[1].endswith(".Endpoint"))
 
 
 FORGET = [None]        # called with a name when a scope binds it again (a rebinding or a shadow): facts about the old one are stale
@@ -213,6 +222,8 @@ class VarDict(dict):
         self.owner = owner
 
     def __setitem__(self, k, v):
+        if SESS["on"] and v.__class__ is Var and _is_endpoint(v.ty):
+            SESS["names"][v] = (k, SESS["line"])
         f = FORGET[0]
         if f is not None and (k in self or (self.owner.parent is not None and self.owner.parent.find(k) is not None)):
             f(k)
@@ -308,6 +319,7 @@ class Checker(RefineMixin):
         self.fn_tparams = ()
         self.lam_expect = None
         self.lam_hint = {}
+        self.sess_first = set()
         self.pipe_ty = None
         self.node_ty = {}
         self.labels = []
@@ -659,6 +671,14 @@ class Checker(RefineMixin):
         resource too (res_tuples)."""
         from .effects import _children
         self.consumes, self.method_consumes, self.methods, self.res_tuples = {}, set(), {}, set()
+        self.sess_alias, self.sess_names = set(), set()
+        for st in prog.stmts:
+            if st.__class__ is ImportDecl and st.pkg == ["session"]:
+                if st.names:
+                    self.sess_names |= {x if isinstance(x, str) else getattr(x, "name", None) for x in st.names}
+                else:
+                    self.sess_alias.add(st.alias or "session")
+        SESS["on"] = bool(self.sess_alias or self.sess_names)
         changed = True
         while changed:
             changed = False
@@ -682,6 +702,8 @@ class Checker(RefineMixin):
             c = n.__class__
             if c is Move and root(n.e) == p:
                 return True
+            if c is Call and self.is_session_call(n, None) and n.args and hasattr(n.args[0], "expr") and root(n.args[0].expr) == p:
+                return True               # a session step uses up its endpoint
             if c is Call and n.fn.__class__ is Name and n.fn.name in fnparams[0]:
                 for a in n.args:                    # `f(self.value)`: an unknown function is assumed to keep what it is given
                     if a.expr.__class__ in (Name, Field) and root(a.expr) == p:
@@ -739,10 +761,21 @@ class Checker(RefineMixin):
         for k, m in self.pkg_methods.items():
             self.methods.setdefault(k, m)
 
+    SESSION_OPS = {"send", "recv", "finish", "pick_left", "pick_right", "offer"}
+
+    def is_session_call(self, n, sc):
+        """A call of one of the `session` package's operations (`session.send(c, 1)`, or `send(c, 1)` after `import session(send)`)."""
+        f = n.fn
+        if f.__class__ is Field and f.obj.__class__ is Name and f.obj.name in getattr(self, "sess_alias", ()) and f.name in self.SESSION_OPS:
+            return sc is None or sc.find(f.obj.name) is None
+        if f.__class__ is Name and f.name in getattr(self, "sess_names", ()) and f.name in self.SESSION_OPS:
+            return sc is None or sc.find(f.name) is None
+        return False
+
     def mark_gone(self, n, sc, x, what):
         """The name `x` no longer owns its resource (it was closed or handed to a function that keeps it)."""
         v = sc.find(x)
-        if v is None or not v.resource:
+        if v is None or not (v.resource or _is_endpoint(v.ty)):
             return
         if v.depth < self.loop_depth and not self.exit_ctx:
             self.err(n.line, f"`{x}` is {what} inside a loop, so the next time round it is already gone; "
@@ -907,7 +940,28 @@ class Checker(RefineMixin):
 
     BUILTIN_GENERICS = {"Seq": 1, "MultiArray": 1, "List": 1, "Array": 1, "Dict": 2, "Set": 1, "Result": 2, "Stream": 1, "Ring": 1, "Atom": 1, "Future": 1, "ChanR": 1, "ChanW": 1, "FutureR": 1, "FutureW": 1}
 
+    SESSION_DUAL = {"Send": "Recv", "Recv": "Send", "Pick": "Offer", "Offer": "Pick"}
+
+    def dual_ty(self, t):
+        """The type of the other end of a conversation: `Send` and `Recv` swap, `Pick` and `Offer` swap, and what follows is dualled too
+        (`End` is its own dual).  A part not yet known stays unknown."""
+        if t.__class__ is not tuple or len(t) < 2:
+            return t
+        head = str(t[1]).rsplit(".", 1)
+        base, pre = head[-1], (head[0] + ".") if len(head) == 2 else ""
+        if t[0] == "app" and base in self.SESSION_DUAL:
+            return ("app", pre + self.SESSION_DUAL[base], tuple(self.dual_ty(x) if i == len(t[2]) - 1 or base in ("Pick", "Offer") else x
+                                                              for i, x in enumerate(t[2])))
+        return t
+
     def ty_of_type(self, t, depth=0, keep=None, top=True):
+        r = self._ty_of_type0(t, depth, keep, top)
+        if r.__class__ is tuple and len(r) == 3 and r[0] == "app" and str(r[1]).rsplit(".", 1)[-1] == "Peer" and len(r[2]) == 1 \
+                and r[2][0].__class__ is tuple and r[2][0][0] == "app":
+            return self.dual_ty(r[2][0])               # `session.Peer[Client]` is the type of the other end of `Client`
+        return r
+
+    def _ty_of_type0(self, t, depth=0, keep=None, top=True):
         """The checker's type for a written type.  `keep` names type parameters to return as ("param", n) (a callee's own);
         the enclosing function's parameters show only inside an application, so a bare `T` stays unknown."""
         if t is None or depth > 8:
@@ -1797,6 +1851,7 @@ class Checker(RefineMixin):
         m = getattr(self, "e_" + n.__class__.__name__, None)
         if getattr(n, "line", 0):
             self.cur_line = n.line
+            SESS["line"] = n.line
         if m is not None:
             r = m(n, sc)
             if n.__class__ is Pipe or n.__class__ is Call or n.__class__ is Name or n.__class__ is Lambda:
@@ -1871,6 +1926,8 @@ class Checker(RefineMixin):
     def e_Name(self, n, sc):
         v = sc.find(n.name)
         if v is not None:
+            if SESS["on"] and _is_endpoint(v.ty) and id(n) not in self.sess_first:
+                SESS["escaped"].add(v)            # used other than as the first argument of a session step: handed on, so not reported as dropped
             if v in self.moved:
                 self.err(n.line, f"use of moved value `{n.name}` (moved at line {self.moved[v]})")
             if v in self.union_vars:
@@ -2923,6 +2980,14 @@ class Checker(RefineMixin):
         return last.__class__ in (Return, Break, Continue, TodoE)
 
     def e_Block(self, n, sc, new_scope=True):
+        if not SESS["on"]:
+            return self._e_Block0(n, sc, new_scope)
+        start = len(SESS["vars"])
+        r = self._e_Block0(n, sc, new_scope)
+        self.check_endpoints_in(start, n.line)
+        return r
+
+    def _e_Block0(self, n, sc, new_scope=True):
         inner = Sc(sc) if new_scope else sc
         if new_scope and id(n) in self.loop_bodies:
             inner.loopbody = True
@@ -3583,6 +3648,9 @@ class Checker(RefineMixin):
                     name = node.e.name
                 elif node.__class__ is Arg and getattr(node, "mod", None) == "move" and node.expr.__class__ is Name:
                     name = node.expr.name
+                elif node.__class__ is Call and SESS["on"] and self.is_session_call(node, sc) and node.args and hasattr(node.args[0], "expr") \
+                        and node.args[0].expr.__class__ is Name:
+                    name = node.args[0].expr.name           # a session step uses up its endpoint
                 elif node.__class__ is Call:
                     f = node.fn
                     first = node.args[0].expr if node.args and hasattr(node.args[0], "expr") else None
@@ -3813,6 +3881,7 @@ class Checker(RefineMixin):
         for a in n.arms:
             inner = Sc(sc)
             self.moved = dict(base)
+            sess_a = len(SESS["vars"])
             old_eq = getattr(self, "tp_eq", {})
             self.tp_eq = dict(old_eq)
             for p in a.pats or []:
@@ -3836,6 +3905,8 @@ class Checker(RefineMixin):
             if a.guard is not None:
                 self.ev(a.guard, inner)
             at, ac = self.ev(a.body, inner)
+            if SESS["on"]:
+                self.check_endpoints_in(sess_a, getattr(a.body, "line", 0) or n.line)
             arm_ts.append(at)
             if tail and at is not None and (not self.has_unsettled(at) or self.mentions_case_rigid(at)) and not (a.body.__class__ is WhenE or a.body.__class__ is IfE):
                 self.settle_mixed(a.body, self.fn_ret)
@@ -4692,7 +4763,17 @@ class Checker(RefineMixin):
         self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
         self.gadt_lambda_hints(n, sc)
+        sess_call = SESS["on"] and self.is_session_call(n, sc) and n.args and hasattr(n.args[0], "expr") and n.args[0].expr.__class__ is Name
+        if sess_call:
+            self.sess_first.add(id(n.args[0].expr))
         r = self._e_Call(n, sc, *a, **k)
+        if sess_call:
+            self.pending_gone.append((n, sc, n.args[0].expr.name, "used up by this step of its protocol"))
+            for extra_arg in n.args[1:]:
+                x = getattr(extra_arg, "expr", None)
+                v = sc.find(x.name) if x.__class__ is Name else None
+                if v is not None and _is_endpoint(v.ty):
+                    self.pending_gone.append((n, sc, x.name, "sent to the other side"))      # delegation: an endpoint sent over a session is gone here
         if n.fn.__class__ is Field:
             self.check_union_method(n, sc)
         tr = self.tparam_static_call(n, sc) if n.fn.__class__ is Field else None
@@ -5063,6 +5144,50 @@ class Checker(RefineMixin):
             self.tag_declared(a.expr, q.type)
             self.tag_lambda(a.expr, q.type)
 
+    def norm_peer(self, t):
+        """`Peer[X]` inside a type, worked out wherever X is known."""
+        if t.__class__ is tuple:
+            t = tuple(self.norm_peer(x) if x.__class__ in (tuple, list) else x for x in t)
+            if len(t) == 3 and t[0] == "app" and str(t[1]).rsplit(".", 1)[-1] == "Peer" and len(t[2]) == 1 \
+                    and t[2][0].__class__ is tuple and t[2][0][0] == "app":
+                return self.dual_ty(t[2][0])
+            return t
+        if t.__class__ is list:
+            return [self.norm_peer(x) for x in t]
+        return t
+
+    def explicit_targs_result(self, n, sc):
+        """The result type of `f[A, B](...)` / `pkg.f[A](...)` for a declared generic function: its result type with the written type
+        arguments put in.  None when the function is not a single plain declaration or an argument is not a plain type."""
+        g = n.fn
+        base = g.base
+        if base.__class__ is Name and sc.find(base.name) is None:
+            key = base.name
+        elif base.__class__ is Field and base.obj.__class__ is Name and sc.find(base.obj.name) is None:
+            key = f"{base.obj.name}.{base.name}"
+            if key not in self.pkg_calls:
+                return None
+        else:
+            return None
+        fds = self.fns.get(key)
+        if not fds or len(fds) != 1 or not g.groups or len(g.groups) != 1:
+            return None
+        fd = fds[0]
+        if fd.ret is None or len(fd.tparams or []) != len(g.groups[0]) or any(getattr(tp, "holes", None) for tp in fd.tparams):
+            return None
+        binds = {}
+        for tp, ta in zip(fd.tparams, g.groups[0]):
+            if ta.__class__ is THole:
+                return None
+            t = self.ty_of_type(ta)
+            if t is None:
+                return None
+            binds[tp.name] = t
+        ret = self.ty_of_type(fd.ret, 0, set(binds))
+        if ret is None:
+            return None
+        return self.norm_peer(self.holes(ret, binds)), None
+
     def check_poly_rec(self, n, sc):
         """Polymorphic recursion: a generic function that calls itself with a type argument that is not its own parameter
         (`nest[Pair, Pair[A]](...)` inside `nest[F[_], A]`). One copy is made per type, so the copies would never end."""
@@ -5096,6 +5221,8 @@ class Checker(RefineMixin):
                 and g0.base.name not in self.fns:
             self.tag_ctor_args(g0.groups[0][0], n)         # `List[Data](a, b)`
         f = n.fn
+        if f.__class__ is GenApp and (r is None or r[0] is None):
+            r = self.explicit_targs_result(n, sc) or r         # `connect[Client]()`: the result follows from the written type arguments
         if f.__class__ is Name and f.name in self.tuples and f.name not in self.fns and sc.find(f.name) is None \
                 and self.fallible_ctor(self.tuples[f.name]) and r is not None and r[0] is not None:
             r = (("app", "Result", (r[0], ("named", "Error"))), r[1])          # a setter that can fail makes construction fallible
@@ -5573,6 +5700,10 @@ class Checker(RefineMixin):
         for i, a in args_iter:
             if hasattr(a, "expr") and getattr(a, "mod", None) == "move" and a.expr.__class__ is Name:
                 ats.append(self._move_name(a, a.expr, asc))         # `f(move c)` hands c over
+                self.arg_ty[id(a.expr)] = ats[-1][0]
+                pt_m = plan[0][i] if plan and i < len(plan[0]) else None
+                if pt_m is not None and ats[-1][0] is not None:
+                    tys.unify(pt_m, self.base(ats[-1][0]), binds)
                 continue
             pt = plan[0][i] if plan and i < len(plan[0]) else None
             if pt is not None and hasattr(a, "expr") and a.expr.__class__ is Lambda:
@@ -6596,7 +6727,7 @@ class Checker(RefineMixin):
 
     def generic_call(self, fd, n, args, ats, extra):
         """The result type of a call to a generic function when it follows from the arguments: every argument for the same `T` has one type."""
-        if extra or any(getattr(a, "label", None) or getattr(a, "mod", None) for a in args):
+        if extra or any(getattr(a, "label", None) or getattr(a, "mod", None) not in (None, "move") for a in args):
             return None
         bound = {}
         params = list(fd.params or [])
@@ -6942,6 +7073,7 @@ class Checker(RefineMixin):
             self.err(n.line, f"`forward fn {n.name}` is never defined: write the function with its body later in the file")
         inner = Sc(sc)
         inner.fnb = True
+        sess_start = len(SESS["vars"])
         for p_ in n.params or []:
             if p_.mod == "using" and p_.type is not None and self.is_res_type(p_.type):
                 self.err(n.line, f"parameter `{p_.name}` of `{n.name}` is a resource type, and a resource can't be injected with `using` (it has one owner: pass it, or `move` it)")
@@ -7014,12 +7146,35 @@ class Checker(RefineMixin):
             self.tag_tails(n)
             if "tailrec" in (n.flags or ()):
                 self.check_tailrec(n)
+        if SESS["on"]:
+            self.check_endpoints_finished(n, sess_start)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
         self.ifacts = saved_ifacts
         self.any_params = saved_any
         self.cur_fn = saved_fn
         self.tp_decl = saved_decl
         return None, None
+
+    def check_endpoints_finished(self, n, start):
+        self.check_endpoints_in(start, n.line)
+
+    def check_endpoints_in(self, start, fline):
+        """Session endpoints still held where their scope ends: the conversation was dropped before `End` (or `End` was reached and
+        never `finish`ed).  An endpoint that was passed on, or used up by a step, is gone and is not reported."""
+        vs = SESS["vars"][start:]
+        del SESS["vars"][start:]
+        seen = set()
+        for v in vs:
+            if v in self.moved or v in seen or v in SESS["escaped"]:
+                continue
+            seen.add(v)
+            nm, line = SESS["names"].get(v, (None, fline))
+            s = v.ty[2][0] if v.ty[2] else None
+            who = f"`{nm}`" if nm else "a session endpoint"
+            if s.__class__ is tuple and len(s) > 1 and (s[1] == "End" or str(s[1]).endswith(".End")):
+                self.err(line, f"{who} reached the end of its protocol but is never finished: call `finish({nm or '...'})`")
+            else:
+                self.err(line, f"{who} is dropped before its protocol is finished: it still has {tshow(s)} to go (every step must be taken, or the endpoint handed on)")
 
     def note_expected(self, e, ty):
         """`xs |> sum()` where the result is wanted as `Float`: if the element type was not seen, an empty stream still sums to
