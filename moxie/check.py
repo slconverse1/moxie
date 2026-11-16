@@ -11,7 +11,7 @@ from .values import UTAGS
 from . import tys
 
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
-RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Udp", "Child", "Terminal"}
+RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Udp", "Child", "Terminal", "Wire"}
 RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept", "connect_tls", "listen_tls", "bind_udp", "signals", "spawn", "raw_terminal", "watch", "connect_unix", "listen_unix"}
 EXTRA_NAMES = {"Ok", "Err", "self", "Self", "args", "env", "Int", "Int8", "Int16", "Int32", "Int64",
                "UInt8", "UInt16", "UInt32", "UInt64", "BigInt", "Double", "Float", "String", "Bool",
@@ -5824,7 +5824,7 @@ class Checker(RefineMixin):
     _sigs = {}                      # by dialect: GC[0] False (moxie) or True (moxie/gc)
 
     # Named options of builtins: name -> {option: type}.  A call with only these labels is checked against the signature.
-    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal", "Duration", "Error"}        # built-in types that are exactly themselves
+    RES_NAMED = {"Io", "Listener", "Udp", "Child", "Terminal", "Duration", "Error", "Wire"}        # built-in types that are exactly themselves
     OPTIONS = {"retry": {"when": None}, "par_map": {"limit": "Int"}, "par_traverse": {"limit": "Int"}, "par_map_all": {"limit": "Int"}, "connect": {"timeout": None}, "accept": {"timeout": None}, "wait_child": {"timeout": None},
                "run_command": {"stdin": "String", "timeout": None, "env": ("app", "Dict", ("String", "String")), "cwd": "String"},
                "spawn": {"env": ("app", "Dict", ("String", "String")), "cwd": "String"}}
@@ -6377,7 +6377,7 @@ class Checker(RefineMixin):
 
     SCALAR_TYPES = {"Int", "Float", "Double", "LongDouble", "Decimal", "String", "Bool", "Char", "Unit", "Self", "Secret", "Never", "Any", "BigInt",
                     "Duration", "Instant", "Time", "Date", "Error", "Range", "Timer", "Cancel", "Io", "Listener", "Udp", "Child", "Terminal",
-                    "Connection", "Packet", "Stream", "Ring", "MultiArray", "Atom", "Future", "Chan", "Byte", "UInt", "Locale", "Gen"}
+                    "Connection", "Packet", "Stream", "Ring", "MultiArray", "Atom", "Future", "Chan", "Byte", "UInt", "Locale", "Gen", "Wire"}
 
     def unknown_type_name(self, nm):
         """A type name nothing declares: not a type of this program, a built-in, a type parameter in scope, or a name from a package."""
@@ -6644,6 +6644,10 @@ class Checker(RefineMixin):
                     j = tys.join(binds.get(pt[1]), bt)
                     if j != "conflict":
                         binds[pt[1]] = j
+                    elif bt.__class__ is str and binds.get(pt[1]).__class__ is str and not getattr(fd, "tparams", None) is None \
+                            and not any(getattr(tp, "holes", None) for tp in fd.tparams or []):
+                        self.err(n.line, f"`{fd.name}` needs one type for `{pt[1]}`, but `{p.name}` is a `{tshow(bt)}` where `{tshow(binds[pt[1]])}` was fixed by another argument")
+                        return None
                 continue
             bt0 = self.base(t)
             if bt0.__class__ is str and bt0 in self.SCAL and pt[0] in ("appv", "fn"):
@@ -6658,6 +6662,10 @@ class Checker(RefineMixin):
                         break
                 bt0 = ("app", "Array", (None if el == "conflict" else el,), len(bt0[1]))        # a literal `(1, 2)` is an array of size 2
                 t = bt0
+            hc = self.nominal_clash(pt, self.base(t))
+            if hc is not None and not any(getattr(tp, "holes", None) for tp in fd.tparams or []):
+                self.err(n.line, f"mismatched types: expected `{tshow(hc[0])}`, found `{tshow(hc[1])}` (in the argument for `{p.name}` of `{fd.name}`)")
+                return None
             clash = tys.unify(pt, self.base(t), binds)
             if clash and any(getattr(tp, "holes", None) for tp in fd.tparams or []):
                 return None                  # a partly applied type constructor (`Result[_, E]` for `M[_]`) isn't compared yet
@@ -6691,6 +6699,23 @@ class Checker(RefineMixin):
         if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup", "appv", "tapp"):
             return tys.subst(ret, binds)
         return ret if not tys.params_in(ret) else None
+
+    def nominal_clash(self, pt, act):
+        """(expected, found) for the first place two applications of the program's own types name different types
+        (`Ep[Send[T, S]]` against `Ep[End]`), even when type parameters are still unbound; None when nothing clashes."""
+        own = lambda h: h in self.tuples or h in self.enums
+        head = lambda t: t[1] if t.__class__ is tuple and t[0] in ("app", "named") and len(t) > 1 else None
+        hp, ha = head(pt), head(act)
+        if hp is None or ha is None:
+            return None
+        if hp != ha:
+            return (pt, act) if own(hp) and own(ha) else None
+        if pt[0] != "app" or act[0] != "app" or len(pt[2]) != len(act[2]):
+            return None
+        for x, y in zip(pt[2], act[2]):
+            if self.nominal_clash(x, y) is not None:
+                return (pt, act)
+        return None
 
     def tapp_params(self, t, out, inside):
         """Collect the type parameters that appear inside a type-function application."""

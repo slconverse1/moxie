@@ -2457,6 +2457,50 @@ def b_chan(I, a, kw, ta):
 def b_write(I, a, kw, ta):
     return (yield from a[0].write(I, a[1]))
 
+# ---- session endpoints (the `session` package): two ordinary channels, one per direction; the protocol types are erased ----
+class WireV:
+    tname_ = "Wire"
+
+    def __init__(self, rx, tx):
+        self.rx = rx
+        self.tx = tx
+        self.dropped = False
+
+    def drop(self, S):
+        if self.dropped:
+            return
+        self.dropped = True
+        self.rx.drop(S)
+        self.tx.drop(S)
+
+
+@bi("wire_pair")
+def b_wire_pair(I, a, kw, ta):
+    chans = []
+    for _ in range(2):
+        ch = S_.Chan(1)
+        ch.pools = I.pools
+        I.pools.acquire("Chan")
+        chans.append((S_.ChanR(ch), S_.ChanW(ch)))
+    (r1, w1), (r2, w2) = chans
+    return TupleV([WireV(r1, w2), WireV(r2, w1)])
+
+
+@bi("wire_send", "first", True)
+def b_wire_send(I, a, kw, ta):
+    return (yield from a[0].tx.write(I, a[1]))
+
+
+@bi("wire_recv", "first", True)
+def b_wire_recv(I, a, kw, ta):
+    return (yield from a[0].rx.chan_read(I))
+
+
+@bi("wire_close")
+def b_wire_close(I, a, kw, ta):
+    a[0].drop(I.sched)
+    return UNIT
+
 
 @bi("Future")
 def b_future(I, a, kw, ta):
