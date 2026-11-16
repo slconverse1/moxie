@@ -2836,7 +2836,10 @@ class Checker(RefineMixin):
         return None if t is None or tys.params_in(t) else t
 
     def e_PH(self, n, sc):
-        return None, None
+        """A placeholder (`_`, `_2`, or the missing side of an operator section) has the type of the lambda parameter it stands for."""
+        v = sc.find(f"_{getattr(n, 'idx', None) or 1}")
+        t = getattr(v, "ty", None) if v is not None else None
+        return (t, None) if t is not None else (None, None)
 
     def e_DoRecv(self, n, sc):
         t = self.t(n.recv, sc)
