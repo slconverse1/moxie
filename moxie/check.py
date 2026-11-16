@@ -1962,13 +1962,22 @@ class Checker(RefineMixin):
 
     def union_members(self, t, depth=0):
         """The names of the members of a written type that is a `type union` (a nested union flattened), else None."""
-        if depth > 6 or t.__class__ is not TName or len(t.path) != 1 or t.groups:
+        if depth > 6:
             return None
-        a = self.aliases.get(t.path[0])
-        if a is None or a.kind != "union" or a.tparams or a.type.__class__ is not TUnion:
-            return None
+        if t.__class__ is TUnion:
+            members = t.members                          # an inline union: `x Int | ()`
+        else:
+            if t.__class__ is not TName or len(t.path) != 1 or t.groups:
+                return None
+            a = self.aliases.get(t.path[0])
+            if a is None or a.kind != "union" or a.tparams or a.type.__class__ is not TUnion:
+                return None
+            members = a.type.members
         out = []
-        for m in a.type.members:
+        for m in members:
+            if m.__class__ is TUnit:
+                out.append("()")                          # the empty value is a member like any other
+                continue
             if m.__class__ is not TName or not 1 <= len(m.path) <= 2 or (len(m.path) == 2 and ".".join(m.path) not in self.pkg_types):
                 return None
             if m.groups:
@@ -2815,6 +2824,9 @@ class Checker(RefineMixin):
                 self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
         elif self.fn_ret.__class__ is tuple and self.fn_ret[0] == "fn" and len(self.fn_ret) > 3:
             for te in self.tails(n):             # a returned closure variable is looked up where it was bound
+                self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
+        elif self.fn_ret is not None and new_scope and any(st.__class__ is Assign for st in stmts):
+            for te in self.tails(n):             # a result that is a local of this block is looked up in the block's scope
                 self.tail_ctx.setdefault(id(te), (inner, dict(self.narrow_paths)))
         self.narrow_paths = saved_paths
         del self.ifacts[rf_mark:]
@@ -6241,9 +6253,40 @@ class Checker(RefineMixin):
             ft = self.ty_of_type(f.type, 0, keep)
             clash = tys.unify(ft, self.base(t), binds)
             if clash:
+                grown = self.union_of_children(td, [self.base(x[0]) for x in ats])
+                if grown is not None:
+                    return grown if grown != "many" else None
                 self.err(n.line, f"mismatched types in `{td.name}(...)`: field `{f.name}` expects `{tshow(clash[0])}`, found `{tshow(clash[1])}`")
                 return None
         return ("app", td.name, tuple(binds.get(tp.name) for tp in td.tparams))
+
+    def union_of_children(self, td, arg_types):
+        """`Mul(Lit(3), Add(...))` where the children are different types: a tuple with one type parameter whose children are the members of
+        a `type union` that lists `Mul[Union]` (an open data type, Guide 24n) is a `Mul[Union]`.  The union that fits every argument; "many"
+        when several unions fit (the expected type decides, and the checker leaves the call unchecked); None when none does."""
+        if len(td.tparams or []) != 1:
+            return None
+        found = []
+        for name, al in self.aliases.items():
+            if al.kind != "union" or al.tparams or al.type.__class__ is not TUnion:
+                continue
+            mem = [m for m in al.type.members if m.__class__ is TName and m.path[-1] == td.name and m.groups and len(m.groups[0]) == 1
+                   and m.groups[0][0].__class__ is TName and m.groups[0][0].path == [name]]
+            if not mem:
+                continue
+            heads = {x.split("[")[0].split(".")[-1] for x in (self.union_members(TName([name], [])) or [])}
+            ok = True
+            for t in arg_types:
+                h = t[1] if t.__class__ is tuple and t[0] in ("named", "app") else t if isinstance(t, str) else None
+                if h is None or str(h).split(".")[-1] not in heads:
+                    ok = False
+            if ok:
+                found.append(name)
+        if not found:
+            return None
+        if len(found) > 1:
+            return "many"
+        return ("app", td.name, (self.ty_of_type(TName([found[0]], [])),))
 
     def check_tuple_args(self, td, args, ats, line):
         fields = {f.name: f for f in td.fields or []}
@@ -6590,6 +6633,11 @@ class Checker(RefineMixin):
     def check_tail(self, body, sc):
         if self.fn_ret is None:
             return
+        last = body.stmts[-1] if body.__class__ is Block and body.stmts else None
+        if last.__class__ is ExprStmt and last.e.__class__ is IfE and last.e.else_ is None and self.fn_ret not in ("Unit",) \
+                and not (self.fn_ret.__class__ is tuple and self.fn_ret[0] in ("param", "rigid", "pvar", "appv", "tapp", "ctor", "overloads")):
+            self.err(getattr(last.e, "line", 0) or last.line, f"this `if` has no `else`, so the function can reach its end without a value of type `{tshow(self.fn_ret)}`: "
+                                                               "add an `else`, or end the function with the value")
         for e in self.tails(body):
             esc, epaths = self.tail_ctx.get(id(e), (sc, {}))
             t, c = self.eval_with_paths(epaths, lambda: self.quiet(e, esc))
@@ -6620,6 +6668,10 @@ class Checker(RefineMixin):
         """A name, or a call whose arguments are literals and names: checked again for the function's result type without side effects."""
         if e.__class__ is Name:
             return True
+        lit = (IntLit, FloatLit, StrLit, BoolLit, CharLit)
+        if e.__class__ is Binary and e.op in ("+", "-", "*", "/", "%", "<", ">", "<=", ">=", "==", "~=", "and", "or") \
+                and all(x.__class__ in lit or x.__class__ is Name or self.simple_tail(x) for x in (e.l, e.r)):
+            return True                  # `x + 1`, `a * b`, `n <= 0`: arithmetic and comparisons of names and literals
         if e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name and e.trailing is None \
                 and self.any_params.get(e.fn.obj.name, (None,))[0] == "any":
             return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
@@ -6798,11 +6850,46 @@ class Checker(RefineMixin):
         elif pd.priv_set and getattr(self, "impl_ty", None) != t[1]:
             self.err(line, f"the setter of `{e.name}` is private: only `impl {t[1]}` can assign to it")
 
+    def check_impl_complete(self, n):
+        """`impl I for T` of an interface this program declares: every member of `I` that has no default body must be written, and a written
+        result type that is a plain type name must be the one the interface says."""
+        if n.iface.__class__ is not TName or len(n.iface.path) != 1 or n.proxy is not None:
+            return
+        d = self.iface_decls.get(n.iface.path[0])
+        if d is None or d.embeds:
+            return
+        have = {}
+        for m in n.members or []:
+            if m.__class__ is FnDecl:
+                have[m.name] = m
+            elif m.__class__ is FnGroup and m.clauses:
+                have[m.clauses[0].name] = m.clauses[0]
+        target = n.target.path[-1] if n.target.__class__ is TName and n.target.path else "this type"
+        names = {tp.name for tp in d.tparams or []} | {"Self"} | {tp.name for tp in getattr(n, "tparams", None) or []}
+        for m in d.members or []:
+            if m.__class__ is not FnDecl:
+                return                       # a property or an associated type: not checked here
+        for m in d.members or []:
+            got = have.get(m.name)
+            if got is None:
+                if m.body is None:
+                    self.err(n.line, f"`impl {d.name} for {target}` is missing `{m.name}`, which `{d.name}` requires")
+                continue
+            r1, r2 = m.ret, got.ret
+            if r1.__class__ is TName and r2.__class__ is TName and not r1.groups and not r2.groups and len(r1.path) == 1 and len(r2.path) == 1 \
+                    and r1.path[0] not in names and r2.path[0] not in names and r1.path[0] != r2.path[0] \
+                    and r1.path[0] in self.known_type_names() and r2.path[0] in self.known_type_names():
+                self.err(getattr(got, "line", n.line) or n.line, f"`{m.name}` in `impl {d.name} for {target}` returns `{r2.path[0]}`, but `{d.name}` says it returns `{r1.path[0]}`")
+
+    def known_type_names(self):
+        return set(SCALAR_NAMES) | set(self.tuples) | set(self.enums) | {"String", "Bool", "Int", "Float", "Unit"}
+
     def e_ImplDecl(self, n, sc):
         if n.iface is not None and n.iface.__class__ is TName and n.iface.path == ["Generatable"]:
             self.check_generatable(n)
         if n.iface is not None:
             self.check_prop_reqs(n)
+            self.check_impl_complete(n)
         saved_impl, self.impl_ty = getattr(self, "impl_ty", None), (n.target.path[-1] if n.target.__class__ is TName and n.target.path else None)
         try:
             return self._impl_members(n, sc)

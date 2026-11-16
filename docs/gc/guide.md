@@ -4495,7 +4495,7 @@ Output: `Lit(value: 4)`. The two rules are written once, for any union whose mem
 
 **Which style when.** Choose by what you do with the program. Tagless final (24m) runs the program straight into a result and is the lightest way to add interpreters. Growing data types, as here, keep a tree you can print, store, send, count, rewrite and analyze before running it. Both let you add variants and operations without editing old code, and the two meet in the middle: an `impl` that builds a tree (24m) turns a tagless-final program into this kind of data.
 
-**Mistakes:** forgetting a node's `impl` for a new operation (the compiler names the member), writing `Mul(...)` without its type argument where the checker can't tell which union is meant (write `Mul[Full](...)`), putting the `impl` on the union instead of on each node, and writing the old operation without the `rec` parameter, which ties it to one union.
+**Mistakes:** forgetting a node's `impl` for a new operation (the compiler names the member), writing `Mul(...)` with children of different types when two unions could hold them (write `Mul[Full](...)` to say which), putting the `impl` on the union instead of on each node, and writing the old operation without the `rec` parameter, which ties it to one union.
 
 **Chapter 25: Moxie for imperative programmers**
 
