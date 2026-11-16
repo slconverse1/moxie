@@ -2750,11 +2750,53 @@ class Checker(RefineMixin):
     def e_DoRecv(self, n, sc):
         t = self.t(n.recv, sc)
         inner = Sc(sc, open_=True)
+        if n.kind == "update":
+            self.check_update(t, n.body, inner)
+            return (t if t.__class__ is tuple and t[0] in ("named", "app") and self.tuple_decl_of(t) is not None else None), None
         self.ev(n.body, inner)
         return None, None
 
+    def tuple_decl_of(self, t):
+        """The declaration of the tuple type `t` (`("named", P)` or `("app", Box, args)`), else None."""
+        if t.__class__ is tuple and t[0] in ("named", "app") and isinstance(t[1], str):
+            return self.tuples.get(t[1])
+        return None
+
+    def check_update(self, t, lines, sc):
+        """`p.update` lines: each name is a field of the tuple (or one of its properties), and the new value has the field's type.
+        A nested block updates a tuple-typed field the same way; `&` is the field's current value."""
+        td = self.tuple_decl_of(t)
+        known = td is not None and not getattr(td, "spread", None) \
+            and not any(getattr(f, "name", None) in (None, "...") for f in td.fields or [])
+        keep = {tp.name for tp in getattr(td, "tparams", None) or []} if td is not None else set()
+        binds = {}
+        if td is not None and t[0] == "app" and len(t[2]) == len(td.tparams or []):
+            binds = {tp.name: a for tp, a in zip(td.tparams, t[2])}
+        for ln in lines or []:
+            ft = None
+            if known:
+                f = next((f for f in td.fields or [] if f.name == ln.name), None)
+                if f is not None:
+                    um = self.union_members(f.type)
+                    ft = None if um is not None or isinstance(f.type, TUnion) else self.ty_of_type(f.type, 0, keep)
+                    if ft is not None and binds:
+                        ft = tys.subst(ft, binds)
+                elif self.prop_in(td, ln.name) is None and ln.name not in self.fns:
+                    names = [x.name for x in td.fields or []]
+                    self.err(ln.line, f"`{td.name}` has no field `{ln.name}` to update" + (f"; its fields are {', '.join('`' + x + '`' for x in names)}" if names else ""))
+            if ln.nested is not None:
+                self.check_update(ft, ln.nested, sc)
+                continue
+            saved, self.upd_cur = getattr(self, "upd_cur", None), ft
+            try:
+                vt, c = self.ev(ln.expr, sc)
+            finally:
+                self.upd_cur = saved
+            if ft is not None and vt is not None:
+                self.compat(ft, vt, c, ln.line)
+
     def e_UpdCur(self, n, sc):
-        return None, None
+        return getattr(self, "upd_cur", None), None
 
     def e_UpdLine(self, n, sc):
         self.ev(n.expr, sc)

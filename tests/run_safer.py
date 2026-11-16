@@ -10,6 +10,10 @@ BAD = [
  ("an impl missing a required method", "interface I\n  fn a(self) Int\n  fn b(self) Int\ntuple T\n  n Int\nimpl I for T\n  fn a(self) Int\n    1\n", "is missing `b`"),
  ("an impl with the wrong result type", "interface I\n  fn a(self) Int\ntuple T\n  n Int\nimpl I for T\n  fn a(self) String\n    \"x\"\n", "returns `String`, but `I` says it returns `Int`"),
  ("an if with no else at the end of a function", "fn f(b Bool) Int\n  if b then\n    return 1\n", "has no `else`"),
+ ("an update line naming an unknown field", "tuple P\n  x Int\np = P(x: 1)\nq = p.update\n  z: 2\n", "has no field `z` to update"),
+ ("an update line with a value of the wrong type", "tuple P\n  x Int\np = P(x: 1)\nq = p.update\n  x: \"s\"\n", "expected `Int`, found `String`"),
+ ("a nested update line with the wrong type", "tuple I\n  n Int\ntuple P\n  i I\np = P(i: I(n: 1))\nq = p.update\n  i:\n    n: \"s\"\n", "expected `Int`, found `String`"),
+ ("& used as the wrong type", "tuple P\n  x Int\np = P(x: 1)\nq = p.update\n  x: & ++ \"a\"\n", ""),
  ("arithmetic on Int | ()", "fn f(x Int | ()) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a named union with ()", "type union M = Int | ()\nfn f(x M) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a field of Int | ()", "tuple P\n  v Int | ()\nfn f(p P) Int\n  p.v + 1\n", "can't take `Int | ()`"),
@@ -22,6 +26,9 @@ GOOD = [
  ("an if with an else", "fn f(b Bool) Int\n  if b then\n    1\n  else\n    2\nprintln(f(true))\n"),
  ("an early return then the value", "fn f(b Bool) Int\n  if b then\n    return 1\n  2\nprintln(f(false))\n"),
  ("an if with no else in a Unit function", "fn f(b Bool) Unit\n  if b then\n    println(1)\nf(true)\n"),
+ ("update lines with & and a nested block", "tuple I\n  n Int\ntuple P deriving show\n  x Int\n  i I\np = P(x: 1, i: I(n: 2))\nq = p.update\n  x: & + 1,\n  i:\n    n: & * 10\nprintln(q)\n"),
+ ("an update of a generic tuple", "tuple Box[T] deriving show\n  v T\nb = Box(v: 1)\nprintln(b.update v: 2)\n"),
+ ("an update of a field with a union type", "type union M = Int | String\ntuple P deriving show\n  v M\np = P(v: 1)\nprintln(p.update v: \"s\")\n"),
  ("Int | () tested before use", "fn f(x Int | ()) Int\n  if x is Int then\n    x + 1\n  else\n    0\nprintln(f(2))\n"),
 ]
 fails = []
