@@ -133,6 +133,7 @@ The fine print:
 
 - **Names can be rebound.** `x += 1` doesn't change a value; it points `x` at a different one. Loops work the same way, carrying their bindings forward from one iteration to the next.
 - **Updates share structure.** **[gc]** `List`, `Dict`, and `Set` are persistent: an update builds a new version that shares most of its storage with the old one, so `list += 4` is cheap, and holding on to old versions costs very little. (`Array` and `MultiArray` are flat blocks, and updating one copies it, so use a `List` for element-by-element changes.) `moxie build --report` shows where your program allocates the most.
+- **`name@N` reaches the outer binding.** Shadowing a name with itself (`total = total + 1` inside a block that already has its own `total`) is an error, because it hides the old binding. To keep the outer value in view, write `total@1` for the nearest enclosing binding, or `total@label` for one named by a loop label. When a block wants its own working copy of an outer variable, begin it with an `in` line (`in total, count@1`): the local starts as the outer value, the outer name is unchanged, and the result leaves through `break(v)`, `else v`, or an assignment like `total@1 = ...`. An `in` line is only allowed first in a block, since it declares and has no value.
 - **Atoms are the only kind of mutable state.** An Atom is a managed cell that holds an immutable value and swaps in a new one, lock-free, through a pure function (`swap(counter, _ + 1)`). Readers always get an immutable snapshot.
 - **`ref` parameters look like mutation but aren't.** The callee gets a copy, rebinds it, and the final value is copied back out to the caller's variable. Nobody ever holds two names for one changing thing.
 - **Resources are stateful.** A channel end, a timer, or a database connection is a handle with an identity, so it's *moved* (one owner at a time) rather than copied. A tuple that holds a resource is a resource too.
@@ -497,7 +498,7 @@ Moxie is a general language, but four kinds of application come with the languag
 
 **HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the Mixer's Guide, Chapter 28. Sockets and their permissions are in superpower 22.
 
-**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the Mixer's Guide, Chapter 29.
+**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the Mixer's Guide, Chapter 29. An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
 
 ## 4. Everything is an expression
 
@@ -1549,6 +1550,7 @@ Here's what you don't need: no `async`/`await` keywords, no IO monad to thread t
 The fine print:
 - **Fibers are created on demand.** **[gc]** No slot is reserved in advance. A fiber function can declare a cap (`fiber[3] fn`), the Manifest can set a default cap, and `run` returns `NO_SLOT` only when a cap is full. Without a cap, `run` always succeeds.
 - **Arguments are shared or moved.** **[gc]** Any value that isn't a resource is fine, closures included, and since values never change, sharing them is safe. Channel ends and write handles move. `ref` arguments and Timers aren't allowed.
+- **A `wait` block keeps fibers from outliving it.** Everything started inside `wait` (and everything those start) is waited for before the block ends, and leaving early, with `?`, `return`, or `break`, cancels first and then waits. Write `wait stop` to name the block's `Cancel` token, which the fibers watch with `is_cancelled(stop)` or a `case cancelled(stop) ->` arm.
 - **Cancelling is a request.** A `Cancel` token is passed to the fiber, which ends itself when it sees the token in a `select` arm or a check. Nothing is killed mid-statement, and a fiber that never looks keeps running.
 - **Everything shares one thread.** A long computation in one fiber holds up the others until it parks.
 
@@ -1721,6 +1723,7 @@ go(0)    // where go calls withdraw(acct, n) with n = 0 at run time
 - **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them: put `keep_in_release = true` under `[contracts]` in `Moxie.toml` to leave them on in a release build.
 - **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a Array[T][N]) T` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e Array[Int][3]`, so the check can happen at compile time instead.
 - **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
+- **Refined parameters and aliases.** A `where` after a parameter's type (`i Int where i >= 0 and i < len(xs)`) is a precondition the compiler tries to *prove* at every call, from the tests and bindings it can see; what it can't prove is a compile error. A condition you reuse can be named with a refined alias, `type alias Pos = Int where self > 0`, and then used on parameters (`n Pos`), annotated bindings (`x Pos = n`), results (`ensures` on `result`), and fields (an `invariant` on the field). Anything the compiler can't see is still checked when the program runs.
 - **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
 - **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
 
