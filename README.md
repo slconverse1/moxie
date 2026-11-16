@@ -20,6 +20,9 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (GADTs)
+- **GADTs**: an enum case may state its own result type (`Num(n Int) Value[Int]`). A constructor call has that type, so `Add(Num(1), Flag(true))` is a compile error; a `when` arm learns the type parameter (`T` is `Int` in the `Num` arm); cases the scrutinee's type rules out need no arm, and an arm for one is an error. Types are erased at run time. Spec 6 (Enums), Guide 24o (with the tagless-final and open-data-type comparison), tests/run_gadt.py. Not supported: existential type variables in a case.
+
 ### 2026-11-16 (extras)
 - **Fix-list pass**: `R.f(...)` results compared, `impl` parameters checked against the interface, a warning for an `impl` on a union, and a compile error for a call that omits a type argument its body needs. FIXLIST.md now starts with a grouped list of open items.
 - **`update` lines are type-checked**: an unknown field or a value of the wrong type is a compile error, `&` has the field's type, and nested blocks are checked.

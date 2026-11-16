@@ -1005,7 +1005,10 @@ class Parser(ExprParser):
                         if not self.eat_op(","):
                             break
                     self.expect_op(")")
-            cases.append(CaseDecl(t.val, fields, line=t.line))
+            ret = None
+            if tparams and header is None and self.peek().kind == "NAME" and self.peek().line == t.line:
+                ret = self.parse_type()                       # a GADT case states its own result type: `Num(n Int) Value[Int]`
+            cases.append(CaseDecl(t.val, fields, ret, line=t.line))
             self.eat_op(",")
         self.expect_dedent()
         vis = None

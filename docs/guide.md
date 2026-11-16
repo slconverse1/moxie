@@ -4406,6 +4406,42 @@ Output: `Lit(value: 4)`. The two rules are written once, for any union whose mem
 
 **Mistakes:** forgetting a node's `impl` for a new operation (the compiler names the member), writing `Mul(...)` with children of different types when two unions could hold them (write `Mul[Full](...)` to say which), putting the `impl` on the union instead of on each node, and writing the old operation without the `rec` parameter, which ties it to one union.
 
+**24o. GADTs: a case that says what it is**
+
+Chapter 24m got a typed evaluator by making the interpreters types, and 24n got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own result type after its parameters. That is a GADT (a generalized algebraic data type).
+
+```
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+  Add(a Value[Int], b Value[Int]) Value[Int]
+  Eq(a Value[Int], b Value[Int]) Value[Bool]
+  If(c Value[Bool], t Value[T], e Value[T])
+
+fn eval[T](v Value[T]) T = when v
+  Num(n) -> n
+  Flag(b) -> b
+  Add(a, b) -> eval(a) + eval(b)
+  Eq(a, b) -> eval(a) == eval(b)
+  If(c, t, e) -> if eval(c) then eval(t) else eval(e)
+
+println(eval(Add(Num(1), Num(2))))
+println(eval(If(Eq(Num(1), Num(1)), Num(5), Num(6))))
+```
+
+Output: `3`, then `5`. A case with no result type (`If`) means `Value[T]`. Three things follow.
+
+- **A constructor call has the type its case states.** `Num(1)` is a `Value[Int]` and `Flag(true)` is a `Value[Bool]`. So `Add(Num(1), Flag(true))` is a compile error (``expected `Value[Int]`, found `Value[Bool]` ``), where a plain enum would accept it and fail when run.
+- **A `when` arm learns something about `T`.** In the `Num` arm `T` is `Int`, so the arm may return `n`, and in the `Flag` arm it is `Bool`. An arm that returns the wrong type (`Num(n) -> true`) is an error. The fact holds only inside that arm.
+- **Impossible cases drop out.** For a `Value[Int]`, `Flag` and `Eq` can never occur, so a `when` needs only `Num`, `Add` and `If`, and an arm for `Flag` is an error (``can never match``). For a `Value[T]` with `T` unknown, every case is needed.
+
+Nothing changes at run time: types are erased, so a `Value` is the same enum value it would be without the result types.
+
+**Which of the three?** Use tagless final (24m) when you only run the program and never look inside it. Use open data types (24n) when you need to inspect and rewrite the data and also to add cases without editing existing code. Use a GADT when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
+
+**Other languages.** Haskell and Scala 3 have GADTs with a general type-equality solver, so a case may refine several parameters at once and a pattern match can introduce new type variables. Kotlin and Rust have no GADTs; the usual workaround is a sealed class or enum with an unchecked cast in each arm, which the compiler cannot verify. Moxie's version is smaller: a case's result type names each parameter either as a plain type (`Int`) or as the enum's own parameter, a `when` arm records one equation per parameter, and there are no existential type variables. A case such as `Pair(a Value[A], b Value[B]) Value[(A, B)]` is not supported yet.
+
+
 **Chapter 25: Moxie for imperative programmers**
 
 Most habits carry over:

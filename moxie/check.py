@@ -1569,8 +1569,55 @@ class Checker(RefineMixin):
             return ("sz", e.op, a, b)
         return None
 
+    def apply_eq(self, t):
+        """Inside a GADT arm a type parameter is known to be a particular type (`T` is `Int` in the `Num` arm)."""
+        if t.__class__ is tuple and len(t) == 2 and t[0] in ("rigid", "param") and t[1] in self.tp_eq:
+            return self.tp_eq[t[1]]
+        return t
+
+    def gadt_impossible(self, enum, st):
+        """The cases of a GADT whose result type cannot be the scrutinee's type (`Flag` for a `Value[Int]`), with their result types."""
+        ed = self.enums.get(enum)
+        out = {}
+        if ed is None or not getattr(ed, "tparams", None) or st.__class__ is not tuple or st[0] != "app" or st[1] != enum:
+            return out
+        for c in ed.cases:
+            if getattr(c, "ret", None) is None:
+                continue
+            ct = self.ty_of_type(c.ret)
+            if ct.__class__ is not tuple or ct[0] != "app" or len(ct[2]) != len(st[2]):
+                continue
+            for x, y in zip(ct[2], st[2]):
+                ok = lambda t: t is not None and not self.has_unsettled(t)
+                if ok(x) and ok(y) and x != y:
+                    out[c.name] = ct
+                    break
+        return out
+
+    def gadt_facts(self, p, st):
+        """The type equations a pattern on a GADT value teaches: `Num(n)` on a `Value[T]` makes `T` an `Int`."""
+        if p.__class__ is PAs:
+            p = p.pat
+        if p.__class__ is not PCon or st.__class__ is not tuple or st[0] != "app" or st[1] not in self.enums:
+            return {}
+        ed = self.enums[st[1]]
+        tps = getattr(ed, "tparams", None)
+        cs = next((c for c in ed.cases if c.name == p.path[-1]), None)
+        if not tps or cs is None or getattr(cs, "ret", None) is None:
+            return {}
+        r = cs.ret
+        out = {}
+        for tp, want, have in zip(tps, r.groups[0] if r.groups else [], st[2]):
+            if have.__class__ is tuple and len(have) == 2 and have[0] in ("rigid", "param"):
+                wt = self.ty_of_type(want)
+                if wt is not None and not (wt.__class__ is tuple and wt[0] in ("rigid", "param") and wt[1] == have[1]):
+                    out[have[1]] = wt
+        return out
+
     def compat(self, exp, act, const, line, what="value"):
         """Report a mismatch between an expected and an actual type."""
+        if getattr(self, "tp_eq", None):
+            exp, act = self.apply_eq(exp), self.apply_eq(act)
         if exp is None or act is None or exp == act:
             return
         if exp.__class__ is tuple and exp[0] == "bounded":
@@ -3715,9 +3762,16 @@ class Checker(RefineMixin):
         tail = id(n) in self.tail_whens and self.fn_ret is not None
         self.warn_unreachable_arms(n)
         sdn = self.decl_node(n.scrut, sc) if n.scrut is not None else None
+        gadt = False
         for a in n.arms:
             inner = Sc(sc)
             self.moved = dict(base)
+            old_eq = getattr(self, "tp_eq", {})
+            self.tp_eq = dict(old_eq)
+            for p in a.pats or []:
+                fx = self.gadt_facts(p, st)
+                gadt = gadt or bool(fx)
+                self.tp_eq.update(fx)
             for p in a.pats or []:
                 self.bind_pat(p, inner, st if n.scrut is not None else None)
                 self.bind_payloads(p, sdn, inner)
@@ -3739,12 +3793,13 @@ class Checker(RefineMixin):
             if tail and at is not None and not self.has_unsettled(at) and not (a.body.__class__ is WhenE or a.body.__class__ is IfE):
                 self.settle_mixed(a.body, self.fn_ret)
                 self.compat(self.fn_ret, at, ac, getattr(a.body, "line", 0) or n.line)       # an arm's value is the function's result
+            self.tp_eq = old_eq
         self.moved = base
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
             self.union_cover(n, sc, st)
             self.exhaustive(n, st)
-        if n.scrut is not None:
+        if n.scrut is not None and not gadt:
             self.check_branch_types(arm_ts, n.line, "`when`", n)
         if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
             return arm_ts[0], None              # every arm gives one type, so the `when` does
@@ -4200,6 +4255,14 @@ class Checker(RefineMixin):
             required = ["Ok", "Err"]
         else:
             required = [c.name for c in self.enums[enum].cases or []]
+            imp = self.gadt_impossible(enum, st)
+            for a, p in pats:
+                q = p
+                while q.__class__ is PAs:
+                    q = q.pat
+                if q.__class__ is PCon and q.path[-1] in imp:
+                    self.err(getattr(q, "line", 0) or n.line, f"`{q.path[-1]}` is a `{tshow(imp[q.path[-1]])}`, but the value is a `{tshow(st)}`, so this arm can never match")
+            required = [c for c in required if c not in imp]
         covered = set()
         for a, p in pats:
             q = p
@@ -4954,6 +5017,9 @@ class Checker(RefineMixin):
                 and f.name in self.cases and len(self.cases[f.name]) == 1:
             ed = self.enums[self.cases[f.name][0]]
             cs = next((c for c in ed.cases if c.name == f.name), None)
+        if cs is not None and getattr(ed, "tparams", None) and getattr(cs, "ret", None) is not None and n.trailing is None:
+            self.check_gadt_args(ed, cs, n, sc)
+            return
         if cs is None or getattr(ed, "tparams", None) or n.trailing is not None:
             return
         args = n.args or []
@@ -4962,6 +5028,40 @@ class Checker(RefineMixin):
         ats = [self.quiet(a.expr, sc) for a in args]
         shim = type("CaseShim", (), {"name": cs.name, "fields": cs.fields or [], "spread": None})()
         self.check_tuple_args(shim, args, ats, n.line)
+
+    def check_gadt_args(self, ed, cs, n, sc):
+        """`Add(Num(1), Flag(true))`: a payload whose type has no type parameter of the enum is checked against its field."""
+        names = {tp.name for tp in ed.tparams}
+        def free(t):
+            return any(getattr(x, "name", None) in names or x in names for x in self.walk_names(t))
+        flds = [x for x in cs.fields or [] if getattr(x, "name", None) not in (None, "...")]
+        for i, a in enumerate(n.args or []):
+            if not hasattr(a, "expr") or getattr(a, "label", None) or i >= len(flds) or flds[i].type is None:
+                continue
+            if free(flds[i].type):
+                continue
+            ft = self.ty_of_type(flds[i].type)
+            at, ac = self.quiet(a.expr, sc)
+            if ft is None or at is None or self.has_unsettled(at):
+                continue
+            self.compat(ft, at, ac, getattr(a.expr, "line", 0) or n.line)
+
+    @staticmethod
+    def walk_names(t):
+        """Every name in a written type."""
+        out = []
+        stack = [t]
+        while stack:
+            x = stack.pop()
+            if x is None:
+                continue
+            if x.__class__ is TName:
+                out.extend(x.path)
+                for g in x.groups or []:
+                    stack.extend(g)
+            elif isinstance(x, (list, tuple)):
+                stack.extend(x)
+        return out
 
     def _unused_enum(self):
         return None
@@ -5105,6 +5205,9 @@ class Checker(RefineMixin):
             if any(tp.holes for tp in tps):
                 return None
             names = [tp.name for tp in tps]
+            gc = next(c for c in ed.cases if c.name == case)
+            if getattr(gc, "ret", None) is not None and not any(x in names for x in self.walk_names(gc.ret)):
+                return self.ty_of_type(gc.ret)               # `Num(1)` is a `Value[Int]`, as the case says
             binds = {}                                        # a type argument is known when a payload of exactly that type is given
             cs = next(c for c in ed.cases if c.name == case)
             flds = [x for x in cs.fields or [] if getattr(x, "name", None) not in (None, "...")]
