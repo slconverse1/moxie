@@ -4325,7 +4325,7 @@ println(prog[Id]().value)
 println(prog[Show]().text)
 ```
 
-Output: `15`, then `if (1 <= 2) then (10 + 5) else 0`. `cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type); in the tagless style the interface carries the types. **What is not checked yet:** the body of a generic program such as `prog` is not checked against the interface's signatures, so `R.add(R.lit(1), R.bool(true))` compiles and fails when it runs (`cannot apply '+' to Int and Bool`); the `impl`s and the concrete calls around it are checked.
+Output: `15`, then `if (1 <= 2) then (10 + 5) else 0`. `cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type); in the tagless style the interface carries the types. The body of a generic program is checked against those signatures too: `R.add(R.lit(1), R.bool(true))` is a compile error (``expected `R[Int]`, found `R[Bool]` ``), and so is a number as the test of `cond`.
 
 **Back to data, and the way home.** The two styles are the same information. A data type is just one more interpreter, the one that builds a tree, and any tree can be run through any interpreter by walking it:
 

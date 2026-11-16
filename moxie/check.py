@@ -2454,6 +2454,82 @@ class Checker(RefineMixin):
             out |= sub
         return out
 
+    def tparam_static_call(self, n, sc):
+        """`R.lit(1)` where `R` is a type parameter of the function being checked, bounded by an interface of this program that declares
+        `static fn lit(n Int) Self`: the arguments are checked against the member's signature with `Self` (and the interface's own type
+        parameter, for a constructor class) replaced by `R`, and the call has the member's result type (`R`, or `R[Int]`).
+        Returns the result type, or None when the call isn't this kind or can't be told."""
+        fn = n.fn
+        if fn.__class__ is not Field or fn.obj.__class__ is not Name:
+            return None
+        nm = fn.obj.name
+        tp = self.tp_decl.get(nm)
+        if tp is None or tp.where or nm not in self.fn_tparams or not tp.bounds:
+            return None
+        args = n.args or []
+        if n.trailing is not None or any(getattr(a, "label", None) or not hasattr(a, "expr") or getattr(a, "mod", None) for a in args):
+            return None
+        found = None
+        for b in tp.bounds:
+            d = self.iface_decls.get(_tn(b))
+            if d is None or getattr(b, "groups", None):
+                continue
+            if len(d.tparams or []) > 1 or (d.embeds and any(e for e in d.embeds)):
+                return None
+            for m in d.members or []:
+                if m.__class__ is FnDecl and m.name == fn.name:
+                    found = (d, m)
+        if found is None:
+            return None
+        d, m = found
+        if "static" not in (m.flags or set()) or any(p.name == "self" or p.mod or p.variadic or p.default is not None for p in m.params or []) \
+                or len(m.params or []) != len(args):
+            return None
+        mp = {"Self": nm}
+        for tpd in d.tparams or []:
+            mp[tpd.name] = nm
+        mtps = {t.name for t in m.tparams or []} - set(mp)
+        keep = {nm} | mtps
+
+        def conv(t):
+            r = self.ty_of_type(self.renamed(t, mp), 0, keep)
+            return fix(r)
+
+        def fix(t):
+            if t.__class__ is tuple and t and t[0] == "param" and t[1] == nm:
+                return ("rigid", nm)
+            if t.__class__ is tuple:
+                return tuple(fix(x) if x.__class__ in (tuple, list) else x for x in t)
+            if t.__class__ is list:
+                return [fix(x) if x.__class__ in (tuple, list) else x for x in t]
+            return t
+
+        binds = {}
+
+        def fit(pt, at):
+            if pt is None or at is None:
+                return True
+            if pt.__class__ is tuple and pt[0] == "param":
+                if pt[1] in binds:
+                    return fit(binds[pt[1]], at)
+                binds[pt[1]] = at
+                return True
+            if pt.__class__ is tuple and at.__class__ is tuple and pt[0] == "appv" and at[0] == "appv":
+                return pt[1] == at[1] and len(pt[2]) == len(at[2]) and all(fit(x, y) for x, y in zip(pt[2], at[2]))
+            if (pt.__class__ is tuple and pt[0] in ("appv", "ctor")) or (at.__class__ is tuple and at[0] in ("appv", "ctor")):
+                return True
+            return tys.compatible(pt, at)
+        for a, p in zip(args, m.params or []):
+            pt = conv(p.type)
+            at = self.arg_ty.get(id(a.expr))
+            if at is None:
+                at = self.node_ty.get(id(a.expr))
+            if not fit(pt, at):
+                self.err(n.line, f"mismatched types: expected `{tshow(pt)}`, found `{tshow(at)}` (in the argument for `{p.name}` of `{d.name}.{m.name}`)")
+                break
+        rt = conv(m.ret) if m.ret is not None else None
+        return tys.subst(rt, binds) if rt is not None and mtps else rt
+
     def check_tparam_member(self, n, t):
         """`x.m` where x has the type parameter `T`: m must come from T's bounds, or be a function that takes x (`x.m()` is `m(x)`)."""
         tp = self.tp_decl.get(t[1])
@@ -4294,6 +4370,9 @@ class Checker(RefineMixin):
         self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
+        tr = self.tparam_static_call(n, sc) if n.fn.__class__ is Field else None
+        if tr is not None:
+            r = (tr, r[1] if r.__class__ is tuple and len(r) > 1 else None)
         if n.fn.__class__ is Name and n.fn.name == "write" and "write" not in self.fns and len(n.args or []) == 2:
             ct = self.node_ty.get(id(n.args[0].expr))      # `write(tx, closure)`: the channel's element type is the slot
             if ct.__class__ is tuple and ct[0] == "app" and ct[1] in ("ChanW", "ChanR") and ct[2]:

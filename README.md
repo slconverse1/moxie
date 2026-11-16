@@ -21,6 +21,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 Newest first.
 
 ### 2026-11-16 (extras)
+- **The checker types `R.f(...)` on a bounded type parameter**: a static member of the bound interface is checked like a call, with `Self` (or the constructor parameter, `R[Int]`) replaced by `R`, so a tagless-final program that mixes `R[Int]` and `R[Bool]` is a compile error (tests/run_tparamstatic.py).
 - **Guide 24m: tagless final** (one program, many interpreters): an interface of `static fn`s, a generic program `[R Expr]`, interpreters as types, a second interface to add operations, `Both[A, B]` to run two at once, a typed form over `R[_]`, and the way back to a data type. Also fixed: a generic function that passes its own type parameter on (`h2[R](n)`) lost it (tests/run_targforward.py).
 - **Generic `deriving dyn`**: `tuple Pair[A, B] deriving dyn` and `enum Tree[T] deriving dyn` work, with type parameters read through the new `json.Dynable` interface (`Pair[Int, String].from_dyn(d)`). Inside a generic impl, `Tree[T]` now names the type `T` is bound to.
 - **`proxy` for interfaces from imported packages**: `impl shapes.Shape for W proxy(inner)`, or by name after `import shapes (Shape)`.
