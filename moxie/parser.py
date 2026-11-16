@@ -1566,7 +1566,7 @@ def _has_pattern_params(fn):
     return False
 
 
-def apply_refined_aliases(prog):
+def apply_refined_aliases(prog, file=None):
     """A parameter declared with a refined alias (`type alias Pos = Int where self > 0`) gets the alias's condition as its own
     `where`, `self` replaced by the parameter's name, so the call-site proof and the run-time `requires` treat it like a written one."""
     import copy
@@ -1605,8 +1605,8 @@ def apply_refined_aliases(prog):
         if not isinstance(g, list) or not g:
             return None
         e = g[-1] if t.path[0] == "Dict" else g[0]
-        if e.__class__ is TName and len(e.path) == 1 and not e.groups and e.path[0] in ref:
-            return ref[e.path[0]], t.path[0]
+        if e.__class__ is TName and not e.groups and ".".join(e.path) in ref:
+            return ref[".".join(e.path)], t.path[0]
         return None
 
     def all_cond(a, kind, nm, line):
@@ -1625,8 +1625,8 @@ def apply_refined_aliases(prog):
             extra = []
             for prm in n.params or []:
                 t = prm.type
-                if prm.name and prm.name != "self" and t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in ref:
-                    a = ref[t.path[0]]
+                if prm.name and prm.name != "self" and t.__class__ is TName and not t.groups and ".".join(t.path) in ref:
+                    a = ref[".".join(t.path)]
                     cond = acond = subst(a.where, prm.name)
                     text = atext = re.sub(r"\bself\b", prm.name, a.wtext or "")
                     if prm.where is not None:
@@ -1647,15 +1647,15 @@ def apply_refined_aliases(prog):
                 cond, text = all_cond(ea[0], ea[1], "result", n.line)
                 n.contracts = list(n.contracts or []) + [("ensures", cond, n.line, text)]
             rt = n.ret
-            if rt.__class__ is TName and len(rt.path) == 1 and not rt.groups and rt.path[0] in ref and n.body is not None:
-                a = ref[rt.path[0]]                       # a refined result: checked on the way out, as an `ensures` on `result`
+            if rt.__class__ is TName and not rt.groups and ".".join(rt.path) in ref and n.body is not None:
+                a = ref[".".join(rt.path)]                       # a refined result: checked on the way out, as an `ensures` on `result`
                 n.contracts = list(n.contracts or []) + [("ensures", subst(a.where, "result"), n.line, re.sub(r"\bself\b", "result", a.wtext or ""))]
         if isinstance(n, TupleDecl):
             more = []
             for f in n.fields or []:
                 t = f.type
-                if f.name and t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in ref:
-                    a = ref[t.path[0]]                    # a refined field: an `invariant` on the field, checked at every construction
+                if f.name and t.__class__ is TName and not t.groups and ".".join(t.path) in ref:
+                    a = ref[".".join(t.path)]             # a refined field: an `invariant` on the field, checked at every construction
                     more.append(("invariant", subst(a.where, f.name), f.line if hasattr(f, "line") else n.line, re.sub(r"\bself\b", f.name, a.wtext or "")))
             for f in n.fields or []:
                 ea = elem_alias(f.type) if f.name else None
@@ -1669,8 +1669,8 @@ def apply_refined_aliases(prog):
             for x in n:
                 out.append(x)
                 if x.__class__ is Assign and x.op == "=" and x.targets.__class__ is PBind and x.ann.__class__ is TName \
-                        and len(x.ann.path) == 1 and not x.ann.groups and x.ann.path[0] in ref:
-                    a = ref[x.ann.path[0]]                # `x Pos = v`: the value entering a refined alias is checked right after the binding
+                        and not x.ann.groups and ".".join(x.ann.path) in ref:
+                    a = ref[".".join(x.ann.path)]                # `x Pos = v`: the value entering a refined alias is checked right after the binding
                     nm = x.targets.name
                     out.append(Refine(nm, subst(a.where, nm), re.sub(r"\bself\b", nm, a.wtext or ""), a.name, line=x.line))
                 elif x.__class__ is Assign and x.op == "=" and x.targets.__class__ is PBind and elem_alias(x.ann) is not None:
@@ -1687,13 +1687,56 @@ def apply_refined_aliases(prog):
             for f in n._fields:
                 walk(getattr(n, f, None))
     find(prog)
+    ref.update(imported_refined(getattr(prog, "stmts", None) or [], file))
     if ref:
         walk(prog)
     return prog
+
+
+def imported_refined(stmts, file):
+    """The refined aliases of the packages this module imports: `import pkg` gives `pkg.Pos`, `from pkg import Pos` gives `Pos`.  Only an
+    alias whose condition uses `self` and literals is taken, since a name from the other package would not mean the same here."""
+    import os
+    from .packages import package_files, parse_package
+    from .stdpkg import find_std
+    out = {}
+    for s in stmts:
+        if s.__class__ is not ImportDecl:
+            continue
+        try:
+            base = SEARCH_DIR[0] if SEARCH_DIR[0] is not None else (os.path.dirname(os.path.abspath(file)) if file and not file.startswith("<") else None)
+            found = package_files(base, s.pkg)
+            paths = found[0] if found is not None else ([find_std(s.pkg)] if find_std(s.pkg) else [])
+            if not paths or any(p in _DELEGATE_BUSY for p in paths):
+                continue
+            _DELEGATE_BUSY.update(paths)
+            try:
+                pk = parse_package(paths)[1].stmts
+            finally:
+                _DELEGATE_BUSY.difference_update(paths)
+        except Exception:
+            continue
+        alias = s.alias or s.pkg[-1]
+
+        def plain(e):
+            if isinstance(e, Name):
+                return e.name == "self"
+            if isinstance(e, (list, tuple)):
+                return all(plain(x) for x in e)
+            if hasattr(e, "_fields"):
+                return all(plain(getattr(e, f, None)) for f in e._fields)
+            return True
+        for x in pk:
+            if x.__class__ is AliasDecl and x.where is not None and not x.tparams and x.vis == "export" and plain(x.where):
+                if s.names is None:
+                    out[f"{alias}.{x.name}"] = x
+                elif x.name in s.names:
+                    out[x.name] = x
+    return out
 
 
 def parse_program(src, file="<input>"):
     from . import pexpr
     pexpr.CAST_STYLE.pop(file, None)
     toks = tokenize(src, file)
-    return apply_refined_aliases(Parser(toks, file).parse_module())
+    return apply_refined_aliases(Parser(toks, file).parse_module(), file)

@@ -3798,7 +3798,10 @@ class Checker(RefineMixin):
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
             self.union_cover(n, sc, st)
+            nd = len(self.diags)
             self.exhaustive(n, st)
+            if len(self.diags) == nd and not gadt:
+                self.nested_cover(n)
         if n.scrut is not None and not gadt:
             self.check_branch_types(arm_ts, n.line, "`when`", n)
         if n.scrut is not None and arm_ts and arm_ts[0] is not None and all(t == arm_ts[0] for t in arm_ts):
@@ -4275,6 +4278,149 @@ class Checker(RefineMixin):
         miss = [c for c in required if c not in covered]
         if miss:
             self.err(n.line, "`when` does not cover " + ", ".join(f"`{m}`" for m in miss))
+
+    # ---------------------------------------------------- nested exhaustiveness
+    class _Bail(Exception):
+        pass
+
+    def pat_family(self, p):
+        """(key, arity, family) of a pattern's head constructor, None for a wildcard; raises _Bail for anything not understood."""
+        while p.__class__ is PAs:
+            p = p.pat
+        c = p.__class__
+        if c is PWild:
+            return None
+        if c is PBind:
+            if p.name in self.cases and len(self.cases[p.name]) == 1:
+                ed = self.enums[self.cases[p.name][0]]
+                cs = next(x for x in ed.cases if x.name == p.name)
+                if (cs.fields or []) or getattr(ed, "header", None) or getattr(cs, "ret", None) is not None:
+                    raise self._Bail()
+                return (ed.name, p.name), 0, ed.name
+            return None
+        if c is PTuple:
+            return ("tuple", len(p.items or [])), len(p.items or []), "tuple"
+        if c is PLit:
+            e = p.expr
+            if e.__class__ is BoolLit:
+                return ("Bool", e.b), 0, "Bool"
+            if e.__class__ in (IntLit, StrLit, CharLit) and not getattr(e, "parts", None):
+                return ("lit", repr(getattr(e, "v", None))), 0, "lit"
+            raise self._Bail()
+        if c is PCon:
+            nm = p.path[-1]
+            if nm in ("Ok", "Err") and not any(x in self.enums or x in self.tuples for x in ("Ok", "Err")):
+                return ("Result", nm), 1, "Result"
+            if len(p.path) == 2 and p.path[0] in self.enums:
+                en = p.path[0]
+            elif len(p.path) == 1 and nm in self.cases and len(self.cases[nm]) == 1:
+                en = self.cases[nm][0]
+            else:
+                raise self._Bail()
+            ed = self.enums[en]
+            cs = next((x for x in ed.cases if x.name == nm), None)
+            if cs is None or getattr(ed, "header", None) or getattr(cs, "ret", None) is not None:
+                raise self._Bail()
+            n_f = len([f for f in cs.fields or [] if getattr(f, "name", None) != "..."])
+            if len(p.args or []) != n_f:
+                raise self._Bail()
+            return (en, nm), n_f, en
+        raise self._Bail()
+
+    def family_sig(self, fam, key):
+        if fam == "Bool":
+            return [(("Bool", True), 0), (("Bool", False), 0)]
+        if fam == "Result":
+            return [(("Result", "Ok"), 1), (("Result", "Err"), 1)]
+        if fam == "tuple":
+            return [(key, key[1])]
+        if fam == "lit":
+            return None
+        ed = self.enums[fam]
+        return [((fam, c.name), len([f for f in c.fields or [] if getattr(f, "name", None) != "..."])) for c in ed.cases]
+
+    def show_ctor(self, key, subs):
+        if key[0] == "tuple":
+            return "(" + ", ".join(subs) + ")"
+        nm = key[1]
+        if key[0] == "Bool":
+            return "true" if nm else "false"
+        return f"{nm}({', '.join(subs)})" if subs else str(nm)
+
+    def cover_witness(self, rows, k):
+        """A list of k pattern texts for a value no row matches, or None when the rows cover everything."""
+        if k == 0:
+            return [] if not rows else None
+        heads = [self.pat_family(r[0]) for r in rows]
+        ctors = []
+        fam = None
+        for h in heads:
+            if h is None:
+                continue
+            if fam is None:
+                fam = h[2]
+            elif fam != h[2]:
+                raise self._Bail()
+            if h[0] not in [c for c, _ in ctors]:
+                ctors.append((h[0], h[1]))
+        def strip(p):
+            while p.__class__ is PAs:
+                p = p.pat
+            return p
+        def subs_of(p):
+            p = strip(p)
+            if p.__class__ is PCon:
+                return [q for _, q in (p.args or [])]
+            if p.__class__ is PTuple:
+                return [q for _, q in (p.items or [])]
+            return []
+        wild = PWild()
+        if not ctors:
+            w = self.cover_witness([r[1:] for r in rows], k - 1)
+            return None if w is None else ["_"] + w
+        sig = self.family_sig(fam, ctors[0][0])
+        if sig is not None and all(any(c == s for s, _ in sig) for c, _ in ctors) and all(s in [c for c, _ in ctors] for s, _ in sig):
+            for key, ar in sig:
+                spec = []
+                for r, h in zip(rows, heads):
+                    if h is None:
+                        spec.append([wild] * ar + r[1:])
+                    elif h[0] == key:
+                        spec.append(subs_of(r[0]) + r[1:])
+                w = self.cover_witness(spec, ar + k - 1)
+                if w is not None:
+                    return [self.show_ctor(key, w[:ar])] + w[ar:]
+            return None
+        dflt = [r[1:] for r, h in zip(rows, heads) if h is None]
+        w = self.cover_witness(dflt, k - 1)
+        if w is None:
+            return None
+        missing = "_"
+        if sig is not None:
+            for key, ar in sig:
+                if key not in [c for c, _ in ctors]:
+                    missing = self.show_ctor(key, ["_"] * ar)
+                    break
+        return [missing] + w
+
+    def nested_cover(self, n):
+        """`Some(Circle(r))` and `Some(Sq(s))` without `Some(Tri(a))`; `(Circle(r), 1)` without the other numbers: a pattern matrix check."""
+        rows = []
+        for a in n.arms:
+            if a.guard is not None:
+                continue
+            for p in a.pats or []:
+                rows.append([p])
+        if not rows:
+            return
+        try:
+            w = self.cover_witness(rows, 1)
+        except self._Bail:
+            return
+        except (AttributeError, KeyError, StopIteration):
+            return
+        if w is not None:
+            self.err(n.line, f"`when` does not cover `{w[0]}`")
 
     def bin_cover(self, n, pats):
         """A `when` of only Bin arms: the arms without literals or field-sized runs, and without a guard, cover byte lengths."""
