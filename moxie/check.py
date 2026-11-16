@@ -1969,10 +1969,13 @@ class Checker(RefineMixin):
             return None
         out = []
         for m in a.type.members:
-            if m.__class__ is not TName or len(m.path) != 1:
+            if m.__class__ is not TName or not 1 <= len(m.path) <= 2 or (len(m.path) == 2 and ".".join(m.path) not in self.pkg_types):
                 return None
             if m.groups:
                 out.append(self.type_node_text(m))          # `List[Int]`: a member is named by its written type
+                continue
+            if len(m.path) == 2:
+                out.append(".".join(m.path))                # `arith.Lit`: a type of an imported package
                 continue
             sub = self.union_members(m, depth + 1)
             out.extend(sub if sub is not None else [m.path[0]])
@@ -4370,6 +4373,8 @@ class Checker(RefineMixin):
         self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
+        if n.fn.__class__ is Field:
+            self.check_union_method(n, sc)
         tr = self.tparam_static_call(n, sc) if n.fn.__class__ is Field else None
         if tr is not None:
             r = (tr, r[1] if r.__class__ is tuple and len(r) > 1 else None)
@@ -5712,8 +5717,59 @@ class Checker(RefineMixin):
         if "hash" in d and "eq" not in d:
             self.err(st.line, f"`deriving hash` on `{st.name}` needs `eq` in the same header, so equal values have equal hashes")
 
+    def union_member_has(self, member, mname=None, iface=None):
+        """For one written member of a `type union` (`Mul[Full]`, `arith.Lit`): True or False when the checker can tell whether it has the
+        method `mname` (or implements `iface`), None when the member is not a declared type or this can't be told."""
+        base = member.split("[")[0].strip()
+        last = base.split(".")[-1]
+        known = base in self.tuples or base in self.enums or base in self.pkg_types or last in self.tuples or last in self.enums
+        if not known:
+            return None
+        keys = {base, last}
+        if mname is not None:
+            return any((k, mname) in self.methods for k in keys)
+        if any(iface in self.impls.get(k, ()) for k in keys):
+            return True
+        decl = self.tuples.get(last) or self.enums.get(last)
+        if decl is not None and iface in {DERIV_IFACE[d] for d in (decl.derivs or []) if d in DERIV_IFACE}:
+            return True
+        return False
+
+    def check_union_method(self, n, sc):
+        """`e.pretty(...)` where `e` is a value of a `type union`: every member must have the method, or the call fails at run time for the
+        member that has none."""
+        fn = n.fn
+        if fn.__class__ is not Field or fn.obj.__class__ is not Name:
+            return
+        t = self.t(fn.obj, sc)
+        if t.__class__ is not tuple or t[0] != "unionv" or fn.name in self.fns or fn.name in self.prelude or fn.name in self.globals \
+                or fn.name in self.consumes or fn.name in self.load_sigs():
+            return
+        members = [m.strip() for m in t[1].split(" | ")]
+        have = [self.union_member_has(m, fn.name) for m in members]
+        if not any(h is True for h in have):
+            return
+        for m, h in zip(members, have):
+            if h is False:
+                base = m.split("[")[0]
+                ifc = next((d.name for d in self.iface_decls.values() if any(getattr(x, "name", None) == fn.name for x in d.members or [])), None)
+                self.err(n.line, f"`{fn.obj.name}` may be a `{base}`, which has no method `{fn.name}`"
+                         + (f": write `impl {ifc} ... for {base}`" if ifc else "") + f" (the union holds {', '.join(x.split('[')[0] for x in members)})")
+                return
+
+    def union_lacking(self, t, iface):
+        """The first member of the union type `t` that is known not to implement `iface`, else None."""
+        if t.__class__ is not tuple or t[0] != "unionv":
+            return None
+        for m in (x.strip() for x in t[1].split(" | ")):
+            if self.union_member_has(m, None, iface) is False:
+                return m
+        return None
+
     def implements(self, ty, iface):
         """True, False, or None when the checker cannot tell."""
+        if ty.__class__ is tuple and ty[0] == "unionv":
+            return False if self.union_lacking(ty, iface) is not None else None       # a union implements it when every member does
         if iface not in VALUE_IFACES and iface not in self.ifaces:
             return None
         if ty.__class__ is tuple and len(ty) == 2 and ty[0] == "named":
@@ -5755,6 +5811,10 @@ class Checker(RefineMixin):
                     for b in tp.bounds:
                         iface = _tn(b)
                         if self.implements(t, iface) is False:
+                            lack = self.union_lacking(t, iface)
+                            if lack is not None:
+                                self.err(n.line, f"`{lack.split('[')[0]}`, a member of the union `{t[1]}`, doesn't implement `{iface}`, which `{fd.name}` requires of `{tp.name}`")
+                                continue
                             tyname = t if isinstance(t, str) else (t[1] if isinstance(t[1], str) else tshow(t))
                             self.err(n.line, f"`{tyname}` doesn't implement `{iface}`, which `{fd.name}` requires of `{tp.name}`")
 
