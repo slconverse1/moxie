@@ -2774,10 +2774,14 @@ class Checker(RefineMixin):
             binds = {tp.name: a for tp, a in zip(td.tparams, t[2])}
         for ln in lines or []:
             ft = None
+            union_heads = None
             if known:
                 f = next((f for f in td.fields or [] if f.name == ln.name), None)
                 if f is not None:
                     um = self.union_members(f.type)
+                    if um is None and isinstance(f.type, TUnion):
+                        um = self.union_members(f.type)
+                    union_heads = {x.split("[")[0].split(".")[-1] for x in um} if um is not None else None
                     ft = None if um is not None or isinstance(f.type, TUnion) else self.ty_of_type(f.type, 0, keep)
                     if ft is not None and binds:
                         ft = tys.subst(ft, binds)
@@ -2794,6 +2798,11 @@ class Checker(RefineMixin):
                 self.upd_cur = saved
             if ft is not None and vt is not None:
                 self.compat(ft, vt, c, ln.line)
+            elif union_heads is not None and ln.expr is not None:
+                h = vt[1] if vt.__class__ is tuple and vt[0] in ("named", "app") and isinstance(vt[1], str) else vt if isinstance(vt, str) else None
+                if h is not None and str(h).split(".")[-1] not in union_heads and not any(x in union_heads for x in ("Int", "Float") if h in ("Int", "Float", "Decimal")) \
+                        and not (vt.__class__ is tuple and vt[0] == "bounded"):
+                    self.err(ln.line, f"`{ln.name}` of `{td.name}` holds one of {', '.join('`' + x + '`' for x in sorted(union_heads))}, not a `{tshow(vt)}`")
 
     def e_UpdCur(self, n, sc):
         return getattr(self, "upd_cur", None), None
@@ -6698,10 +6707,35 @@ class Checker(RefineMixin):
         for b in bad:
             self.err(b.line or n.line, f"`{n.name}` is marked `tailrec`, but this recursive call is not in tail position")
 
+    def loop_yields(self, loop):
+        """True when `break(value)` appears in the loop's body (any depth, so a nested loop's break counts too: the answer errs toward not reporting)."""
+        from .effects import _children
+        found = [False]
+
+        def walk(x):
+            if found[0] or x is None:
+                return
+            if x.__class__ is Break and x.e is not None:
+                found[0] = True
+                return
+            for ch in _children(x):
+                walk(ch)
+        walk(loop.body)
+        return found[0]
+
     def check_tail(self, body, sc):
         if self.fn_ret is None:
             return
         last = body.stmts[-1] if body.__class__ is Block and body.stmts else None
+        if self.fn_ret not in ("Unit",) and not (self.fn_ret.__class__ is tuple and self.fn_ret[0] in ("param", "rigid", "pvar", "appv", "tapp", "ctor", "overloads")):
+            what = None
+            if last.__class__ is Assign:
+                what = "ends with a binding, which has no value"
+            elif last.__class__ is ExprStmt and last.e.__class__ in (ForE, WhileE) and last.e.else_ is None and not self.loop_yields(last.e) \
+                    and not (last.e.__class__ is WhileE and last.e.cond.__class__ is BoolLit and last.e.cond.b is True):
+                what = "ends with a loop that gives no value (a loop has a value only with `else` or `break(value)`)"
+            if what:
+                self.err(getattr(last, "line", 0) or getattr(body, "line", 0), f"this function {what}, but it returns `{tshow(self.fn_ret)}`: end it with the value")
         if last.__class__ is ExprStmt and last.e.__class__ is IfE and last.e.else_ is None and self.fn_ret not in ("Unit",) \
                 and not (self.fn_ret.__class__ is tuple and self.fn_ret[0] in ("param", "rigid", "pvar", "appv", "tapp", "ctor", "overloads")):
             self.err(getattr(last.e, "line", 0) or last.line, f"this `if` has no `else`, so the function can reach its end without a value of type `{tshow(self.fn_ret)}`: "

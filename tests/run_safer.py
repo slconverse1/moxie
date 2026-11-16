@@ -18,6 +18,9 @@ BAD = [
  ("an impl with the wrong number of parameters", "interface I\n  fn add(self, a Int, b Int) Int\ntuple T\n  n Int\nimpl I for T\n  fn add(self, a Int) Int\n    a\n", "takes 1 parameter, but `I` says 2"),
  ("an impl with a parameter of the wrong type", "interface I\n  fn add(self, a Int) Int\ntuple T\n  n Int\nimpl I for T\n  fn add(self, a String) Int\n    1\n", "is a `String`, but `I` says `Int`"),
  ("a generic call that leaves out the type argument it needs", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nx A = example()\n", "needs its type argument `R` named"),
+ ("a function that ends in a binding", "fn f(n Int) Int\n  x = n + 1\n", "ends with a binding"),
+ ("a function that ends in a loop with no value", "fn f(n Int) Int\n  for i in 1..=n do\n    println(i)\n", "loop that gives no value"),
+ ("an update value that is not a member of the field's union", "type union M = Int | String\ntuple P\n  v M\np = P(v: 1)\nq = p.update v: true\n", "holds one of `Int`, `String`, not a `Bool`"),
  ("arithmetic on Int | ()", "fn f(x Int | ()) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a named union with ()", "type union M = Int | ()\nfn f(x M) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a field of Int | ()", "tuple P\n  v Int | ()\nfn f(p P) Int\n  p.v + 1\n", "can't take `Int | ()`"),
@@ -35,6 +38,8 @@ GOOD = [
  ("an update of a field with a union type", "type union M = Int | String\ntuple P deriving show\n  v M\np = P(v: 1)\nprintln(p.update v: \"s\")\n"),
  ("a generic call with its type argument named", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nprintln(example[A]().v)\n"),
  ("a bounded R.f(...) as the R result", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn f[R E]() R\n  R.lit(1)\nprintln(f[A]().v)\n"),
+ ("a loop with else gives a value", "fn f(n Int) Int\n  for i in 1..=n do\n    if i > 2 then\n      break(i)\n  else\n    0\nprintln(f(5))\n"),
+ ("a while true loop that returns", "fn f(n Int) Int\n  while true do\n    if n > 0 then\n      return n\nprintln(f(2))\n"),
  ("Int | () tested before use", "fn f(x Int | ()) Int\n  if x is Int then\n    x + 1\n  else\n    0\nprintln(f(2))\n"),
 ]
 fails = []
