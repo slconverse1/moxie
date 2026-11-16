@@ -21,6 +21,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 Newest first.
 
 ### 2026-11-16 (extras)
+- **Fix-list pass**: `R.f(...)` results compared, `impl` parameters checked against the interface, a warning for an `impl` on a union, and a compile error for a call that omits a type argument its body needs. FIXLIST.md now starts with a grouped list of open items.
 - **`update` lines are type-checked**: an unknown field or a value of the wrong type is a compile error, `&` has the field's type, and nested blocks are checked.
 - **More compile-time checks** (tests/run_safer.py, tests/run_unionimpl.py): a function's result is compared when it is arithmetic or a local; an `impl` must write every member of its interface (without a default body) and agree on a plain result type; an `if` with no `else` can't end a function that returns a value; `Int | ()` (inline, named, or a field) can't be used in arithmetic until tested; and `Mul(Lit(3), Add(...))` takes its child type from the union that lists `Mul[Union]`.
 - **Guide 24n: data types that grow.** The expression problem for inspectable data: generic nodes, one interface per operation, a `type union` per language, dispatch by method call on the union value, rewrites through small projection interfaces. The checker now reports a union member that lacks the method or bound a call needs (tests/run_unionimpl.py).

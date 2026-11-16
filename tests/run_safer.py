@@ -14,6 +14,10 @@ BAD = [
  ("an update line with a value of the wrong type", "tuple P\n  x Int\np = P(x: 1)\nq = p.update\n  x: \"s\"\n", "expected `Int`, found `String`"),
  ("a nested update line with the wrong type", "tuple I\n  n Int\ntuple P\n  i I\np = P(i: I(n: 1))\nq = p.update\n  i:\n    n: \"s\"\n", "expected `Int`, found `String`"),
  ("& used as the wrong type", "tuple P\n  x Int\np = P(x: 1)\nq = p.update\n  x: & ++ \"a\"\n", ""),
+ ("a bounded R.f(...) as an Int result", "interface E\n  static fn lit(n Int) Self\nfn f[R E]() Int\n  R.lit(1)\n", "expected `Int`, found `R`"),
+ ("an impl with the wrong number of parameters", "interface I\n  fn add(self, a Int, b Int) Int\ntuple T\n  n Int\nimpl I for T\n  fn add(self, a Int) Int\n    a\n", "takes 1 parameter, but `I` says 2"),
+ ("an impl with a parameter of the wrong type", "interface I\n  fn add(self, a Int) Int\ntuple T\n  n Int\nimpl I for T\n  fn add(self, a String) Int\n    1\n", "is a `String`, but `I` says `Int`"),
+ ("a generic call that leaves out the type argument it needs", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nx A = example()\n", "needs its type argument `R` named"),
  ("arithmetic on Int | ()", "fn f(x Int | ()) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a named union with ()", "type union M = Int | ()\nfn f(x M) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a field of Int | ()", "tuple P\n  v Int | ()\nfn f(p P) Int\n  p.v + 1\n", "can't take `Int | ()`"),
@@ -29,6 +33,8 @@ GOOD = [
  ("update lines with & and a nested block", "tuple I\n  n Int\ntuple P deriving show\n  x Int\n  i I\np = P(x: 1, i: I(n: 2))\nq = p.update\n  x: & + 1,\n  i:\n    n: & * 10\nprintln(q)\n"),
  ("an update of a generic tuple", "tuple Box[T] deriving show\n  v T\nb = Box(v: 1)\nprintln(b.update v: 2)\n"),
  ("an update of a field with a union type", "type union M = Int | String\ntuple P deriving show\n  v M\np = P(v: 1)\nprintln(p.update v: \"s\")\n"),
+ ("a generic call with its type argument named", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nprintln(example[A]().v)\n"),
+ ("a bounded R.f(...) as the R result", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn f[R E]() R\n  R.lit(1)\nprintln(f[A]().v)\n"),
  ("Int | () tested before use", "fn f(x Int | ()) Int\n  if x is Int then\n    x + 1\n  else\n    0\nprintln(f(2))\n"),
 ]
 fails = []

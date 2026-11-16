@@ -5732,6 +5732,7 @@ class Checker(RefineMixin):
             self.tag_union_args(fd, args, ats)
             if fd.tparams or fd.alias is not None:
                 if fd.tparams:
+                    self.check_named_tparams(fd, n)
                     self.check_bounds(fd, n, args, ats)
                     self.check_resource_copy(fd, n, args, ats)
                     return self.generic_call(fd, n, args, ats, extra), None
@@ -5846,6 +5847,31 @@ class Checker(RefineMixin):
                 return ty in BUILTIN_IMPLS[iface]
             return False
         return None
+
+    def check_named_tparams(self, fd, n):
+        """`example()` for `fn example[R Expr]() R` whose body calls `R.lit(...)`: nothing in the arguments says which type `R` is, and the call
+        gives no type arguments, so the call would stop at run time with `undefined name 'R'`.  Name it: `example[Eval]()`."""
+        if n.fn.__class__ is not Name or fd.body is None:
+            return
+        from .effects import _children
+        for tp in fd.tparams or []:
+            if not tp.bounds or any(self.mentions_type(p.type, {tp.name}) for p in fd.params or [] if p.type is not None):
+                continue
+            seen = [False]
+
+            def walk(x):
+                if seen[0] or x is None:
+                    return
+                if x.__class__ is Field and x.obj.__class__ is Name and x.obj.name == tp.name:
+                    seen[0] = True
+                    return
+                for ch in _children(x):
+                    walk(ch)
+            walk(fd.body)
+            if seen[0]:
+                self.err(n.line, f"`{fd.name}` needs its type argument `{tp.name}` named: write `{fd.name}[T]()`; nothing in the arguments says which type `{tp.name}` is, "
+                                 f"and its body calls `{tp.name}.` something")
+                return
 
     def check_bounds(self, fd, n, args, ats):
         """A call to a generic function: each argument bound to a bounded type parameter must implement the bound."""
@@ -6715,6 +6741,11 @@ class Checker(RefineMixin):
                 and all(x.__class__ in lit or x.__class__ is Name or self.simple_tail(x) for x in (e.l, e.r)):
             return True                  # `x + 1`, `a * b`, `n <= 0`: arithmetic and comparisons of names and literals
         if e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name and e.trailing is None \
+                and e.fn.obj.name in self.fn_tparams and e.fn.obj.name in self.tp_decl:
+            return all(hasattr(a, "expr") and not getattr(a, "mod", None) and not getattr(a, "label", None) and
+                       (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
+                       for a in e.args or [])           # `R.lit(1)` on a bounded type parameter has the member's type (tparam_static_call)
+        if e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name and e.trailing is None \
                 and self.any_params.get(e.fn.obj.name, (None,))[0] == "any":
             return all(hasattr(a, "expr") and not getattr(a, "mod", None) and
                        (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
@@ -6917,6 +6948,19 @@ class Checker(RefineMixin):
                 if m.body is None:
                     self.err(n.line, f"`impl {d.name} for {target}` is missing `{m.name}`, which `{d.name}` requires")
                 continue
+            p1 = [q for q in m.params or [] if q.name != "self"]
+            p2 = [q for q in got.params or [] if q.name != "self"]
+            if len(p1) != len(p2) and not any(q.variadic or q.default is not None for q in p1 + p2):
+                self.err(getattr(got, "line", n.line) or n.line, f"`{m.name}` in `impl {d.name} for {target}` takes {len(p2)} parameter{'s' if len(p2) != 1 else ''}, "
+                                                                 f"but `{d.name}` says {len(p1)}")
+                continue
+            for q1, q2 in zip(p1, p2):
+                t1, t2 = q1.type, q2.type
+                if t1.__class__ is TName and t2.__class__ is TName and not t1.groups and not t2.groups and len(t1.path) == 1 and len(t2.path) == 1 \
+                        and t1.path[0] not in names and t2.path[0] not in names and t1.path[0] != t2.path[0] \
+                        and t1.path[0] in self.known_type_names() and t2.path[0] in self.known_type_names():
+                    self.err(getattr(got, "line", n.line) or n.line, f"parameter `{q2.name}` of `{m.name}` in `impl {d.name} for {target}` is a `{t2.path[0]}`, "
+                                                                     f"but `{d.name}` says `{t1.path[0]}`")
             r1, r2 = m.ret, got.ret
             if r1.__class__ is TName and r2.__class__ is TName and not r1.groups and not r2.groups and len(r1.path) == 1 and len(r2.path) == 1 \
                     and r1.path[0] not in names and r2.path[0] not in names and r1.path[0] != r2.path[0] \
@@ -6932,6 +6976,10 @@ class Checker(RefineMixin):
         if n.iface is not None:
             self.check_prop_reqs(n)
             self.check_impl_complete(n)
+        if n.target.__class__ is TName and len(n.target.path) == 1 and not n.target.groups and n.target.path[0] not in self.tuples \
+                and n.target.path[0] not in self.enums and getattr(self.aliases.get(n.target.path[0]), "kind", None) == "union":
+            self.diags.append(Diag(n.line, f"an `impl` for the union `{n.target.path[0]}` is never found when a method is called on one of its values: the value "
+                                           "dispatches as the member it holds, so write the `impl` for each member", "warning"))
         saved_impl, self.impl_ty = getattr(self, "impl_ty", None), (n.target.path[-1] if n.target.__class__ is TName and n.target.path else None)
         try:
             return self._impl_members(n, sc)

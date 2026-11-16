@@ -1,5 +1,35 @@
 # Fix list: status
 
+## Open items (regrouped 2026-11-16; the dated entries below are the history)
+
+**Checker: mistakes still found only at run time**
+* A function that ends in a loop or `when` without a value (loops can yield a value with `break(x)` and `else`, so this needs care).
+* `impl` for a type parameter's bounds beyond one level: embedded interfaces, prelude interfaces such as `Monad`, `where` bounds (`tparam_static_call`).
+* Union members that are not declared tuples, enums or imported types are not checked for a missing method or bound (`union_member_has`).
+* A field whose type is a union is not compared in `update` lines.
+* `is` tests with sub-patterns (`Dog(name)`) are not judged always true/false; aliases and generic tuples are skipped.
+* `when` exhaustiveness: a call result known only by inference, a literal inside a pattern, and values with no written type anywhere.
+* A list added to a collection later (`append`, `put`) is not tagged and falls back to looking at the items; a lambda with no expected function type is untagged.
+* `(+ 1)` on a String is not caught (operator sections have the placeholder's typing); `and`, `or`, `in` sections.
+* A `with` closure whose captured type is unknown is skipped; a closure returned from inside a loop or `do` isn't checked; `&` inside a lambda inside an `update` line refers to the field.
+* Refined aliases: across packages, with type parameters, proving a result at its return sites, a field read as a fact.
+
+**Data and serialization**
+* `deriving dyn`: `Option` fields (no built-in `Option`; absence is a `Result`).
+* `json`: `\u` escapes, pretty printing, a path lookup helper, a map type that is quick in a large document.
+* `read`: generic-parameter fields are read loosely; a field with a default is still required in the text.
+* No automatic projection (`:<:`) for open data types: each node answers a small interface such as `AsLit`.
+
+**Language features not built**
+* GADTs (design below; deferred). Tagless final (24m) and open data types (24n) cover most of the uses.
+* `proxy` for a prelude interface other than the six built-ins; a forwarding that adds a `Self`-returning wrapper.
+* Short form `run fn (tx)` only when every argument is a bare name; an anonymous `fn` can't be written inline in a call.
+* Local constants built by a call (`N = fib(10)` inside a function).
+* Memory spaces and pool sizing; SQL column and row types; package manifests; partly applied constructors against `M[_]`.
+
+**Decided not to do**
+* A borrow marker for resources; `==` against a literal narrowing a union; range tracking for computed values and a Dict lookup with a missing literal key (these stay run-time aborts).
+
 All items below are resolved in the Spec and Guide (decisions by Steve, 2026-10-26).
 
 1. Enum case output is positional (`Maybe.Just(10)`); three Guide outputs corrected.
@@ -112,3 +142,4 @@ Open design ideas (Steve, 2026-11-13; nothing built)
 * Tagless final (Guide 24m, written 2026-11-16): `R.f(args)` on a type parameter bounded by an interface of the program (`R Expr`, `R[_] Sym`) is now checked against the member's signature (`tparam_static_call` in check.py; tests/run_tparamstatic.py): `Self` and the interface's own parameter become `R` (or `R[Int]`), arguments are compared, and the call has the member's result type. Left: only one-level bounds from the program's own interfaces (no embedded interfaces, no prelude ones such as `Monad`, no `where`), the tail of a function isn't compared with a declared result when it is such a call, and `example()` with no `[Eval]` is still a run-time `undefined name 'R'`. Also fixed on the way: a generic function passing its own type parameter on (`h2[R](n)`) and `Tree[T]` inside a generic impl close over the bound type (tests/run_targforward.py).
 * Open data types (Guide 24n, 2026-11-16): variants, operations and rewrites added from a second file without editing the first, with nodes generic in their children, one interface per operation (recursion passed as `rec`), and a method call on a `type union` value dispatched to the member's impl. Checker: `check_union_method` and the union branch of `implements` (a member with no impl of the method or bound is an error); `union_members` accepts members of an imported package (`arith.Lit`). Tests: tests/run_unionimpl.py. Inference built later the same day (`union_of_children` in check.py: `Mul(Lit(3), Add(...))` is a `Mul[Full]` when exactly one union lists `Mul[Full]` and holds every child; with several fitting unions the call is left unchecked). Left: `impl I for SomeUnion` is accepted but never found at a call (the value dispatches as its member), and nothing warns; only members that are declared tuples, enums or imported types are checked; no automatic projection (`:<:`), each node answers a small interface such as `AsLit`.
 * Safety probe 2026-11-16 (34 wrong programs; 22 were already caught): closed tail comparison for arithmetic and block locals (`simple_tail`, `tail_ctx`), `impl` completeness (`check_impl_complete`), no-`else` at the end of a value function, `()` as a union member (`union_members` accepts `TUnit` and inline unions). `update` lines checked later the same day (`check_update`: unknown field, wrong value type, `&` typed as the field, nested blocks; union-typed fields not compared; tests/run_safer.py). Still accepted: a returned call to a bounded `R.f(...)` compared with a non-`R` result, `impl` parameter types and arity against the interface, a send on a channel of the wrong element type through `write` in some forms, a function that ends in a loop or `when` without a value.
+* Fix-list pass 2026-11-16: a function whose result is `R.f(...)` on a bounded type parameter is compared with its declared result (`simple_tail`); `impl` parameter count and plain parameter types are checked against the interface (`check_impl_complete`); an `impl` for a `type union` is a warning (it is never found); a call that leaves out a type argument the body needs (`example()` for `fn example[R E]() R` calling `R.lit`) is a compile error (`check_named_tparams`). Tests in tests/run_safer.py.
