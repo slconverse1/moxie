@@ -4204,7 +4204,7 @@ class Checker(RefineMixin):
                 if decl.__class__ is EnumDecl:
                     cd = next((x for x in decl.cases or [] if x.name == name), None)
                     if cd is not None:
-                        fts = [q.type for q in decl.header] if decl.header else [f.type for f in cd.fields or []]   # a header's fields are every case's
+                        fts = [q.type for q in decl.header] if decl.header and getattr(cd, "payload", None) is None else [f.type for f in cd.fields or []]   # a header's fields are every case's
                         types = fts
                 elif decl.__class__ is TupleDecl:
                     types = [f.type for f in decl.fields or []]

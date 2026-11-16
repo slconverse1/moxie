@@ -2953,7 +2953,7 @@ println(r)
 
 Output: `105`. The client opens a second, private conversation, hands one end of it to the worker through the first, and then talks to the worker on it.
 
-**Limits.** A session has exactly two ends (there are no three-party conversations), and the type says what is sent and received, not what the values mean or how long a step may take. Message types are checked when the endpoint is used, so a wrong value is a compile error only where the compiler can see the endpoint's type, which is wherever the type is written (a parameter, a binding from `connect`). **Mistakes:** forgetting `finish` at the end, using the old name after a step (write `c2 = session.send(c, 1)?` and carry on with `c2`), and passing the client's end where the server's is expected.
+**Limits.** A session has exactly two ends (there are no three-party conversations), and the type says what is sent and received, not what the values mean or how long a step may take. Message types are checked when the endpoint is used, so a wrong value is a compile error only where the compiler can see the endpoint's type, which is wherever the type is written (a parameter, a binding from `connect`). A function that takes an endpoint and hands it on uses it up, so the caller needs no `move`, and `session.Left(e)` works as a pattern as well as `session.Branch.Left(e)`. An endpoint stored in a collection or a tuple field is not tracked. **Mistakes:** forgetting `finish` at the end, using the old name after a step (write `c2 = session.send(c, 1)?` and carry on with `c2`), and passing the client's end where the server's is expected.
 
 **Chapter 18: Errors and `?`**
 
@@ -4661,7 +4661,7 @@ Output: `3`, then `5`. A case with no result type (`If`) means `Value[T]`. Three
 
 Nothing changes at run time: types are erased, so a `Value` is the same enum value it would be without the result types.
 
-**Case variables and existentials.** A case may use type variables of its own, written as one-letter names that the enum doesn't declare. Two shapes are useful.
+**Case variables and existentials.** A case may use type variables of its own, written as one-letter names that the enum doesn't declare (or declared, see below). Two shapes are useful.
 
 ```
 enum Value[T]
@@ -4682,6 +4682,30 @@ println(eval(Packed(Num(41), (n) -> "n=${n + 1}")))
 
 Output: `(1, true)`, then `n=42`. In `Pair`, `A` and `B` appear in the result type, so building one infers them from the payloads: `Pair(Num(1), Flag(true))` is a `Value[(Int, Bool)]`, and `Pair(Num(1), Num(2))` is not a `Value[(Int, Bool)]`. In `Packed`, `A` appears only in the payloads and not in the result. That is an **existential**: the case hides which `A` it holds. Building a `Packed` still fixes `A` (the two payloads must agree, so `Packed(Num(1), f)` with an `f` that takes a `Bool` is an error), but a `when` arm sees `A` as an unknown, fixed type, shown as `A'`. The arm may use `v` and `f` together, since both mention the same `A'`, but it cannot treat `A'` as an `Int`, and an arm that returns `eval(a)` where the result is `(A', B')` is an error. A variable bound twice in one call must agree, and a lambda whose parameter types are not written takes them from the case once the other payloads have bound the variable: in `Packed(Num(1), (b) -> if b then "y" else "n")`, `b` is an `Int`, so the `if` is an error.
 
+
+**More of a GADT.** Four further pieces finish the picture.
+
+- **Declared case variables, with bounds.** Write a case's own variables in brackets after its name, which allows longer names and interface bounds: `Shown[A Show](v A) Item[String]`. Building one checks the bound (`Shown(Plain(1))` is an error if `Plain` has no `Show`), and in its `when` arm `v` is an `A'` that is known to be `Show`, so `v.show()` works and `v.shout()` does not. This is the usual "any showable thing" existential, with the interface named.
+- **Methods.** In `impl[T] Value[T]`, `when self` refines `T` the same way a `when` on a parameter does.
+- **`is`.** In `if v is Num(n)`, the then-branch knows `T` is `Int`.
+- **Header enums.** A header enum (9) may give its cases result types and payloads. A constant case writes its result type after the header values, `Low(rank: 1) Level[Cold]`. A case with a payload writes the header values first and the payload second, `Num(line: 1)(n Int) Value[Int]`; building it takes only the payload, and the header values are fixed by the case. The header fields are on every case (`v.line`), and a positional pattern (`Num(n)`) sees the payload only.
+
+```
+enum Value[T](line Int)
+  Num(line: 1)(n Int) Value[Int]
+  Flag(line: 2)(b Bool) Value[Bool]
+  Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]
+
+fn eval[T](v Value[T]) T = when v
+  Num(n) -> n
+  Flag(b) -> b
+  Add(a, b) -> eval(a) + eval(b)
+
+println(eval(Add(Num(1), Num(2))))
+println(Flag(true).line)
+```
+
+Output: `3`, then `2`.
 
 **Which of the three?** Use tagless final (24m) when you only run the program and never look inside it. Use open data types (24n) when you need to inspect and rewrite the data and also to add cases without editing existing code. Use a GADT when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
 

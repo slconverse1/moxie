@@ -217,7 +217,10 @@ class DeclsMixin:
         self.enums[n.name] = info
         header_types = [p.type for p in n.header] if n.header else []
         for i, cd in enumerate(n.cases):
-            if n.header:
+            if n.header and getattr(cd, "payload", None) is not None:
+                ci = CaseInfo(cd.name, i, [f.name for f in cd.fields], [f.type for f in cd.fields])
+                ci.hdrnames, ci.hdrtypes = list(et.header), header_types       # the header's values are the case's own, fixed at its declaration
+            elif n.header:
                 ci = CaseInfo(cd.name, i, list(et.header), header_types)
             elif cd.fields:
                 ci = CaseInfo(cd.name, i, [f.name for f in cd.fields], [f.type for f in cd.fields])
@@ -231,7 +234,11 @@ class DeclsMixin:
         if n.header:
             for cd in n.cases:
                 ci = et.cases[cd.name]
-                pos, named, _, _ = yield from self.eval_case_args(cd.fields or [], env)
+                pos, named, _, _ = yield from self.eval_case_args((cd.payload if cd.payload is not None else cd.fields) or [], env)
+                if getattr(ci, "hdrnames", None) is not None:
+                    hi = CaseInfo(cd.name, ci.index, list(ci.hdrnames), ci.hdrtypes)
+                    ci.hdrvals = self.build_enum(et, hi, pos, named, 0).vals     # a case with a payload is built per call, so no constant
+                    continue
                 v = self.build_enum(et, ci, pos, named, 0)
                 et.consts[cd.name] = v
         return UNIT
@@ -275,6 +282,8 @@ class DeclsMixin:
                 raise Abort(f"missing field '{fields[j]}' for {et.name}.{ci.name}", line)
             if j < len(ci.ftypes) and ci.ftypes[j] is not None:
                 vals[j] = self.coerce(vals[j], ci.ftypes[j], self.module_env)
+        if getattr(ci, "hdrvals", None) is not None:
+            return EnumV(et, ci.name, list(ci.hdrvals) + vals, list(ci.hdrnames) + list(fields))
         return EnumV(et, ci.name, vals, list(fields))
 
     # ------------------------------------------------------------ aliases

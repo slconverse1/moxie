@@ -239,6 +239,9 @@ class PatternsMixin:
             if v.case == name and (not qual or qual[-1] == v.et.name or self.is_pkg_name(qual[-1], env)):
                 if args is None:
                     return True
+                hn = getattr(v.et.cases.get(v.case), "hdrnames", None)
+                if hn and not all(l is not None for l, _ in args):
+                    return self.match_args(args, v.vals[len(hn):], v.names[len(hn):], b, env)       # positional patterns see the payload, not the header
                 return self.match_args(args, v.vals, v.names, b, env)
             if args is None and not qual and name == v.et.name:
                 return True

@@ -117,7 +117,7 @@ def _defs():
         "FieldDecl": "name type default delegate prop",
         "PropertyDecl": "name type default cap get set did_set priv_set stored lazy static need will_set",
         "EnumDecl": "name tparams header cases derivs vis",
-        "CaseDecl": "name fields ret tparams",
+        "CaseDecl": "name fields ret tparams payload",
         "IfaceDecl": "name tparams members embeds vis",
         "ImplDecl": "iface target tparams members bodyless proxy",
         "AliasDecl": "kind name tparams type vis where wtext",

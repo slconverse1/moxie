@@ -967,6 +967,24 @@ class Parser(ExprParser):
             self.expect_dedent()
         return fields
 
+    def parse_case_fields(self):
+        fields = []
+        self.next()
+        while not self.at_op(")"):
+            ft = self.peek()
+            colon = self.colon_label_at(0, "a case field has no colon: write `Circle(radius Float)`")
+            if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static") and self.type_follows(1))):
+                self.next()
+                if colon:
+                    self.next()
+                fields.append(FieldDecl(ft.val, self.parse_type(), None, None, line=ft.line))
+            else:
+                fields.append(FieldDecl(None, self.parse_type(), None, None, line=ft.line))
+            if not self.eat_op(","):
+                break
+        self.expect_op(")")
+        return fields
+
     def parse_enum_decl(self, mods):
         line = self.next().line
         name = self.expect_ident("an enum name").val
@@ -989,29 +1007,19 @@ class Parser(ExprParser):
             if self.at_op("[") and not self.peek().sp:
                 ctps = self.parse_tparams_v2()                 # a case's own type variables, with bounds: `Shown[A Show](v A) Item[String]`
             fields = None
+            payload = None
             if self.at_op("(") and not self.peek().sp:
                 if header is not None:
-                    fields = self.parse_args()
+                    fields = self.parse_args()                       # the values of the header's fields
+                    if self.at_op("(") and not self.peek().sp:
+                        payload, fields = fields, self.parse_case_fields()      # then the case's own payload: `Num(line: 0)(n Int) Value[Int]`
+                                                                                # (`fields` is the payload; `payload` holds the header values)
                 else:
-                    fields = []
-                    self.next()
-                    while not self.at_op(")"):
-                        ft = self.peek()
-                        colon = self.colon_label_at(0, "a case field has no colon: write `Circle(radius Float)`")
-                        if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static") and self.type_follows(1))):
-                            self.next()
-                            if colon:
-                                self.next()
-                            fields.append(FieldDecl(ft.val, self.parse_type(), None, None, line=ft.line))
-                        else:
-                            fields.append(FieldDecl(None, self.parse_type(), None, None, line=ft.line))
-                        if not self.eat_op(","):
-                            break
-                    self.expect_op(")")
+                    fields = self.parse_case_fields()
             ret = None
-            if tparams and header is None and self.peek().kind == "NAME" and self.peek().line == t.line:
+            if tparams and self.peek().kind == "NAME" and self.peek().line == t.line:
                 ret = self.parse_type()                       # a GADT case states its own result type: `Num(n Int) Value[Int]`
-            cases.append(CaseDecl(t.val, fields, ret, ctps, line=t.line))
+            cases.append(CaseDecl(t.val, fields, ret, ctps, payload, line=t.line))
             self.eat_op(",")
         self.expect_dedent()
         vis = None
