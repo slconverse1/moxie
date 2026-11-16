@@ -735,7 +735,7 @@ class Checker(RefineMixin):
                 if fd.body is None or fd.alias is not None or id(fd) in self.foreign_ids:
                     continue
                 for i, prm in enumerate(fd.params or []):
-                    if prm.name and self.is_res_type(prm.type) and keeps(fd, prm.name):
+                    if prm.name and (self.is_res_type(prm.type) or self.is_endpoint_tname(prm.type)) and keeps(fd, prm.name):
                         self.consumes.setdefault(name, set()).add(i)
         for st in prog.stmts:
             if st.__class__ is ImplDecl and st.target.__class__ is TName and st.target.path:
@@ -762,6 +762,12 @@ class Checker(RefineMixin):
             self.methods.setdefault(k, m)
 
     SESSION_OPS = {"send", "recv", "finish", "pick_left", "pick_right", "offer"}
+
+    def is_endpoint_tname(self, t):
+        """A written type `session.Endpoint[...]` (or `Endpoint[...]` after `import session(Endpoint)`)."""
+        if t.__class__ is not TName or not t.path or t.path[-1] != "Endpoint":
+            return False
+        return (len(t.path) == 2 and t.path[0] in getattr(self, "sess_alias", ())) or (len(t.path) == 1 and "Endpoint" in getattr(self, "sess_names", ()))
 
     def is_session_call(self, n, sc):
         """A call of one of the `session` package's operations (`session.send(c, 1)`, or `send(c, 1)` after `import session(send)`)."""
@@ -4767,6 +4773,13 @@ class Checker(RefineMixin):
         if sess_call:
             self.sess_first.add(id(n.args[0].expr))
         r = self._e_Call(n, sc, *a, **k)
+        if SESS["on"] and not sess_call and n.fn.__class__ is Name and n.fn.name in self.consumes and sc.find(n.fn.name) is None:
+            for i in self.consumes[n.fn.name]:               # a function that takes over an endpoint uses it up, with or without `move`
+                a_ = n.args[i] if i < len(n.args or []) else None
+                x = getattr(a_, "expr", None)
+                v = sc.find(x.name) if x.__class__ is Name else None
+                if v is not None and _is_endpoint(v.ty):
+                    self.pending_gone.append((n, sc, x.name, "handed to `%s`, which finishes the conversation" % n.fn.name))
         if sess_call:
             self.pending_gone.append((n, sc, n.args[0].expr.name, "used up by this step of its protocol"))
             for extra_arg in n.args[1:]:

@@ -226,13 +226,17 @@ class PatternsMixin:
             return all(self.pat_type_matches(x, et, env) for x in v.items)
         return self.type_matches(v, t, env)
 
+    def is_pkg_name(self, nm, env):
+        """`session.Left(e)`: the qualifier is an imported package, so the case is one the package exports."""
+        return env.lookup(nm, self).__class__ is PkgV
+
     def match_con(self, p, v, b, env):
         name = p.path[-1]
         qual = p.path[:-1]
         args = p.args
         k = v.__class__
         if k is EnumV:
-            if v.case == name and (not qual or qual[-1] == v.et.name):
+            if v.case == name and (not qual or qual[-1] == v.et.name or self.is_pkg_name(qual[-1], env)):
                 if args is None:
                     return True
                 return self.match_args(args, v.vals, v.names, b, env)

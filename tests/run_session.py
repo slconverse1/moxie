@@ -108,6 +108,18 @@ CHECKS = [
  ("reusing an endpoint after sending it", HEAD.replace("session.Send[Int,", "session.Send[Int,") + "type alias Main = session.Send[session.Endpoint[Client], session.End]\nfn f(mc session.Endpoint[Main], p session.Endpoint[Client]) Result[Unit, Error]\n  mc2 = session.send(mc, p)?\n  session.finish(mc2)\n  p2 = session.send(p, 1)?\n  Ok(())\n", "use of moved value `p`"),
  ("a correct function checks clean", HEAD + SERVE + CLIENT, None),
 ]
+RUNS.append(("a case pattern qualified by the package", CHOICE.replace("session.Branch.Left", "session.Left").replace("session.Branch.Right", "session.Right"), "Ok(42)"))
+BR = """import session
+type alias C = session.Pick[session.Send[Int, session.End], session.End]
+"""
+CHECKS += [
+ ("every branch finishes the conversation", BR + "fn f(c session.Endpoint[C], b Bool) Result[Unit, Error]\n  if b\n    c2 = session.pick_left(c)?\n    c3 = session.send(c2, 1)?\n    Ok(session.finish(c3))\n  else\n    c2 = session.pick_right(c)?\n    Ok(session.finish(c2))\n", None),
+ ("a branch that leaves the conversation open", BR + "fn f(c session.Endpoint[C], b Bool) Result[Unit, Error]\n  if b\n    c2 = session.pick_right(c)?\n    session.finish(c2)\n  Ok(())\n", "dropped before its protocol is finished"),
+ ("using an endpoint after branches that consumed it", BR + "fn f(c session.Endpoint[C], b Bool) Result[Unit, Error]\n  if b\n    c2 = session.pick_right(c)?\n    session.finish(c2)\n  else\n    c3 = session.pick_right(c)?\n    session.finish(c3)\n  c4 = session.pick_right(c)?\n  Ok(session.finish(c4))\n", "use of moved value `c`"),
+ ("a helper that takes over an endpoint uses it up", BR + "fn helper(c session.Endpoint[C]) Result[Unit, Error]\n  c2 = session.pick_right(c)?\n  Ok(session.finish(c2))\nfn f(c session.Endpoint[C]) Result[Unit, Error]\n  r = helper(c)\n  helper(c)\n", "use of moved value `c`"),
+ ("a helper handed an endpoint without move", BR + "fn helper(c session.Endpoint[C]) Result[Unit, Error]\n  c2 = session.pick_right(c)?\n  Ok(session.finish(c2))\nfn f(c session.Endpoint[C]) Result[Unit, Error]\n  helper(c)\n", None),
+ ("a helper handed an endpoint with move", BR + "fn helper(c session.Endpoint[C]) Result[Unit, Error]\n  c2 = session.pick_right(c)?\n  Ok(session.finish(c2))\nfn f(c session.Endpoint[C]) Result[Unit, Error]\n  helper(move c)\n", None),
+]
 fails = []
 def run_in(src, cmd, gc):
     with tempfile.TemporaryDirectory() as d:
