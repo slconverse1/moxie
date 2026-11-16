@@ -530,6 +530,8 @@ class Checker(RefineMixin):
         self.find_consumers(prog)
         top = Sc()
         self.top = top                    # the top scope, which the REPL reads to show the type of a binding
+        self.prog_stmts = prog.stmts
+        self.top_writes = self.write_counts(prog.stmts)[0]    # a top-level name bound more than once is not a constant
         for st in prog.stmts:
             self.fold_binding(st)
             self.ev(st, top)
@@ -581,9 +583,64 @@ class Checker(RefineMixin):
             name = tg.path[0]
         else:
             return
+        if getattr(self, "top_writes", {}).get(name, 1) > 1:
+            return
         v = const_eval(st.value, self.consts)
         if v is not NOCONST:
             self.consts[name] = v
+
+    SEPARATE_ROOTS = (FnDecl, FnGroup, ImplDecl, IfaceDecl, TupleDecl, EnumDecl)
+
+    def write_counts(self, nodes):
+        """How many times each name is bound in `nodes` (a binding, a pattern, a parameter, a rebinding, `+=`, a `ref` argument, an
+        `in` line), and the simple `name = value` bindings in order. Nested declarations are separate roots and are not entered."""
+        counts, simple = {}, []
+        def bump(nm):
+            counts[nm] = counts.get(nm, 0) + 1
+        def walk(x):
+            if isinstance(x, (list, tuple)):
+                for y in x:
+                    walk(y)
+                return
+            if not hasattr(x, "_fields") or x.__class__ in self.SEPARATE_ROOTS:
+                return
+            c = x.__class__
+            if c is PBind:
+                bump(x.name)
+            elif c is Param and getattr(x, "name", None):
+                bump(x.name)
+            elif c is Gimme and getattr(x, "name", None):
+                bump(x.name)
+            elif c is Arg and x.mod in ("ref", "move") and x.expr.__class__ is Name:
+                bump(x.expr.name)
+            elif c is Assign and x.op in (None, "", "=") and x.targets.__class__ is PBind:
+                simple.append((x.targets.name, x.value))
+            for f in x._fields:
+                walk(getattr(x, f))
+        walk(nodes)
+        return counts, simple
+
+    def local_consts(self):
+        """The names of the enclosing function (or of the entry file's top level) that are bound once, to a value the compiler can work
+        out: a lambda that uses one captures nothing, since the value can be folded in where the lambda is made."""
+        fn = getattr(self, "cur_fn", None)
+        if fn is not None:
+            key, nodes = id(fn), [fn.params, fn.body]
+        else:
+            key, nodes = 0, getattr(self, "prog_stmts", [])
+        cache = self.__dict__.setdefault("_lc_cache", {})
+        if key in cache and cache[key][0] is (fn if fn is not None else None):
+            return cache[key][1]
+        counts, simple = self.write_counts(nodes)
+        env, out = dict(self.consts), {}
+        for nm, val in simple:
+            if counts.get(nm, 0) == 1 and nm not in env:
+                v = const_eval(val, env)
+                if v is not NOCONST:
+                    env[nm] = v
+                    out[nm] = v
+        cache[key] = (fn, out)
+        return out
 
     # ------------------------------------------------------------ ownership
     def is_res_type(self, t):
@@ -5649,8 +5706,10 @@ class Checker(RefineMixin):
                     walk(getattr(x, f))
         walk(lam.body)
         out = []
+        lc = self.local_consts()
         for nm in used:
-            if nm in own or nm in assigned or nm in out or nm in self.consts or nm in self.fns or nm in self.globals_nonvar():
+            if nm in own or nm in assigned or nm in out or nm in self.consts or nm in self.fns or nm in self.globals_nonvar() \
+                    or nm in lc:
                 continue
             if sc.find(nm) is not None:
                 out.append(nm)

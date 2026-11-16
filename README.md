@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-15: constants are not captures.** A name bound once, to a value the compiler can work out, is a constant, so a lambda that uses only constants, parameters, and its own locals captures nothing and counts as a plain function (it can be stored in a Dict, List, tuple field or channel in plain moxie). This now holds for locals inside a function, not just module-level names. A name bound more than once, including an entry-file name that is later rebound, is a variable and is a capture. Spec 11 and the Guide updated.
+
 **2026-11-15: anonymous `fn`s have no `->`.** Only a lambda uses `->` in its declaration. An anonymous `fn` is written like a named function with the name left out, `fn (params) Ret`, with the body indented below, and an inline fiber is `run fn (args)(params)` with an indented body (or the short form `run fn (tx)` when each parameter has its argument's name). The old `fn (...) -> body` form is a compile error that points to the new one. Because a block can't sit inside a call's parentheses, an anonymous `fn` is bound on its own line and passed by name. The effects checker now follows a bound anonymous `fn`: calling it, or passing it to a function that calls it, carries its effects (a pure function that calls one that parks is now caught). Tests, Spec, Guides, intros and tutorials updated.
 
 **2026-11-15: capturing closures in collection literals.** A capturing closure written inside a `Dict(...)`, `List(...)`, `Set(...)` or `Array(...)` literal is now the same compile error as in an annotated slot (moxie only; moxie/gc stores it). It used to slip through. Module-level names aren't captures.
