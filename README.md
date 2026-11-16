@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (fix-list pass 2)
+- **Nested exhaustiveness**: `when` coverage looks inside nested patterns, tuples, `Bool` and literals (`Some(Circle(r))` without `Some(Tri(_))`); a guarded arm covers nothing; anything not understood ends the check silently (tests/run_nestedcover.py).
+- **Refined aliases across packages**: an exported alias whose condition uses only `self` and literals is refined in the importer as `lib.Pos` or `Pos` (tests/run_refinedpkg.py).
+
 ### 2026-11-16 (typestate)
 - **Guide 24p: typestate.** A phantom type parameter (`File[Open]`, `File[Closed]`) already gives compile-time protocols with no new compiler code; tests/run_typestate.py.
 

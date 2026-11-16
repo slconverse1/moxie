@@ -2072,7 +2072,7 @@ println(half(7))
 println(describe(40))
 ```
 
-Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, but the condition is enforced wherever you declare it. A binding `x Pos = v` is proved like a call: `x Pos = 0` is a compile error, and `x Pos = n` needs a test of `n` first (`if n > 0 then`). After it, `x` is known to be positive, so `half(x)` is accepted. A function declared to return `Pos` is checked as it returns (it means `ensures result > 0`), and a field declared `Pos` is checked whenever the tuple is built (it means `invariant balance > 0`); an abort in either names the function or tuple that broke the promise. A binding from a function that returns `Pos` needs no further proof. A `List[Pos]` (or `Array`, `Set`, `Dict` values) is checked element by element when the program runs, with an abort that shows `all((item) -> item > 0, xs)`; that check is not proved at compile time. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, and `x Pos = n` for an unchecked `n`.
+Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, but the condition is enforced wherever you declare it. A binding `x Pos = v` is proved like a call: `x Pos = 0` is a compile error, and `x Pos = n` needs a test of `n` first (`if n > 0 then`). After it, `x` is known to be positive, so `half(x)` is accepted. A function declared to return `Pos` is checked as it returns (it means `ensures result > 0`), and a field declared `Pos` is checked whenever the tuple is built (it means `invariant balance > 0`); an abort in either names the function or tuple that broke the promise. A binding from a function that returns `Pos` needs no further proof. A `List[Pos]` (or `Array`, `Set`, `Dict` values) is checked element by element when the program runs, with an abort that shows `all((item) -> item > 0, xs)`; that check is not proved at compile time. An alias can be exported from a package (`export type alias Pos = Int where self > 0`) and used as `lib.Pos` after `import lib`, or as `Pos` after `import lib(Pos)`; it works the same way, provided its condition uses only `self` and literals. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, and `x Pos = n` for an unchecked `n`.
 
 ```
 type alias Pos = Int where self > 0
@@ -2357,7 +2357,7 @@ print("${times_ten(Reading.Value(7))} ")
 println("${times_ten(Reading.Missing)}")
 ```
 
-Output: `Reading.Value(70) Reading.Missing` (using `Reading` from above). **Mistakes:** a `when` that doesn't cover every case, a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
+Output: `Reading.Value(70) Reading.Missing` (using `Reading` from above). **Mistakes:** a `when` that doesn't cover every case (the check looks inside nested patterns and tuples, so `Some(Circle(r))` with `Some(Sq(s))` and `None` is missing `Some(Tri(_))`), a Set pattern (not supported), a let-else with a pattern that can't fail (warning), and using an `is` name under `or`.
 
 The else can name the failure with a pattern of its own, written `else Pattern -> value`, so the parts of the failure are in scope there. This is how to log an `Err` or use its code, or to turn it into a different error:
 

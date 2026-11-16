@@ -6,11 +6,11 @@
 * `impl` for a type parameter's bounds beyond one level: embedded interfaces, prelude interfaces such as `Monad`, `where` bounds (`tparam_static_call`).
 * Union members that are not declared tuples, enums or imported types are not checked for a missing method or bound (`union_member_has`).
 * `is` tests with sub-patterns (`Dog(name)`) are not judged always true/false; aliases and generic tuples are skipped.
-* `when` exhaustiveness: a call result known only by inference, a literal inside a pattern, and values with no written type anywhere.
-* A list added to a collection later (`append`, `put`) is not tagged and falls back to looking at the items; a lambda with no expected function type is untagged.
+* `when` exhaustiveness: nested patterns, tuples, Bool and literals are built (2026-11-16, `nested_cover`). Left: patterns with ranges, relations, `is`-types or binary patterns (the check stops without an error), and GADT enums (skipped).
+* Late-tagged collections: 2026-11-16 probes (`+=`, concatenation, `List[Data](e)`, declared Dict values) all tag correctly; no failing case found. A lambda with no expected function type is untagged.
 * `(+ 1)` on a String is not caught (operator sections have the placeholder's typing); `and`, `or`, `in` sections.
 * A `with` closure whose captured type is unknown is skipped; a closure returned from inside a loop or `do` isn't checked; `&` inside a lambda inside an `update` line refers to the field.
-* Refined aliases: across packages, with type parameters, proving a result at its return sites, a field read as a fact.
+* Refined aliases: across packages built 2026-11-16 (exported, condition of `self` and literals only; `imported_refined`). Left: type parameters, a condition that names constants, proving a result at its return sites, a field read as a fact.
 
 **Data and serialization**
 * `deriving dyn`: `Option` fields (no built-in `Option`; absence is a `Result`).
