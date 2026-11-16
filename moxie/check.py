@@ -2921,6 +2921,7 @@ class Checker(RefineMixin):
             s, d = s.parent, d + 1
 
     def e_Assign(self, n, sc):
+        self.rf_prev_stmt = n                              # the `Refine` the parser put after `x Pos = v` reads it
         if n.ann is not None and n.op == "=":
             self.expect_union(n.value, n.ann)
         t, c = self.ev(n.value, sc)

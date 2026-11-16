@@ -1516,7 +1516,32 @@ def apply_refined_aliases(prog):
                         extra.append(("requires", acond, prm.line, atext))
             if extra:
                 n.contracts = extra + list(n.contracts or [])
+            rt = n.ret
+            if rt.__class__ is TName and len(rt.path) == 1 and not rt.groups and rt.path[0] in ref and n.body is not None:
+                a = ref[rt.path[0]]                       # a refined result: checked on the way out, as an `ensures` on `result`
+                n.contracts = list(n.contracts or []) + [("ensures", subst(a.where, "result"), n.line, re.sub(r"\bself\b", "result", a.wtext or ""))]
+        if isinstance(n, TupleDecl):
+            more = []
+            for f in n.fields or []:
+                t = f.type
+                if f.name and t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in ref:
+                    a = ref[t.path[0]]                    # a refined field: an `invariant` on the field, checked at every construction
+                    more.append(("invariant", subst(a.where, f.name), f.line if hasattr(f, "line") else n.line, re.sub(r"\bself\b", f.name, a.wtext or "")))
+            if more:
+                n.invariants = list(n.invariants or []) + more
         if isinstance(n, list):
+            out = []
+            for x in n:
+                out.append(x)
+                if x.__class__ is Assign and x.op == "=" and x.targets.__class__ is PBind and x.ann.__class__ is TName \
+                        and len(x.ann.path) == 1 and not x.ann.groups and x.ann.path[0] in ref:
+                    a = ref[x.ann.path[0]]                # `x Pos = v`: the value entering a refined alias is checked right after the binding
+                    nm = x.targets.name
+                    out.append(Refine(nm, subst(a.where, nm), re.sub(r"\bself\b", nm, a.wtext or ""), a.name, line=x.line))
+            n[:] = out
+            for x in list(n):
+                walk(x)
+        elif isinstance(n, tuple):
             for x in n:
                 walk(x)
         elif hasattr(n, "_fields"):

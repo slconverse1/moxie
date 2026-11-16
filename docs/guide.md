@@ -2058,7 +2058,26 @@ println(half(7))
 println(describe(40))
 ```
 
-Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, so only parameters are checked: a field or a local of type `Pos` is an `Int` as far as the checker goes, and a function that returns a `Pos` promises nothing until you add an `ensures`. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, and expecting a field of type `Pct` to reject 101.
+Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, but the condition is enforced wherever you declare it. A binding `x Pos = v` is proved like a call: `x Pos = 0` is a compile error, and `x Pos = n` needs a test of `n` first (`if n > 0 then`). After it, `x` is known to be positive, so `half(x)` is accepted. A function declared to return `Pos` is checked as it returns (it means `ensures result > 0`), and a field declared `Pos` is checked whenever the tuple is built (it means `invariant balance > 0`); an abort in either names the function or tuple that broke the promise. A binding from a function that returns `Pos` needs no further proof. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, `x Pos = n` for an unchecked `n`, and expecting a `List[Pos]` to check each element (elements are not checked).
+
+```
+type alias Pos = Int where self > 0
+tuple Account
+  balance Pos
+  name String
+fn half(n Pos) Int
+  n / 2
+fn open_amount(n Int) Int
+  if n > 0 then
+    x Pos = n
+    half(x) * 2
+  else
+    0
+println(open_amount(9))
+println(Account(balance: 40, name: "ann"))
+```
+
+Output: `8`, then `Account(balance: 40, name: "ann")`. `Account(balance: 0, name: "ann")` would abort with `invariant of Account failed: balance > 0`.
 
 **Chapter 10: Operators, `|>>`, Results**
 

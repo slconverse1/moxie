@@ -220,6 +220,38 @@ class RefineMixin:
             return None
         return R.compare("==", R.atom(t.name), lin)
 
+    # ------------------------------------------------------------ values entering a refined alias
+    def e_Refine(self, n, sc):
+        """`x Pos = v`: the parser put the alias's condition after the binding.  The condition has to follow from `v` and the facts here."""
+        prev = getattr(self, "rf_prev_stmt", None)
+        if prev is None or prev.__class__ is not Assign or prev.targets.__class__ is not PBind or prev.targets.name != n.name:
+            return None, None
+        expr = prev.value
+        fact = self.rf_formula(n.cond, sc, None, True)
+        if expr.__class__ is Call and expr.fn.__class__ is Name and sc.find(expr.fn.name) is None:
+            cl = self.fns.get(expr.fn.name) or []
+            rt = cl[0].ret if len(cl) == 1 else None
+            if rt.__class__ is TName and rt.path == [n.alias]:
+                if fact is not None:
+                    self.rf_push(fact)                    # a function that returns the alias has already promised it
+                return None, None
+        lin = self.rf_lin(expr, sc)
+        path = self.rf_path(expr, sc, None)
+        subst = {("v", n.name): lin if lin is not None else self.rf_fresh(), ("path", n.name): path,
+                 ("len", n.name): R.atom(("len", path)) if path is not None else self.rf_fresh()}
+        goal = self.rf_formula(n.cond, None, subst, False)
+        if goal is None:
+            return None, None                             # not linear integer arithmetic: left to the run-time check
+        r = R.proves(list(self.ifacts), goal)
+        line = n.line or self.cur_line
+        if r == "yes" and fact is not None:
+            self.rf_push(fact)                            # from here on the name is known to meet the condition
+        if r == "no":
+            self.err(line, f"`{n.name}` must satisfy `{n.text}`, but the value given can never satisfy it")
+        elif r == "unknown":
+            self.err(line, f"can't prove `{n.text}` for `{n.name}`: check it first (`if ... then`), or give the enclosing function the same `where`")
+        return None, None
+
     # ------------------------------------------------------------ calls
     def rf_callee(self, n, sc, extra):
         """(FnDecl, receiver expression or None, has a receiver) for a call whose callee declares refinements."""

@@ -6,6 +6,15 @@ GET = 'fn get(xs List[Int], i Int where i >= 0 and i < len(xs)) Int\n  xs(i)\n'
 POS = 'fn half(n Int where n > 0) Int\n  n / 2\n'
 OK, BAD, RUN = 0, 2, 1
 CASES = [
+ ("a function that returns the alias has promised it", 'type alias Pos = Int where self > 0\nfn half(n Pos) Int\n  n / 2\nfn mk(n Int) Pos\n  if n > 0 then n else 1\nfn g() Int\n  p Pos = mk(5)\n  half(p)\nprintln(g())\n', OK, "2"),
+ ("a checked local is a fact afterwards", 'type alias Pos = Int where self > 0\nfn half(n Pos) Int\n  n / 2\nfn f(n Int) Int\n  if n > 0 then\n    x Pos = n\n    half(x) + half(x)\n  else\n    0\nprintln(f(8))\n', OK, "8"),
+ ("a binding inside an if branch is checked too", 'type alias Pos = Int where self > 0\nfn g(n Int) Int\n  if n > 5 then\n    x Pos = n - 10\n    x\n  else\n    0\n', BAD, "`x > 0`"),
+ ("a value entering a refined alias, proved by if", 'type alias Pos = Int where self > 0\nfn f(n Int) Int\n  if n > 0 then\n    x Pos = n\n    x * 2\n  else\n    0\nprintln(f(5))\n', OK, "10"),
+ ("a constant entering a refined alias", 'type alias Pos = Int where self > 0\ny Pos = 5\nprintln(y)\n', OK, "5"),
+ ("a constant that can never satisfy the alias", 'type alias Pos = Int where self > 0\nz Pos = 0\n', BAD, "can never satisfy it"),
+ ("an unproved value entering a refined alias", 'type alias Pos = Int where self > 0\nfn g(n Int) Int\n  x Pos = n\n  x\n', BAD, "can't prove `x > 0`"),
+ ("a refined result is checked on the way out", 'type alias Pos = Int where self > 0\nfn g(n Int) Pos\n  n\nprintln(g(5))\nprintln(g(0))\n', RUN, "ensures failed in g: result > 0"),
+ ("a refined field is an invariant", 'type alias Pos = Int where self > 0\ntuple Account\n  balance Pos\n  name String\nprintln(Account(balance: 5, name: "a"))\nprintln(Account(balance: 0, name: "b"))\n', RUN, "invariant of Account failed: balance > 0"),
  ("a literal call that holds", GET + 'println(get(List(1, 2, 3), 1))\n', OK, "2"),
  ("checked by if", GET + 'fn f(xs List[Int], i Int) Int\n  if i >= 0 and i < len(xs) then get(xs, i) else -1\nprintln(f(List(1, 2), 1))\n', OK, "2"),
  ("checked by an early return", GET + 'fn f(xs List[Int], i Int) Int\n  return -1 if i < 0 or i >= len(xs)\n  get(xs, i)\nprintln(f(List(1, 2), 5))\n', OK, "-1"),

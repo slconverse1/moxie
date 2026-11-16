@@ -573,6 +573,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def ev_Dollar(self, n, env):
         return self.ev(n.expr, env)
 
+    def ev_Refine(self, n, env):
+        ok = yield from self.ev(n.cond, env)
+        if ok is not True and CONTRACTS[0]:
+            raise Abort(f"`{n.name}` must satisfy `{n.text}`", n.line)
+        return UNIT
+
     def ev_Gimme(self, n, env):
         e = self.gimme_scope(n, env)
         return Done(e.vars[n.name])
