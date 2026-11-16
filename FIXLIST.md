@@ -19,6 +19,7 @@
 * No automatic projection (`:<:`) for open data types: each node answers a small interface such as `AsLit`.
 
 **Language features not built**
+* Session types built 2026-11-16 (Spec 23e, Guide 17a, `tests/run_session.py`). Left: three-party conversations; endpoints held in collections or tuple fields are not tracked; a branch of `when` that moves an endpoint on only some paths is checked loosely; a qualified case pattern `session.Left(e)` passes the checker but never matches at run time (write `session.Branch.Left(e)`); a message type is checked only where the endpoint's type is written.
 * GADTs built 2026-11-16 (Spec 6, Guide 24o, tests/run_gadt.py). Existential type variables built the same day (one-letter case variables; `case_scheme`, `case_env`, `gadt_call`). Left: case variables with more than one letter, GADTs on header enums.
 * `proxy` for a prelude interface other than the six built-ins; a forwarding that adds a `Self`-returning wrapper.
 * Short form `run fn (tx)` only when every argument is a bare name; an anonymous `fn` can't be written inline in a call.

@@ -2822,6 +2822,139 @@ fn job(out ChanW[String]) Result[Int, Error]
 
 Here `job` returns the error only after the worker has seen the cancel and finished. Reaching the end of a `wait` block normally does not cancel anything, so call `cancel(s)` yourself when a fiber would otherwise run forever. A fiber parked in a plain `read` or `sleep` can't see the token, so for fibers that must stop promptly wait in a `select` with a `cancelled` arm, and use `after(d)` for a sleep that can be cut short. A `wait` block parks, so it can't be in a pure function, and an abort in any fiber still ends the whole program.
 
+**17a. Session types: a channel that remembers the conversation** (`import session`)
+
+When two fibers talk in a fixed pattern ("you send a request, I send a reply"), an ordinary channel cannot tell you if someone gets the order wrong. A **session** is a pair of channel ends whose *type* is the conversation, so the compiler checks that each side follows it. You write the conversation once, as a type:
+
+```
+import session
+type alias Client = session.Send[Int, session.Recv[Int, session.End]]
+
+fiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]
+  (n, e2) = session.recv(e)?
+  e3 = session.send(e2, n * 2)?
+  Ok(session.finish(e3))
+
+fn client(c session.Endpoint[Client]) Result[Int, Error]
+  c2 = session.send(c, 21)?
+  (r, c3) = session.recv(c2)?
+  session.finish(c3)
+  Ok(r)
+
+c, s = session.connect[Client]()
+\run serve(move s)
+println(client(c))
+```
+
+Output: `Ok(42)`. `Client` reads "send an `Int`, then receive an `Int`, then stop". `session.connect[Client]()` gives you both ends: `c`, whose type is `Client`, and `s`, whose type is `session.Peer[Client]`, the mirror image (the other side receives where this side sends). Each step (`send`, `recv`, `finish`) takes the endpoint you hold and gives back the endpoint for the next step, so you rebind a new name each time. Once a step is taken the old name is used up.
+
+That is all you need for ordinary use, and the compiler now catches mistakes that would otherwise be a hang or a crash:
+
+- **Wrong order:** `recv` on an endpoint that should `send` first (``expected `Endpoint[Recv[T, S]]` ``).
+- **Wrong type:** sending a `String` where the conversation says `Int`.
+- **Using an endpoint twice:** ``use of moved value `c` ``, since a step used it up.
+- **Dropping the conversation:** a function that ends while the endpoint still has steps to go, or reaches `End` and never calls `finish`.
+- **The wrong end:** passing the client's end to a function that expects the server's.
+
+A step returns a `Result`, so `?` passes a failure on: if the other fiber has ended, your next step gets an `Err` instead of waiting forever. A program that never imports `session` pays nothing for any of this: the types are erased, and the endpoints are ordinary channels underneath.
+
+**Advanced: choices, loops, and handing over an endpoint.** The rest of this section is for conversations that branch or repeat, and it can be skipped.
+
+`Pick[A, B]` is a turn where *you* choose between two continuations, and `Offer[A, B]` is the other side's view: it waits and finds out. You choose with `session.pick_left(e)` or `session.pick_right(e)`, and the other side takes the result of `session.offer(e)` apart with `when`. It is a `session.Branch`, whose cases `Left` and `Right` each carry the endpoint for that branch.
+
+```
+import session
+type alias Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]
+
+fiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]
+  when session.offer(e)?
+    session.Branch.Left(e2) ->
+      (a, e3) = session.recv(e2)?
+      (b, e4) = session.recv(e3)?
+      e5 = session.send(e4, a + b)?
+      Ok(session.finish(e5))
+    session.Branch.Right(e2) -> Ok(session.finish(e2))
+
+fn client(c session.Endpoint[Client]) Result[Int, Error]
+  c2 = session.pick_left(c)?
+  c3 = session.send(c2, 20)?
+  c4 = session.send(c3, 22)?
+  (r, c5) = session.recv(c4)?
+  session.finish(c5)
+  Ok(r)
+
+c, s = session.connect[Client]()
+\run serve(move s)
+println(client(c))
+```
+
+Output: `Ok(42)`. Both arms of the `when` have to finish the conversation: leaving `e2` unused in either arm is the same error as above.
+
+**A conversation that repeats** names itself: a type alias may mention its own name for the point where it starts over.
+
+```
+import session
+type alias EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]
+type alias EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]
+
+fn serve(e session.Endpoint[EchoServer]) Result[Unit, Error]
+  when session.offer(e)?
+    session.Branch.Left(e2) ->
+      (n, e3) = session.recv(e2)?
+      e4 = session.send(e3, n * 2)?
+      serve(e4)
+    session.Branch.Right(e2) -> Ok(session.finish(e2))
+
+fn ask(c session.Endpoint[EchoClient], n Int, total Int) Result[Int, Error]
+  if n == 0
+    c2 = session.pick_right(c)?
+    session.finish(c2)
+    Ok(total)
+  else
+    c2 = session.pick_left(c)?
+    c3 = session.send(c2, n)?
+    (r, c4) = session.recv(c3)?
+    ask(c4, n - 1, total + r)
+
+fiber fn server(e session.Endpoint[EchoServer]) Result[Unit, Error]
+  serve(e)
+
+c, s = session.connect[EchoClient]()
+\run server(move s)
+println(ask(c, 3, 0))
+```
+
+Output: `Ok(12)`. The client asks for 3, 2 and 1 to be doubled, then ends it.
+
+**Handing over an endpoint.** An endpoint can itself be what a step sends: `Send[Endpoint[Private], End]`. The sender gives it up, and using it afterwards is the same ``use of moved value`` error, so exactly one fiber holds each end at any time.
+
+```
+import session
+type alias Private = session.Send[Int, session.Recv[Int, session.End]]
+type alias Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]
+
+fiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]
+  (line, e2) = session.recv(e)?
+  session.finish(e2)
+  (n, l2) = session.recv(line)?
+  l3 = session.send(l2, n + 100)?
+  Ok(session.finish(l3))
+
+mc, ms = session.connect[Main]()
+pc, ps = session.connect[Private]()
+\run worker(move ms)
+mc2 = session.send(mc, ps)?
+session.finish(mc2)
+pc2 = session.send(pc, 5)?
+(r, pc3) = session.recv(pc2)?
+session.finish(pc3)
+println(r)
+```
+
+Output: `105`. The client opens a second, private conversation, hands one end of it to the worker through the first, and then talks to the worker on it.
+
+**Limits.** A session has exactly two ends (there are no three-party conversations), and the type says what is sent and received, not what the values mean or how long a step may take. Message types are checked when the endpoint is used, so a wrong value is a compile error only where the compiler can see the endpoint's type, which is wherever the type is written (a parameter, a binding from `connect`). **Mistakes:** forgetting `finish` at the end, using the old name after a step (write `c2 = session.send(c, 1)?` and carry on with `c2`), and passing the client's end where the server's is expected.
+
 **Chapter 18: Errors and `?`**
 
 There is no `try`: a failing operation returns a `Result`.

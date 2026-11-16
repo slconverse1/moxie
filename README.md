@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (session types)
+- **Session types** (`import session`, Spec 23e, Guide 17a): a pair of channel ends whose type is the conversation. `Send`, `Recv`, `Pick`/`Offer` (choices), `End`, recursive aliases for loops, delegation (an endpoint sent over another session), `Peer[S]` for the other end, `connect[S]()`. The checker rejects steps in the wrong order or with the wrong type, a used-up endpoint, a conversation dropped before `End` or never `finish`ed, and the wrong end handed to a function. Built on ordinary channels with the types erased; a program that does not import `session` pays nothing. tests/run_session.py.
+- **Checker (found while building it)**: nested generic types are compared (`Endpoint[End]` where `Endpoint[Send[T, S]]` is wanted); a type parameter given two types by two arguments is an error; `f[A](...)` with explicit type arguments has a typed result; a call with `move` arguments still gets its generic result type.
+
 ### 2026-11-16 (operator sections)
 - **Placeholders and operator sections are typed**: `_`, `_2` and the missing side of `(+ 1)`, `(> "x")`, `(and true)` take the type of the lambda parameter they stand for, so `xs.map((+ 1))` on Strings is an error. tests/run_sections.py.
 
