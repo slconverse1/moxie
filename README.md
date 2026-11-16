@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-15: capturing closures in collection literals.** A capturing closure written inside a `Dict(...)`, `List(...)`, `Set(...)` or `Array(...)` literal is now the same compile error as in an annotated slot (moxie only; moxie/gc stores it). It used to slip through. Module-level names aren't captures.
+
 **2026-11-15: several Dict entries at once, and tuple keys in literals.** `Dict(...ages, {alice, bob, dave} -> (31, 26, 7))`: braces mark a list of keys, and a tuple of values pairs with them by position, so a count mismatch is a compile error. A tuple on the left of a plain `->` is one key, so `Dict((0, 0) -> "start")` works; before this a tuple-keyed literal silently produced an empty Dict.
 
 **2026-11-15: a Dict spreads into a Dict literal.** `Dict(...ages, alice -> 31, dave -> 7)` copies the old entries first, in order, then applies the new ones: a key already there is replaced in place, a new key goes at the end. Before this, `Dict(...d)` silently dropped the entries of `d`. Also fixed today: a `wait` block (and a `select` with no `default`) crashed the Try page's permission check with `KeyError: 'parks'`.

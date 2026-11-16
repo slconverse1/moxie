@@ -4192,12 +4192,29 @@ class Checker(RefineMixin):
         self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
         self.rf_check_call(n, sc, k.get("extra", a[0] if a else 0))
         self.check_dict_spread(n, sc)
+        self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
         r = self._e_Call(n, sc, *a, **k)
         for item in self.pending_gone[mark:]:
             self.mark_gone(*item)          # the receiver is gone once the call has been checked
         del self.pending_gone[mark:]
         return r
+
+    def check_literal_closures(self, n, sc):
+        """`Dict("a" -> (x) -> x * k)`, `List((x) -> x + k)`: a capturing closure as a collection element is the same error as in an annotated slot (moxie only; in moxie/gc a closure is a heap object)."""
+        base = n.fn.base if n.fn.__class__ is GenApp else n.fn
+        if base.__class__ is not Name or base.name not in ("Dict", "List", "Set", "Array") \
+                or base.name in self.tuples or base.name in self.enums:
+            return
+        def lams(e):
+            if e.__class__ is Lambda:
+                yield e
+            elif e.__class__ is TupleE:
+                for it in e.items:
+                    yield from lams(it[1])
+        for a in n.args or []:
+            for lam in lams(getattr(a, "expr", None)):
+                self.check_stored_closure(lam, sc, getattr(a, "line", 0) or n.line)
 
     def check_dict_spread(self, n, sc):
         """`Dict(...x)`: only a Dict can be spread into a Dict literal; anything else used to be dropped without a word."""
