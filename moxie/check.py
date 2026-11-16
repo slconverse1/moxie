@@ -1569,6 +1569,17 @@ class Checker(RefineMixin):
             return ("sz", e.op, a, b)
         return None
 
+    @staticmethod
+    def mentions_case_rigid(t):
+        """True when `t` holds a type variable a GADT case introduced for the current arm (`A'`)."""
+        if t.__class__ is tuple:
+            if len(t) == 2 and t[0] == "rigid":
+                return t[1].endswith("'")
+            return any(Checker.mentions_case_rigid(x) for x in t)
+        if t.__class__ is list:
+            return any(Checker.mentions_case_rigid(x) for x in t)
+        return False
+
     def apply_eq(self, t):
         """Inside a GADT arm a type parameter is known to be a particular type (`T` is `Int` in the `Num` arm)."""
         if t.__class__ is tuple and len(t) == 2 and t[0] in ("rigid", "param") and t[1] in self.tp_eq:
@@ -1595,7 +1606,8 @@ class Checker(RefineMixin):
         return out
 
     def gadt_facts(self, p, st):
-        """The type equations a pattern on a GADT value teaches: `Num(n)` on a `Value[T]` makes `T` an `Int`."""
+        """The type equations a pattern on a GADT value teaches: `Num(n)` on a `Value[T]` makes `T` an `Int`, and `Pair(a, b)` makes
+        it `(A', B')` for the arm's own `A'` and `B'`."""
         if p.__class__ is PAs:
             p = p.pat
         if p.__class__ is not PCon or st.__class__ is not tuple or st[0] != "app" or st[1] not in self.enums:
@@ -1605,11 +1617,14 @@ class Checker(RefineMixin):
         cs = next((c for c in ed.cases if c.name == p.path[-1]), None)
         if not tps or cs is None or getattr(cs, "ret", None) is None:
             return {}
-        r = cs.ret
+        binds = self.case_env(ed, cs, st[2])
+        rt = self.case_scheme(ed, cs)[3]
         out = {}
-        for tp, want, have in zip(tps, r.groups[0] if r.groups else [], st[2]):
+        if rt.__class__ is not tuple or len(rt[2]) != len(st[2]):
+            return out
+        for want, have in zip(rt[2], st[2]):
             if have.__class__ is tuple and len(have) == 2 and have[0] in ("rigid", "param"):
-                wt = self.ty_of_type(want)
+                wt = self.holes(want, binds)
                 if wt is not None and not (wt.__class__ is tuple and wt[0] in ("rigid", "param") and wt[1] == have[1]):
                     out[have[1]] = wt
         return out
@@ -1754,8 +1769,10 @@ class Checker(RefineMixin):
         if ty[0] == "app":
             if len(tps) != len(ty[2]) or any(tp.holes for tp in tps):
                 return None
-            keep = {tp.name for tp in tps}
+            keep = {tp.name for tp in tps} | self.case_vars(ed, cs)
             bind = {tp.name: a for tp, a in zip(tps, ty[2])}
+            if getattr(cs, "ret", None) is not None or self.case_vars(ed, cs):
+                bind.update(self.case_env(ed, cs, ty[2]))
             out = {}
             for x in flds:
                 ft = self.ty_of_type(x.type, 0, keep)
@@ -3790,7 +3807,7 @@ class Checker(RefineMixin):
                 self.ev(a.guard, inner)
             at, ac = self.ev(a.body, inner)
             arm_ts.append(at)
-            if tail and at is not None and not self.has_unsettled(at) and not (a.body.__class__ is WhenE or a.body.__class__ is IfE):
+            if tail and at is not None and (not self.has_unsettled(at) or self.mentions_case_rigid(at)) and not (a.body.__class__ is WhenE or a.body.__class__ is IfE):
                 self.settle_mixed(a.body, self.fn_ret)
                 self.compat(self.fn_ret, at, ac, getattr(a.body, "line", 0) or n.line)       # an arm's value is the function's result
             self.tp_eq = old_eq
@@ -5163,7 +5180,7 @@ class Checker(RefineMixin):
                 and f.name in self.cases and len(self.cases[f.name]) == 1:
             ed = self.enums[self.cases[f.name][0]]
             cs = next((c for c in ed.cases if c.name == f.name), None)
-        if cs is not None and getattr(ed, "tparams", None) and getattr(cs, "ret", None) is not None and n.trailing is None:
+        if cs is not None and getattr(ed, "tparams", None) and (getattr(cs, "ret", None) is not None or self.case_vars(ed, cs)) and n.trailing is None:
             self.check_gadt_args(ed, cs, n, sc)
             return
         if cs is None or getattr(ed, "tparams", None) or n.trailing is not None:
@@ -5175,38 +5192,88 @@ class Checker(RefineMixin):
         shim = type("CaseShim", (), {"name": cs.name, "fields": cs.fields or [], "spread": None})()
         self.check_tuple_args(shim, args, ats, n.line)
 
-    def check_gadt_args(self, ed, cs, n, sc):
-        """`Add(Num(1), Flag(true))`: a payload whose type has no type parameter of the enum is checked against its field."""
+    def case_vars(self, ed, cs):
+        """The type variables a case introduces itself: one-letter names in its fields or result type that are not the enum's own
+        parameters (`A` and `B` in `Pair(a Value[A], b Value[B]) Value[(A, B)]`)."""
         names = {tp.name for tp in ed.tparams}
-        def free(t):
-            return any(getattr(x, "name", None) in names or x in names for x in self.walk_names(t))
+        known = self.known_type_names() | set(self.aliases)
+        src = [f.type for f in cs.fields or [] if getattr(f, "type", None) is not None] + [getattr(cs, "ret", None)]
+        return {x for x in self.walk_names(src) if re.fullmatch(r"[A-Z][0-9]?", x) and x not in names and x not in known}
+
+    def case_scheme(self, ed, cs):
+        """(variables, field types, result type) of a case, with the enum's parameters and the case's own variables as ("param", n)."""
+        vs = self.case_vars(ed, cs)
+        keep = {tp.name for tp in ed.tparams} | vs
         flds = [x for x in cs.fields or [] if getattr(x, "name", None) not in (None, "...")]
+        fts = [self.ty_of_type(x.type, 0, keep) for x in flds]
+        if getattr(cs, "ret", None) is not None:
+            rt = self.ty_of_type(cs.ret, 0, keep)
+        else:
+            rt = ("app", ed.name, tuple(("param", tp.name) for tp in ed.tparams))
+        return vs, flds, fts, rt
+
+    @staticmethod
+    def holes(t, binds):
+        """`t` with its parameters replaced by what `binds` holds, and by an unknown (None) where nothing is bound."""
+        if t.__class__ is tuple:
+            if len(t) == 2 and t[0] == "param":
+                return binds.get(t[1])
+            return tuple(Checker.holes(x, binds) if x.__class__ in (tuple, list) else x for x in t)
+        if t.__class__ is list:
+            return [Checker.holes(x, binds) for x in t]
+        return t
+
+    def case_env(self, ed, cs, targs):
+        """Bindings for a pattern on a case of a value of type `ed[targs]`: what the result type fixes, and a fresh rigid type for
+        every case variable it leaves open (`A'`, known only inside the arm)."""
+        vs, flds, fts, rt = self.case_scheme(ed, cs)
+        binds = {}
+        if targs is not None and rt.__class__ is tuple and len(rt[2]) == len(targs):
+            tys.unify(rt, ("app", ed.name, tuple(targs)), binds)
+        for v in vs:
+            binds.setdefault(v, ("rigid", v + "'"))
+        return binds
+
+    def gadt_call(self, ed, cs, n, sc, report=True):
+        """The type of a call of a case that has a result type or variables of its own: each payload is checked against its field
+        (`Add(Num(1), Flag(true))` is an error) and the case's variables are bound from the payloads, so `Pair(Num(1), Flag(true))`
+        is a `Value[(Int, Bool)]`.  A variable no payload fixes is left unknown."""
+        vs, flds, fts, rt = self.case_scheme(ed, cs)
+        binds = {}
         for i, a in enumerate(n.args or []):
-            if not hasattr(a, "expr") or getattr(a, "label", None) or i >= len(flds) or flds[i].type is None:
+            if not hasattr(a, "expr") or getattr(a, "label", None) or i >= len(fts) or fts[i] is None:
                 continue
-            if free(flds[i].type):
-                continue
-            ft = self.ty_of_type(flds[i].type)
             at, ac = self.quiet(a.expr, sc)
-            if ft is None or at is None or self.has_unsettled(at):
+            if at is None:
                 continue
-            self.compat(ft, at, ac, getattr(a.expr, "line", 0) or n.line)
+            exp = self.holes(fts[i], binds)
+            before = len(self.diags)
+            if report and not self.has_unsettled(at):
+                self.compat(exp, at, ac, getattr(a.expr, "line", 0) or n.line)
+            clash = tys.unify(fts[i], at, binds)
+            if clash and report and len(self.diags) == before:
+                self.err(getattr(a.expr, "line", 0) or n.line, f"mismatched types: expected `{tshow(clash[0])}`, found `{tshow(clash[1])}`")
+        return self.holes(rt, binds)
+
+    def check_gadt_args(self, ed, cs, n, sc):
+        self.gadt_call(ed, cs, n, sc)
 
     @staticmethod
     def walk_names(t):
-        """Every name in a written type."""
+        """Every name in a written type, wherever it sits (type arguments, function types, tuple types)."""
         out = []
         stack = [t]
         while stack:
             x = stack.pop()
-            if x is None:
+            if x is None or x.__class__ is str:
                 continue
             if x.__class__ is TName:
                 out.extend(x.path)
-                for g in x.groups or []:
-                    stack.extend(g)
+                stack.extend(x.groups or [])
             elif isinstance(x, (list, tuple)):
                 stack.extend(x)
+            elif hasattr(x, "_fields"):
+                stack.extend(getattr(x, f, None) for f in x._fields)
         return out
 
     def _unused_enum(self):
@@ -5352,8 +5419,10 @@ class Checker(RefineMixin):
                 return None
             names = [tp.name for tp in tps]
             gc = next(c for c in ed.cases if c.name == case)
-            if getattr(gc, "ret", None) is not None and not any(x in names for x in self.walk_names(gc.ret)):
-                return self.ty_of_type(gc.ret)               # `Num(1)` is a `Value[Int]`, as the case says
+            if getattr(gc, "ret", None) is not None or self.case_vars(ed, gc):
+                if getattr(gc, "ret", None) is not None and not self.case_vars(ed, gc) and not any(x in names for x in self.walk_names(gc.ret)):
+                    return self.ty_of_type(gc.ret)           # `Num(1)` is a `Value[Int]`, as the case says
+                return self.gadt_call(ed, gc, call, sc, report=False)
             binds = {}                                        # a type argument is known when a payload of exactly that type is given
             cs = next(c for c in ed.cases if c.name == case)
             flds = [x for x in cs.fields or [] if getattr(x, "name", None) not in (None, "...")]
