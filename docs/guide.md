@@ -4441,6 +4441,27 @@ Nothing changes at run time: types are erased, so a `Value` is the same enum val
 
 **Other languages.** Haskell and Scala 3 have GADTs with a general type-equality solver, so a case may refine several parameters at once and a pattern match can introduce new type variables. Kotlin and Rust have no GADTs; the usual workaround is a sealed class or enum with an unchecked cast in each arm, which the compiler cannot verify. Moxie's version is smaller: a case's result type names each parameter either as a plain type (`Int`) or as the enum's own parameter, a `when` arm records one equation per parameter, and there are no existential type variables. A case such as `Pair(a Value[A], b Value[B]) Value[(A, B)]` is not supported yet.
 
+**24p. Typestate: a type that remembers what happened to a value**
+
+A generic type may have a parameter that no field uses. It exists only so the type can say which state a value is in. The state types are empty tuples.
+
+```
+tuple Open()
+tuple Closed()
+tuple File[S]
+  name String
+
+fn mk(n String) File[Open] = File(name: n)
+fn rd(f File[Open]) String = "read " + f.name
+fn cl(f File[Open]) File[Closed] = File(name: f.name)
+
+f = mk("a.txt")
+println(rd(f))
+g = cl(f)
+println(g.name)
+```
+
+Output: `read a.txt`, then `a.txt`. Now `rd(g)` is a compile error (``expected `File[Open]`, found `File[Closed]` ``), and so is closing `g` a second time. The state costs nothing at run time. Use it for protocols with an order (open, then read, then close; connect, then authenticate, then query). A GADT (24o) is the tool when the cases of one enum carry different states; typestate is simpler when each state is its own function signature.
 
 **Chapter 25: Moxie for imperative programmers**
 

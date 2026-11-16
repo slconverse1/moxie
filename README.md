@@ -20,6 +20,9 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (typestate)
+- **Guide 24p: typestate.** A phantom type parameter (`File[Open]`, `File[Closed]`) already gives compile-time protocols with no new compiler code; tests/run_typestate.py.
+
 ### 2026-11-16 (GADTs)
 - **GADTs**: an enum case may state its own result type (`Num(n Int) Value[Int]`). A constructor call has that type, so `Add(Num(1), Flag(true))` is a compile error; a `when` arm learns the type parameter (`T` is `Int` in the `Num` arm); cases the scrutinee's type rules out need no arm, and an arm for one is an error. Types are erased at run time. Spec 6 (Enums), Guide 24o (with the tagless-final and open-data-type comparison), tests/run_gadt.py. Not supported: existential type variables in a case.
 
