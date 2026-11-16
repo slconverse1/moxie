@@ -54,7 +54,8 @@ def show(t):
         return f"{t[1]}[{', '.join(show(a) for a in t[2])}]" + (f"[{show_size(t[3])}]" if len(t) > 3 and t[3] is not None else "")
     if tag == "fn":
         ps = "" if tuple(t[1]) == ("Unit",) else ", ".join(show(p) for p in t[1])       # a function of no parameters is written `() -> T`
-        return f"({ps}) -> {show(t[2])}"
+        cp = f" with ({', '.join(t[3])})" if len(t) > 3 and t[3] is not None else ""
+        return f"({ps}) -> {show(t[2])}{cp}"
     if tag == "tup":
         labs = t[2] if len(t) > 2 else (None,) * len(t[1])
         return "(" + ", ".join((f"{show_label(l)}: " if l is not None else "") + show(i) for l, i in zip(labs, t[1])) + ")"
@@ -145,6 +146,8 @@ def compatible(exp, act):
     if et == "fn" and at == "fn":
         if len(exp[1]) != len(act[1]):
             return True      # arities differ legitimately (callbacks, tuple unpacking)
+        if len(exp) > 3 and len(act) > 3 and exp[3] is not None and act[3] is not None and exp[3] != act[3]:
+            return False     # closures that capture different kinds of values are different types
         return all(compatible(x, y) for x, y in zip(exp[1], act[1])) and compatible(exp[2], act[2])
     if (et == "tup" and at in ("named", "app")) or (at == "tup" and et in ("named", "app")):
         return True          # a tuple literal may stand for a declared tuple: its fields are checked where it is built
@@ -202,7 +205,7 @@ def subst(t, binds):
             return REDUCER(t[1], args)
         return ("tapp", t[1], args)
     if tag == "fn":
-        return ("fn", tuple(subst(p, binds) for p in t[1]), subst(t[2], binds))
+        return ("fn", tuple(subst(p, binds) for p in t[1]), subst(t[2], binds)) + tuple(t[3:])
     if tag == "tup":
         out, labs = [], []
         tl = t[2] if len(t) > 2 else (None,) * len(t[1])
@@ -309,7 +312,9 @@ def join(a, b):
         return ("tup", tuple(parts)) + ((la,) if la is not None and la == lb else ())
     if a.__class__ is tuple and b.__class__ is tuple and a[0] == b[0] == "fn" and len(a[1]) == len(b[1]):
         parts = [join(x, y) for x, y in zip(a[1], b[1])] + [join(a[2], b[2])]
-        return "conflict" if "conflict" in parts else ("fn", tuple(parts[:-1]), parts[-1])
+        if len(a) > 3 and len(b) > 3 and a[3] != b[3]:
+            return "conflict"
+        return "conflict" if "conflict" in parts else ("fn", tuple(parts[:-1]), parts[-1]) + (a[3:] if a[3:] == b[3:] else ())
     return "conflict"
 
 

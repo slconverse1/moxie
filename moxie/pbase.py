@@ -147,16 +147,32 @@ class PBase:
             return TUnion(members, line=t.line)
         return t
 
-    def parse_type_fn(self):
+    def parse_type_fn(self, inner=False):
         line = self.peek().line
         t = self.parse_type_prim()
         if self.at_op("->"):
             self.next()
-            ret = self.parse_type_fn()
+            ret = self.parse_type_fn(inner=True)
             if isinstance(t, TTuple):
-                return TFn(t.items, ret, None, line=line)
-            return TFn([(None, t)], ret, None, line=line)
+                f = TFn(t.items, ret, None, line=line)
+            else:
+                f = TFn([(None, t)], ret, None, line=line)
+            if not inner and self.at_name("with") and self.at_op("(", 1):
+                self.next()
+                f.caps = self.parse_caps()
+            return f
         return t
+
+    def parse_caps(self):
+        """`with (Int, String)` after a function type: the types of the values a closure of this type captures (order does not matter)."""
+        self.expect_op("(")
+        out = []
+        while not self.at_op(")"):
+            out.append(self.parse_type())
+            if not self.eat_op(","):
+                break
+        self.expect_op(")")
+        return out
 
     def parse_type_prim(self):
         t = self.peek()

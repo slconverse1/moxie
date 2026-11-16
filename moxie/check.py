@@ -922,7 +922,10 @@ class Checker(RefineMixin):
             return ("bound", ("pvar", t.name), (t.iface,) + tuple(t.also or []))
         if c is TFn:
             ps = tuple(self.ty_of_type(p[1] if isinstance(p, tuple) else p, depth + 1, keep, False) for p in (t.params or []))
-            return ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
+            ft = ("fn", ps, self.ty_of_type(t.ret, depth + 1, keep, False) if t.ret is not None else "Unit")
+            if t.caps is not None:           # `(Int) -> Int with (Int)`: a closure type, by the types it captures
+                ft += (tuple(sorted(tys.show(self.ty_of_type(x, depth + 1, keep, False)) for x in t.caps)),)
+            return ft
         if c is TTuple:
             items = tuple(("spread", self.ty_of_type(ft, depth + 1, keep, False)) if lab == "..." else
                           self.ty_of_type(ft, depth + 1, keep, False) for lab, ft in t.items)
@@ -2599,7 +2602,29 @@ class Checker(RefineMixin):
         self.fn_ret, self.loop_depth, self.exit_ctx, self.in_fiber = saved
         if n.partial or (body.__class__ is Block and self.leaves_early(body)):
             bt = None                     # a block that returns or uses `?` has more than one way out
-        return ("fn", tuple(ptypes) or ("Unit",), self.base(bt)), None       # `() -> T` is written with one Unit parameter, as in sigs.py
+        ft = ("fn", tuple(ptypes) or ("Unit",), self.base(bt))       # `() -> T` is written with one Unit parameter, as in sigs.py
+        lay = self.lam_layout(n, sc)
+        return (ft + (lay,) if lay is not None else ft), None
+
+    def lam_layout(self, lam, sc):
+        """The capture layout of a closure: the types of the outer values it uses (sorted, so the order of use does not matter), or None
+        for a plain function or when a captured type is not known yet."""
+        if lam.partial:
+            return None
+        names = self.lambda_captures(lam, sc)
+        if not names:
+            return None
+        shown = []
+        for nm in names:
+            v = sc.find(nm)
+            t = getattr(v, "ty", None)
+            if t is None or self.has_unsettled(t):
+                return None
+            shown.append(tys.show(self.base(t)))
+        return tuple(sorted(shown))
+
+    def layout_text(self, lay):
+        return "with (" + ", ".join(lay) + ")" if lay else "with no captures"
 
     @staticmethod
     def leaves_early(e):
@@ -2980,6 +3005,8 @@ class Checker(RefineMixin):
     def e_Assign(self, n, sc):
         self.rf_prev_stmt = n                              # the `Refine` the parser put after `x Pos = v` reads it
         if n.ann is not None and n.op == "=":
+            if n.value.__class__ is Call:
+                self.__dict__.setdefault('slot_anns', {})[id(n.value)] = n.ann                   # a collection literal reads its written element type (`with (...)` layouts)
             self.expect_union(n.value, n.ann)
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
@@ -2999,7 +3026,6 @@ class Checker(RefineMixin):
                 self.tag_ctor_args(n.ann.groups[0][0], n.value)
             self.check_literal_capacity(n, ann)
             self.check_marr(n)
-            self.check_lambda_slots(n, ann, sc)
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is Binary \
                 and n.value.op in ("<<", ">>") and n.value.r.__class__ is IntLit and not n.value.r.suffix:
             w = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(n.ann.path[-1], 64)
@@ -3108,7 +3134,8 @@ class Checker(RefineMixin):
                     pv = sc.find(pc.fn.name) if pc.__class__ is Call and pc.fn.__class__ is Name else None
                     if n.value.__class__ is Lambda and pv is not None and (pv.fnstore or pv.ty.__class__ is tuple and pv.ty[0] == "app"
                             and any(a.__class__ is tuple and a[0] == "fn" and not tys.params_in(a) for a in pv.ty[2])):
-                        self.check_stored_closure(n.value, sc, n.line)
+                        self.check_stored_closure(n.value, sc, n.line, next((a for a in (pv.ty[2] if pv.ty.__class__ is tuple and pv.ty[0] == "app" else ())
+                                                                          if a.__class__ is tuple and a[0] == "fn"), None))
             else:
                 vt = ann or t
                 if tgt.__class__ is PTuple and vt.__class__ is tuple and vt[0] == "tup" and not any(q.__class__ is PRest for _, q in tgt.items or []) \
@@ -4258,9 +4285,12 @@ class Checker(RefineMixin):
         return r
 
     def check_literal_closures(self, n, sc):
-        """`Dict("a" -> (x) -> x * k)`, `List((x) -> x + k)`: a capturing closure as a collection element is the same error as in an annotated slot (moxie only; in moxie/gc a closure is a heap object)."""
+        """Capturing closures written inside a `Dict(...)`, `List(...)`, `Set(...)` or `Array(...)` literal (moxie only; in moxie/gc a closure
+        is a heap object). They need one capture layout: the one the annotation writes (`(Int) -> Int with (Int)`), else the layout of the
+        first closure, and every closure after it must capture the same kinds of values."""
+        from .values import GC
         base = n.fn.base if n.fn.__class__ is GenApp else n.fn
-        if base.__class__ is not Name or base.name not in ("Dict", "List", "Set", "Array") \
+        if GC[0] or base.__class__ is not Name or base.name not in ("Dict", "List", "Set", "Array") \
                 or base.name in self.tuples or base.name in self.enums:
             return
         def lams(e):
@@ -4269,9 +4299,42 @@ class Checker(RefineMixin):
             elif e.__class__ is TupleE:
                 for it in e.items:
                     yield from lams(it[1])
+        found = []
         for a in n.args or []:
             for lam in lams(getattr(a, "expr", None)):
-                self.check_stored_closure(lam, sc, getattr(a, "line", 0) or n.line)
+                found.append((lam, getattr(a, "line", 0) or n.line))
+        if not found:
+            return
+        want, written = None, False
+        ann = self.__dict__.get("slot_anns", {}).get(id(n))
+        slots = []
+        if ann is not None and ann.__class__ is TName and ann.groups:
+            slots = [x for g in ann.groups for x in (g if isinstance(g, list) else [g]) if x.__class__ is TFn]
+        gen = n.fn.groups if n.fn.__class__ is GenApp and getattr(n.fn, "groups", None) else None
+        if not slots and gen:
+            slots = [x for g in gen for x in (g if isinstance(g, list) else [g]) if x.__class__ is TFn]
+        slots = [x for x in slots if not self.type_mentions_param(x)]
+        if slots:
+            written = True
+            ft = self.ty_of_type(slots[-1])
+            want = ft[3] if len(ft) > 3 else None
+        for lam, line in found:
+            names = self.lambda_captures(lam, sc)
+            if not names:
+                continue
+            lay = self.lam_layout(lam, sc)
+            if lay is None and not (written and want is None):
+                continue                                  # a captured type is not known yet
+            if written:
+                if want is None:
+                    self.err(line, f"closure captures `{names[0]}`, and only plain functions can be stored here (a tuple field, collection element, Dict value, or channel element of a function type); "
+                                   f"to store closures that capture values, write the type with a layout, `(...) -> ... with (Int)`")
+                elif lay != want:
+                    self.err(line, f"this closure captures {self.layout_text(lay)[5:]}, but the type is written {self.layout_text(want)}: every closure stored together has to capture the same kinds of values")
+            elif want is None:
+                want = lay
+            elif lay != want:
+                self.err(line, f"this closure captures {self.layout_text(lay)[5:]}, but an earlier one captures {self.layout_text(want)[5:]}: closures stored together have to capture the same kinds of values (or none of them may capture)")
 
     def check_dict_spread(self, n, sc):
         """`Dict(...x)`: only a Dict can be spread into a Dict literal; anything else used to be dropped without a word."""
@@ -5718,13 +5781,23 @@ class Checker(RefineMixin):
     def globals_nonvar(self):
         return set(self.tuples) | set(self.enums) | set(self.aliases) | set(self.cases)
 
-    def check_stored_closure(self, lam, sc, line):
+    def check_stored_closure(self, lam, sc, line, slot=None):
+        """A closure stored in a slot of a written function type. `slot` is that type; one written with `with (...)` takes closures of exactly that
+        capture layout, and any other takes plain functions only."""
         from .values import GC
         if GC[0]:
             return                    # moxie/gc: a closure is a heap object, so it can be stored anywhere
         names = self.lambda_captures(lam, sc)
-        if names:
-            self.err(line, f"closure captures `{names[0]}`, and only plain functions can be stored here (a tuple field, collection element, Dict value, or channel element of a function type)")
+        if not names:
+            return
+        want = slot[3] if slot is not None and len(slot) > 3 else None
+        if want is not None:
+            lay = self.lam_layout(lam, sc)
+            if lay is not None and lay != want:
+                self.err(line, f"this closure captures {self.layout_text(lay)[5:]}, but the closures stored here capture {self.layout_text(want)[5:]}: every closure stored together has to capture the same kinds of values")
+            return
+        self.err(line, f"closure captures `{names[0]}`, and only plain functions can be stored here (a tuple field, collection element, Dict value, or channel element of a function type); "
+                       "to store closures that capture values, write the type with a layout, `(...) -> ... with (Int)`")
 
     def check_lambda_slots(self, n, ann, sc):
         """`m: Dict[String, (Int) -> Int] = Dict("a": (x): x * k)`: a capturing closure in a concrete function-typed slot."""
@@ -6032,7 +6105,7 @@ class Checker(RefineMixin):
                 self.tag_declared(a.expr, f.type)
             if getattr(a, "expr", None).__class__ is Lambda and f.type.__class__ is TFn and not getattr(td, "tparams", None) \
                     and self.cur_sc is not None and not self.type_mentions_param(f.type):
-                self.check_stored_closure(a.expr, self.cur_sc, line)
+                self.check_stored_closure(a.expr, self.cur_sc, line, self.ty_of_type(f.type))
 
     def hidden_foreign_param(self, p):
         """A foreign parameter the caller does not supply: a length filled in by the call, or an out-handle."""

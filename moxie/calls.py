@@ -1115,7 +1115,7 @@ class CallsMixin:
         if c is TTuple:
             return TTuple([(lab, self.close_type(x, env, bound)) for lab, x in t.items], line=t.line)
         if c is TFn:
-            return TFn([(lab, self.close_type(x, env, bound)) for lab, x in t.params], self.close_type(t.ret, env, bound), t.recv, line=t.line)
+            return TFn([(lab, self.close_type(x, env, bound)) for lab, x in t.params], self.close_type(t.ret, env, bound), t.recv, [self.close_type(x, env, bound) for x in t.caps] if t.caps is not None else None, line=t.line)
         return t
 
     def targ_value(self, ta, env):

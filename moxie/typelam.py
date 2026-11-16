@@ -34,7 +34,7 @@ def subst(t, binds):
     if c is TTuple:
         return TTuple([(lab, subst(ft, binds)) for lab, ft in t.items], line=t.line)
     if c is TFn:
-        return TFn([(lab, subst(pt, binds)) for lab, pt in t.params], subst(t.ret, binds), subst(t.recv, binds), line=t.line)
+        return TFn([(lab, subst(pt, binds)) for lab, pt in t.params], subst(t.ret, binds), subst(t.recv, binds), [subst(x, binds) for x in t.caps] if t.caps is not None else None, line=t.line)
     if c is TUnion:
         return TUnion([subst(m, binds) for m in t.members], line=t.line)
     if c is TStatic:

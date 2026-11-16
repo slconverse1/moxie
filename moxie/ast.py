@@ -144,7 +144,7 @@ def _defs():
         # types
         "TName": "path groups",
         "TTuple": "items",
-        "TFn": "params ret recv",
+        "TFn": "params ret recv caps",
         "TUnion": "members",
         "TAny": "iface also",            # any Named + Aged: also lists the further interfaces (an intersection)
         "TStatic": "inner",
