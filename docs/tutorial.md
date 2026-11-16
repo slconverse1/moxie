@@ -14,6 +14,8 @@ python3 -m moxie run gradebook.mxi
 
 The output shown after each step is what the whole file prints at that point, so you can check your work. The Mixer's Guide and the Spec are the places to go when you want the full details.
 
+Most steps end with a short **exercise** and a solution you can open with a click. The exercises are practice, not part of the running file: try one, then compare. The solutions were run against the gradebook as built so far.
+
 ## Step 1. Say hello
 
 ```moxie
@@ -28,6 +30,24 @@ Welcome to Moxie 101
 `class_name = "Moxie 101"` binds a name to a value. There is no `let` or `var`, and no type to write: the compiler works out that `class_name` is a `String`. A `$name` inside a string drops the value in, and `${...}` does the same for any expression, as in `"${score + 5}"`.
 
 *Note for the curious.* Values in moxie never change. Writing `class_name = "Moxie 102"` later wouldn't alter the old string. It would point the name at a new one. That one rule is why so much of the language is simple.
+
+**Exercise.** Bind a second name, `teacher`, to a string and print `Welcome to Moxie 101, taught by` that teacher, using `$` for both names.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+teacher = "Ms. Ray"
+println("Welcome to $class_name, taught by $teacher")
+```
+
+The new line it prints:
+
+```output
+Welcome to Moxie 101, taught by Ms. Ray
+```
+
+</details>
 
 ## Step 2. A function that decides
 
@@ -53,6 +73,31 @@ Three things to notice:
 - **Indentation is the structure.** Two spaces open a block, and there are no braces.
 - **`when` picks the first arm that matches.** The patterns can be literals, ranges such as `80..=89`, or comparisons such as `>= 90`. The last arm, `_`, matches anything, and the compiler insists you have one when it can't tell that every value is covered. If you remove the `_` arm, the program won't run.
 
+**Exercise.** Add a grade `D` for scores from 60 up to 69, and print `letter(65)`.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+fn letter(score Int) String
+  when score
+    >= 90 -> "A"
+    >= 80 -> "B"
+    >= 70 -> "C"
+    >= 60 -> "D"
+    else "F"
+
+println(letter(65))
+```
+
+Replace the old `letter` with this one. The new last line it prints:
+
+```output
+D
+```
+
+</details>
+
 ## Step 3. Data with names
 
 ```moxie
@@ -77,6 +122,26 @@ Bob 88 false
 Moxie has no `struct` or `class`. A `tuple` is the record type: a named list of fields. `deriving show, eq` asks the compiler to write the code that prints a `Student` and compares two of them.
 
 `Student(...bob, score: bob.score + 5)` is how you "change" a field. It builds a new `Student` that copies everything from `bob` and replaces `score`. The original `bob` is untouched, which is why `bob == curved` is `false`.
+
+**Exercise.** Write `fn raise(s Student, by Int) Student` that gives back a student with the score raised by `by`, and print `raise(bob, 3)`.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+fn raise(s Student, by Int) Student
+  Student(...s, score: s.score + by)
+
+println(raise(bob, 3))
+```
+
+The new line it prints:
+
+```output
+Student(name: "Bob", score: 86)
+```
+
+</details>
 
 ## Step 4. Many students
 
@@ -113,7 +178,31 @@ The `|>` pipe feeds the value on its left into the call on its right, so a calcu
 Two moxie-specific details:
 
 - **Collections have a size.** `List[Student][4]` means "a list of at most four students." Moxie has no garbage collector and no heap, so every list is a fixed block, and `collect()` needs to be told which one you want. A list built from `List(...)` is sized for what you gave it.
-- **No `total += s.score` in a loop.** Names are rebound at each pass, not accumulated, so a loop can't build up a sum. A stream ending in `sum()` or `reduce` is the idiom, and it is shorter anyway.
+- **A loop doesn't accumulate by itself.** `total += s.score` in a loop body would make a new `total` on each pass and leave the one outside alone, so the compiler rejects it. Write `total@1 += s.score` to update the `total` bound outside the loop (`name@1` means "the nearest outer one"), or, usually better, end a stream in `sum()` or `reduce`, which is shorter.
+
+**Exercise.** Count the students below 60 with a stream, then add up all the scores a second way, with a `for` loop and `@1`. Print both.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+below = roster |> to_stream() |> filter((s) -> s.score < 60) |> count()
+println("below 60: $below")
+points_total = 0
+for s in roster
+  points_total@1 += s.score
+println(points_total)
+```
+
+The new line it prints:
+
+```output
+below 60: 1
+307
+```
+
+</details>
+
 
 ## Step 5. When things go wrong
 
@@ -152,6 +241,28 @@ The `?` is the shortcut. `read[Int](text)?` means: "if this failed, return the e
 
 The range check reads the way you would say it: `0 <= n <= 100` means both comparisons hold, so `n` is between 0 and 100.
 
+**Exercise.** Make `make_student` reject an empty name with `fail`, and print what `make_student("", "90")` gives.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+fn make_student(name String, text String) Result[Student, Error]
+  return fail(2, "name is empty") if name == ""
+  score = parse_score(text)?
+  Ok(Student(name: name, score: score))
+
+println(make_student("", "90"))
+```
+
+Replace the old `make_student`. The new last line it prints:
+
+```output
+Err(Error(code: 2, message: "name is empty"))
+```
+
+</details>
+
 ## Step 6. Code that works for any type
 
 ```moxie
@@ -185,6 +296,26 @@ skipped Gus: score out of range
 A `Student` can't be compared until you say how, and that is what the `impl Ordered for Student` block does: it defines `<` as "lower score." After that, `best(ada, bob)` compiles and picks Ada. Leave the `impl` out, and the compiler stops at the call and tells you that `Student` doesn't implement `Ordered`, instead of failing somewhere inside `best`.
 
 The compiler builds one specialized copy of `best` for each type it's used with, so a generic function costs nothing extra at run time.
+
+**Exercise.** Write `worst[T Ordered]`, the opposite of `best`, and use it on numbers and on students.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+fn worst[T Ordered](a T, b T) T
+  if a < b then a else b
+
+println("${worst(3, 9)} ${worst(ada, bob).name}")
+```
+
+The new line it prints:
+
+```output
+3 Bob
+```
+
+</details>
 
 ## Step 7. Doing several things at once
 
@@ -220,6 +351,31 @@ A **fiber** is a lightweight task. `run grader(...)` starts one, and the three f
 
 A channel end belongs to one fiber at a time. `clone(tx)` makes another handle to the same channel for the first two graders, and `move tx` hands the last one over. (`\` acknowledges the `Result` that `run` returns, because starting a fiber can fail if too many are alive.) There are no locks here, and none are needed: only one fiber runs at any moment, and values never change.
 
+**Exercise.** Have each grader also send the student's letter grade down a second channel, and print the scores and letters together.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+fiber fn grader2(s Student, out ChanW[Int], letters ChanW[String]) Unit
+  \write(out, s.score)
+  \write(letters, letter(s.score))
+
+rx2, tx2 = Chan[Int][2]()
+lrx, ltx = Chan[String][2]()
+\run grader2(ada, clone(tx2), clone(ltx))
+\run grader2(bob, move tx2, move ltx)
+println("${read(rx2).get_or(0)} ${read(lrx).get_or("?")} ${read(rx2).get_or(0)} ${read(lrx).get_or("?")}")
+```
+
+The new line it prints:
+
+```output
+95 A 83 B
+```
+
+</details>
+
 ## Step 8. Tests
 
 ```moxie
@@ -241,6 +397,26 @@ ok    letter grades
 ```
 
 Each test runs in its own fiber, and a failed `assert_eq` stops that test with a message that shows both values.
+
+**Exercise.** Write a test that checks `make_student("Zed", "abc")` is an `Err`, and run the tests again.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+test "bad scores are rejected"
+  assert(is_err(make_student("Zed", "abc")))
+```
+
+Run it with the test command. It prints:
+
+```output
+ok    letter grades
+ok    bad scores are rejected
+2 passed, 0 failed
+```
+
+</details>
 
 ## Step 9. Reading and saving
 
@@ -292,11 +468,32 @@ You have now used most of the language. Here is where each idea goes deeper:
 - **SQL** is checked against your schema when you write `sql(conn):` (chapter 22).
 - **Input, files, sockets, permissions, and C libraries** are sections 20a to 20d of the Guide.
 
-When you want a challenge, try these on your gradebook:
+When you want a bigger challenge, try this one on your gradebook:
 
-1. Add a `Grade` enum (`Pass`, `Fail`) and a function that returns one with a `when`.
-2. Make `make_student` reject empty names with `fail`.
-3. Add a second channel and have each grader also send the student's letter.
-4. Write a test that checks `make_student("Zed", "abc")` is an `Err`.
+**Exercise.** Add a `Grade` enum with the cases `Pass` and `Fail`, and a function `grade_of(s Student)` that gives one with a `when`. Print the grade for Ada and for a student with 58.
+
+<details markdown="1">
+<summary>Solution</summary>
+
+```moxie
+enum Grade deriving show
+  Pass
+  Fail
+
+fn grade_of(s Student) Grade
+  when s.score
+    >= 60 -> Grade.Pass
+    else Grade.Fail
+
+println("${grade_of(ada)} ${grade_of(Student(name: "Di", score: 58))}")
+```
+
+The new line it prints:
+
+```output
+Grade.Pass Grade.Fail
+```
+
+</details>
 
 Welcome to moxie!
