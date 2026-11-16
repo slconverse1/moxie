@@ -13,7 +13,7 @@ CASES = [
  ("collect_errors all ok", 'println(collect_errors(List(Ok(1), Ok(2))))\n', "Ok(List(1, 2))"),
  ("validate gathers every error", 'fn check(n Int) Result[Int, String]\n  when n > 0\n    true -> Ok(n)\n    false -> Err("bad ${n}")\nprintln(validate(check, List(1, -2, 3, -4)))\n', 'Err(List("bad -2", "bad -4"))'),
  ("recover", 'println(recover(Err("e"), (e) -> 0))\nprintln(recover(Ok(5), (e) -> 0))\n', "Ok(0)\nOk(5)"),
- ("tap passes the value through", 'println(5.tap(fn (x) -> println("saw ${x}")))\n', "saw 5\n5"),
+ ("tap passes the value through", 'show = fn (x Int) Unit\n  println("saw ${x}")\nprintln(5.tap(show))\n', "saw 5\n5"),
  ("retry calls again only after a failure", 'n = Atom[Int](0)\nfn flaky() Result[Int, String]\n  k = swap(n, _ + 1)\n  when k < 3\n    true -> Err("fail")\n    false -> Ok(k)\nprintln(retry(5, 1ms, flaky))\nprintln(@n)\n', "Ok(3)\n3"),
  ("retry gives the last Err", 'println(retry(2, 1ms, () -> Err("always")))\n', 'Err("always")'),
  ("retry does not repeat a permanent error", 'n = Atom[Int](0)\nfn gone() Result[Int, Error]\n  _ = swap(n, _ + 1)\n  Err(Error(NOT_FOUND, "gone"))\n_ = retry(4, 1ms, gone)\nprintln(@n)\n', "1"),

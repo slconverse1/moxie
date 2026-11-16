@@ -227,7 +227,7 @@ println("${apply_twice((n) -> n * 2, 5)} ${run_it(apply_twice)}")
 
 Output: `20 16`. In the first call, `f` is `(n) -> n * 2`, so `5` becomes `10` and then `20`. `run_it` takes a parameter `g` whose signature, `((Int) -> Int, Int) -> Int`, is exactly `apply_twice`'s own signature, so `run_it(apply_twice)` is legal: `g` adds `3` to `10` twice, giving `16`.
 
-**Anonymous functions.** `(n) -> n * 2` is a function with no name, and the missing name is what makes it anonymous. Other languages call this a lambda, and in these pages the two words mean the same thing. Size has nothing to do with it: an anonymous function can be one expression or an indented block of many lines, it can have typed parameters and a return type, and it is a value like any other, so it can be passed, returned, or bound to a name. A function written without `fn` is a lambda and is pure; write `fn (x) = ...` for an anonymous function that may print, park, or touch a file, a socket, a channel, or SQL. Two shorter forms cover the common cases: a placeholder (`_ * 2`, section 9) and a function written after a call (`map()(x) -> x * 3`).
+**Anonymous functions.** `(n) -> n * 2` is a function with no name, and the missing name is what makes it anonymous. Other languages call this a lambda, and in these pages the two words mean the same thing. Size has nothing to do with it: an anonymous function can be one expression or an indented block of many lines, it can have typed parameters and a return type, and it is a value like any other, so it can be passed, returned, or bound to a name. A function written without `fn` is a lambda and is pure; write `fn (x Int) Int` with an indented body for an anonymous function that may print, park, or touch a file, a socket, a channel, or SQL. Two shorter forms cover the common cases: a placeholder (`_ * 2`, section 9) and a function written after a call (`map()(x) -> x * 3`).
 
 **A function that returns a function.** A function can give back another function as its result, and its signature shows it. The arrow reads right to left, so `(Int) -> (Int) -> Int` is "takes an `Int` and returns a function that takes an `Int` and returns an `Int`." The signature describes such a function: you give it one `Int`, and what you get back is not a final answer but a function still waiting for a second `Int`. Only when you supply that one do you get the final `Int`. `make_adder`, declared above, is such a function, and `add_curried` is another:
 
@@ -392,7 +392,9 @@ This prints `a ERROR: heterogeneous` and `error: heterogeneous`.
 ```
 fn make_counter() () -> Int
   hits = Atom[Int](0)
-  fn () -> swap(hits, (n) -> n + 1)
+  bump = fn () Int
+    swap(hits, (n) -> n + 1)
+  bump
 
 next = make_counter()
 next()
@@ -438,10 +440,16 @@ tuple Log
   error (String) -> Unit
 
 fn console_log(prefix String) Log
-  Log(info: fn (m) -> println("$prefix info: $m"), error: fn (m) -> println("$prefix ERROR: $m"))
+  info = fn (m String) Unit
+    println("$prefix info: $m")
+  error = fn (m String) Unit
+    println("$prefix ERROR: $m")
+  Log(info: info, error: error)
 
 fn stamped(base Log, time String) Log
-  Log(...base, info: fn (m) -> base.info("$time $m"))
+  info = fn (m String) Unit
+    base.info("$time $m")
+  Log(...base, info: info)
 
 lg = stamped(console_log("app"), "12:00")
 lg.info("started")
@@ -1534,10 +1542,10 @@ A short fiber can also be written inline, right where you start it. The full for
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
 // short form: parameter tx gets the variable tx
-\run fn (tx) ->
+\run fn (tx)
   \write(tx, "short form")
 // full form: arguments, then parameters
-\run fn ("long form", tx2)(msg, out) ->
+\run fn ("long form", tx2)(msg, out)
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
@@ -1564,7 +1572,9 @@ Moxie programs read, write, and call C, and every one of those goes through a va
 fn greet(out Io, name String) Unit
   println(out, "hello, $name")
 greet(stdout, "mixer")
-name = with_stdin("Ada\n", fn () -> read_line().get_or("nobody"))
+reader = fn () String
+  read_line().get_or("nobody")
+name = with_stdin("Ada\n", reader)
 println("hi $name")
 ```
 

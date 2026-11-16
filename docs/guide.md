@@ -1009,7 +1009,7 @@ bump(ref n)
 println("${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}")
 ```
 
-An anonymous function is a function with no name, written `(n) -> n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. A function with no `fn` in front is a lambda, and a lambda is pure; with `fn` in front, `fn (line String) Unit -> println(line)`, it is an anonymous function that may have effects. Bind a lambda with a typed name, `add (Int, Int) -> Int = (a, b) -> a + b`, and the type supplies its parameter and result types. A lambda can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic; for any of that, write `fn (...)` or declare a function with `fn`.
+An anonymous function is a function with no name, written `(n) -> n * factor` (many languages call it a lambda, and this guide uses both words for the same thing). It is the missing name that makes it anonymous, not its size: the body can be one expression or a whole indented block, and the parameters and result can be typed. A function with no `fn` in front is a lambda, and a lambda is pure; with `fn` in front, `fn (line String) Unit` with the body indented below (an anonymous `fn` has no `->`, like a named declaration with the name left out), it is an anonymous function that may have effects. Bind a lambda with a typed name, `add (Int, Int) -> Int = (a, b) -> a + b`, and the type supplies its parameter and result types. A lambda can't print, park, or touch a channel, a file, a socket, or SQL, and it can't call itself or be generic; for any of that, write `fn (...)` or declare a function with `fn`.
 
 Output: `5 15 2 0`. Every function states its return type. A call may be positional, named, or positional followed by named (named arguments in any order, each parameter supplied once), trailing parameters can have defaults, and a list after the return type renames parameters inside the body:
 
@@ -1986,7 +1986,8 @@ fn save_row(old Int, new Int) Unit
   println("db: ${old} -> ${new}")
 shared = Atom[Account](Account(owner: "Ann"))
 db = shared.on_change(balance, save_row)
-ui = shared.balance +% fn (old, new) -> println("ui: ${new}")
+ui = shared.balance +% fn (old Int, new Int) Unit
+  println("ui: ${new}")
 \swap(shared, (a) -> Account(owner: a.owner, balance: 5))
 shared.off_change(ui)
 \swap(shared, (a) -> Account(owner: a.owner, balance: 5))
@@ -2754,7 +2755,7 @@ A short fiber can be written inline. The short form gives only the arguments, an
 
 ```
 fn greet(tx ChanW[String]) Unit
-  \run fn (tx) ->
+  \run fn (tx)
     \write(tx, "hi")
 ```
 
@@ -2762,11 +2763,11 @@ The full form puts the arguments first and the parameters second, so the names i
 
 ```
 fn start_counter(tx ChanW[Int], start Int) Unit
-  \run fn (tx, start)(out, first) ->
+  \run fn (tx, start)(out, first)
     \write(out, first + 1)
 ```
 
-Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5) -> ...`). To wait for fibers, use a `wait` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), carrying a runtime string through the loop, an inline fiber body that ends in a value other than `Unit`, a capturing closure passed to `run`, `return` in a daemon cycle (before `daemon` in the entry file it ends the program), and a literal in the short form (`run fn (5) ->` needs the full form, `run fn (5)(x) ->`).
+Without `run`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5) -> ...`). To wait for fibers, use a `wait` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), carrying a runtime string through the loop, an inline fiber body that ends in a value other than `Unit`, a capturing closure passed to `run`, `return` in a daemon cycle (before `daemon` in the entry file it ends the program), and a literal in the short form (`run fn (5)` needs the full form, `run fn (5)(x)`).
 
 **17a. Cancelling fibers, and waiting for them with `wait`**
 
@@ -2973,7 +2974,9 @@ Output: `hello, mixer` on standard output, and the same line on standard error. 
 fn ask(question String) String
   print("$question ")
   read_line().get_or("nobody")
-answer = with_stdin("Ada\n", fn () -> ask("name?"))
+asker = fn () String
+  ask("name?")
+answer = with_stdin("Ada\n", asker)
 println("hi $answer")
 ```
 
@@ -3102,11 +3105,13 @@ r = run_command("sleep", List("2"), timeout: 100ms)
 when r
   Err(e) -> println("code ${e.code}")
   Ok(_) -> println("finished")
-println(retry(3, 10ms, fn () -> read(rx, timeout: 10ms)))
+fn try_read() Result[Int, Error]
+  read(rx, timeout: 10ms)
+println(retry(3, 10ms, try_read))
 close(tx)
 ```
 
-Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn () = ...`, as a plain lambda must be pure.
+Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn () Result[Int, Error]` with the body indented below, as a plain lambda must be pure.
 
 **Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `wait`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c Cancel) ...`; a plain lambda must be pure.
 
@@ -4046,8 +4051,8 @@ The prelude declares `Semigroup` (`fn combine(self, other Self) Self`, which mus
 println(fold_all(List("a", "b", "c")))
 println(fold_all(List(List(1), List(2, 3))))
 println(fold_all(List(Sum(1), Sum(2), Sum(3))))
-println(fold_map(fn (w) -> List(len(w)), List("a", "bb", "ccc")))
-println(fold_map(fn (n) -> Min(n), List(4, 2, 8)))
+println(fold_map((w) -> List(len(w)), List("a", "bb", "ccc")))
+println(fold_map((n) -> Min(n), List(4, 2, 8)))
 tuple Stats deriving show
   count Int
   total Int
@@ -4056,7 +4061,7 @@ impl Semigroup for Stats
     Stats(count: self.count + other.count, total: self.total + other.total)
 impl Monoid for Stats
   static fn empty() Stats = Stats(count: 0, total: 0)
-println(fold_map(fn (n) -> Stats(count: 1, total: n), List(4, 6, 8)))
+println(fold_map((n) -> Stats(count: 1, total: n), List(4, 6, 8)))
 println(fold_all[Stats](List()))
 ```
 

@@ -87,6 +87,7 @@ class Effects:
         self.defs = {}           # name -> [FnDecl]
         self.sum = {}            # name -> Summary
         self.diags = []
+        self.anon = {}
         self.where = {}
         self.bounds = {}
         self.callbacks = {}          # foreign fn name -> indices of its callback parameters
@@ -252,6 +253,8 @@ class Effects:
         c = e.__class__
         if c is Lambda:
             self.walk(e.body, fnnames, acc, None)
+        elif c is Name and e.name in self.anon and e.name not in self.defs:
+            self.walk(self.anon[e.name].body, fnnames, acc, None)
         elif c is Name:
             if e.name in self.imported and e.name not in self.defs:
                 sub, orig = self.imported[e.name]
@@ -288,6 +291,8 @@ class Effects:
         elif not is_method and fnnames is not None and name in fnnames:
             if summ is not None:
                 summ.param_calls.add(fnnames.index(name))
+        elif not is_method and name in self.anon and name not in self.defs:
+            self.walk(self.anon[name].body, fnnames, acc, summ)
         elif name in EXEMPT and name not in self.defs:
             pass
         elif name in self.defs:
@@ -306,7 +311,7 @@ class Effects:
         else:
             # any other builtin: a function passed to it is assumed to be called
             for a in args:
-                if a.__class__ is Lambda or (a.__class__ is Name and (a.name in self.defs or a.name in self.BUILT)):
+                if a.__class__ is Lambda or (a.__class__ is Name and (a.name in self.defs or a.name in self.BUILT or a.name in self.anon)):
                     self.arg_effects(a, fnnames, acc)
         for sub, nm in self.pk_methods(fn):
             self.add_pkg(sub, nm, args, fnnames, acc, line, True)
@@ -363,6 +368,9 @@ class Effects:
             else:
                 self.walk(st, fnnames, acc, summ)
             return
+        if c is Assign and n.targets.__class__ is PBind and n.value.__class__ is Lambda \
+                and getattr(n.value, "fiber", False) and not getattr(n.value, "partial", False):
+            self.anon[n.targets.name] = n.value      # `f = fn (...)`: calling `f` runs its body's effects
         if c is Assign and getattr(n, "lazy", None):
             sub = {}
             self.walk(n.value, fnnames, sub, None)
@@ -384,6 +392,7 @@ class Effects:
     def run_def(self, d, summ):
         fnnames = [getattr(p, "name", None) for p in (d.params or [])]
         acc = {}
+        self.anon = {}
         if d.body is not None:
             self.walk(d.body, fnnames, acc, summ)
         if d.guard is not None:
@@ -487,6 +496,7 @@ class Effects:
 
     def run_top(self):
         acc = {}
+        self.anon = {}
         for st in self.prog.stmts:
             if st.__class__ not in (FnDecl, FnGroup, TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl):
                 self.walk(st, None, acc, None)

@@ -26,7 +26,7 @@ CASES = [
  ("the other end stays usable", 'fiber fn w(out ChanW[Int]) Unit\n  _ = write(out, 1)\n\nrx, tx = Chan[Int][2]()\n_ = run w(tx)\nprintln(read(rx))\n', 0, "ok"),
  ("plain values and atoms are copied to run", 'fiber fn w(n Int, a Atom[Int]) Unit\n  _ = reset(a, n)\n\nn = 5\na = Atom[Int](0)\n_ = run w(n, a)\n_ = run w(n, a)\nprintln(n)\n', 0, "ok"),
  ("run in a loop with an outer resource is refused", 'fiber fn w(out ChanW[Int]) Unit\n  _ = write(out, 1)\n\nrx, tx = Chan[Int][2]()\nfor i in 1..=2\n  _ = run w(tx)\n', 1, "handed to the new fiber inside a loop"),
- ("an inline fiber takes the resources it names", 'rx, tx = Chan[Int][2]()\n_ = run fn (tx) ->\n  _ = write(tx, 1)\n_ = write(tx, 2)\n', 1, "use of moved value `tx`"),
+ ("an inline fiber takes the resources it names", 'rx, tx = Chan[Int][2]()\n_ = run fn (tx)\n  _ = write(tx, 1)\n_ = write(tx, 2)\n', 1, "use of moved value `tx`"),
  ("closing twice is a compile error", 'init\n  c = spawn("true")?\n  close(c)\n  close(c)\n', 1, "use of moved value `c`"),
  ("using a resource after closing it is a compile error", 'init\n  c = spawn("true")?\n  close(c)\n  println(wait_child(c))\n', 1, "use of moved value `c`"),
  ("c.close() ends it too", 'init\n  c = spawn("true")?\n  c.close()\n  c.close()\n', 1, "use of moved value `c`"),

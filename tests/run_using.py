@@ -33,7 +33,7 @@ CASES = [
  ("a using declared later at the top level still serves a function body",
   CTX + 'fn go() Unit\n  send("u", using)\nusing c = Context(user: "late")\ngo()\n', "run", "u late"),
  ("a using in an enclosing function serves a lambda",
-  CTX + 'fn go() Unit\n  using c = Context(user: "ann")\n  f = fn () -> send("u", using)\n  f()\ngo()\n', "run", "u ann"),
+  CTX + 'fn go() Unit\n  using c = Context(user: "ann")\n  f = fn () Unit\n    send("u", using)\n  f()\ngo()\n', "run", "u ann"),
  ("a using parameter needs a name",
   CTX + 'fn outer(using Context) Unit\n  send("u", using)\nprintln(1)\n', "fail", "needs a name"),
  ("`using _` is not a name either",

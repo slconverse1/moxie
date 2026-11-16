@@ -28,7 +28,7 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
   unknown and never an error.
 * The prelude interfaces `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable` and `Numeric`, including
   `T.zero()`, `T.one()` and `T.read(text)` inside generic code.
-* Argument-first `run` (`run fn (tx, start)(out, first) -> ...`). The parameters-first immediately-called form is gone; wrap the lambda, `((x Int) -> x * 2)(21)`.
+* Argument-first `run` (`run fn (tx, start)(out, first)` and an indented body). The parameters-first immediately-called form is gone; wrap the lambda, `((x Int) -> x * 2)(21)`.
 * Lambdas have no `fn`: `(params) -> body` is recognized in `pexpr.parse_atom` by looking past the matching `)` for `->` (or a return type and then `->`; the return type is read by `parse_ret_type`, which takes no unparenthesized function type), except in a header, where `no_trailing` keeps the arrow out of the expression. `fn (params) = body` is an anonymous function that may have effects (the parser sets `fiber` on it, as for an inline `run fn`). A typed binding may carry a function type, `add (Int, Int) -> Int = (a, b) -> a + b`. `Lambda` has two flags the parser sets, `partial` (a call with `_`) and `fiber` (effects allowed: an inline `run fn` or an anonymous `fn`). `effects.check_lambdas` reports an effect in a lambda, a bound lambda that mentions its own name, and `run` of a name bound to a lambda. A builder callback takes its receiver from the expected function type.
 
 ## Since the first release
@@ -630,7 +630,7 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 
 ### `run` moves its resource arguments (check.py e_RunE)
 
-`run f(x)` and the short form `run fn (x) -> ...` mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `run` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
+`run f(x)` and the short form `run fn (x)` and an indented body mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `run` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
 
 ## Grapheme clusters (moxie/graphemes.py)
 

@@ -1081,24 +1081,34 @@ class ExprParser(PBase):
         return TupleE(cur, line=line)
 
     # ------------------------------------------------------------ lambda
+    ARROW_MSG = ("an anonymous `fn` has no `->`: declare it like a named function without the name, `fn (params) Ret`, "
+                 "with the body indented below (a lambda, `(params) -> body`, is the one-line form)")
+
+    def fn_block_body(self):
+        """The indented body of an anonymous `fn` or an inline fiber."""
+        if self.at_op("->"):
+            self.err(self.ARROW_MSG, self.peek())
+        if not (self.peek().kind == "NL" and self.peek(1).kind == "INDENT"):
+            self.err("an anonymous `fn` takes an indented body on the lines below, so bind it on its own line first (`f = fn (params) Ret`, body indented) and pass `f`", self.peek())
+        return self.parse_block()
+
     def parse_anon_fn(self):
-        """`fn (params) [Ret] -> body`: an anonymous function that may have effects (a lambda, `(params): body`, is pure)."""
+        """`fn (params) [Ret]` and an indented body: an anonymous function that may have effects (a lambda, `(params) -> body`, is pure)."""
         t = self.next()   # fn
         if not self.at_op("("):
-            self.err("'fn' here begins an anonymous function, `fn (params) -> body`; a named function is a declaration", t)
+            self.err("'fn' here begins an anonymous function, `fn (params) Ret` with an indented body; a named function is a declaration", t)
         params = self.parse_params()
         ret = None
-        if not self.at_op("->"):
+        if not (self.at_op("->") or self.peek().kind == "NL"):
             ret = self.parse_ret_type()
-        self.expect_op("->")
-        body = self.parse_lambda_body()
+        body = self.fn_block_body()
         lam = Lambda(params, body, None, None, ret, line=t.line)
         lam.fiber = True        # effects allowed (the flag also marks an inline fiber)
         return lam
 
     def parse_lambda(self, run=True):
-        """The inline fiber `run fn (args)(params): body` (the arguments come first, like `run name(args)`).
-        An anonymous function elsewhere is written `(params): body` (parse_bare_lambda)."""
+        """The inline fiber `run fn (args)(params)` and an indented body (the arguments come first, like `run name(args)`).
+        An anonymous function elsewhere is written `(params) -> body` (parse_bare_lambda)."""
         t = self.next()   # fn
         line = t.line
         if self.at_op("("):
@@ -1107,17 +1117,15 @@ class ExprParser(PBase):
             if t2 is not None and t2.kind == "OP" and t2.val == "(" and not t2.sp:
                 m2 = self.matching(m + 1 - self.p)
                 t3 = self.toks[m2 + 1] if m2 is not None else None
-                if t3 is not None and t3.kind == "OP" and t3.val == "->":
+                if t3 is not None and (t3.kind == "NL" or (t3.kind == "OP" and t3.val == "->")):
                     args = self.parse_args()
                     params = self.parse_params()
-                    self.expect_op("->")
-                    body = self.parse_lambda_body()
+                    body = self.fn_block_body()
                     lam = Lambda(params, body, None, None, None, line=line)
                     lam.fiber = True
                     return Call(lam, args, None, line=line)
         params = self.parse_params()
-        self.expect_op("->")
-        body = self.parse_lambda_body()
+        body = self.fn_block_body()
         lam = Lambda(params, body, None, None, None, line=line)
         lam.fiber = True
         return lam
