@@ -630,7 +630,11 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 
 ### `go` moves its resource arguments (check.py e_RunE)
 
-`go f(x)` and the short form `go fn (x)` and an indented body mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `go` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
+`go f(x)` and the short form `go fn (x)` and an indented body mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `try_go` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
+
+### `go` waits, `try_go` does not (sched.run_op)
+
+`go` on a full `fiber[n]` function does not fail: `run_op` appends the calling fiber to `S.slot_waiters[key]` and yields `("block",)` in a loop until `fiber_limit` has room again. `_fiber_body`'s `finally` wakes one waiter whenever a copy ends, so slots are handed out in arrival order. The call returns `Unit`, and the checker types it that way (`e_RunE`). `try_go` takes the same path to the limit check but returns `Err(NO_SLOT)` instead of parking (typed `Result[Unit, Error]`, so dropping it warns), after dropping its owned arguments. If every fiber is blocked and the waiter list is the reason, the deadlock detector reports it. Waiting is like a blocking send on a full channel in Go: a caller that holds something the running copies need will deadlock, and the report says so. Tests: `tests/run_tally.py` (waiting, manifest-limit waiting, no-slot deadlock, `try_go` typing), `tests/run_keyname.py`.
 
 ## Grapheme clusters (moxie/graphemes.py)
 
