@@ -35,7 +35,7 @@ SERVER = '''fiber fn server(tx ChanW[Int]) Result[Unit, Error]
   close(l)
   Ok(())
 rx, tx = Chan[Int][1]()
-run server(tx)
+go server(tx)
 port = read(rx)?
 '''
 chk("a client that trusts the certificate talks to a TLS server", run(SERVER + 'c = connect_tls("localhost", port, ca: "cert.pem")?\nprintln(read_line(c)?)\nclose(c)\n'), 0, "hello over tls")

@@ -34,8 +34,8 @@ def chk(name, src, rc_want, *wants, absent=(), cmd="run"):
 
 chk("cancel wakes a worker waiting in select", WORKER + '''rx, tx = Chan[String][10]()
 wait s
-  _ = run worker(1, clone(tx), s)
-  _ = run worker(2, tx, s)
+  _ = go worker(1, clone(tx), s)
+  _ = go worker(2, tx, s)
   sleep(50ms)
   cancel(s)
 println(read(rx))
@@ -49,7 +49,7 @@ chk("a wait block waits for its fibers at the end", '''fiber fn slow(out ChanW[S
 
 rx, tx = Chan[String][1]()
 wait
-  _ = run slow(tx)
+  _ = go slow(tx)
   println("body done")
 println("after wait")
 println(read(rx))
@@ -58,7 +58,7 @@ println(read(rx))
 chk("an early exit with ? cancels, then waits", WORKER + '''fn job() Result[Int, Error]
   rx, tx = Chan[String][4]()
   wait s
-    _ = run worker(1, tx, s)
+    _ = go worker(1, tx, s)
     x = Err(Error(MISSING, "no"))?
     Ok(1)
 
@@ -68,7 +68,7 @@ println(job())
 chk("return from a wait block cancels it", WORKER + '''fn job() Int
   rx, tx = Chan[String][4]()
   wait s
-    _ = run worker(1, tx, s)
+    _ = go worker(1, tx, s)
     return 7
   0
 
@@ -97,9 +97,9 @@ chk("nested wait blocks wait for their own fibers", '''fiber fn task(name String
 rx, tx = Chan[String][4]()
 wait
   wait
-    _ = run task("inner", 20, clone(tx))
+    _ = go task("inner", 20, clone(tx))
   println("inner wait over")
-  _ = run task("outer", 40, tx)
+  _ = go task("outer", 40, tx)
 println("outer wait over")
 println(read(rx))
 println(read(rx))
@@ -110,11 +110,11 @@ chk("a fiber started by a scoped fiber is waited for too", '''fiber fn leaf(out 
   \\write(out, "leaf")
 
 fiber fn mid(out ChanW[String]) Unit
-  _ = run leaf(out)
+  _ = go leaf(out)
 
 rx, tx = Chan[String][2]()
 wait
-  _ = run mid(tx)
+  _ = go mid(tx)
 println("after")
 println(read(rx))
 ''', 0, 'after\nOk("leaf")')
@@ -123,7 +123,7 @@ chk("an abort in a scoped fiber still ends the program", '''fiber fn bad() Unit
   todo("boom")
 
 wait
-  _ = run bad()
+  _ = go bad()
   sleep(10ms)
 println("not reached")
 ''', 1, 'boom', absent=('not reached',))
@@ -155,8 +155,8 @@ _rc, _out = run('''fiber fn task(name String, ms Int, out ChanW[String]) Unit
 
 rx, tx = Chan[String][4]()
 wait
-  _ = run task("a", 20, clone(tx))
-  _ = run task("b", 40, tx)
+  _ = go task("a", 20, clone(tx))
+  _ = go task("b", 40, tx)
 println("both are done")
 ''', flags=("--platform=browser",))
 _ok = _rc == 0 and "both are done" in _out and "KeyError" not in _out

@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (`go`)
+
+- **`go` starts a fiber** (was `run`; `run` is an ordinary name again). The keyword is Go's, and the name is our acknowledgment of Go's contribution of spawned routines. Existing functions named `go` are now a compile error (a method may still be called `go`). Spec (fibers), Guide 17, Site Intro.
+
 ### 2026-11-16 (data types a la carte)
 
 - **`Has[X]` bounds** (Spec 6, Guide 24n): smart constructors that build in any union that lists the node (`lit[U Has[Lit]](n Int) U`), checked at bindings, result types and explicit type arguments, free at run time. Programs with effects use the freer monad (a GADT of commands plus an existential `Bind`, no `Functor`), the recent simplification of the original encoding, which still runs too. `tests/run_alacarte.py`.
@@ -72,7 +76,7 @@ Newest first.
 
 **2026-11-15: constants are not captures.** A name bound once, to a value the compiler can work out, is a constant, so a lambda that uses only constants, parameters, and its own locals captures nothing and counts as a plain function (it can be stored in a Dict, List, tuple field or channel in plain moxie). This now holds for locals inside a function, not just module-level names. A name bound more than once, including an entry-file name that is later rebound, is a variable and is a capture. Spec 11 and the Guide updated.
 
-**2026-11-15: anonymous `fn`s have no `->`.** Only a lambda uses `->` in its declaration. An anonymous `fn` is written like a named function with the name left out, `fn (params) Ret`, with the body indented below, and an inline fiber is `run fn (args)(params)` with an indented body (or the short form `run fn (tx)` when each parameter has its argument's name). The old `fn (...) -> body` form is a compile error that points to the new one. Because a block can't sit inside a call's parentheses, an anonymous `fn` is bound on its own line and passed by name. The effects checker now follows a bound anonymous `fn`: calling it, or passing it to a function that calls it, carries its effects (a pure function that calls one that parks is now caught). Tests, Spec, Guides, intros and tutorials updated.
+**2026-11-15: anonymous `fn`s have no `->`.** Only a lambda uses `->` in its declaration. An anonymous `fn` is written like a named function with the name left out, `fn (params) Ret`, with the body indented below, and an inline fiber is `go fn (args)(params)` with an indented body (or the short form `go fn (tx)` when each parameter has its argument's name). The old `fn (...) -> body` form is a compile error that points to the new one. Because a block can't sit inside a call's parentheses, an anonymous `fn` is bound on its own line and passed by name. The effects checker now follows a bound anonymous `fn`: calling it, or passing it to a function that calls it, carries its effects (a pure function that calls one that parks is now caught). Tests, Spec, Guides, intros and tutorials updated.
 
 **2026-11-15: capturing closures in collection literals.** A capturing closure written inside a `Dict(...)`, `List(...)`, `Set(...)` or `Array(...)` literal is now the same compile error as in an annotated slot (moxie only; moxie/gc stores it). It used to slip through. Module-level names aren't captures.
 
@@ -86,7 +90,7 @@ Newest first.
 
 **2026-11-15: `name@label`.** A label names the scope that `name@N` would count: `total@serve += x` inside `#serve for ...` writes the `total` bound outside that loop, however many blocks lie between. Works for any labeled loop or `do`; an unknown label is an error. A label starts with a lowercase letter, so `p@Product(...)` stays an as-pattern.
 
-**2026-11-15: `moxie run` prints warnings.** The compiler's warnings (a shadowed name, a dropped `Result`, and the rest) used to appear only under `moxie check`. `run` now prints them on stderr before the program starts, in the same `file:line: warning:` form, and they never change the exit code. `--quiet` and `--release` leave them out. The Try page shows them above the program's output.
+**2026-11-15: `moxie run` prints warnings.** The compiler's warnings (a shadowed name, a dropped `Result`, and the rest) used to appear only under `moxie check`. `moxie run` now prints them on stderr before the program starts, in the same `file:line: warning:` form, and they never change the exit code. `--quiet` and `--release` leave them out. The Try page shows them above the program's output.
 
 **2026-11-15: no more `total = total + x` that quietly does nothing.** In an inner block (a `for` body, an `if`, a `when` arm), a line that defines a name and also reads the same name from outside (`total += x`, `total = total + x`) is now a compile error, since the new `total` would vanish at the end of the block and the outer one would never change. The message says to write `total@1 += x`, or fold with `reduce`. A plain shadowing line like `x = 5` still only warns. Loops may still carry state on purpose: a name their `while` condition reads, one their `break(value)` or `else` hands out, and the state of a `daemon`. A name carried only for the condition and then read after the loop is an error too. Tests in `tests/run_shadow.py` and `tests/run_gimme.py`.
 

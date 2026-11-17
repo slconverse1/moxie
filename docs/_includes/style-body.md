@@ -7,7 +7,7 @@ Run `moxie fmt` and stop thinking about layout. It has no options, so every moxi
 - Two spaces per level, no tabs, no trailing spaces.
 - Lines break at 80 columns. A long call or list gets one item per line, two spaces deeper, with the closing bracket back at the original level.
 - One space around operators and after a comma, none before a comma.
-- An inline fiber has a space after `fn`: `run fn (tx)(out)`, with the body indented below.
+- An inline fiber has a space after `fn`: `go fn (tx)(out)`, with the body indented below.
 - A blank line before each top-level declaration, and no more than two in a row.
 
 ## Names
@@ -71,8 +71,8 @@ A lambda is a function with no name, written `(params) -> body`, with a space on
 
 ## Fibers and channels
 
-- A fiber that does real work is a named function, declared with `fn` (with `fiber[n]` when its count needs a limit). Start it with `run name(args)`.
-- Keep an inline `run fn (...)` to a few lines. It is for glue, such as handing a value to a channel.
+- A fiber that does real work is a named function, declared with `fn` (with `fiber[n]` when its count needs a limit). Start it with `go name(args)`.
+- Keep an inline `go fn (...)` to a few lines. It is for glue, such as handing a value to a channel.
 - Declare each channel's size on purpose. The size is how many values may wait, and so how far a producer can run ahead of its consumer.
 
 ## Memory

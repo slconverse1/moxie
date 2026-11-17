@@ -5,8 +5,8 @@ Principle (Steve): a restriction that exists only for speed or safety should be 
 Status key: A = recommend, B = worth discussing, C = recommend keeping.
 
 ## 1. gc dialect: restrictions that only exist because of no-GC (A)
-1. **Views can't be returned/stored/sent to `run`** (Spec: slices, views and streams). In gc a view can be an ordinary reference that keeps its parent alive. Reuse: no new syntax; `inline fn` workaround becomes optional. no-GC keeps the rule, with `copy(x)` as the escape.
-2. **Concrete function-type annotations accept only no-capture functions.** In gc a closure is a heap object, so tuple fields, collection elements, and `run` arguments can hold capturing closures. no-GC keeps the rule.
+1. **Views can't be returned/stored/sent to `go`** (Spec: slices, views and streams). In gc a view can be an ordinary reference that keeps its parent alive. Reuse: no new syntax; `inline fn` workaround becomes optional. no-GC keeps the rule, with `copy(x)` as the escape.
+2. **Concrete function-type annotations accept only no-capture functions.** In gc a closure is a heap object, so tuple fields, collection elements, and `go` arguments can hold capturing closures. no-GC keeps the rule.
 3. **`any I` payload is sized for the largest type.** In gc `any` can box, so the "largest type in the program" link-time scan is unnecessary. No visible change; a simplification.
 4. **Variadic spread of a `List` of unknown length** is allowed in gc with no check, since arguments need no fixed frame.
 

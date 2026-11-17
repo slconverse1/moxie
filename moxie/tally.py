@@ -161,7 +161,7 @@ class Tally:
         self._shared = _shared if _shared is not None else {}     # package key -> Tally, so a package is tallied once
         self.pkgs = {}                 # alias -> Tally of an imported package
         self.imported = {}             # name brought in by `import p (name)` -> (Tally, name)
-        self.starts = {}             # function name -> set of fiber functions it starts with `run`
+        self.starts = {}             # function name -> set of fiber functions it starts with `go`
         self.lib = LibFibers()
         self.start_sink = None
         self.defs = {}

@@ -12,7 +12,7 @@ import sys
 
 HARD = {"fn", "tuple", "enum", "interface", "impl", "forward", "inline", "fiber", "import", "export",
         "internal", "using", "if", "elif", "else", "when", "select", "for", "while", "in", "is", "break",
-        "continue", "return", "daemon", "do", "run", "ref", "move", "static", "and", "or", "not", "true",
+        "continue", "return", "daemon", "do", "go", "ref", "move", "static", "and", "or", "not", "true",
         "false", "Self", "self", "todo"}
 
 SCALAR = {

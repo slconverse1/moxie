@@ -10,7 +10,7 @@ rx, tx = Chan[Int][2]()
 \write(tx, 1)
 fiber fn w(t ChanW[Int]) Unit
   \write(t, 5)
-\run w(tx)
+\go w(tx)
 println("ok ${read(rx).get_or(0)}")
 '''
 BAD = [

@@ -5,7 +5,7 @@ fiber fn server(l Listener) Unit
 
 l = listen(0)?
 port = port_of(l)
-run server(l)
+go server(l)
 c = connect("localhost", port)?
 println(c, "hi")
 r = read_line(c)

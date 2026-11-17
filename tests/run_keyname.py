@@ -1,11 +1,12 @@
-"""A keyword cannot name a function (a method may be called `run`).  Run: python3 tests/run_keyname.py"""
+"""A keyword cannot name a function (a method may be called `go`).  Run: python3 tests/run_keyname.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
 CASES = [
- ("fn run is rejected", "fn run(n Int) Int = n + 1\nprintln(run(2))\n", 2, "`run` is a keyword"),
+ ("fn go is rejected", "fn go(n Int) Int = n + 1\nprintln(go(2))\n", 2, "`go` is a keyword"),
  ("fn daemon is rejected", "fn daemon(n Int) Int = n + 1\n", 2, "`daemon` is a keyword"),
  ("fn move is rejected", "fn move(n Int) Int = n\n", 2, "`move` is a keyword"),
- ("a method may be called run", "tuple T()\nimpl T\n  fn run(self) Int = 1\nprintln(T().run())\n", 0, "1"),
+ ("a method may be called go", "tuple T()\nimpl T\n  fn go(self) Int = 1\nprintln(T().go())\n", 0, "1"),
+ ("run is an ordinary name again", "fn run(n Int) Int = n + 1\nprintln(run(2))\n", 0, "3"),
  ("an interface method may be called do_it and run", "interface Job\n  fn run(self) Int\ntuple J()\nimpl Job for J\n  fn run(self) Int = 7\nprintln(J().run())\n", 0, "7"),
 ]
 fails = []

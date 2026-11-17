@@ -17,7 +17,7 @@ CASES = [
  ("the old form still works", 'fn r(x Result[Int, Error]) Int\n  Ok(n) = x else 0\n  n\nprintln(r(Ok(5)))\nprintln(r(fail(1, "x")))\n', 0, "0"),
  ("the old form with a block still works", 'fn r(x Result[Int, Error]) Int\n  Ok(n) = x else\n    println("no")\n    return -1\n  n\nprintln(r(fail(1, "x")))\n', 0, "-1"),
  ("a constructor call as the else value still works", 'fn r(x Result[Int, Error]) Result[Int, Error]\n  Ok(n) = x else Err(Error(code: 2, message: "m"))\n  Ok(n)\nprintln(r(fail(1, "x")))\n', 0, 'code: 2'),
- ("tail call from the else", 'fn go(n Int) Int\n  Ok(x) = first(List(n)) else Err(_) -> 0\n  if x > 3000 then x else go(x + 1)\nprintln(go(1))\n', 0, "3001"),
+ ("tail call from the else", 'fn begin(n Int) Int\n  Ok(x) = first(List(n)) else Err(_) -> 0\n  if x > 3000 then x else begin(x + 1)\nprintln(begin(1))\n', 0, "3001"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

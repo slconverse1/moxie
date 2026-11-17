@@ -90,7 +90,7 @@ chk("sleepers keep time while a fiber waits for a change", run('''fiber fn ticke
 
 init
   rx = watch("@D@")?
-  _ = run ticker()
+  _ = go ticker()
   p = spawn("sh", List("-c", "sleep 0.6; echo hi > @D@/late.txt"))?
   println(read(rx)?.kind)
   close(p)

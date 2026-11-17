@@ -16,7 +16,7 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 * Runs everything in the Spec and Guide that is not marked "not designed": declarations, enums, patterns, generics,
   interfaces and impls, `F[_]` constructor classes, pipes, `for` comprehensions, streams, data paths, fixed-capacity
   collections, sized/bounded/Big/Decimal numbers, format specs and `Locale`.
-* Fibers, channels, timers, futures, atoms, `select`, `daemon` and `run` on a generator-based cooperative scheduler
+* Fibers, channels, timers, futures, atoms, `select`, `daemon` and `go` on a generator-based cooperative scheduler
   with a virtual clock (`sleep` and timers advance instantly and deterministically).
 * `sql(conn):` and `transaction(conn)(tx) ->` on sqlite3. `Connection.open(path)` and `Connection.memory()` create connections.
 * The `[database]` manifest table (`schema`, `driver`) names a `CREATE TABLE` schema file; `sql` blocks are checked against it: the accepted SQL subset, and that every table and column exists. Column types and row types are not worked out yet. Tests: `tests/run_sqlcheck.py`.
@@ -28,8 +28,8 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
   unknown and never an error.
 * The prelude interfaces `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable` and `Numeric`, including
   `T.zero()`, `T.one()` and `T.read(text)` inside generic code.
-* Argument-first `run` (`run fn (tx, start)(out, first)` and an indented body). The parameters-first immediately-called form is gone; wrap the lambda, `((x Int) -> x * 2)(21)`.
-* Lambdas have no `fn`: `(params) -> body` is recognized in `pexpr.parse_atom` by looking past the matching `)` for `->` (or a return type and then `->`; the return type is read by `parse_ret_type`, which takes no unparenthesized function type), except in a header, where `no_trailing` keeps the arrow out of the expression. `fn (params) = body` is an anonymous function that may have effects (the parser sets `fiber` on it, as for an inline `run fn`). A typed binding may carry a function type, `add (Int, Int) -> Int = (a, b) -> a + b`. `Lambda` has two flags the parser sets, `partial` (a call with `_`) and `fiber` (effects allowed: an inline `run fn` or an anonymous `fn`). `effects.check_lambdas` reports an effect in a lambda, a bound lambda that mentions its own name, and `run` of a name bound to a lambda. A builder callback takes its receiver from the expected function type.
+* Argument-first `go` (`go fn (tx, start)(out, first)` and an indented body). The parameters-first immediately-called form is gone; wrap the lambda, `((x Int) -> x * 2)(21)`.
+* Lambdas have no `fn`: `(params) -> body` is recognized in `pexpr.parse_atom` by looking past the matching `)` for `->` (or a return type and then `->`; the return type is read by `parse_ret_type`, which takes no unparenthesized function type), except in a header, where `no_trailing` keeps the arrow out of the expression. `fn (params) = body` is an anonymous function that may have effects (the parser sets `fiber` on it, as for an inline `go fn`). A typed binding may carry a function type, `add (Int, Int) -> Int = (a, b) -> a + b`. `Lambda` has two flags the parser sets, `partial` (a call with `_`) and `fiber` (effects allowed: an inline `go fn` or an anonymous `fn`). `effects.check_lambdas` reports an effect in a lambda, a bound lambda that mentions its own name, and `go` of a name bound to a lambda. A builder callback takes its receiver from the expected function type.
 
 ## Since the first release
 The prelude has `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `reduce_right`, `min_by`, `max_by`, `span`, and `split_at`. A function clause may carry an `if` guard, and `tailrec fn` makes a self-call outside tail position a compile error. Doctests and property tests are designed in the Spec (section 22) but not built.
@@ -91,7 +91,7 @@ interface that adds its own contracts is a compile error. See
 
 ## Effect inference (first version)
 
-`moxie check` (and `run`, which checks first) infers whether each function
+`moxie check` (and `moxie run`, which checks first) infers whether each function
 parks (`read`, `write`, `sleep`, a `select` with no default arm, a database
 query) or prints, through callees and recursion. A call through a function
 parameter takes the effect of the function passed at the call site. Methods are
@@ -301,7 +301,7 @@ a needed kind with no grant into an error. Tests: `tests/run_perms.py`.
 function definitions by name (like effects) and foreign functions that return a handle, and computes per
 function a `Count` of kind -> [creation sites reached, reasons]. Reasons are `loop` (inside `for`, `while`,
 comprehensions, daemons, lambdas), `recursion` (the function is in a call cycle) and `fiber` (reached through
-`run`). Without reasons the number is an exact upper bound; with them it is printed `N+`. Kinds match
+`go`). Without reasons the number is an exact upper bound; with them it is printed `N+`. Kinds match
 `moxie/pools.py`. Tests: `tests/run_tally.py`, which also runs the examples and requires that no exact count is
 below the observed use.
 
@@ -323,7 +323,7 @@ loop, lambda, daemon, or recursion adds a `problem`; `Interp.static_check` turns
 the nearest `Moxie.toml` ([fibers] `limit`, `memory`, `stack`; [pools] `warn_threshold`; validated, errors exit 2)
 into `Interp.manifest`. `sched.run_op` counts live fibers per function (`Scheduler.live_fibers`, decremented in
 `_fiber_body`'s `finally`) and returns `Err(NO_SLOT)` at the limit (`fiber_limit`: the flag, else the manifest
-default, else unlimited). `Tally` no longer merges `run` callees into the starter: it records `starts[f]`, and
+default, else unlimited). `Tally` no longer merges `go` callees into the starter: it records `starts[f]`, and
 `program()` walks the started functions once each, scaling their counts by `limit_of(f)`; no limit means the
 `fiber` reason and a warning. `fiber_count()` is 1 plus the limits. `format_header` writes JSON for
 `moxie pools FILE --header OUT`. Tests: `tests/run_tally.py`.
@@ -416,7 +416,7 @@ reads it. `prepare(I, src, name, manifest, header_flag)` runs in `__main__` befo
 (`--header=FILE`, else `[pools] header`), refuses one whose hash is not the program's, builds the header from a tally
 when only `[program] memory` is set, applies `budget_error` (largest fiber count times `[fibers]` `memory` plus
 `stack` against `[program] memory`; sizes come from `manifest.parse_size`), and then sets `Pools.caps` (acquire
-aborts past a count) and `Scheduler.fiber_cap` (`run` aborts when that many fibers are alive). Kinds the header
+aborts past a count) and `Scheduler.fiber_cap` (`go` aborts when that many fibers are alive). Kinds the header
 lists as `null` or does not list are not capped. Under `--gc` the options are refused, since moxie/gc has no pool
 header. Tests: `tests/run_header.py`.
 
@@ -628,9 +628,9 @@ Packages the interpreter ships are ordinary `.mxi` files under `moxie/std/` (so 
 
 `moxie doc` builds `Unit`s: a file, one package (all its files), or with `--all` the target plus every imported package (`--std` keeps the built-in ones). One unit prints or writes `index.*`; several write an index plus a page per unit. Examples run against the unit's joined source (repeated `import` lines kept once). Tests: `tests/run_packages.py`.
 
-### `run` moves its resource arguments (check.py e_RunE)
+### `go` moves its resource arguments (check.py e_RunE)
 
-`run f(x)` and the short form `run fn (x)` and an indented body mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `run` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
+`go f(x)` and the short form `go fn (x)` and an indented body mark each named resource argument as gone (`mark_gone`), because the interpreter hands the object to the fiber (`Fiber.owned`) and drops it when the fiber ends. Reusing the name afterward is "use of moved value", and doing it inside a loop is the usual "gone the next time round" error, so a second fiber takes `clone(x)`. A `go` that returns NO_SLOT drops the arguments it was given (in `run_op`), as if the fiber had started and ended at once; otherwise the handles would leak and a reader would deadlock. Tests: `tests/run_moves.py`, `tests/run_tally.py`, `tests/run_udp.py`.
 
 ## Grapheme clusters (moxie/graphemes.py)
 

@@ -5,7 +5,7 @@ LIB = "export type alias Pos = Int where self > 0\nexport fn half(n Int) Int = n
 CASES = [
  ("a qualified alias as a parameter, proved", "import lib\nfn twice(n lib.Pos) Int = n * 2\nprintln(twice(4))\n", 0, "8"),
  ("a literal that breaks the condition", "import lib\nfn twice(n lib.Pos) Int = n * 2\nprintln(twice(0))\n", 1, ""),
- ("an unproved argument is an error", "import lib\nfn twice(n lib.Pos) Int = n * 2\nfn go(k Int) Int = twice(k)\nprintln(go(3))\n", 2, "can't"),
+ ("an unproved argument is an error", "import lib\nfn twice(n lib.Pos) Int = n * 2\nfn begin(k Int) Int = twice(k)\nprintln(begin(3))\n", 2, "can't"),
  ("a from-import used unqualified", "import lib(Pos)\nfn twice(n Pos) Int = n * 2\nprintln(twice(5))\n", 0, "10"),
  ("a refined binding", "import lib\nx lib.Pos = 3\nprintln(x)\n", 0, "3"),
  ("a refined binding that fails", "import lib\nx lib.Pos = 0 - 3\nprintln(x)\n", 1, ""),

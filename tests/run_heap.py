@@ -16,7 +16,7 @@ FIBER = '''fiber fn hold(done ChanW[Int]) Unit
   xs = 0..40000 |> to_stream() |> reduce(List[Int](), (acc, i) -> acc + i)
   \\write(done, len(xs))
 rx, tx = Chan[Int][1]()
-run hold(tx)
+go hold(tx)
 println(read(rx)?)
 '''
 SMALL = '''xs = 0..100 |> to_stream() |> reduce(List[Int](), (acc, i) -> acc + i)

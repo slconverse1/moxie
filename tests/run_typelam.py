@@ -42,13 +42,13 @@ type alias App[A] = trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, 
 fn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]
   M.get().flat_map((n) -> if n >= limit then M.throw_error("too big") else M.put(n + 1)).flat_map((u) -> M.get())
 """
-chk("a named stack: tick[App]", STACK + """fn go(s Int) Result[(Int, Int), String]
+chk("a named stack: tick[App]", STACK + """fn begin(s Int) Result[(Int, Int), String]
   trans.run_identity(trans.run_except_t(trans.run_state_t(tick[App](5), s)))
-println("${go(1)} ${go(9)}")
+println("${begin(1)} ${begin(9)}")
 """, 0, 'Ok((2, 2)) Err("too big")')
-chk("the same stack as an anonymous lambda", STACK + """fn go(s Int) Result[(Int, Int), String]
+chk("the same stack as an anonymous lambda", STACK + """fn begin(s Int) Result[(Int, Int), String]
   trans.run_identity(trans.run_except_t(trans.run_state_t(tick[[A] -> trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, A]](5), s)))
-println(go(1))
+println(begin(1))
 """, 0, "Ok((2, 2))")
 chk("an alias as a type value with its arguments", "import fp.trans\ntype alias Counter[M[_], A] = trans.StateT[M, Int, A]\nprintln(trans.run_state_t(Counter[Result[_, Error], Int].put(3), 0))\n", 0, "Ok(((), 3))")
 

@@ -69,7 +69,7 @@ fiber fn worker(id Int, out ChanW[Int]) Unit
   _ = write(out, id * 10)
 rx, tx = Chan[Int][8]()
 for i in 1..=5
-  _ = run worker(i, clone(tx))
+  _ = go worker(i, clone(tx))
 drop = move tx
 fn drain(rx ChanR[Int], n Int) Int
   if n == 0 then 0 else read(rx).get_or(0) + drain(rx, n - 1)

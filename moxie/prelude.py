@@ -2804,7 +2804,7 @@ def b_retry(I, a, kw, ta):
 
 
 def _library_fibers_ok(I, n):
-    """The fibers a library call starts count against the pool header's cap, like `run`."""
+    """The fibers a library call starts count against the pool header's cap, like `go`."""
     cap = getattr(I.sched, "fiber_cap", None)
     if cap is not None and sum(1 for x in I.sched.fibers if not x.done) + n > cap:
         raise Abort(f"the fiber blocks are all in use: the pool header allows {cap} fibers")

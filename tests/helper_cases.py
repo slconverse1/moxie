@@ -30,7 +30,7 @@ fiber fn bad(tx ChanW[Int]) Unit
   xs = List(1, 2, 3)
   _ = write(tx, xs(len(xs) + 4))
 rx, tx = Chan[Int][1]()
-_ = run bad(tx)
+_ = go bad(tx)
 sleep(1s)
 println("still here")
 ''', [], 1),

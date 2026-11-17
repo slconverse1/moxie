@@ -2610,7 +2610,7 @@ class Checker(RefineMixin):
             self.err(n.line, f"`?` follows a `Result` or an `Option`, found `{tshow(t)}`")
             return
         if self.in_fiber and self.fn_ret is None and not self.in_daemon:
-            self.err(n.line, "`?` cannot be used in an inline fiber (`run fn`): it has no return type to carry the error; handle it with `when`, or write a `fiber fn` that returns a `Result`")
+            self.err(n.line, "`?` cannot be used in an inline fiber (`go fn`): it has no return type to carry the error; handle it with `when`, or write a `fiber fn` that returns a `Result`")
             return
         if self.in_daemon and self.fn_ret is None:
             self.err(n.line, "`?` cannot be used in a `daemon:` body: handle the error with `when`, so a failure is a decision and not a silent exit")
@@ -3929,10 +3929,10 @@ class Checker(RefineMixin):
         if rt.__class__ is Call and rt.fn.__class__ is Name and sc.find(rt.fn.name) is None and self.fns.get(rt.fn.name):
             fds = self.fns[rt.fn.name]
             if not any(f == "fiber" or (isinstance(f, str) and f.startswith("fiber:")) for fd in fds for f in (fd.flags or ())):
-                self.err(n.line, f"`{rt.fn.name}` is started with `run`, so declare it a fiber function: `fiber fn {rt.fn.name}(...)` (or `fiber[n] fn` to limit how many run at once)")
+                self.err(n.line, f"`{rt.fn.name}` is started with `go`, so declare it a fiber function: `fiber fn {rt.fn.name}(...)` (or `fiber[n] fn` to limit how many run at once)")
         self.ev(n.target, sc)
         self.ev(n.limit, sc)
-        # a resource handed to `run f(x)` belongs to the new fiber, which closes it when it ends
+        # a resource handed to `go f(x)` belongs to the new fiber, which closes it when it ends
         names = []
         t = n.target
         if t.__class__ is Call:

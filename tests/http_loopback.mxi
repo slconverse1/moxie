@@ -13,7 +13,7 @@ fiber fn server(l Listener, count Int) Unit
 
 l = listen(0)?
 port = port_of(l)
-run server(l, 3)
+go server(l, 3)
 a = http.get("localhost", port, "/hello")?
 println("${a.status} ${a.body}")
 b = http.post("localhost", port, "/echo", "héllo")?

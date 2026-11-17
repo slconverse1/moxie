@@ -267,7 +267,7 @@ class Parser(ExprParser):
         if not (t.kind == "NAME" or (t.kind == "OP" and t.val in ("(", "^"))):
             return None
         if t.kind == "NAME" and t.val in ("if", "when", "for", "while", "fn", "do", "select", "daemon",
-                                           "run", "not", "todo", "true", "false", "return"):
+                                           "go", "not", "todo", "true", "false", "return"):
             return None
         # scan to find a top-level assignment operator
         depth = 0
@@ -601,7 +601,7 @@ class Parser(ExprParser):
         t = self.peek()
         if t.kind == "NAME":
             if t.val in HARD and not getattr(self, "member_depth", 0):
-                self.err(f"`{t.val}` is a keyword, so it cannot name a function (a method may be called `run`, but a function may not): pick another name (`{t.val}_it`, `start`, ...)")
+                self.err(f"`{t.val}` is a keyword, so it cannot name a function (a method may be called `go`, but a function may not): pick another name (`{t.val}_it`, `start`, ...)")
             name = self.next().val
         elif t.kind == "OP":
             name = self.next().val

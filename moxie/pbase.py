@@ -7,7 +7,7 @@ HARD = {
     "internal", "using",
     "if", "elif", "else", "when", "select", "for", "while", "in", "is", "break", "continue",
     "return", "daemon", "do",
-    "run", "ref", "move", "static",
+    "go", "ref", "move", "static",
     "and", "or", "not", "true", "false", "Self", "self", "todo",
 }
 

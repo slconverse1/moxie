@@ -20,7 +20,7 @@ def declared_names(stmts):
     return {x.name for x in stmts if x.__class__.__name__ in ("TupleDecl", "EnumDecl", "AliasDecl", "IfaceDecl")}
 
 
-WARN_QUIET = [False]            # `--quiet` and `--release`: `run` does not print the compiler's warnings
+WARN_QUIET = [False]            # `--quiet` and `--release`: `moxie run` does not print the compiler's warnings
 
 
 class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
@@ -187,7 +187,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     DECL_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "ImplDecl", "AliasDecl",
                   "ImportDecl", "UsingDecl", "TestDecl", "Assign", "ForeignDecl")
 
-    EFFECTS = {"println", "print", "dbg", "sql", "read", "write", "sleep", "run", "transaction"}
+    EFFECTS = {"println", "print", "dbg", "sql", "read", "write", "sleep", "go", "transaction"}
 
     def _has_effect(self, node):
         if isinstance(node, (list, tuple)):

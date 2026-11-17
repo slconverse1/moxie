@@ -15,7 +15,7 @@ CLIENT = """fn client(c session.Endpoint[Client]) Result[Int, Error]
   session.finish(c3)
   Ok(r)
 """
-RUN = "c, s = session.connect[Client]()\n\\run serve(move s)\nprintln(client(c))\n"
+RUN = "c, s = session.connect[Client]()\n\\go serve(move s)\nprintln(client(c))\n"
 CHOICE = """import session
 type alias Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]
 
@@ -37,7 +37,7 @@ fn client(c session.Endpoint[Client]) Result[Int, Error]
   Ok(r)
 
 c, s = session.connect[Client]()
-\\run serve(move s)
+\\go serve(move s)
 println(client(c))
 """
 LOOP = """import session
@@ -67,7 +67,7 @@ fiber fn server(e session.Endpoint[EchoServer]) Result[Unit, Error]
   serve(e)
 
 c, s = session.connect[EchoClient]()
-\\run server(move s)
+\\go server(move s)
 println(ask(c, 3, 0))
 """
 DELEG = """import session
@@ -83,7 +83,7 @@ fiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]
 
 mc, ms = session.connect[Main]()
 pc, ps = session.connect[Private]()
-\\run worker(move ms)
+\\go worker(move ms)
 mc2 = session.send(mc, ps)?
 session.finish(mc2)
 pc2 = session.send(pc, 5)?
@@ -103,7 +103,7 @@ CHECKS = [
  ("using an endpoint twice", HEAD + "fn f(c session.Endpoint[Client]) Result[Unit, Error]\n  c2 = session.send(c, 1)?\n  c3 = session.send(c, 2)?\n  Ok(())\n", "use of moved value `c`"),
  ("dropping an endpoint mid-conversation", HEAD + "fn f(c session.Endpoint[Client]) Result[Unit, Error]\n  c2 = session.send(c, 1)?\n  Ok(())\n", "dropped before its protocol is finished"),
  ("reaching End without finishing", HEAD + "fn f(c session.Endpoint[Client]) Result[Int, Error]\n  c2 = session.send(c, 1)?\n  (r, c3) = session.recv(c2)?\n  Ok(r)\n", "never finished"),
- ("handing a function the wrong end", HEAD + SERVE + "c, s = session.connect[Client]()\n\\run serve(move c)\n", "mismatched types"),
+ ("handing a function the wrong end", HEAD + SERVE + "c, s = session.connect[Client]()\n\\go serve(move c)\n", "mismatched types"),
  ("sending on the receiving end", HEAD + "c, s = session.connect[Client]()\nx = session.send(s, 1)\n", "expected `session.Endpoint[session.Send[T, S]]`"),
  ("reusing an endpoint after sending it", HEAD.replace("session.Send[Int,", "session.Send[Int,") + "type alias Main = session.Send[session.Endpoint[Client], session.End]\nfn f(mc session.Endpoint[Main], p session.Endpoint[Client]) Result[Unit, Error]\n  mc2 = session.send(mc, p)?\n  session.finish(mc2)\n  p2 = session.send(p, 1)?\n  Ok(())\n", "use of moved value `p`"),
  ("a correct function checks clean", HEAD + SERVE + CLIENT, None),

@@ -37,7 +37,7 @@ ECHO = '''fiber fn serve(l Listener) Result[Unit, Error]
 
 init
   l = listen_unix("@SOCK@")?
-  _ = run serve(move l)
+  _ = go serve(move l)
   c = connect_unix("@SOCK@")?
   println(c, "hi")
   println(read_line(c)?)
@@ -94,7 +94,7 @@ HELD = '''fiber fn reader(path String) Result[Unit, Error]
 init
   make_fifo("@FIFO@")?
   p = spawn("sh", List("-c", "exec sleep 30 > @FIFO@"))?
-  _ = run reader("@FIFO@")
+  _ = go reader("@FIFO@")
   println("main done")
 '''
 chk("a read still waiting does not hold up exit", run(HELD), 0, "main done", under=10)
@@ -103,7 +103,7 @@ chk("a fiber waiting on a named pipe leaves the others running", run('''fiber fn
 
 init
   make_fifo("@FIFO@")?
-  _ = run other()
+  _ = go other()
   p = spawn("sh", List("-c", "sleep 0.3; echo hi > @FIFO@"))?
   r = open_file("@FIFO@", ReadOnly)?
   println(read_line(r)?)
@@ -116,7 +116,7 @@ WATCH = '''fiber fn watchdog() Unit
 init
   make_fifo("@FIFO@")?
   p = spawn("sh", List("-c", "exec sleep 30 > @FIFO@"))?
-  _ = run watchdog()
+  _ = go watchdog()
   r = open_file("@FIFO@", ReadOnly)?
   println(read_line(r))
 '''
@@ -127,7 +127,7 @@ chk("sleeping fibers keep time while another waits on a child", run('''fiber fn 
     println("tick $i")
 
 init
-  _ = run ticker()
+  _ = go ticker()
   p = spawn("sleep", List("0.5"))?
   println(wait_child(p)?)
   close(p)
@@ -139,7 +139,7 @@ chk("an accept with a timeout fiber", run('''fiber fn watchdog() Unit
 
 init
   l = listen_unix("@SOCK@")?
-  _ = run watchdog()
+  _ = go watchdog()
   println(accept(l))
 '''), 4, "nobody came", under=10)
 chk("the pool tally counts a Listener", run('init\n  l = listen_unix("@SOCK@")?\n  close(l)\n', (), cmd="pools"), 0, "Listener")

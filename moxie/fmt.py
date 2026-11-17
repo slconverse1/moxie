@@ -36,7 +36,7 @@ def _tokens(src, file):
 SPACED = {"==", "~=", "<=", ">=", "->", "|>", "|>>", "<$>", "<*>", "~>", "<~", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^="}
 ARITH = {"+", "-", "*", "/", "%"}
 KEYWORDS = {"return", "and", "or", "not", "in", "is", "if", "elif", "else", "when", "while", "for", "yield", "break",
-            "continue", "move", "ref", "using", "assert", "match", "do", "then", "where", "as", "lazy", "run"}
+            "continue", "move", "ref", "using", "assert", "match", "do", "then", "where", "as", "lazy", "go"}
 DECL_WORDS = {"fn", "type", "impl", "interface", "enum", "test", "export", "internal", "pure", "parks", "prints", "impure",
               "foreign", "fiber"}
 
@@ -74,7 +74,7 @@ def _space_line(text, toks):
         v = t.val
         if i > 0 and toks[i - 1].kind == "NAME" and toks[i - 1].val == "fn":
             if v == "(":
-                want(gap_before(p), " ")    # an inline fiber is always written `run fn (`
+                want(gap_before(p), " ")    # an inline fiber is always written `go fn (`
             continue                        # fn +(other: Money) names an operator; leave it as written
         if False:
             pass

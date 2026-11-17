@@ -67,13 +67,13 @@ println(trans.run_identity(trans.run_except_t(prog[trans.ExceptT[trans.Identity,
 TICK = """fn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]
   M.get().flat_map((n) -> if n >= limit then M.throw_error("too big") else M.put(n + 1)).flat_map((u) -> M.get())
 """
-chk("a stack of StateT over ExceptT: the failure drops the state", IMP + TICK + f"""go = (s Int) -> trans.run_identity(trans.run_except_t(trans.run_state_t(tick[{ST_EX}](5), s)))
-println(go(1))
-println(go(9))
+chk("a stack of StateT over ExceptT: the failure drops the state", IMP + TICK + f"""begin = (s Int) -> trans.run_identity(trans.run_except_t(trans.run_state_t(tick[{ST_EX}](5), s)))
+println(begin(1))
+println(begin(9))
 """, 0, 'Ok((2, 2))\nErr("too big")')
-chk("the other order, ExceptT over StateT: the state survives the failure", IMP + TICK + f"""go = (s Int) -> trans.run_identity(trans.run_state_t(trans.run_except_t(tick[{EX_ST}](5)), s))
-println(go(1))
-println(go(9))
+chk("the other order, ExceptT over StateT: the state survives the failure", IMP + TICK + f"""begin = (s Int) -> trans.run_identity(trans.run_state_t(trans.run_except_t(tick[{EX_ST}](5)), s))
+println(begin(1))
+println(begin(9))
 """, 0, "(Ok(2), 2)\n(Err(\"too big\"), 9)")
 
 chk("state and an error handler together", IMP + f"""fn prog[M[_] Monad + MonadState[Int] + MonadError[String]]() M[Int]
@@ -110,23 +110,23 @@ println(trans.run_identity(trans.run_writer_t(trans.run_state_t(logit[trans.Stat
 
 chk("ContT: call_cc escapes from a fold", IMP + """fn find_first[M[_] Monad + MonadCont](xs List[Int], want Int) M[Int]
   M.call_cc((leave) -> xs.reduce(M.pure(-1), (acc, x) -> acc.flat_map((r) -> if x == want then leave(x * 100) else M.pure(r))))
-fn go(want Int) Int
+fn begin(want Int) Int
   trans.run_identity(trans.run_cont_t(find_first[trans.ContT[trans.Identity, Int, _]](List(1, 2, 3), want), (a) -> trans.Identity.pure(a)))
-println("${go(2)} ${go(9)}")
+println("${begin(2)} ${begin(9)}")
 """, 0, "200 -1")
 
 chk("MonadCont through a StateT keeps the state at the escape", IMP + """fn counter[M[_] Monad + MonadState[Int] + MonadCont]() M[Int]
   M.call_cc((leave) -> M.put(5).flat_map((u) -> leave(1)).flat_map((u) -> M.put(99))).flat_map((a) -> M.get())
-fn go() (Int, Int)
+fn begin() (Int, Int)
   trans.run_identity(trans.run_cont_t(trans.run_state_t(counter[trans.StateT[trans.ContT[trans.Identity, (Int, Int), _], Int, _]](), 0), (p) -> trans.Identity.pure(p)))
-println(go())
+println(begin())
 """, 0, "(5, 5)")
 
 chk("ContT lifts MonadState and an inner monad", IMP + """fn bump[M[_] Monad + MonadState[Int]]() M[Int]
   M.modify((n) -> n + 1).flat_map((u) -> M.get())
-fn go() (Int, Int)
+fn begin() (Int, Int)
   trans.run_identity(trans.run_state_t(trans.run_cont_t(bump[trans.ContT[trans.StateT[trans.Identity, Int, _], (Int, Int), _]]().flat_map((a) -> trans.lift_cont_t(trans.StateT[trans.Identity, Int, _].gets((s) -> (a, s)))), (p) -> trans.StateT[trans.Identity, Int, _].pure(p)), 4)(0))
-println(go())
+println(begin())
 """, 0, "(5, 5)")
 
 FREE = """enum Cmd[Next]

@@ -47,7 +47,7 @@ RUN = [
 ]
 CHECK = [
  ("a member without the method is an error", "import arith\n" + MUL + PRETTY + UNION + "fn show_full(e Full) String\n  e.pretty(show_full)\n", "has no method `pretty`"),
- ("a member that doesn't meet a bound is an error", "import arith\n" + MUL + PRETTY + UNION + "fn go[U Pretty[U]](e U) String\n  e.pretty(go)\n" + VALUE + "println(go(f))\n", "doesn't implement `Pretty`"),
+ ("a member that doesn't meet a bound is an error", "import arith\n" + MUL + PRETTY + UNION + "fn begin[U Pretty[U]](e U) String\n  e.pretty(begin)\n" + VALUE + "println(begin(f))\n", "doesn't implement `Pretty`"),
  ("all members have it: fine", "import arith\n" + MUL + PRETTY + PRETTY_MUL + UNION + "fn show_full(e Full) String\n  e.pretty(show_full)\n", None),
  ("a local union with a member lacking the method", "tuple A\n  n Int\ntuple B\n  n Int\ninterface Name\n  fn name(self) String\nimpl Name for A\n  fn name(self) String\n    \"a\"\ntype union AB = A | B\nfn f(x AB) String\n  x.name()\n", "`B`, which has no method `name`"),
  ("a generic constructor takes its children from the union", "tuple Lit\n  value Int\ntuple Add[E]\n  left E\n  right E\ntuple Mul[E]\n  left E\n  right E\ntype union Full = Lit | Add[Full] | Mul[Full]\nx Full = Mul(Lit(3), Add(Lit(1), Lit(2)))\n", None),

@@ -9,7 +9,7 @@ CASES = [
  ("read returns a ready value", 'rx, tx = Chan[Int][1]()\n_ = write(tx, 7)\nprintln(read(rx, timeout: 50ms))\nclose(tx)\n', "Ok(7)"),
  ("a timed-out read takes nothing", 'rx, tx = Chan[Int][1]()\n_ = read(rx, timeout: 10ms)\n_ = write(tx, 9)\nprintln(read(rx, timeout: 10ms))\nclose(tx)\n', "Ok(9)"),
  ("read on a closed channel is CLOSED, not a timeout", 'rx, tx = Chan[Int][1]()\nclose(tx)\nprintln(read(rx, timeout: 1s))\n', 'Err(Error(code: 1, message: "channel closed"))'),
- ("a value that arrives in time wins", 'fiber[1] fn later(out ChanW[Int]) Unit\n  sleep(20ms)\n  _ = write(out, 5)\n  close(out)\nrx, tx = Chan[Int][1]()\n_ = run later(move tx)\nprintln(read(rx, timeout: 1s))\n', "Ok(5)"),
+ ("a value that arrives in time wins", 'fiber[1] fn later(out ChanW[Int]) Unit\n  sleep(20ms)\n  _ = write(out, 5)\n  close(out)\nrx, tx = Chan[Int][1]()\n_ = go later(move tx)\nprintln(read(rx, timeout: 1s))\n', "Ok(5)"),
  ("wait_child times out", 'c = spawn("sleep", List("2"))?\nprintln(wait_child(c, timeout: 100ms))\nkill_child(c)\nprintln(wait_child(c, timeout: 5s))\n', 'Err(Error(code: 12, message: "wait_child: timed out"))\nOk(137)'),
  ("run_command times out with TIMED_OUT", 'println(run_command("sleep", List("2"), timeout: 100ms))\n', 'Err(Error(code: 12, message: "sleep: timed out"))'),
  ("accept times out", 'l = listen(0)?\nprintln(accept(l, timeout: 100ms))\nclose(l)\n', 'Err(Error(code: 12, message: "accept: timed out"))'),

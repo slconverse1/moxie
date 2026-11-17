@@ -855,7 +855,7 @@ class ExprParser(PBase):
         if v == "daemon" and self.nl_indent_at(1):
             self.next()
             return DaemonE(self.parse_block(), line=line)
-        if v == "run":
+        if v == "go":
             return self.parse_run()
         if v == "fn":
             return self.parse_anon_fn()
@@ -1107,7 +1107,7 @@ class ExprParser(PBase):
         return lam
 
     def parse_lambda(self, run=True):
-        """The inline fiber `run fn (args)(params)` and an indented body (the arguments come first, like `run name(args)`).
+        """The inline fiber `go fn (args)(params)` and an indented body (the arguments come first, like `go name(args)`).
         An anonymous function elsewhere is written `(params) -> body` (parse_bare_lambda)."""
         t = self.next()   # fn
         line = t.line
