@@ -844,6 +844,9 @@ class ExprParser(PBase):
         if v == "do" and self.nl_indent_at(1):
             self.next()
             return DoE(self.parse_block(), None, line=line)
+        if v == "chain" and self.nl_indent_at(1):
+            self.next()
+            return self.parse_chain(line)
         if v == "scope" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
             self.err("`scope` is now `wait`: write `wait` (or `wait token`) before the block")
         if v == "wait" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
@@ -1228,6 +1231,43 @@ class ExprParser(PBase):
             pass
         else:
             self.err(f"unexpected {self.describe(t)}")
+
+    def parse_chain(self, line):
+        """`chain` block: `name <- e` binds the answer of `e`, a bare expression runs for its effect, a binding line is
+        an ordinary local, and the last line is the value. Each step becomes `e.flat_map((name) -> rest)`."""
+        self.expect_nl_indent()
+        items = []                                                       # (name, line, expr) or (None, line, stmt)
+        toks = []
+        while True:
+            self.skip_nl()
+            t = self.peek()
+            if t.kind in ("DEDENT", "EOF"):
+                break
+            t1, t2 = self.peek(1), self.peek(2)
+            if (t.kind == "NAME" and t1.kind == "OP" and t1.val == "<" and t2.kind == "OP" and t2.val == "-" and not t2.sp):
+                self.next(); self.next(); self.next()
+                e = self.parse_expr()
+                self.end_line()
+                items.append((t.val, t.line, e)); toks.append(t)
+            else:
+                st = self.parse_stmt()
+                items.append((None, st.line, st)); toks.append(t)
+        self.expect_dedent()
+        if not items:
+            self.err("a `chain` block is empty")
+        name, ln, last = items[-1]
+        if name is not None or last.__class__ in (Assign, ElseLet):
+            self.err("a `chain` block ends with the value it gives: write an expression on the last line, not a binding", toks[-1])
+        acc = last.e if last.__class__ is ExprStmt else last
+        for name, ln, e in reversed(items[:-1]):
+            if name is None and e.__class__ in (Assign, ElseLet):
+                acc = Block([e, acc], line=ln)                           # an ordinary local line
+                continue
+            val = e.e if (name is None and e.__class__ is ExprStmt) else e
+            pname = name if name is not None else "_"
+            lam = Lambda([Param(None, pname, None, None, None, False, line=ln)], acc, None, None, None, line=ln)
+            acc = Call(Field(val, "flat_map", line=ln), [Arg(None, lam, None, line=ln)], None, line=ln)
+        return acc
 
     def parse_block(self):
         """NL INDENT stmts DEDENT"""
