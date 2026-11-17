@@ -524,18 +524,18 @@ class Scheduler:
         return main.result
 
     def deadlock_message(self):
-        # a `go` waiting for a slot that no running copy can free is the likeliest cause: say so
+        # a `go` waiting for a slot that no running copy can free is the likeliest cause: name each one
+        parts = []
         for key, ws in self.__dict__.get("slot_waiters", {}).items():
-            ws = [w for w in ws if not w.done]
-            if not ws:
+            if not [w for w in ws if not w.done]:
                 continue
             name, limit, line = self.__dict__.get("slot_info", {}).get(key, ("fiber", None, None))
             live = self.__dict__.get("live_fibers", {}).get(key, 0)
             at = f" at line {line}" if line else ""
-            return (f"deadlock: `go {name}(...)`{at} is waiting for a free slot of fiber function '{name}' "
-                    f"(limit {limit}), and the {live} running cop{'y' if live == 1 else 'ies'} "
-                    f"{'is itself' if live == 1 else 'are themselves'} waiting, so no slot can free up. "
-                    f"Use `try_go` if the caller can't wait, raise the limit, or make the running copies able to finish")
+            parts.append(f"`go {name}(...)`{at} is waiting for a free slot of fiber function '{name}' (limit {limit}), and the {live} running "
+                         f"cop{'y' if live == 1 else 'ies'} {'is itself' if live == 1 else 'are themselves'} waiting, so no slot can free up")
+        if parts:
+            return "deadlock: " + "; ".join(parts) + ". Use `try_go` if the caller can't wait, raise the limit, or make the running copies able to finish"
         return "deadlock: every fiber is waiting and nothing can wake them"
 
     def step(self, f):

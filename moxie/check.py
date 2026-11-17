@@ -4865,6 +4865,11 @@ class Checker(RefineMixin):
         if n.fn.__class__ is Field:
             self.check_union_method(n, sc)
             self.check_concrete_method(n, sc)
+        elif n.fn.__class__ is Name and len(self.fns.get(n.fn.name, ())) == 1:
+            fdc = self.fns[n.fn.name][0]
+            for prm, a in zip([q for q in fdc.params or [] if getattr(q, "name", None) != "self"], n.args or []):
+                if hasattr(a, "expr") and prm.type is not None and self.union_name_of(prm.type) is not None:
+                    self.has_expect(a.expr, prm.type)          # `show_arith(mul(lit(1), lit(2)))`: the union the argument builds into
         tr = self.tparam_static_call(n, sc) if n.fn.__class__ is Field else None
         if tr is not None:
             r = (tr, r[1] if r.__class__ is tuple and len(r) > 1 else None)
@@ -7362,9 +7367,42 @@ class Checker(RefineMixin):
                 if norm(want) not in have:
                     self.err(line, f"`{name}` has no `{want}`, which `{fd.name}` needs of `{u}` (`{u} Has[{x}]`): add it to the union")
 
+    def union_bases(self, tx):
+        """The base names of the members of a declared `type union`, generic or not (`Say[A] | Ask[A]` gives {Say, Ask}), else None."""
+        a = self.aliases.get(tx.path[0])
+        if a is None or a.kind != "union":
+            return None
+        ms = a.type.members if a.type.__class__ is TUnion else [a.type]          # a union of one member is that member
+        return {m.path[-1] for m in ms if m.__class__ is TName}
+
+    def has_expect_ctor(self, e, ty):
+        """`p freer.Prog[OnlyAsk, Unit] = say("hi")` where `fn say[C[_] Has[Say]](t String) freer.Prog[C, Unit]`: the union written where
+        the callee has the constructor parameter `C` must list `Say`.  True when `ty` was of this shape (checked or not)."""
+        if ty.__class__ is not TName or not ty.groups or e.__class__ is not Call or e.fn.__class__ is not Name \
+                or len(self.fns.get(e.fn.name, ())) != 1:
+            return False
+        fd = self.fns[e.fn.name][0]
+        rt = fd.ret
+        if rt.__class__ is not TName or not rt.groups or rt.path[-1] != ty.path[-1] or len(rt.groups) != len(ty.groups):
+            return False
+        wants = self.has_wants(fd)
+        done = False
+        for rg, tg in zip(rt.groups, ty.groups):
+            for rx, tx in zip(rg, tg):
+                if rx.__class__ is TName and len(rx.path) == 1 and not rx.groups and rx.path[0] in wants \
+                        and tx.__class__ is TName and len(tx.path) == 1 and not tx.groups and self.union_bases(tx) is not None:
+                    done = True
+                    have = self.union_bases(tx)
+                    for x in wants[rx.path[0]]:
+                        if x.split("[")[0].strip() not in have:
+                            self.err(e.line, f"`{tx.path[0]}` has no `{x}`, which `{fd.name}` needs of `{rx.path[0]}` (`{rx.path[0]} Has[{x}]`): add it to the union")
+        return done
+
     def has_expect(self, e, ty, depth=0):
         """`x Full = add(lit(1), lit(2))`: a call of a generic function whose result is a bare `U Has[...]`, wanted as the union `Full`
         by a binding or a result type, needs `Full` to hold what the bounds name; so do the arguments that are `U` themselves."""
+        if self.has_expect_ctor(e, ty):
+            return
         name = self.union_name_of(ty)
         outer = ty.path[0] if ty.__class__ is TName and len(ty.path) == 1 and not ty.groups and ty.path[0] in getattr(self, "fn_tparams", ()) else None
         if (name is None and outer is None) or depth > 8:
@@ -7489,9 +7527,12 @@ class Checker(RefineMixin):
                 ok.add(id(e))
         mark(n.body)
         bad = []
+        selfcalls = []
 
         def walk(x):
             if isinstance(x, N):
+                if x.__class__ is Call and x.fn.__class__ is Name and x.fn.name == n.name:
+                    selfcalls.append(x)
                 if x.__class__ is Call and x.fn.__class__ is Name and x.fn.name == n.name and id(x) not in ok:
                     bad.append(x)
                 for f in x._fields:
@@ -7502,6 +7543,11 @@ class Checker(RefineMixin):
         walk(n.body)
         for b in bad:
             self.err(b.line or n.line, f"`{n.name}` is marked `tailrec`, but this recursive call is not in tail position")
+        if not bad and not getattr(n, "contracts", None):
+            from .values import TAILSELF
+            for call in selfcalls:
+                if id(call) in ok:
+                    TAILSELF[id(call)] = n   # the interpreter turns these calls into a loop
 
     def loop_yields(self, loop):
         """True when `break(value)` appears in the loop's body (any depth, so a nested loop's break counts too: the answer errs toward not reporting)."""

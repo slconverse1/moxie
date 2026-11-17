@@ -20,6 +20,15 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-17 (`eval`, `fp.freer`, tail calls)
+
+- **`eval` blocks.** `eval` at the start of an indented block (a soft keyword) writes a monadic program as straight-line code: `name <- step` names a step's answer, a bare line is a step whose answer is dropped, `x = e` is an ordinary local, and the last line is the value. It desugars to `flat_map`, so it works for `Option`, `Result`, `State`, `Reader`, `Prog`, and any type of yours with a `flat_map`. Spec 2, Guide 24n, `tests/run_evalblock.py`.
+- **`fp.freer`**, the freer monad as a standard package: `Prog[C[_], A]`, `send`, `done`, `bind`, and `Monad`. Commands are an enum or a generic `type union` of enums, and handlers compose by handling some commands and passing the rest on. Guide 24n, `tests/run_freer.py`.
+- **`Has` is checked in more places**: a call passed as an argument to a function whose parameter is a union, and a constructor parameter bound by `Has` (`fn say[C[_] Has[Say]]`) against the union written in the declared type.
+- **Unknown methods are a check error** on declared tuples and enums (`T has no method nope`); before, they aborted at run time.
+- **`tailrec fn` runs its tail calls as a loop.** Deep tail recursion is linear (100000 steps in 2 s; 4000 used to take 3.4 s and grew worse than quadratically).
+- The deadlock message names every `go` that is waiting for a slot.
+
 ### 2026-11-16 (`go` waits, `try_go`)
 
 - **`go` returns `Unit` and waits for a free slot** when a `fiber[n]` function (or the manifest's default cap) has all its copies alive, instead of returning an `Err(NO_SLOT)` that was easy to lose. **`try_go`** is the new keyword for the old behavior: it never waits and returns `Result[Unit, Error]` (`Err(NO_SLOT)` when full). A `go` that can never get a slot is reported as a deadlock. `\go` is no longer needed (it still compiles). Spec (fibers), Guide 17, `tests/run_tally.py`.

@@ -1,0 +1,32 @@
+//! Freer: the freer monad. A program is data built from commands of type `C[X]` (an enum or a `type union` of enums whose cases say what
+//! each command answers with), and what to do with each answer. `C` needs no `Functor`. A handler is an ordinary function that matches on
+//! the commands; one that handles some of them and passes the rest on makes handlers compose.
+
+/// Either a finished value, or a command and the rest of the program, as a function of the command's answer.
+export enum Prog[C[_], A]
+  Pure(a A)
+  Bind[X](cmd C[X], k (X) -> Prog[C, A])
+
+impl[C[_]] Monad[Prog[C, _]]
+  fn map[A, B](self Prog[C, A], f (A) -> B) Prog[C, B]
+    self.flat_map((a) -> Pure(f(a)))
+  static fn pure[A](a A) Prog[C, A]
+    Pure(a)
+  fn ap[A, B](self Prog[C, (A) -> B], x Prog[C, A]) Prog[C, B]
+    self.flat_map((g) -> x.map(g))
+  fn flat_map[A, B](self Prog[C, A], f (A) -> Prog[C, B]) Prog[C, B]
+    when self
+      Pure(a) -> f(a)
+      Bind(c, k) -> Bind(c, (x) -> k(x).flat_map(f))
+
+/// A finished program.
+export fn done[C[_], A](a A) Prog[C, A]
+  Pure(a)
+
+/// One command as a program that returns its answer.
+export fn send[C[_], X](c C[X]) Prog[C, X]
+  Bind(c, (x) -> Pure(x))
+
+/// A command and what to do with its answer: the handler's way to pass a command it does not handle on to the next handler.
+export fn bind[C[_], X, A](c C[X], k (X) -> Prog[C, A]) Prog[C, A]
+  Bind(c, k)

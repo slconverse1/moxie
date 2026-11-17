@@ -4706,6 +4706,39 @@ exec(hello)
 
 Output: `name?` then `hi bob`. `eval` is the notation for building such programs: `name <- step` runs a step and names its answer, a bare line is a step whose answer is not wanted, `x = e` is an ordinary local, and the last line is the program the block gives. Each `<-` turns the rest of the block into the function passed to `flat_map`, so `chain` works for every type that has one (`Option`, `Result`, `State`, `Prog`), and it is plain syntax, not a new kind of value. `hello` is a value you can build, pass around and inspect before running; `exec` is one handler, and a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a `type union` of the enums and bound the helper functions with `Has`, as above. This is the freer monad of recent work on extensible effects, which dropped the earlier encoding (a functor for every command, `Fix` and a coproduct of functors with overlapping-instance injection) in favour of exactly these two ingredients: a typed command and a membership test, here `Has`. If you need the original encoding it works too: `Fix[F]`, a `Functor` impl and a `cata` are ordinary moxie.
 
+**A library for it: `fp.freer`.** Writing `Prog`, `send` and `flat_map` by hand for every program gets old, so the standard package `fp.freer` has them, generic over the command type: `Prog[C[_], A]` is a program whose commands are values of `C[X]`, `send` makes one command into a program, `done` ends one, and `Monad` is implemented, so `eval` blocks, `map` and the rest work on it. The commands can be one enum or a generic `type union` of several, and a handler is an ordinary function that matches on them. A handler that deals with some commands and hands the others on makes handlers compose: here `handle_say` removes the `Say` commands (collecting what they print) and leaves a program that only asks, which `run_ask` finishes:
+
+```
+import fp.freer
+
+enum Say[A]
+  Print(text String) Say[Unit]
+enum Ask[A]
+  Name Ask[String]
+type union Cmds[A] = Say[A] | Ask[A]
+type union OnlyAsk[A] = Ask[A]
+
+fn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p
+  Pure(a) -> freer.done((a, acc))
+  Bind(c, k) -> when c
+    Print(t) -> handle_say(k(()), acc + List(t))
+    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))
+
+fn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p
+  Pure(a) -> a
+  Bind(c, k) -> when c
+    Name -> run_ask(k("bob"))
+
+hello freer.Prog[Cmds, Unit] = eval
+  n <- freer.send(Name)
+  freer.send(Print("hi ${n}"))
+
+(u, out) = run_ask(handle_say(hello, List()))
+println(out)
+```
+
+Output: `List("hi bob")`. A helper that should work in any language holding a command bounds its constructor parameter with `Has`, just as the smart constructors above bound a union: `fn say[C[_] Has[Say]](t String) freer.Prog[C, Unit] = freer.send(Print(t))` builds into `freer.Prog[Cmds, Unit]`, and `x freer.Prog[OnlyAsk, Unit] = say("hi")` is a compile error (`OnlyAsk has no Say`). Handlers that run for a long program should be `tailrec fn`: a `tailrec fn` runs its tail calls as a loop, so a handler over twenty thousand commands takes a few seconds and no stack, where the same handler without `tailrec` slows down as the program deepens.
+
 **Which style when.** Choose by what you do with the program. Tagless final (24m) runs the program straight into a result and is the lightest way to add interpreters. Growing data types, as here, keep a tree you can print, store, send, count, rewrite and analyze before running it. Both let you add variants and operations without editing old code, and the two meet in the middle: an `impl` that builds a tree (24m) turns a tagless-final program into this kind of data.
 
 **Mistakes:** forgetting a node's `impl` for a new operation (the compiler names the member), writing `Mul(...)` with children of different types when two unions could hold them (write `Mul[Full](...)` to say which), putting the `impl` on the union instead of on each node, and writing the old operation without the `rec` parameter, which ties it to one union.

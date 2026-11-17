@@ -2090,7 +2090,14 @@ null
 ]
 ],
 [
-4627,
+4621,
+"import fp.freer\n\nenum Say[A]\n  Print(text String) Say[Unit]\nenum Ask[A]\n  Name Ask[String]\ntype union Cmds[A] = Say[A] | Ask[A]\ntype union OnlyAsk[A] = Ask[A]\n\nfn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p\n  Pure(a) -> freer.done((a, acc))\n  Bind(c, k) -> when c\n    Print(t) -> handle_say(k(()), acc + List(t))\n    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))\n\nfn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Name -> run_ask(k(\"bob\"))\n\nhello freer.Prog[Cmds, Unit] = eval\n  n <- freer.send(Name)\n  freer.send(Print(\"hi ${n}\"))\n\n(u, out) = run_ask(handle_say(hello, List()))\nprintln(out)\n",
+[
+"List(\"hi bob\")"
+]
+],
+[
+4660,
 "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\n  Add(a Value[Int], b Value[Int]) Value[Int]\n  Eq(a Value[Int], b Value[Int]) Value[Bool]\n  If(c Value[Bool], t Value[T], e Value[T])\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Add(a, b) -> eval(a) + eval(b)\n  Eq(a, b) -> eval(a) == eval(b)\n  If(c, t, e) -> if eval(c) then eval(t) else eval(e)\n\nprintln(eval(Add(Num(1), Num(2))))\nprintln(eval(If(Eq(Num(1), Num(1)), Num(5), Num(6))))\n",
 [
 "3",
@@ -2098,7 +2105,7 @@ null
 ]
 ],
 [
-4656,
+4689,
 "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\n  Pair(a Value[A], b Value[B]) Value[(A, B)]\n  Packed(v Value[A], f (A) -> String) Value[String]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Pair(a, b) -> (eval(a), eval(b))\n  Packed(v, f) -> f(eval(v))\n\nprintln(eval(Pair(Num(1), Flag(true))))\nprintln(eval(Packed(Num(41), (n) -> \"n=${n + 1}\")))\n",
 [
 "(1, true)",
@@ -2106,7 +2113,7 @@ null
 ]
 ],
 [
-4683,
+4716,
 "enum Value[T](line Int)\n  Num(line: 1)(n Int) Value[Int]\n  Flag(line: 2)(b Bool) Value[Bool]\n  Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Add(a, b) -> eval(a) + eval(b)\n\nprintln(eval(Add(Num(1), Num(2))))\nprintln(Flag(true).line)\n",
 [
 "3",
@@ -2114,7 +2121,7 @@ null
 ]
 ],
 [
-4708,
+4741,
 "tuple Open()\ntuple Closed()\ntuple File[S]\n  name String\n\nfn mk(n String) File[Open] = File(name: n)\nfn rd(f File[Open]) String = \"read \" + f.name\nfn cl(f File[Open]) File[Closed] = File(name: f.name)\n\nf = mk(\"a.txt\")\nprintln(rd(f))\ng = cl(f)\nprintln(g.name)\n",
 [
 "read a.txt",
@@ -2122,14 +2129,14 @@ null
 ]
 ],
 [
-4731,
+4764,
 "xs = List(1, 2, 3)\nsum = xs |> to_stream() |> reduce(0, _1 + _2)\nprintln(\"$sum\")\n",
 [
 "6"
 ]
 ],
 [
-4756,
+4789,
 "import stats\n\nscores Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)\nprintln(\"mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}\")\nprintln(\"spread ${stats.stddev(scores):.2f}\")\nwhen stats.quantile(scores, 0.9)\n  Ok(q) -> println(\"90th percentile ${q:.1f}\")\n  Err(e) -> println(\"bad quantile\")\n",
 [
 "mean 77.3, median 75.0",
@@ -2138,7 +2145,7 @@ null
 ]
 ],
 [
-4773,
+4806,
 "import stats\n\nhours Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)\nscore Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)\nwhen stats.fit_line(hours, score)\n  Err(e) -> println(\"cannot fit: ${e.message}\")\n  Ok(line) ->\n    println(\"each hour adds ${line.slope:.1f} points, starting from ${line.intercept:.1f}\")\n    println(\"r squared ${line.r_squared:.3f}\")\n    println(\"6 hours predicts ${stats.predict(line, 6.0):.1f}\")\n    fitted = stats.predict_all(line, hours)\n    println(\"typical error ${stats.rmse(score, fitted):.2f} points\")\n",
 [
 "each hour adds 6.4 points, starting from 45.4",
@@ -2148,14 +2155,14 @@ null
 ]
 ],
 [
-4790,
+4823,
 "import stats\n\nx Array[Double] = (3.0, 3.0, 3.0)\ny Array[Double] = (1.0, 2.0, 3.0)\nwhen stats.fit_line(x, y)\n  Err(e) -> println(e.message)\n  Ok(line) -> println(\"fitted\")\n",
 [
 "fit_line: every x is the same, so there is no line to fit"
 ]
 ],
 [
-4806,
+4839,
 "import stats\n\nsales Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)\nprintln(stats.moving_average(sales, 3))\nprintln(\"forecast ${stats.smooth(sales, 0.5):.2f}\")\nprintln(\"slow forecast ${stats.smooth(sales, 0.1):.2f}\")\n",
 [
 "List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)",
@@ -2164,7 +2171,7 @@ null
 ]
 ],
 [
-4821,
+4854,
 "import http\n\nfn handle(req http.Request) http.Response\n  if req.method == \"POST\"\n    http.text(200, \"you said: ${req.body}\")\n  elif req.path == \"/hello\"\n    http.text(200, \"hello, mixer\")\n  else\n    http.text(404, \"nothing at ${req.path}\")\n\nfiber fn server(l Listener, count Int) Unit\n  http.serve_n(l, count, handle)\n\nl = listen(0)?\nport = port_of(l)\ngo server(l, 3)\na = http.get(\"localhost\", port, \"/hello\")?\nprintln(\"${a.status} ${a.body}\")\nb = http.post(\"localhost\", port, \"/echo\", \"hello\")?\nprintln(\"${b.status} ${b.body}\")\nc = http.get(\"localhost\", port, \"/nope\")?\nprintln(\"${c.status} ${c.body}\")\n",
 [
 "200 hello, mixer",
@@ -2173,7 +2180,7 @@ null
 ]
 ],
 [
-4856,
+4889,
 "import json\n\ntext = \"{\\\"name\\\": \\\"Al\\\", \\\"scores\\\": [90, 85.5], \\\"admin\\\": false}\"\ndoc = json.parse(text)?\nname = doc.field(\"name\").flat_map((d) -> d.as_text())?\nfirst = doc.field(\"scores\").flat_map((d) -> d.at(0)).flat_map((d) -> d.as_int())?\nprintln(\"$name $first\")\nprintln(doc.field(\"email\"))\nprintln(doc.field(\"name\").flat_map((d) -> d.as_int()))\nprintln(doc.to_json())\nprintln(json.parse(\"[1, 2\"))\n",
 [
 "Al 90",
@@ -2184,7 +2191,7 @@ null
 ]
 ],
 [
-4874,
+4907,
 "import json\n\ntuple Addr deriving dyn, show\n  city String,\n  zip Int\ntuple User deriving dyn, show\n  name String,\n  tags List[String],\n  addr Addr\n\ndynamic fn load(text String) Result[User, Error]\n  User.from_dyn(json.parse(text)?)\n\nu = User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150))\nprintln(u.to_dyn().to_json())\nprintln(load(u.to_dyn().to_json()))\nprintln(load(\"{\\\"name\\\": \\\"Al\\\", \\\"tags\\\": [1]}\"))\n",
 [
 "{\"name\":\"Al\",\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Oslo\",\"zip\":150}}",
@@ -2193,7 +2200,7 @@ null
 ]
 ],
 [
-4896,
+4929,
 "import json\n\nenum Shape deriving dyn, show\n  Circle(r Float)\n  Rect(w Float, h Float)\n  Empty\n\ndynamic fn parse_shape(text String) Result[Shape, Error]\n  Shape.from_dyn(json.parse(text)?)\n\ns = Shape.Rect(w: 2.0, h: 3.0)\nprintln(s.to_dyn().to_json())\nprintln(parse_shape(s.to_dyn().to_json()))\nprintln(parse_shape(\"{\\\"case\\\": \\\"Blob\\\"}\"))\n",
 [
 "{\"case\":\"Rect\",\"w\":2.0,\"h\":3.0}",
@@ -2202,7 +2209,7 @@ null
 ]
 ],
 [
-4917,
+4950,
 "import json\n\ntuple Pair[A, B] deriving dyn, show\n  first A\n  second B\n\nenum Tree[T] deriving dyn, show\n  Leaf(v T)\n  Node(l Tree[T], r Tree[T])\n\np = Pair(first: 1, second: \"a\")\nprintln(p.to_dyn().to_json())\nprintln(Pair[Int, String].from_dyn(p.to_dyn()))\nt = Tree.Node(l: Tree.Leaf(v: 1), r: Tree.Leaf(v: 2))\nprintln(Tree[Int].from_dyn(t.to_dyn()))\n",
 [
 "{\"first\":1,\"second\":\"a\"}",
@@ -2211,7 +2218,7 @@ null
 ]
 ],
 [
-4943,
+4976,
 "interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, msg)\n    println(\"${self.prefix}: $msg\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
 [
 "app: started"

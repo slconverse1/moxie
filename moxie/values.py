@@ -34,6 +34,16 @@ class ContinueEx(Exception):
         self.label = label
 
 
+TAILSELF = {}    # id(call node) -> the `tailrec fn` it calls from its own tail position: set by the checker, read by the interpreter
+
+
+class TailCall(Exception):
+    """A tail call of a `tailrec fn` to itself: the caller's loop binds the new arguments and runs the body again."""
+    def __init__(self, pos, named):
+        self.pos = pos
+        self.named = named
+
+
 class ReturnEx(Exception):
     def __init__(self, value):
         self.value = value

@@ -466,6 +466,9 @@ class CallsMixin:
                 spreads = []
         if defer:
             return callee, pos, named
+        if TAILSELF and k is Closure and TAILSELF.get(id(n)) is callee.node and not spreads and not refspec and targs is None \
+                and piped is NOPIPE and not has_self:
+            raise TailCall(pos, named)               # a `tailrec fn` calling itself in tail position: the caller loops
         if self.pkg_ceilings:
             self.cur_mod = env.mod
         r = yield from self.apply(callee, pos, named, refspec=refspec, env=env, targs=targs,
@@ -938,8 +941,12 @@ class CallsMixin:
         raise Abort(f"no clause of '{grp.name}' matches the arguments", line)
 
     def call_one(self, c, node, pos, named, refspec, cenv, targs, line):
-        r = self.try_bind(c, node, pos, named, targs, strict=True)
-        return (yield from self.run_bound(c, node, r, refspec, cenv, line))
+        while True:
+            r = self.try_bind(c, node, pos, named, targs, strict=True)
+            try:
+                return (yield from self.run_bound(c, node, r, refspec, cenv, line))
+            except TailCall as t:
+                pos, named = t.pos, t.named
 
     def try_bind(self, c, node, pos, named, targs, strict=False):
         """Bind arguments to parameters. Returns the call Env or None when a clause doesn't match."""
