@@ -1,0 +1,182 @@
+### Int where String expected (binding)
+reject: 
+x String = 5
+### String where Int expected (binding)
+reject: 
+x Int = "a"
+### Bool where Int expected
+reject: 
+x Int = true
+### wrong argument type
+reject: 
+fn f(n Int) Int = n + 1
+println(f("a"))
+### wrong argument count (too many)
+reject: 
+fn f(n Int) Int = n + 1
+println(f(1, 2))
+### wrong argument count (too few)
+reject: 
+fn f(n Int, m Int) Int = n + m
+println(f(1))
+### result type mismatch
+reject: 
+fn f(n Int) String = n + 1
+### result type mismatch in a branch
+reject: 
+fn f(n Int) Int = if n > 0 then 1 else "no"
+### if without else used as a value
+reject: 
+fn f(n Int) Int = if n > 0 then 1
+### condition must be Bool
+reject: 
+fn f(n Int) Int = if n then 1 else 2
+### undefined name
+reject: undefined name
+println(nope)
+### undefined function
+reject: undefined function
+println(nope(1))
+### adding Int and String
+reject: 
+println(1 + "a")
+### comparing Int with String
+reject: 
+println(1 == "a")
+### Float and Int do not mix silently
+reject: 
+x Int = 1.5
+### list of mixed elements
+reject: 
+xs List[Int] = List(1, "a")
+### list element type
+reject: 
+xs List[Int] = List(1, 2)
+x String = xs(0)
+### unknown field
+reject: has no field
+tuple P(x Int, y Int)
+p = P(x: 1, y: 2)
+println(p.z)
+### missing field in constructor
+reject: 
+tuple P(x Int, y Int)
+p = P(x: 1)
+### wrong field type in constructor
+reject: 
+tuple P(x Int, y Int)
+p = P(x: 1, y: "a")
+### unknown case
+reject: 
+enum E
+  A
+  B
+x E = C
+### function value has wrong type
+reject: 
+fn twice(f (Int) -> Int, n Int) Int = f(f(n))
+println(twice((s String) -> s, 1))
+### lambda result type
+reject: 
+fn twice(f (Int) -> Int, n Int) Int = f(f(n))
+println(twice((n) -> "a", 1))
+### return type Unit used as Int
+reject: 
+fn f() Unit = println("x")
+y Int = f()
+### missing return value
+reject: 
+fn f(n Int) Int
+  println(n)
+### ok: simple function
+ok: 3
+fn f(n Int) Int = n + 1
+println(f(2))
+### ok: tuple and field
+ok: 3
+tuple P(x Int, y Int)
+p = P(x: 1, y: 2)
+println(p.x + p.y)
+### ok: enum and when
+ok: 2
+enum E
+  A
+  B
+fn n(e E) Int = when e
+  A -> 1
+  B -> 2
+println(n(B))
+### ok: list typed
+ok: 1
+xs List[Int] = List(1, 2)
+println(xs(0))
+### ok: rebinding a name to another type is legal (Spec 2)
+ok
+x = 1
+x = "a"
+### ok: rebinding same type
+ok: 2
+x = 1
+x += 1
+println(x)
+### calling a non-function
+reject: 
+x = 1
+println(x(2))
+### Option value used as plain
+reject: 
+fn f() Option[Int] = Some(1)
+x Int = f()
+### Result value used as plain
+reject: 
+fn f() Result[Int, String] = Ok(1)
+x Int = f()
+### using ? outside a Result function
+reject: 
+fn f() Result[Int, String] = Ok(1)
+fn g() Int
+  x = f()?
+  x
+### ? error type mismatch
+reject: 
+fn f() Result[Int, String] = Ok(1)
+fn g() Result[Int, Int]
+  x = f()?
+  Ok(x)
+### ok: ? propagates same error
+ok: Ok(2)
+fn f() Result[Int, String] = Ok(1)
+fn g() Result[Int, String]
+  x = f()?
+  Ok(x + 1)
+println(g())
+### dropped Result is flagged
+reject: 
+fn f() Result[Int, String] = Ok(1)
+fn g() Unit
+  f()
+### when arm types disagree
+reject: 
+fn f(n Int) Int = when n
+  1 -> 1
+  _ -> "a"
+### duplicate function parameter names
+reject: two parameters called
+fn f(n Int, n Int) Int = n
+### duplicate field names
+reject: 
+tuple P(x Int, x Int)
+### duplicate enum case
+reject: 
+enum E
+  A
+  A
+### wrong type argument count
+reject: 
+x List[Int, Int] = List(1)
+### unknown type
+reject: 
+x Foo = 1
+### unknown type in signature
+reject: 
+fn f(x Foo) Int = 1

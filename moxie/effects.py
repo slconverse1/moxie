@@ -473,12 +473,13 @@ class Effects:
         takes its callee's effects, and an inline fiber is a function of its own)."""
         if n is None:
             return
-        if n.__class__ is Lambda and not getattr(n, "partial", False) and not getattr(n, "fiber", False):
+        if n.__class__ is Lambda and not getattr(n, "partial", False) and not getattr(n, "fiber", False) and getattr(n, "free", False) is not True:
             acc = {}
             self.walk(n.body, None, acc, None)
             for eff, (callee, ln, root) in acc.items():
+                hint = ("write `eval impure` to allow effects in the steps of this block, " if getattr(n, "free", False) == "eval" else "")
                 self.diags.append((ln or n.line, f"a lambda must be pure, but it {eff} (calls '{root}'); "
-                                                 "write an anonymous fn (`f = fn (params) Ret`, body indented below) for a function that may have effects, or declare a function with fn"))
+                                                 + hint + "write an anonymous fn (`f = fn (params) Ret`, body indented below) for a function that may have effects, or declare a function with fn"))
         if n.__class__ is RunE and n.target.__class__ is Call and n.target.fn.__class__ is Name \
                 and n.target.fn.name in self.lamnames and n.target.fn.name not in self.defs:
             self.diags.append((n.line, f"'{n.target.fn.name}' is bound to a lambda and cannot be run; "

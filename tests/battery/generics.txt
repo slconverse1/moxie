@@ -1,0 +1,130 @@
+### generic function used at a type that lacks the bound
+reject: 
+interface Speaks
+  fn speak() String
+tuple Dog()
+fn talk[T Speaks](t T) String = t.speak()
+println(talk(Dog()))
+### generic bound satisfied
+ok: woof
+interface Speaks
+  fn speak() String
+tuple Dog()
+impl Speaks for Dog
+  fn speak() String = "woof"
+fn talk[T Speaks](t T) String = t.speak()
+println(talk(Dog()))
+### generic arguments disagree
+reject: 
+fn same[T](a T, b T) T = a
+println(same(1, "a"))
+### generic result inferred then misused
+reject: 
+fn id[T](a T) T = a
+x String = id(1)
+### generic list element mismatch
+reject: 
+fn first[T](xs List[T]) T = xs(0)
+x String = first(List(1, 2))
+### explicit type argument wrong
+reject: 
+fn id[T](a T) T = a
+println(id[Int]("a"))
+### too many type arguments
+reject: 
+fn id[T](a T) T = a
+println(id[Int, Int](1))
+### generic tuple field mismatch
+reject: 
+tuple Box[T](v T)
+b Box[Int] = Box(v: "a")
+### generic tuple used at wrong type
+reject: 
+tuple Box[T](v T)
+fn get(b Box[Int]) Int = b.v
+println(get(Box(v: "a")))
+### generic enum payload mismatch
+reject: 
+enum Maybe[T]
+  Just(v T)
+  Nothing
+x Maybe[Int] = Just("a")
+### generic function body uses an operation T does not have
+reject: 
+fn add[T](a T, b T) T = a + b
+### bound Numeric allows +
+ok: 3
+fn add[T Numeric](a T, b T) T = a + b
+println(add(1, 2))
+### T Ordered allows <
+ok: true
+fn lt[T Ordered](a T, b T) Bool = a < b
+println(lt(1, 2))
+### Ordered refused for a tuple without impl
+reject: 
+tuple P(x Int)
+fn lt[T Ordered](a T, b T) Bool = a < b
+println(lt(P(x: 1), P(x: 2)))
+### unknown interface in a bound
+reject: 
+fn f[T Nope](a T) T = a
+### return a T where Int is wanted
+reject: 
+fn f[T](a T) Int = a
+### stored generic closure over wrong type
+reject: 
+fn apply[A, B](f (A) -> B, a A) B = f(a)
+println(apply((n Int) -> n + 1, "a"))
+### higher-order result flows through
+ok: 4
+fn apply[A, B](f (A) -> B, a A) B = f(a)
+println(apply((n Int) -> n + 1, 3))
+### Result map type flows
+reject: 
+x Result[Int, String] = Ok(1)
+y Result[String, String] = x.map((n) -> n + 1)
+### Result map ok
+ok: Ok(2)
+x Result[Int, String] = Ok(1)
+println(x.map((n) -> n + 1))
+### Result map_err type flows
+reject: 
+r Result[Int, String] = Ok(1)
+s Result[Int, Int] = r
+### impl generic interface with wrong method signature
+reject: 
+interface Sized
+  fn size() Int
+tuple Box()
+impl Sized for Box
+  fn size() String = "x"
+### impl missing a required method
+reject: 
+interface Sized
+  fn size() Int
+tuple Box()
+impl Sized for Box
+### impl of an unknown interface
+reject: 
+tuple Box()
+impl Nope for Box
+  fn size() Int = 1
+### duplicate impl
+reject: 
+interface Sized
+  fn size() Int
+tuple Box()
+impl Sized for Box
+  fn size() Int = 1
+impl Sized for Box
+  fn size() Int = 2
+### method on a type that has none
+reject: has no method
+tuple Box()
+println(Box().size())
+### method call wrong arg type
+reject: 
+tuple Box(n Int)
+impl Box
+  fn add(k Int) Int = n + k
+println(Box(n: 1).add("a"))

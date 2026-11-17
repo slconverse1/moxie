@@ -847,6 +847,10 @@ class ExprParser(PBase):
         if v == "eval" and self.nl_indent_at(1):
             self.next()
             return self.parse_eval(line)
+        if v == "eval" and self.peek(1).kind == "NAME" and self.peek(1).val == "impure" and self.nl_indent_at(2):
+            self.next()
+            self.next()
+            return self.parse_eval(line, free=True)
         if v == "scope" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
             self.err("`scope` is now `wait`: write `wait` (or `wait token`) before the block")
         if v == "wait" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
@@ -1232,7 +1236,27 @@ class ExprParser(PBase):
         else:
             self.err(f"unexpected {self.describe(t)}")
 
-    def parse_eval(self, line):
+    def pattern_bind_ahead(self):
+        """A line of an `eval` block that starts with a pattern and then `<-` (a `<` and a `-` with no space between them): `(a, b) <- e`."""
+        depth = 0
+        k = 0
+        while True:
+            t = self.peek(k)
+            if t.kind in ("NL", "EOF", "INDENT", "DEDENT"):
+                return False
+            if t.kind == "OP":
+                if t.val in ("(", "[", "{"):
+                    depth += 1
+                elif t.val in (")", "]", "}"):
+                    depth -= 1
+                elif depth == 0 and t.val == "=":
+                    return False
+                elif depth == 0 and t.val == "<" and k > 0:
+                    t2 = self.peek(k + 1)
+                    return t2.kind == "OP" and t2.val == "-" and not t2.sp
+            k += 1
+
+    def parse_eval(self, line, free=False):
         """`eval` block: `name <- e` binds the answer of `e`, a bare expression runs for its effect, a binding line is
         an ordinary local, and the last line is the value. Each step becomes `e.flat_map((name) -> rest)`."""
         self.expect_nl_indent()
@@ -1249,6 +1273,12 @@ class ExprParser(PBase):
                 e = self.parse_expr()
                 self.end_line()
                 items.append((t.val, t.line, e)); toks.append(t)
+            elif self.pattern_bind_ahead():
+                pat = self.parse_pattern()
+                self.next(); self.next()                                 # `<` `-`
+                e = self.parse_expr()
+                self.end_line()
+                items.append((("pat", pat), t.line, e)); toks.append(t)
             else:
                 st = self.parse_stmt()
                 items.append((None, st.line, st)); toks.append(t)
@@ -1264,8 +1294,12 @@ class ExprParser(PBase):
                 acc = Block([e, acc], line=ln)                           # an ordinary local line
                 continue
             val = e.e if (name is None and e.__class__ is ExprStmt) else e
-            pname = name if name is not None else "_"
-            lam = Lambda([Param(None, pname, None, None, None, False, line=ln)], acc, None, None, None, line=ln)
+            if name.__class__ is tuple:
+                prm = Param(name[1], None, None, None, None, False, line=ln)            # `(a, b) <- e`: a pattern parameter
+            else:
+                prm = Param(None, name if name is not None else "_", None, None, None, False, line=ln)
+            lam = Lambda([prm], acc, None, None, None, line=ln)
+            lam.free = True if free else "eval"          # True: `eval impure`; "eval": a pure `eval`, whose error names `eval impure`
             acc = Call(Field(val, "flat_map", line=ln), [Arg(None, lam, None, line=ln)], None, line=ln)
             acc.chain = True
         return acc

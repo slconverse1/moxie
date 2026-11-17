@@ -17,7 +17,7 @@ CASES = [
  ("tuple fields", U + 'println(User(name: "Al", age: 3))\n', 0, 'User(name: "Al", age: 3)\n'),
  ("enum case fields", 'enum Shape\n  Circle(r Float)\n  Dot\nprintln(Circle(r: 1.5))\n', 0, "Shape.Circle(1.5)\n"),
  ("a tuple type with labels", 'p (x Int, y Int) = (x: 1, y: 2)\nprintln(p)\n', 0, "(x: 1, y: 2)\n"),
- ("a type bound", 'fn big[T Ord](a T, b T) T\n  if a > b then a else b\nprintln(big(3, 9))\n', 0, "9\n"),
+ ("a type bound", 'fn big[T Ordered](a T, b T) T\n  if a > b then a else b\nprintln(big(3, 9))\n', 0, "9\n"),
  ("the old parameter colon is an error", 'fn f(x: Int) Int\n  x\n', 2, "has no colon"),
  ("the old field colon is an error", 'tuple P\n  x: Int\n', 2, "has no colon"),
  ("a binding is a name and a type", 'total Int = 1\nnames List[String] = List("a")\nf (Int) -> Int = (n) -> n + 1\nprintln(total)\nprintln(f(3))\n', 0, "1\n4\n"),

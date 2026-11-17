@@ -26,8 +26,9 @@ def _make(name, fields):
         if name == "Lambda":
             self.partial = False     # made by a call with `_` (takes the callee's effects)
             self.fiber = False       # the body of an inline `go fn (...)`
+            self.free = False        # a step of an `eval impure` block: it may have effects
 
-    extra = ("partial", "fiber") if name == "Lambda" else ()
+    extra = ("partial", "fiber", "free") if name == "Lambda" else ()
     cls = type(name, (N,), {"__slots__": fields + extra, "_fields": fields, "__init__": __init__})
     return cls
 

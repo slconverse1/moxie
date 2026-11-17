@@ -1083,6 +1083,21 @@ class Checker(RefineMixin):
         "interface Addable\n  fn +(self, other Self) Self\n  static fn zero() Self\n"
         "interface Numeric\n  fn -(self, other Self) Self\n  fn *(self, other Self) Self\n  fn /(self, other Self) Self\n  static fn one() Self\n")
 
+    def interface_known(self, name):
+        """True when `name` (written without a package) is an interface the program, the prelude or the checker knows."""
+        from .decls import PRELUDE_IFACES
+        if name in self.iface_decls or name in PRELUDE_IFACES or name in self.builtin_ifaces() or name in ("Has", "Monoid", "Semigroup", "Dynable", "MonadCont", "MonadError", "MonadFree", "MonadReader", "MonadState",
+                                                                                       "MonadTrans", "MonadWriter"):
+            return True
+        return name in self.aliases or name in self.tuples or name in self.enums          # a bound may also name a type alias
+
+    def check_iface_names(self, ifaces, line, where):
+        if any(st.__class__ is ImportDecl for st in getattr(self, "prog_stmts", None) or ()):
+            return                                               # an imported name may be an interface this file does not declare
+        for t in ifaces:
+            if t.__class__ is TName and len(t.path) == 1 and t.path[0] not in self.pv and not self.interface_known(t.path[0]):
+                self.err(getattr(t, "line", 0) or line, f"unknown interface `{t.path[0]}`{where}")
+
     def builtin_ifaces(self):
         """The built-in interfaces that no source declares, as parsed declarations, so an `impl` of one can leave its types out."""
         t = Checker.__dict__.get("_builtin_ifaces")
@@ -3997,6 +4012,7 @@ class Checker(RefineMixin):
         self.branches_moves([a.body for a in n.arms], sc, True)
         if n.scrut is not None:
             self.union_cover(n, sc, st)
+            self.generic_union_cover(n, sdn)
             nd = len(self.diags)
             self.exhaustive(n, st)
             if len(self.diags) == nd and not gadt:
@@ -4076,10 +4092,35 @@ class Checker(RefineMixin):
             for _, q in p.items or []:
                 self.check_pat_names(q, sc)
         elif c is PCon:
+            self.check_pat_arity(p)
             for _, q in p.args or []:
                 self.check_pat_names(q, sc)
         elif c is PAs:
             self.check_pat_names(p.pat, sc)
+
+    def check_pat_arity(self, p):
+        """`A(n)` for a case with two fields: a positional pattern names every field (`_` for one it does not want, `...` for the rest)."""
+        if len(p.path) != 1 or not p.args or any(lbl is not None for lbl, _ in p.args):
+            return
+        name = p.path[0]
+        ens = self.cases.get(name)
+        if ens and len(ens) == 1 and name not in self.tuples:
+            ed = self.enums.get(ens[0])
+            cs = next((c for c in (ed.cases if ed is not None else []) if c.name == name), None)
+            if cs is None or getattr(ed, "header", None) or getattr(cs, "payload", None) is not None:
+                return
+            fields = cs.fields or []
+        elif name in self.tuples and name not in self.cases:
+            td = self.tuples[name]
+            if getattr(td, "spread", None) or any(getattr(f, "name", None) in (None, "...") for f in td.fields or []):
+                return
+            fields = td.fields or []
+        else:
+            return
+        if any(q.__class__ is PRest or getattr(q, "name", None) == "..." for _, q in p.args):
+            return
+        if len(p.args) != len(fields):
+            self.err(getattr(p, "line", 0) or self.cur_line, f"`{name}` has {len(fields)} field{'s' if len(fields) != 1 else ''}, but the pattern names {len(p.args)}")
 
     def catch_all(self, p, enum_cases):
         c = p.__class__
@@ -4185,6 +4226,40 @@ class Checker(RefineMixin):
         """Names the prelude provides as functions: a call to one gives its arguments no declared type."""
         return {"println", "print", "show", "dbg", "assert", "assert_eq", "len", "min", "max", "ok", "fail", "swap"}
 
+    def generic_union_cover(self, n, dn):
+        """`when c` where `c` is written as a generic `type union` of enums and tuples (`Cmds[A] = Say[A] | Ask[A]`, the commands of a
+        `freer.Prog[Cmds, A]`): every case of every member must be handled, or the value of the missing one aborts at run time."""
+        if dn.__class__ is not TName or len(dn.path) != 1 or dn.groups:
+            return
+        a = self.aliases.get(dn.path[0])
+        bases = self.union_bases(dn)
+        if a is None or not getattr(a, "tparams", None) or bases is None:
+            return
+        required = []
+        for b in sorted(bases):
+            if b in self.enums:
+                required += [c.name for c in self.enums[b].cases or []]
+            elif b in self.tuples:
+                required.append(b)
+            else:
+                return                                          # a member the checker does not know: do not guess
+        names = set(self.cases) | {"Ok", "Err"}
+        covered = set()
+        for arm in n.arms:
+            for p in arm.pats or []:
+                if arm.guard is None and self.catch_all(p, names):
+                    return
+                q = p
+                while q.__class__ is PAs:
+                    q = q.pat
+                if arm.guard is None and q.__class__ is PCon and q.path[-1] in required:
+                    covered.add(q.path[-1])
+                elif q.__class__ is PBind and q.name in required and arm.guard is None:
+                    covered.add(q.name)
+        miss = [c for c in required if c not in covered]
+        if miss:
+            self.err(n.line, "`when` does not cover " + ", ".join(f"`{m}`" for m in miss))
+
     def bind_payloads(self, p, dn, sc, depth=0):
         """A pattern taking apart a value written as `dn` (`Result[V, Error]`, `Option[V]`, a tuple or an enum): each name it binds
         is written as the matching field is, so a `when` on it knows the union it has."""
@@ -4216,8 +4291,8 @@ class Checker(RefineMixin):
                 types = [g[1]]
             elif dn.path[-1] == "Option" and name == "Some" and len(g) == 1:
                 types = [g[0]]
-        if types is None and dn.__class__ is TName and len(dn.path) == 1:
-            en = dn.path[0]
+        if types is None and dn.__class__ is TName and (len(dn.path) == 1 or ".".join(dn.path) in self.pkg_types):
+            en = ".".join(dn.path) if len(dn.path) == 2 else dn.path[0]
             decl = self.enums.get(en) or (self.tuples.get(en) if name == en else None)
             tps = [t.name for t in getattr(decl, "tparams", None) or []]
             args = dn.groups[0] if dn.groups and dn.groups[0] else []
@@ -4231,8 +4306,16 @@ class Checker(RefineMixin):
                     types = [f.type for f in decl.fields or []]
                 if types is not None and tps:                            # `Box[V]`: a field written `T` is a `V`
                     sub = dict(zip(tps, args))
+
+                    def hkt_union(t):
+                        """A field written `C[X]` where `C` is a constructor parameter given the generic union `Cmds`: it is a `Cmds`."""
+                        if t.__class__ is TName and len(t.path) == 1 and t.groups and t.path[0] in sub:
+                            u = sub[t.path[0]]
+                            if u.__class__ is TName and len(u.path) == 1 and not u.groups and self.union_bases(u) is not None:
+                                return u
+                        return None
                     types = [sub.get(t.path[0], t) if t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in sub else
-                             (None if t.__class__ is TName and any(self.mentions_type(t, tps) for _ in (0,)) else t) for t in types]
+                             (hkt_union(t) or (None if t.__class__ is TName and any(self.mentions_type(t, tps) for _ in (0,)) else t)) for t in types]
         if types is None:
             return
         for i, (lbl, sub) in enumerate(p.args):
@@ -5267,6 +5350,9 @@ class Checker(RefineMixin):
         if not fds or len(fds) != 1 or not g.groups or len(g.groups) != 1:
             return None
         fd = fds[0]
+        if fd.tparams and len(g.groups[0]) > len(fd.tparams) and not any(getattr(tp, "holes", None) for tp in fd.tparams):
+            self.err(n.line, f"`{fd.name}` takes {len(fd.tparams)} type argument{'s' if len(fd.tparams) != 1 else ''}, but {len(g.groups[0])} are written")
+            return None
         if fd.ret is None or len(fd.tparams or []) != len(g.groups[0]) or any(getattr(tp, "holes", None) for tp in fd.tparams):
             return None
         binds = {}
@@ -5282,9 +5368,25 @@ class Checker(RefineMixin):
                 return None
             binds[tp.name] = t
         ret = self.ty_of_type(fd.ret, 0, set(binds))
+        self.check_explicit_args(n, fd, binds, sc)
         if ret is None:
             return None
         return self.norm_peer(self.holes(ret, binds)), None
+
+    def check_explicit_args(self, n, fd, binds, sc):
+        """`id[Int]("a")`: with the type arguments written, each argument must fit its parameter type with them put in."""
+        params = [q for q in fd.params or [] if getattr(q, "name", None) != "self"]
+        for prm, a in zip(params, n.args or []):
+            if not hasattr(a, "expr") or a.expr is None or getattr(a, "label", None) or prm.type is None:
+                continue
+            pt = self.ty_of_type(prm.type, 0, set(binds))
+            at, ac = self.quiet(a.expr, sc)
+            if pt is None or at is None:
+                continue
+            pt = self.holes(pt, binds)
+            if pt.__class__ is tuple and pt and pt[0] in ("param", "pvar", "appv"):
+                continue
+            self.compat(pt, at, ac, n.line)
 
     def check_poly_rec(self, n, sc):
         """Polymorphic recursion: a generic function that calls itself with a type argument that is not its own parameter
@@ -6459,6 +6561,8 @@ class Checker(RefineMixin):
             return
         if tn is None:
             return
+        if (tn, nm) in self.methods and "." not in tn and not getattr(decl, "tparams", None):
+            self.check_method_args(n, self.methods[(tn, nm)], sc)
         if (tn, nm) in self.methods or (tn.split(".")[-1], nm) in self.methods or tn in ("Option", "Result") or "." in tn:
             return
         if tn in self.prelude_type_names():
@@ -6481,6 +6585,29 @@ class Checker(RefineMixin):
                     and any(getattr(m, "name", None) == nm for m in st.members or []):
                 return                                       # an alias method (`fn bump = incremented`) has no body of its own
         self.err(n.line, f"`{tn}` has no method `{nm}`")
+
+    def check_method_args(self, n, md, sc):
+        """`box.add("a")` where `fn add(k Int)` is an ordinary method of a declared type: the count and the types of the arguments.  Generic
+        methods, named, spread and trailing arguments, and parameters with modifiers are left to the run time."""
+        if md.__class__ is not FnDecl or md.tparams or n.trailing is not None or getattr(n, "chain", False):
+            return
+        params = [q for q in md.params or [] if getattr(q, "name", None) != "self"]
+        args = n.args or []
+        if any(not hasattr(a, "expr") or getattr(a, "label", None) or getattr(a, "mod", None) for a in args) \
+                or any(q.mod or q.variadic or q.pat is not None for q in params):
+            return
+        need = len([q for q in params if q.default is None])
+        if len(args) > len(params) or len(args) < need:
+            self.err(n.line, f"`{md.name}` takes {len(params)} argument{'s' if len(params) != 1 else ''}, but {len(args)} {'is' if len(args) == 1 else 'are'} given")
+            return
+        for q, a in zip(params, args):
+            if q.type is None or a.expr.__class__ is Lambda:
+                continue
+            pt = self.ty_of_type(q.type)
+            at, ac = self.quiet(a.expr, sc)
+            if pt is None or at is None or self.has_unsettled(at):
+                continue
+            self.compat(pt, at, ac, getattr(a.expr, "line", 0) or n.line)
 
     def check_union_method(self, n, sc):
         """`e.pretty(...)` where `e` is a value of a `type union`: every member must have the method, or the call fails at run time for the
@@ -7232,6 +7359,13 @@ class Checker(RefineMixin):
         inner = Sc(sc)
         inner.fnb = True
         sess_start = len(SESS["vars"])
+        for tp_ in n.tparams or []:
+            self.check_iface_names(tp_.bounds or [], n.line, f" in the bound of `{tp_.name}`")
+        seen_params = set()
+        for p_ in n.params or []:
+            if p_.name and p_.name != "_" and p_.name in seen_params:
+                self.err(n.line, f"`{n.name}` has two parameters called `{p_.name}`")
+            seen_params.add(p_.name)
         for p_ in n.params or []:
             if p_.mod == "using" and p_.type is not None and self.is_res_type(p_.type):
                 self.err(n.line, f"parameter `{p_.name}` of `{n.name}` is a resource type, and a resource can't be injected with `using` (it has one owner: pass it, or `move` it)")
@@ -7854,6 +7988,7 @@ class Checker(RefineMixin):
         if n.iface is not None and n.iface.__class__ is TName and n.iface.path == ["Generatable"]:
             self.check_generatable(n)
         if n.iface is not None:
+            self.check_iface_names([n.iface], n.line, " in this `impl`")
             self.check_prop_reqs(n)
             self.check_impl_complete(n)
         if n.target.__class__ is TName and len(n.target.path) == 1 and not n.target.groups and n.target.path[0] not in self.tuples \

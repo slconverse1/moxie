@@ -1,0 +1,132 @@
+### when over Result missing Err
+reject: does not cover
+fn f() Result[Int, String] = Ok(1)
+fn g() Int = when f()
+  Ok(n) -> n
+### when over Result complete
+ok
+fn f() Result[Int, String] = Ok(1)
+fn g() Int = when f()
+  Ok(n) -> n
+  Err(e) -> 0
+### when over Option missing None
+reject: does not cover
+fn f() Option[Int] = Some(1)
+fn g() Int = when f()
+  Some(n) -> n
+### when over enum missing case
+reject: does not cover
+enum E
+  A
+  B
+  C
+fn g(e E) Int = when e
+  A -> 1
+  B -> 2
+### when with catch-all
+ok
+enum E
+  A
+  B
+  C
+fn g(e E) Int = when e
+  A -> 1
+  _ -> 2
+### when over Bool missing false
+reject: does not cover
+fn g(b Bool) Int = when b
+  true -> 1
+### when over Int without default
+reject: 
+fn g(n Int) Int = when n
+  1 -> 1
+  2 -> 2
+### when over String without default
+reject: 
+fn g(s String) Int = when s
+  "a" -> 1
+### nested exhaustiveness (Option of Result)
+reject: 
+fn g(x Option[Result[Int, String]]) Int = when x
+  Some(Ok(n)) -> n
+  None -> 0
+### nested exhaustiveness complete
+ok
+fn g(x Option[Result[Int, String]]) Int = when x
+  Some(Ok(n)) -> n
+  Some(Err(e)) -> 1
+  None -> 0
+### guarded arm does not cover
+reject: 
+fn g(n Option[Int]) Int = when n
+  Some(k) if k > 0 -> k
+  None -> 0
+### an arm after a catch-all is only a warning
+ok
+fn g(n Int) Int = when n
+  _ -> 1
+  2 -> 2
+### arm pattern of wrong type
+reject: 
+fn g(n Int) Int = when n
+  "a" -> 1
+  _ -> 2
+### arm pattern of a different enum
+reject: 
+enum E
+  A
+enum F
+  B
+fn g(e E) Int = when e
+  B -> 1
+### pattern field count mismatch
+reject: 
+enum E
+  A(n Int, m Int)
+fn g(e E) Int = when e
+  A(n) -> n
+### bounded int range coverage missing
+reject: 
+type alias Percent = Int[0..=100]
+fn d(p Percent) String = when p
+  0 -> "e"
+  1..=99 -> "p"
+### bounded int range coverage complete
+ok
+type alias Percent = Int[0..=100]
+fn d(p Percent) String = when p
+  0 -> "e"
+  1..=99 -> "p"
+  100 -> "f"
+### bounded value out of range literal
+reject: 
+type alias Percent = Int[0..=100]
+x Percent = 101
+### bounded arithmetic widening needs a cast
+reject: 
+type alias Percent = Int[0..=100]
+a Percent = 40
+b Percent = a + 70
+### bounded in range ok
+ok
+type alias Percent = Int[0..=100]
+a Percent = 40
+println(a)
+### integer literal too big for UInt8
+reject: 
+x UInt8 = 300
+### negative literal for UInt8
+reject: 
+x UInt8 = -1
+### Int8 range ok
+ok
+x Int8 = 127
+println(x)
+### ok: Int8 and Int widen to Int (Spec 3, lossless)
+ok
+a Int8 = 1
+b Int = 2
+c Int = a + b
+### division of Ints gives Int not Float
+reject: 
+x Float = 1 / 2
