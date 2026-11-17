@@ -3400,6 +3400,26 @@ class Checker(RefineMixin):
                 return
             s, d = s.parent, d + 1
 
+    def warn_place_shadow(self, tgt, sc, n):
+        """`a(i) = v` or `p.x = v` in a nested block, where `a` or `p` belongs to an outer block: the write changes a copy that is
+        gone when the block ends, so the outer value never changes.  The same mistake as `total += x` (see `warn_shadow`), and just
+        as silent, so it is an error with the same remedy."""
+        root = tgt.expr
+        while root.__class__ in (Field, Call) and (root.__class__ is Field or root.fn.__class__ in (Field, Name, Call)):
+            root = root.obj if root.__class__ is Field else root.fn
+        if root.__class__ is not Name or root.name.startswith("_"):
+            return
+        nm, s, d = root.name, sc, 0
+        while s is not None:
+            if nm in s.vars:
+                if d > 0 and not (d == 1 and s.fnb):
+                    self.err(n.line, f"`{nm}` is changed here, but this block works on its own copy of the outer `{nm}`, which is gone when the block ends, "
+                                     f"so the outer one never changes: write `{nm}@1` for the outer one, or do the work in a `mutable` block with `in {nm}`")
+                return
+            if s.fnb:
+                return
+            s, d = s.parent, d + 1
+
     def e_Assign(self, n, sc):
         self.rf_prev_stmt = n                              # the `Refine` the parser put after `x Pos = v` reads it
         if n.ann is not None and n.op == "=":
@@ -3464,6 +3484,7 @@ class Checker(RefineMixin):
             res = True
         for tgt in (n.targets if isinstance(n.targets, list) else [n.targets]):
             if tgt.__class__ is PPlace:
+                self.warn_place_shadow(tgt, sc, n)
                 self.check_prop_write(tgt.expr, sc, n.line)
                 root = tgt.expr
                 while root.__class__ in (Field, Call) and (root.__class__ is Field or root.fn.__class__ in (Field, Name, Call)):

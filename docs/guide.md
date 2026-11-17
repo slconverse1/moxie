@@ -2627,7 +2627,7 @@ Output: `7 21`. **Mistakes:** returning a stream over a local array (use `inline
 
 **Chapter 14: Caching is explicit**
 
-Nothing is memoized unless you ask: the one built-in way is `lazy` on a binding or a property (chapter 9b), which computes a pure expression once, on its first read. For a function of a changing argument, nothing is cached for you, and the usual recipe is a bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
+Nothing is memoized for you, and nothing is cached behind your back. Caching is something you write on purpose, and moxie gives you these ways: `lazy` on a binding or a property (chapter 9b) computes one pure expression once, on its first read; a `lazy` parameter (section 6b, call by need) evaluates its argument once, only if the body reads it; the bottom-up `reduce` below carries only what the next step needs; and a `Dict` threaded through a recursion as a `ref` parameter lets calls share work. For a function of a changing argument the usual recipe is the bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
 
 ```
 fn fib(n Int) Int
@@ -4212,7 +4212,7 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 
 - **Stored capturing closures.** A capturing closure can't live in a concrete tuple field, Dict, or channel, so a State value is a transient local, and plain functions are what you store.
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
-- **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.
+- **Hidden laziness and memoization.** Laziness is `lazy` and streams. Nothing is cached automatically: `lazy` computes one value once, and caching a function of a changing argument is a recipe you write (chapter 14).
 - **Checked monad laws.** The interfaces are conventions, as in Haskell.
 
 **24l. Semigroup and Monoid**

@@ -18,7 +18,11 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Dialect names. Internally, in notes, tests and commit messages, the no-GC dialect is **moxie/nc** ("no collector") and the collected one is **moxie/gc**; the site pages and the specs keep saying "moxie" for the default dialect and "no-GC moxie" where the contrast matters.
+
 Newest first.
+
+**2026-11-17 (docs pass).** Chapter 14 of the gc guide (and the wording of the no-GC one) now says what caching moxie has: nothing is automatic, `lazy` bindings, properties and parameters evaluate once, and the recipes are a bottom-up `reduce`, a `Dict` threaded as `ref`, and **[gc]** a `memoize` wrapper over an `Atom` (new, tested example). The intros say where `mutable` fits in the immutability fine print, and the gc texts now say that in moxie/gc the in-place guarantee of a `mutable` block applies to `Array` and `MultiArray` (their updates copy elsewhere) while `List`, `Dict` and `Set` keep persistent updates. New check: `a(i) = v` or `p.x = v` in a nested block on an outer `a` or `p` (without `@1`) is an error, like `total += x`; before, it silently changed a copy and the outer value stayed the same.
 
 **2026-11-17 (latest): `select` arms lose `case`.** A `select` arm is now written like a `when` arm or a `seq` stage, `head -> body`: `v = read(ch) -> ...`, `closed(ch) -> ...`, `cancelled(c) -> ...`, `_ -> ...`, and a final `else body`. The old spelling (`case v = read(ch) ->`) is a syntax error that shows the new one, and `case` is an ordinary name again, so it leaves the soft-keyword list (31 now). Every select in the specs, guides, intros and tests was rewritten, and the guide corpora regenerated with no expected output lost. One more behaviour found while doing `mutable`: assigning to an outer name that is not on the block's `in` line used to change a local copy silently; it is now an error that says `in a`.
 

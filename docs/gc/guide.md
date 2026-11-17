@@ -338,7 +338,7 @@ fn running_totals(xs Array[Int][5]) Array[Int][5]
 println(running_totals(Array(3, 1, 4, 1, 5)))
 ```
 
-Output: `Array(3, 4, 8, 9, 14)`. The block is an expression whose value is its last line. A variable keeps the type it was declared with, so `total = "x"` after `total = 0` is an error. Outer names are read-only inside the block unless they are copied in on an `in` line (`in total`), which makes a mutable local of the same name and leaves the outer one alone. The assignments are guaranteed in-place writes, which is the difference from an ordinary update (that is in place only when the old value is dead), and to keep that safe `b = a` inside the block copies `a`, values enter by copy and leave as plain immutable values, and a closure made inside takes the current values. So the block is pure from outside, and a `pure fn` may contain one. This is what Haskell's `ST` monad provides with `runST` and a rank-2 type, here as a block with a keyword.
+Output: `Array(3, 4, 8, 9, 14)`. The block is an expression whose value is its last line. A variable keeps the type it was declared with, so `total = "x"` after `total = 0` is an error. Outer names are read-only inside the block unless they are copied in on an `in` line (`in total`), which makes a mutable local of the same name and leaves the outer one alone. On an `Array` or `MultiArray` the assignments are guaranteed in-place writes, which is the difference from an ordinary update (in moxie/gc an `Array` update outside a `mutable` block copies the array); a `List`, `Dict` or `Set` keeps its persistent updates, which already share structure. To keep the writes safe `b = a` inside the block copies `a`, values enter by copy and leave as plain immutable values, and a closure made inside takes the current values. So the block is pure from outside, and a `pure fn` may contain one. This is what Haskell's `ST` monad provides with `runST` and a rank-2 type, here as a block with a keyword.
 
 **Module scope and function scope.** A name bound at the top of a file lives in *module scope*: it is created once, when the program starts, and stays for the whole run, so every function in the file can read it. A name bound inside a function, including its parameters and loop variables, lives in *function scope*: it exists in that call's frame and is gone when the call returns, and each call gets its own. A function is a boundary for `name@N`, so it can read a module-level name by writing the name, but it cannot rebind one, which is why there is no `global`. Inside a function, `name@N` counts only that function's own blocks:
 
@@ -2639,7 +2639,7 @@ Output: `7 21`. **Mistakes:** one stream feeding two terminals by accident, and 
 
 **Chapter 14: Caching is explicit**
 
-Nothing is memoized unless you ask: the one built-in way is `lazy` on a binding or a property (chapter 9b), which computes a pure expression once, on its first read. For a function of a changing argument, nothing is cached for you, and the usual recipe is a bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
+Nothing is memoized for you, and nothing is cached behind your back. Caching is something you write on purpose, and moxie gives you these ways: `lazy` on a binding or a property (chapter 9b) computes one pure expression once, on its first read; a `lazy` parameter (section 6b, call by need) evaluates its argument once, only if the body reads it; the bottom-up `reduce` below carries only what the next step needs; a `Dict` threaded through a recursion as a `ref` parameter lets calls share work; and **[gc]** a memoizing wrapper over an `Atom` shares a table between calls and between fibers. For a function of a changing argument the usual recipe is the bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
 
 ```
 fn fib(n Int) Int
@@ -2678,7 +2678,46 @@ fn lcs(a String, b String) Int
 println("${lcs("ABCBDAB", "BDCABA")}")
 ```
 
-Output: `4`. Memory is the size of what is carried, not of the whole table, and there is no cache to empty. Reach for the next recipe when the subproblems aren't visited in a fixed order. For a recursion that must share work, thread a `Dict` through it as a `ref` parameter and wrap it in a plain `fib(n)` that starts it empty. For a table many fibers share, let one cache fiber (or an `Atom`) own it and answer over channels.
+Output: `4`. Memory is the size of what is carried, not of the whole table, and there is no cache to empty. Reach for the next recipes when the subproblems aren't visited in a fixed order. For a recursion that must share work, thread a `Dict` through it as a `ref` parameter and wrap it in a plain `fib(n)` that starts it empty. **[gc]** The table needs no declared size, because a `Dict` grows as needed:
+
+```
+fn fib_memo(n Int, ref seen Dict[Int, Int]) Int
+  known = get_or(seen, n, -1)
+  if known >= 0
+    return known
+  v = if n < 2 then n else fib_memo(n - 1, ref seen) + fib_memo(n - 2, ref seen)
+  seen($n) = v
+  v
+
+fn fib(n Int) Int
+  seen = Dict[Int, Int]()
+  fib_memo(n, ref seen)
+
+println("${fib(40)}")
+```
+
+Output: `102334155`, instantly. Without the table the same recursion makes over three hundred million calls. (`$n` in `seen($n)` means "the value of `n` as the key"; a bare `n` would be the word `n`.) **[gc]** To cache a function that other code calls as an ordinary `(Int) -> Int`, wrap it. The wrapper owns an `Atom` that holds the table, and because moxie/gc allows a closure to capture it, the wrapper can be returned and shared by every fiber:
+
+```
+fn memoize(f (Int) -> Int) (Int) -> Int
+  cache = Atom[Dict[Int, Int]](Dict[Int, Int]())
+  cached = fn (n Int) Int
+    known = get_or(@cache, n, -1)
+    if known >= 0
+      return known
+    v = f(n)
+    swap(cache, (d) -> put(d, n, v))
+    v
+  cached
+
+square = fn (n Int) Int
+  \println("computing ${n}")
+  n * n
+fast = memoize(square)
+println("${fast(12)} ${fast(12)}")
+```
+
+Output: `computing 12`, then `144 144`, so the function ran once. Two fibers that miss at the same moment may both compute the value, and the later `swap` simply stores the same answer again, which is harmless for a pure function; a function with effects should not be wrapped this way. When each value must be computed exactly once, let one fiber own the table and answer requests over channels (channels are in chapter 16); that fiber is the only one that computes.
 
 **Chapter 15: Recursive types**
 
@@ -4303,7 +4342,7 @@ Output: `3 Initech`. `replace` and `modify` rebuild the nested tuples, and `a` i
 **24k. What moxie leaves out, on purpose**
 
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
-- **Hidden laziness and memoization.** Laziness is `lazy` and streams, and caching is a recipe you write.
+- **Hidden laziness and memoization.** Laziness is `lazy` and streams. Nothing is cached automatically: `lazy` computes one value once, and caching a function of a changing argument is a recipe you write (chapter 14).
 - **Checked monad laws.** The interfaces are conventions, as in Haskell.
 
 **24l. Semigroup and Monoid**

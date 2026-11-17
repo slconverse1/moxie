@@ -14,6 +14,9 @@ CASES = [
  ('reads of an outer name with @, calls, ref and a nested do block', 'fn sort_desc(xs List[Int]) List[Int]\n  xs |> to_stream() |> sort() |> reverse() |> collect()\nfn bump(ref a Array[Int][3]) Unit\n  a(0) = a(0) + 100\nfn f() Int\n  v = 7\n  total = 1\n  mutable\n    in total\n    total += v@1\n    total += total@1\n    arr = Array(1, 2, 3)\n    bump(ref arr)\n    s = sort_desc(List(3, 1, 2))\n    t = do\n      u = 5\n      u += 1\n      u\n    arr(1) = t + s(0)\n    total + arr(0) + arr(1)\nprintln(f())\n', 0, '119'),
  ('assigning to a parameter that is not on the in line is an error', 'fn f(a Array[Int][2]) Int\n  mutable\n    for i in 0..2\n      a(i) = 0\n    a(0)\nprintln(f(Array(1, 2)))\n', 2, 'in a'),
  ('a block hands back what it mutated as its last line', 'fn part(a Array[Int][4]) (Array[Int][4], Int)\n  mutable\n    in a\n    n = 0\n    for i in 0..4\n      if a(i) > 2\n        a(i) = 0\n        n += 1\n    (a, n)\nb, k = part(Array(1, 3, 2, 5))\nprintln("${b} ${k}")\n', 0, 'Array(1, 0, 2, 0) 2'),
+ ('writing an element of an outer array in a loop, without @1, is an error', 'fn f() Int\n  a = Array(1, 2, 3)\n  for i in 0..3\n    a(i) = 9\n  a(0)\nprintln(f())\n', 2, 'never changes'),
+ ('a@1 writes the outer array', 'fn f() Int\n  a = Array(1, 2, 3)\n  for i in 0..3\n    a@1(i) = 9\n  a(0)\nprintln(f())\n', 0, '9'),
+ ('a field of an outer tuple written in a loop is the same mistake', 'tuple P\n  x Int\nfn f() Int\n  p = P(1)\n  for i in 0..3\n    p.x = 9\n  p.x\nprintln(f())\n', 2, 'never changes'),
 ]
 fails = []
 for name, src, rc_want, word in CASES:
