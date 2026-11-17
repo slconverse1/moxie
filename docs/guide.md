@@ -4606,14 +4606,14 @@ fn exec[A](p Prog[A]) A = when p
       exec(k(()))
     Ask -> exec(k("bob"))
 
-hello = chain
+hello = eval
   say("name?")
   n <- ask()
   say("hi ${n}")
 exec(hello)
 ```
 
-Output: `name?` then `hi bob`. `chain` is the notation for building such programs: `name <- step` runs a step and names its answer, a bare line is a step whose answer is not wanted, `x = e` is an ordinary local, and the last line is the program the block gives. Each `<-` turns the rest of the block into the function passed to `flat_map`, so `chain` works for every type that has one (`Option`, `Result`, `State`, `Prog`), and it is plain syntax, not a new kind of value. `hello` is a value you can build, pass around and inspect before running; `exec` is one handler, and a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a `type union` of the enums and bound the helper functions with `Has`, as above. This is the freer monad of recent work on extensible effects, which dropped the earlier encoding (a functor for every command, `Fix` and a coproduct of functors with overlapping-instance injection) in favour of exactly these two ingredients: a typed command and a membership test, here `Has`. If you need the original encoding it works too: `Fix[F]`, a `Functor` impl and a `cata` are ordinary moxie.
+Output: `name?` then `hi bob`. `eval` is the notation for building such programs: `name <- step` runs a step and names its answer, a bare line is a step whose answer is not wanted, `x = e` is an ordinary local, and the last line is the program the block gives. Each `<-` turns the rest of the block into the function passed to `flat_map`, so `chain` works for every type that has one (`Option`, `Result`, `State`, `Prog`), and it is plain syntax, not a new kind of value. `hello` is a value you can build, pass around and inspect before running; `exec` is one handler, and a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a `type union` of the enums and bound the helper functions with `Has`, as above. This is the freer monad of recent work on extensible effects, which dropped the earlier encoding (a functor for every command, `Fix` and a coproduct of functors with overlapping-instance injection) in favour of exactly these two ingredients: a typed command and a membership test, here `Has`. If you need the original encoding it works too: `Fix[F]`, a `Functor` impl and a `cata` are ordinary moxie.
 
 **Which style when.** Choose by what you do with the program. Tagless final (24m) runs the program straight into a result and is the lightest way to add interpreters. Growing data types, as here, keep a tree you can print, store, send, count, rewrite and analyze before running it. Both let you add variants and operations without editing old code, and the two meet in the middle: an `impl` that builds a tree (24m) turns a tagless-final program into this kind of data.
 

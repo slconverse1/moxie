@@ -4864,6 +4864,7 @@ class Checker(RefineMixin):
                     self.pending_gone.append((n, sc, x.name, "sent to the other side"))      # delegation: an endpoint sent over a session is gone here
         if n.fn.__class__ is Field:
             self.check_union_method(n, sc)
+            self.check_concrete_method(n, sc)
         tr = self.tparam_static_call(n, sc) if n.fn.__class__ is Field else None
         if tr is not None:
             r = (tr, r[1] if r.__class__ is tuple and len(r) > 1 else None)
@@ -6422,6 +6423,59 @@ class Checker(RefineMixin):
         if decl is not None and iface in {DERIV_IFACE[d] for d in (decl.derivs or []) if d in DERIV_IFACE}:
             return True
         return False
+
+    def prelude_type_names(self):
+        from .values import GC
+        sts = Checker._prelude_types.get(GC[0]) or ()
+        return {getattr(st, "name", None) for st in sts if st.__class__ in (TupleDecl, EnumDecl)}
+
+    BUILTIN_VALUE_TYPES = {"Int", "Float", "Bool", "String", "Char", "Unit", "Byte"}
+
+    def check_concrete_method(self, n, sc):
+        """`x.name(...)` where `x` is a value of a declared tuple or enum, or a plain scalar, and nothing by that name could answer: no
+        method of the type, no field or property, no interface method, no free function.  An `eval` step also needs `flat_map` itself, so
+        a type without one is told so even where a free `flat_map` exists."""
+        fn = n.fn
+        nm = fn.name
+        if not isinstance(nm, str):
+            return
+        t = self.node_ty.get(id(fn.obj))
+        if t is None and fn.obj.__class__.__name__ in ("IntLit", "FloatLit", "BoolLit", "StrLit", "CharLit", "UnitLit"):
+            t = self.t(fn.obj, sc)
+        if t.__class__ is tuple and len(t) == 2 and t[0] in self.BUILTIN_VALUE_TYPES:
+            t = t[0]                                         # a literal's type carries its value
+        tn = None
+        if t.__class__ is tuple and t[0] in ("named", "app") and t[1] in self.tuples:
+            tn, decl = t[1], self.tuples[t[1]]
+        elif t.__class__ is tuple and t[0] in ("named", "app") and t[1] in self.enums:
+            tn, decl = t[1], self.enums[t[1]]
+        elif t.__class__ is str and t in self.BUILTIN_VALUE_TYPES and getattr(n, "chain", False):
+            self.err(n.line, f"an `eval` step needs a value with a `flat_map` method, and `{t}` has none")
+            return
+        if tn is None:
+            return
+        if (tn, nm) in self.methods or (tn.split(".")[-1], nm) in self.methods or tn in ("Option", "Result") or "." in tn:
+            return
+        if tn in self.prelude_type_names():
+            return                                           # prelude tuples and enums (FileInfo, ...) have methods declared in the prelude
+        if getattr(n, "chain", False):
+            self.err(n.line, f"an `eval` step needs a value with a `flat_map` method, and `{tn}` has none: write `impl {tn}` with `fn flat_map`")
+            return
+        if nm in self.fns or nm in self.prelude or nm in self.globals or nm in self.consumes or nm in self.load_sigs() \
+                or any(k[1] == nm for k in self.methods if k[0] != tn and False):
+            return
+        if any(getattr(f, "name", None) == nm for f in getattr(decl, "fields", None) or []) or self.prop_in(decl, nm) is not None \
+                or getattr(decl, "spread", None):
+            return
+        if any(getattr(x, "name", None) == nm for d in self.iface_decls.values() for x in d.members or []):
+            return
+        if nm in self.pkg_calls or any(c.name == nm for c in getattr(decl, "cases", None) or []) or sc.find(nm) is not None:
+            return                                           # a local or parameter of function type is called as `x.f()`
+        for st in getattr(self, "prog_stmts", None) or ():
+            if st.__class__ is ImplDecl and st.target.__class__ is TName and st.target.path and st.target.path[-1] == tn \
+                    and any(getattr(m, "name", None) == nm for m in st.members or []):
+                return                                       # an alias method (`fn bump = incremented`) has no body of its own
+        self.err(n.line, f"`{tn}` has no method `{nm}`")
 
     def check_union_method(self, n, sc):
         """`e.pretty(...)` where `e` is a value of a `type union`: every member must have the method, or the call fails at run time for the

@@ -2083,7 +2083,7 @@ null
 ],
 [
 4588,
-"enum Cmd[A]\n  Say(text String) Cmd[Unit]\n  Ask Cmd[String]\nenum Prog[A]\n  Pure(a A)\n  Bind[X](cmd Cmd[X], k (X) -> Prog[A])\n\nfn say(t String) Prog[Unit] = Bind(Say(t), (u) -> Pure(()))\nfn ask() Prog[String] = Bind(Ask, (s) -> Pure(s))\nimpl Prog[A]\n  fn flat_map[B](self, f (A) -> Prog[B]) Prog[B] = when self\n    Pure(a) -> f(a)\n    Bind(c, k) -> Bind(c, (x) -> k(x).flat_map(f))\nfn exec[A](p Prog[A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Say(t) ->\n      println(t)\n      exec(k(()))\n    Ask -> exec(k(\"bob\"))\n\nhello = chain\n  say(\"name?\")\n  n <- ask()\n  say(\"hi ${n}\")\nexec(hello)\n",
+"enum Cmd[A]\n  Say(text String) Cmd[Unit]\n  Ask Cmd[String]\nenum Prog[A]\n  Pure(a A)\n  Bind[X](cmd Cmd[X], k (X) -> Prog[A])\n\nfn say(t String) Prog[Unit] = Bind(Say(t), (u) -> Pure(()))\nfn ask() Prog[String] = Bind(Ask, (s) -> Pure(s))\nimpl Prog[A]\n  fn flat_map[B](self, f (A) -> Prog[B]) Prog[B] = when self\n    Pure(a) -> f(a)\n    Bind(c, k) -> Bind(c, (x) -> k(x).flat_map(f))\nfn exec[A](p Prog[A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Say(t) ->\n      println(t)\n      exec(k(()))\n    Ask -> exec(k(\"bob\"))\n\nhello = eval\n  say(\"name?\")\n  n <- ask()\n  say(\"hi ${n}\")\nexec(hello)\n",
 [
 "name?",
 "hi bob"
