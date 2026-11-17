@@ -12,6 +12,8 @@ CASES = [
  ('an outer name not on the in line is not changed by a loop', 'fn f() Int\n  n = 0\n  mutable\n    for i in 0..3\n      n += 1\n    0\n  n\nprintln(f())\n', 2, 'n@1'),
  ('a copy is a copy: later writes do not show through', 'fn f() Int\n  mutable\n    a = Array(1, 2, 3)\n    b = a\n    a(0) = 9\n    b(0)\nprintln(f())\n', 0, '1'),
  ('reads of an outer name with @, calls, ref and a nested do block', 'fn sort_desc(xs List[Int]) List[Int]\n  xs |> to_stream() |> sort() |> reverse() |> collect()\nfn bump(ref a Array[Int][3]) Unit\n  a(0) = a(0) + 100\nfn f() Int\n  v = 7\n  total = 1\n  mutable\n    in total\n    total += v@1\n    total += total@1\n    arr = Array(1, 2, 3)\n    bump(ref arr)\n    s = sort_desc(List(3, 1, 2))\n    t = do\n      u = 5\n      u += 1\n      u\n    arr(1) = t + s(0)\n    total + arr(0) + arr(1)\nprintln(f())\n', 0, '119'),
+ ('assigning to a parameter that is not on the in line is an error', 'fn f(a Array[Int][2]) Int\n  mutable\n    for i in 0..2\n      a(i) = 0\n    a(0)\nprintln(f(Array(1, 2)))\n', 2, 'in a'),
+ ('a block hands back what it mutated as its last line', 'fn part(a Array[Int][4]) (Array[Int][4], Int)\n  mutable\n    in a\n    n = 0\n    for i in 0..4\n      if a(i) > 2\n        a(i) = 0\n        n += 1\n    (a, n)\nb, k = part(Array(1, 3, 2, 5))\nprintln("${b} ${k}")\n', 0, 'Array(1, 0, 2, 0) 2'),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

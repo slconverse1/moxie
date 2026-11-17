@@ -1273,6 +1273,7 @@ class ExprParser(PBase):
         if not hasattr(self, "_mut_done"):
             self._mut_done = set()
         stack = [set()]
+        bound = set()
 
         def names_of_pattern(pt):
             out = []
@@ -1344,12 +1345,21 @@ class ExprParser(PBase):
                         r = root_swap(t.expr)
                         if r is not None:
                             t.expr = r
+                        else:
+                            rt = t.expr
+                            while rt.__class__ in (Call, Field) and not isinstance(getattr(rt, "fn" if rt.__class__ is Call else "obj", None), str):
+                                rt = rt.fn if rt.__class__ is Call else rt.obj
+                            if rt.__class__ is Name and rt.name not in bound and not any(rt.name in st for st in stack):
+                                self.err(f"`{rt.name}` is not a variable of this `mutable` block, so it can't be assigned here: "
+                                         f"copy it in with `in {rt.name}` as the block's first line (or declare it in the block)",
+                                         type("T", (), {"line": n.line, "col": 0})())
                     else:
                         for nm in names_of_pattern(t):
                             stack[-1].add(nm)
                 return
             for f in n._fields:
                 walk(getattr(n, f))
+        bound.update(names_of_pattern(blk.stmts))
         walk(blk.stmts)
         self._mut_done.add(id(blk))
 
