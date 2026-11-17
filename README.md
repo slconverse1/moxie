@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (data types a la carte)
+
+- **`Has[X]` bounds** (Spec 6, Guide 24n): smart constructors that build in any union that lists the node (`lit[U Has[Lit]](n Int) U`), checked at bindings, result types and explicit type arguments, free at run time. Programs with effects use the freer monad (a GADT of commands plus an existential `Bind`, no `Functor`), the recent simplification of the original encoding, which still runs too. `tests/run_alacarte.py`.
+
 ### 2026-11-16 (GADTs completed)
 
 - GADTs are complete: `when self` in methods and `if v is Case(...)` refine type parameters; cases declare their own variables with bounds (`Shown[A Show](v A) Item[String]`); header enums may state result types (`Low(rank: 1) Level[Cold]`, `Num(line: 1)(n Int) Value[Int]`). Guide 24o, Spec 6, tests/run_gadt.py.

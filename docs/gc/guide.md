@@ -4626,6 +4626,61 @@ println(simplify(f))
 
 Output: `Lit(value: 4)`. The two rules are written once, for any union whose members answer `AsLit`; a new node adds its own one-line answer and its own rules, and nothing else changes. Each node type implements `AsLit` itself (an `impl` on the union is not what a call finds, because the value is dispatched as the member it holds).
 
+**Building in any language: `Has`.** A smart constructor should build a number in whatever language holds numbers, not only in `Arith`. Bound the type parameter with `Has[...]`, which a `type union` satisfies when it lists that node:
+
+```
+tuple Lit deriving show
+  value Int
+tuple Add[E] deriving show
+  left E
+  right E
+tuple Mul[E] deriving show
+  left E
+  right E
+type union Arith = Lit | Add[Arith]
+type union Full = Lit | Add[Full] | Mul[Full]
+
+fn lit[U Has[Lit]](n Int) U = Lit(n)
+fn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)
+fn mul[U Has[Mul[U]]](a U, b U) U = Mul[U](a, b)
+
+x Full = add(lit(1), mul(lit(2), lit(3)))
+println(x)
+y Arith = add(lit(1), lit(2))
+println(y)
+```
+
+Output: `Add(left: Lit(value: 1), right: Mul(left: Lit(value: 2), right: Lit(value: 3)))`, then `Add(left: Lit(value: 1), right: Lit(value: 2))`. The union a call builds into comes from where the result goes (a binding or a result type), or from a written `lit[Full](5)`. `y Arith = mul(lit(1), lit(2))` is a compile error (``Arith has no Mul[Arith]``), because `Arith` cannot hold a `Mul`. A function that calls `lit` for a type parameter of its own must carry the bound (`fn g[V Has[Lit]](n Int) V = lit(n)`), and a function with `U Has[Lit]` may not return an `Add[U]` as a `U` unless it also says `Has[Add[U]]`. A union is erased at run time, so `Has` costs nothing: building a `Lit` as a `U` is building a `Lit`.
+
+**Programs with effects: the freer monad.** The same idea covers programs that do things. The commands are a GADT whose result type says what each command gives back, and a program is data that holds a command and what to do with its answer. No `Functor` is needed, because the answer's type is an existential of the `Bind` case (the GADT and existential features of 24o do all the work):
+
+```
+enum Cmd[A]
+  Say(text String) Cmd[Unit]
+  Ask Cmd[String]
+enum Prog[A]
+  Pure(a A)
+  Bind[X](cmd Cmd[X], k (X) -> Prog[A])
+
+fn say(t String) Prog[Unit] = Bind(Say(t), (u) -> Pure(()))
+fn ask() Prog[String] = Bind(Ask, (s) -> Pure(s))
+fn then[A, B](p Prog[A], f (A) -> Prog[B]) Prog[B] = when p
+  Pure(a) -> f(a)
+  Bind(c, k) -> Bind(c, (x) -> then(k(x), f))
+fn exec[A](p Prog[A]) A = when p
+  Pure(a) -> a
+  Bind(c, k) -> when c
+    Say(t) ->
+      println(t)
+      exec(k(()))
+    Ask -> exec(k("bob"))
+
+hello = then(ask(), (n) -> say("hi ${n}"))
+exec(hello)
+```
+
+Output: `hi bob`. `hello` is a value you can build, pass around and inspect before running; `exec` is one handler, and a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a `type union` of the enums and bound the helper functions with `Has`, as above. This is the freer monad of recent work on extensible effects, which dropped the earlier encoding (a functor for every command, `Fix` and a coproduct of functors with overlapping-instance injection) in favour of exactly these two ingredients: a typed command and a membership test, here `Has`. If you need the original encoding it works too: `Fix[F]`, a `Functor` impl and a `cata` are ordinary moxie.
+
 **Which style when.** Choose by what you do with the program. Tagless final (24m) runs the program straight into a result and is the lightest way to add interpreters. Growing data types, as here, keep a tree you can print, store, send, count, rewrite and analyze before running it. Both let you add variants and operations without editing old code, and the two meet in the middle: an `impl` that builds a tree (24m) turns a tagless-final program into this kind of data.
 
 **Mistakes:** forgetting a node's `impl` for a new operation (the compiler names the member), writing `Mul(...)` with children of different types when two unions could hold them (write `Mul[Full](...)` to say which), putting the `impl` on the union instead of on each node, and writing the old operation without the `rec` parameter, which ties it to one union.

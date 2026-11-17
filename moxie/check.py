@@ -1723,12 +1723,26 @@ class Checker(RefineMixin):
                     out[have[1]] = wt
         return out
 
+    def has_bound(self, name, act):
+        """True when the type parameter `name` is bounded by `Has[X]` and `act` is `X` (written out: `Lit`, `Add[U]`)."""
+        tp = self.tp_decl.get(name)
+        if tp is None or act is None:
+            return False
+        text = tshow(act)
+        for b in tp.bounds or []:
+            if _tn(b) == "Has" and b.groups and b.groups[0]:
+                if any(self.type_node_text(x).replace(" ", "") == text.replace(" ", "") for x in b.groups[0]):
+                    return True
+        return False
+
     def compat(self, exp, act, const, line, what="value"):
         """Report a mismatch between an expected and an actual type."""
         if getattr(self, "tp_eq", None):
             exp, act = self.apply_eq(exp), self.apply_eq(act)
         if exp is None or act is None or exp == act:
             return
+        if exp.__class__ is tuple and len(exp) == 2 and exp[0] == "rigid" and self.has_bound(exp[1], act):
+            return                      # `U Has[Lit]`: a `Lit` is a `U`, since every language holding `U` holds `Lit`
         if exp.__class__ is tuple and exp[0] == "bounded":
             if act == "Int" or (act.__class__ is tuple and act[0] == "bounded"):
                 if const is not None:
@@ -1761,6 +1775,10 @@ class Checker(RefineMixin):
             if tys.match(act, exp, {}):               # a generic function: its type parameters must stand for one type each
                 return
             self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`")
+            return
+        if exp.__class__ is tuple and len(exp) == 2 and exp[0] == "rigid" and act.__class__ is tuple and act[0] in ("app", "named") \
+                and (act[1] in self.tuples or act[1] in self.enums) and any(_tn(b) == "Has" for b in getattr(self.tp_decl.get(exp[1]), "bounds", None) or []):
+            self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`: `{exp[1]}` is only known to hold what its `Has` bounds name, so add `Has[{tshow(act)}]`")
             return
         if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param", "rigid") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param", "rigid"):
             if tys.compatible(exp, act):
@@ -3375,6 +3393,7 @@ class Checker(RefineMixin):
         t, c = self.ev(n.value, sc)
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
         self.note_expected(n.value, ann)
+        self.has_expect(n.value, n.ann)
         self.settle_mixed(n.value, ann)
         if n.ann is not None:
             self.check_type_arity(n.ann, n.line)
@@ -5243,6 +5262,10 @@ class Checker(RefineMixin):
         if fd.ret is None or len(fd.tparams or []) != len(g.groups[0]) or any(getattr(tp, "holes", None) for tp in fd.tparams):
             return None
         binds = {}
+        for tp, ta in zip(fd.tparams, g.groups[0]):
+            nm = self.union_name_of(ta)
+            if nm is not None and tp.name in self.has_wants(fd):
+                self.check_has(fd, nm, n.line)
         for tp, ta in zip(fd.tparams, g.groups[0]):
             if ta.__class__ is THole:
                 return None
@@ -7218,6 +7241,7 @@ class Checker(RefineMixin):
             self.expect_union(n.body, n.ret)
             for te in self.value_tails(n.body):
                 self.note_expected(te, self.fn_ret)
+                self.has_expect(te, n.ret)
             t, c = self.ev(n.body, inner)
             self.check_tail(n.body, inner)
             self.tag_tails(n)
@@ -7252,6 +7276,71 @@ class Checker(RefineMixin):
                 self.err(line, f"{who} reached the end of its protocol but is never finished: call `finish({nm or '...'})`")
             else:
                 self.err(line, f"{who} is dropped before its protocol is finished: it still has {tshow(s)} to go (every step must be taken, or the endpoint handed on)")
+
+    def has_wants(self, fd):
+        """The `Has[X]` bounds of a generic function's type parameters: {param name: [X written as text]}."""
+        out = {}
+        for tp in fd.tparams or []:
+            for b in tp.bounds or []:
+                if _tn(b) == "Has" and b.groups and b.groups[0]:
+                    out.setdefault(tp.name, []).extend(self.type_node_text(x) for x in b.groups[0])
+        return out
+
+    def union_name_of(self, ty):
+        if ty.__class__ is TName and len(ty.path) == 1 and not ty.groups and self.union_members(ty) is not None:
+            return ty.path[0]
+        if ty.__class__ is tuple and len(ty) >= 2 and isinstance(ty[1], str) and ty[0] in ("named", "unionv"):
+            return ty[1]
+        return None
+
+    def check_has(self, fd, name, line, who=None):
+        """`U Has[X]` bound to the union `name`: the union must list every `X` (with `U` read as `name`)."""
+        ms = self.union_members(TName([name], []))
+        if ms is None:
+            return
+        norm = lambda t: t.replace(" ", "")
+        have = {norm(m) for m in ms}
+        for u, xs in self.has_wants(fd).items():
+            for x in xs:
+                want = re.sub(r"\b%s\b" % re.escape(u), name, x)
+                if norm(want) not in have:
+                    self.err(line, f"`{name}` has no `{want}`, which `{fd.name}` needs of `{u}` (`{u} Has[{x}]`): add it to the union")
+
+    def has_expect(self, e, ty, depth=0):
+        """`x Full = add(lit(1), lit(2))`: a call of a generic function whose result is a bare `U Has[...]`, wanted as the union `Full`
+        by a binding or a result type, needs `Full` to hold what the bounds name; so do the arguments that are `U` themselves."""
+        name = self.union_name_of(ty)
+        outer = ty.path[0] if ty.__class__ is TName and len(ty.path) == 1 and not ty.groups and ty.path[0] in getattr(self, "fn_tparams", ()) else None
+        if (name is None and outer is None) or depth > 8:
+            return
+        if e.__class__ is Pipe:
+            return
+        if outer is not None and e.__class__ is Call and e.fn.__class__ is GenApp and e.fn.base.__class__ is Name \
+                and (e.fn.base.name in self.tuples or e.fn.base.name in self.enums) and e.fn.groups and e.fn.groups[0] \
+                and getattr(self, "cur_fn", None) is not None and self.has_wants(self.cur_fn).get(outer):
+            text = f"{e.fn.base.name}[{', '.join(self.type_node_text(g) for g in e.fn.groups[0])}]"
+            held = {x.replace(" ", "") for x in self.has_wants(self.cur_fn)[outer]}
+            if text.replace(" ", "") not in held:
+                self.err(e.line, f"`{outer}` is only known to hold what its `Has` bounds name, but this is a `{text}`: write `{outer} Has[{text}]`")
+            return
+        if e.__class__ is not Call or e.fn.__class__ is not Name or e.fn.name not in self.fns or len(self.fns[e.fn.name]) != 1:
+            return
+        fd = self.fns[e.fn.name][0]
+        rt = fd.ret
+        if not fd.tparams or rt.__class__ is not TName or len(rt.path) != 1 or rt.groups or rt.path[0] not in self.has_wants(fd):
+            return
+        u = rt.path[0]
+        if outer is not None:
+            held = {x.replace(" ", "") for x in self.has_wants(self.cur_fn).get(outer, [])}
+            for x in self.has_wants(fd)[u]:
+                want = re.sub(r"\b%s\b" % re.escape(u), outer, x)
+                if want.replace(" ", "") not in held:
+                    self.err(e.line, f"`{outer}` is not known to have `{want}`, which `{fd.name}` needs: write `{outer} Has[{want}]`")
+        else:
+            self.check_has(fd, name, e.line)
+        for prm, a in zip([q for q in fd.params or [] if getattr(q, "name", None) != "self"], e.args or []):
+            if hasattr(a, "expr") and prm.type.__class__ is TName and prm.type.path == [u] and not prm.type.groups:
+                self.has_expect(a.expr, ty, depth + 1)
 
     def note_expected(self, e, ty):
         """`xs |> sum()` where the result is wanted as `Float`: if the element type was not seen, an empty stream still sums to
