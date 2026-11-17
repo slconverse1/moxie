@@ -738,9 +738,9 @@ class CallsMixin:
                 raise Abort(pkg_missing(obj, name), line)
             return v
         if k is RangeV:
-            if name not in ("start", "limit", "step"):
-                raise Abort(f"a Range has the fields start, limit and step, not '{name}'; use first(r) and last(r) for the values it reaches", line)
-            return {"start": obj.start, "limit": obj.limit, "step": obj.step}[name]
+            if name not in ("limit", "step"):
+                raise Abort(f"a Range has the fields limit and step, not '{name}'; use first(r) and last(r) for the values it reaches", line)
+            return {"limit": obj.limit, "step": obj.step}[name]
         if isinstance(name, int) and isinstance(obj, Seq):
             return obj.items[name]
         # zero-argument method / function used as a value

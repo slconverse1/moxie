@@ -4131,7 +4131,7 @@ class Checker(RefineMixin):
 
     def check_pat_names(self, p, sc):
         c = p.__class__
-        if c is PPin:
+        if c is PPin or c is PIn:
             self.ev(p.expr, sc)
         elif c is PRel:
             if p.operand.__class__ not in (IntLit, FloatLit, StrLit, CharLit, DecLit):
@@ -4579,7 +4579,7 @@ class Checker(RefineMixin):
                         return
                     miss = "true" if True not in lits else "false"
                     self.err(n.line, f"`when` does not cover `{miss}`")
-                elif all(p.__class__ in (PLit, PRange, PRel) for _, p in pats):
+                elif all(p.__class__ in (PLit, PRange, PRel, PIn) for _, p in pats):
                     self.err(n.line, f"`when` on `{tshow(st)}` needs a `_` arm")
             elif st.__class__ is tuple and st[0] == "bounded":
                 self.bounded_cover(n, st, pats)
@@ -7938,7 +7938,7 @@ class Checker(RefineMixin):
             miss = [c for c in required if c not in covered]
             if miss:
                 self.err(line, f"`{n.name}` does not cover " + ", ".join(f"`{m}`" for m in miss))
-        elif pats and all(q.__class__ in (PLit, PRange, PRel) for q in pats):
+        elif pats and all(q.__class__ in (PLit, PRange, PRel, PIn) for q in pats):
             self.err(line, f"`{n.name}` needs a final `_` clause")
 
     def _tname(self, t):

@@ -90,13 +90,13 @@ reject:
 type alias Percent = Int[0..=100]
 fn d(p Percent) String = when p
   0 -> "e"
-  1..=99 -> "p"
+  in 1..=99 -> "p"
 ### bounded int range coverage complete
 ok
 type alias Percent = Int[0..=100]
 fn d(p Percent) String = when p
   0 -> "e"
-  1..=99 -> "p"
+  in 1..=99 -> "p"
   100 -> "f"
 ### bounded value out of range literal
 reject: 

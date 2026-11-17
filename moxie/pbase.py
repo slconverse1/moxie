@@ -440,9 +440,46 @@ class PBase:
                 self.err("bytes with no size takes the rest, so it must be the last element")
         return PBin(elems, line=line)
 
+    def parse_in_pattern(self, neg, line):
+        """`in RANGE ->` and `not in RANGE ->`: the arm matches when the value is in the range (or any collection).  Literal
+        number bounds stay a range pattern, so the compiler can still see which numbers the arms cover."""
+        save = self.p
+        t = self.peek()
+        if not neg and (t.kind in ("INT", "FLOAT", "CHAR") or (t.kind == "OP" and t.val in ("-", "..", "..="))):
+            try:
+                if t.kind == "OP" and t.val in ("..", "..="):
+                    self.next()
+                    hi = self._pat_lit_expr()
+                    pr = PRange(None, hi, t.val == "..=", self._pat_step(), line=line)
+                else:
+                    lit = self._pat_lit_expr()
+                    pr = self._range_tail(PLit(lit, line=line), lit, allow=True)
+                nx = self.peek()
+                if pr.__class__ is PRange and ((nx.kind == "OP" and nx.val in ("->", ",", "|")) or (nx.kind == "NAME" and nx.val == "if")):
+                    return pr
+            except MoxieSyntaxError:
+                pass
+            self.p = save
+        e = self.parse_header_expr()
+        return PIn(e, neg, line=line)
+
+    def _pat_step(self):
+        t0, t1 = self.peek(), self.peek(1)
+        if t0.kind == "NAME" and t0.val == "step" and (t1.kind == "INT" or (t1.kind == "OP" and t1.val == "-" and not self.peek(2).sp)):
+            self.next()
+            return self._pat_lit_expr()
+        return None
+
     def parse_pattern_primary(self):
         t = self.peek()
         line = t.line
+        if t.kind == "NAME" and t.val == "in":
+            self.next()
+            return self.parse_in_pattern(False, line)
+        if t.kind == "NAME" and t.val == "not" and self.peek(1).kind == "NAME" and self.peek(1).val == "in":
+            self.next()
+            self.next()
+            return self.parse_in_pattern(True, line)
         if t.kind == "NAME":
             v = t.val
             if v == "_":
@@ -534,9 +571,7 @@ class PBase:
                     e = self._pat_lit_expr()
                 return PRel(t.val, e, line=line)
             if t.val in ("..", "..="):
-                self.next()
-                hi = self._pat_lit_expr()
-                return PRange(None, hi, t.val == "..=", line=line)
+                self.err("a range in a pattern is written with `in`: `in ..=9 -> ...`")
         if t.kind in ("INT", "FLOAT", "STR", "CHAR", "HASH", "DEC"):
             self.next()
             lit = self._lit_from_tok(t)
@@ -554,20 +589,17 @@ class PBase:
             lit = IntLit(-lit.v, lit.suffix, line=t.line) if isinstance(lit, IntLit) else FloatLit(-lit.v, lit.suffix, line=t.line)
         return lit
 
-    def _range_tail(self, plit, lo):
+    def _range_tail(self, plit, lo, allow=False):
         if self.at_op("..") or self.at_op("..="):
+            if not allow:
+                self.err("a range in a pattern is written with `in`: `in 1..=9 -> ...` (or `not in 1..=9 -> ...`)")
             op = self.next().val
             nt = self.peek()
             if nt.kind in ("INT", "FLOAT", "CHAR") or (nt.kind == "OP" and nt.val == "-"):
                 hi = self._pat_lit_expr()
             else:
                 hi = None
-            st = None
-            t0, t1 = self.peek(), self.peek(1)
-            if t0.kind == "NAME" and t0.val == "step" and (t1.kind == "INT" or (t1.kind == "OP" and t1.val == "-" and not self.peek(2).sp)):
-                self.next()
-                st = self._pat_lit_expr()                  # `1..=9 step 2 ->`: only the numbers on the step
-            return PRange(lo, hi, op == "..=", st, line=plit.line)
+            return PRange(lo, hi, op == "..=", self._pat_step(), line=plit.line)
         return plit
 
     def parse_pattern_args(self, dict_entries=False):

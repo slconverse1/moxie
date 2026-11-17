@@ -1800,11 +1800,6 @@ def b_range(I, a, kw, ta):
     return RangeV(r.start, r.limit, step, r.incl, len(a) > 1)
 
 
-@bi("start")
-def b_start(I, a, kw, ta):
-    return a[0].start
-
-
 @bi("limit")
 def b_limit(I, a, kw, ta):
     return a[0].limit

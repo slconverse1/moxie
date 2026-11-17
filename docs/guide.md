@@ -563,7 +563,7 @@ type alias Percent = Int[0..=100]
 fn describe(p Percent) String
   when p
     0 -> "empty"
-    1..=99 -> "partial"
+    in 1..=99 -> "partial"
     100 -> "full"
 a Percent = 40
 println(describe(a))
@@ -984,6 +984,8 @@ for i in 3..=1
 Output: `1 -1 true`, then `3`, `2`, `1`. An infinite range uses `1..`, and `take_while` ends it.
 
 **Steps.** A range takes a step after its bounds, `a..b step s`. The step is signed, and its sign decides the direction: a positive step counts up and a negative step counts down, with literal or variable bounds. `step` is a keyword only directly after a range, so it is still a fine variable name everywhere else. A stepped range is an ordinary range value, so it works wherever a range does: in a `for`, in a pipeline, in an `in` test (which checks the step in constant time, with no loop), as a slice, and in a variable.
+
+**Range arms in `when`.** A range arm is written with a leading `in`, and `not in` negates it: `in 1..=99 ->`, `in 1..=9 step 2 ->`, `not in 0..100 ->`. The bounds after `in` may be variables (`in lo..=hi ->`) and the arm may name any range or collection (`in xs ->`), so a guard like `n if n in lo..=hi` is not needed. A bare `1..=99` arm is an error that points to `in`. With literal bounds the compiler still counts the arm toward coverage.
 
 ```
 println(List(i for i in 0..=10 step 5))
@@ -2304,7 +2306,7 @@ Output: `exactly at the limit`. A relational pattern (`>=`, `>`, `<=`, `<`) matc
 fn describe(status Int) String
   when status
     200 -> "Success"
-    400..=499 -> "Client Error"
+    in 400..=499 -> "Client Error"
     >= 500 -> "Server Error"
     else "Unknown"
 fn grade(score Double) String

@@ -79,6 +79,13 @@ class PatternsMixin:
         if c is PPin:
             x = self.run_sync(self.ev(p.expr, env))
             return eq(x, v)
+        if c is PIn:
+            coll = self.run_sync(self.ev(p.expr, env))
+            try:
+                res = self.contains(coll, v)
+            except TypeError:
+                res = False
+            return (not res) if p.neg else res
         if c is PRel:
             if isinstance(v, bool):
                 return False

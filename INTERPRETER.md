@@ -792,3 +792,7 @@ An arm starts with its head directly. A leading `case` that is not followed by `
 
 ## Stepped ranges (pexpr.range_rest, values.RangeV, patterns.PRange)
 `range_rest` parses what follows `..`: the limit, then `step` when it is directly followed by a number, a name, `(` or `-N` (`step_kw_ahead`); `RangeE` and `PRange` carry the step expression. `ev_RangeE` evaluates it to a signed `RangeV(start, limit, step, incl, explicit=True)`; an unstepped range keeps the old rule (step -1 only for two literal bounds). `RangeV.count` and `RangeV.indices` serve `len`, `random_int` and stepped slices; `contains` checks bounds and `(x - start) % step` in constant time for either sign. The checker (`e_RangeE`) rejects a zero step and a literal bounds/step pair that disagree; `check_range_calls` rejects `Range(a..b, s)` and `random_int(lo, hi)`. A stepped `PRange` covers nothing for exhaustiveness.
+
+## `in` / `not in` when arms
+
+`pbase.parse_in_pattern` reads `in` and `not in` before a pattern. Literal bounds (with an optional `step`) become a `PRange`, so exhaustiveness still sees them. Anything else is a `PIn(expr, neg)`, matched in `patterns.py` with the same `contains` that the `in` operator uses and treated as non-covering by the checker. A bare range pattern is rejected in `_range_tail`.

@@ -12,7 +12,7 @@ CASES = [
 ("when enum", 'enum Shape\n  Circle(r Double),\n  Square(s Double),\n  Dot\nfn f(s Shape) Int\n  when s\n    Circle(r) -> 1\n    Square(s) -> 2\n', "does not cover `Dot`"),
 ("when result", 'r Result[Int, Error] = Ok(1)\nwhen r\n  Ok(v) -> println(v)\n', "does not cover `Err`"),
 ("when int", 'fn f(n Int) Int\n  when n\n    1 -> 10\n    2 -> 20\n', "needs a `_` arm"),
-("when bounded", 'type alias Pct = Int[0..=3]\nfn f(n Pct) Int\n  when n\n    0..=1 -> 1\n    3 -> 3\n', "does not cover `2..=3`"),
+("when bounded", 'type alias Pct = Int[0..=3]\nfn f(n Pct) Int\n  when n\n    in 0..=1 -> 1\n    3 -> 3\n', "does not cover `2..=3`"),
 ("bounded literal", 'type alias Pct = Int[0..=100]\nb Pct = 101\n', "out of range"),
 ("bounded nonconst", 'type alias Pct = Int[0..=100]\nfn f(n Int) Unit\n  b Pct = n\n', "cast"),
 ("literal fit", 'x Int8 = 300\n', "does not fit"),

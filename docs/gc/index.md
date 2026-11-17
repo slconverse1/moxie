@@ -981,7 +981,7 @@ Output: `Ann: top tier`, `Bob: elite`, `Cy: standard`. A guarded arm doesn't cou
 fn describe(status Int) String
   when status
     200 -> "Success"
-    400..=499 -> "Client Error"
+    in 400..=499 -> "Client Error"
     >= 500 -> "Server Error"
     else "Unknown"
 

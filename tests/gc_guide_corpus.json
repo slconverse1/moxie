@@ -315,7 +315,7 @@ null
 ],
 [
 563,
-"type alias Percent = Int[0..=100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    1..=99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
+"type alias Percent = Int[0..=100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    in 1..=99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
 [
 "partial",
 "out of range",
@@ -1160,7 +1160,7 @@ null
 ],
 [
 2316,
-"fn describe(status Int) String\n  when status\n    200 -> \"Success\"\n    400..=499 -> \"Client Error\"\n    >= 500 -> \"Server Error\"\n    else \"Unknown\"\nfn grade(score Double) String\n  when score\n    >= 90.0 -> \"A\"\n    >= 80.0 -> \"B\"\n    else \"C\"\nprint(\"${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} \")\nprintln(\"${grade(85.0)}\")\n",
+"fn describe(status Int) String\n  when status\n    200 -> \"Success\"\n    in 400..=499 -> \"Client Error\"\n    >= 500 -> \"Server Error\"\n    else \"Unknown\"\nfn grade(score Double) String\n  when score\n    >= 90.0 -> \"A\"\n    >= 80.0 -> \"B\"\n    else \"C\"\nprint(\"${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} \")\nprintln(\"${grade(85.0)}\")\n",
 [
 "Success Client Error Server Error Unknown B"
 ]
