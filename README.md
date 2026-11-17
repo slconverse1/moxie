@@ -20,6 +20,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+**2026-11-17: "Encapsulating state without objects", and `eval pure`.** A new section in both intros, after "Modularity without classes", maps the five FP ways of hiding state onto moxie: `type opaque` for invariants, `ref` threading (and `fp.state` in moxie/gc) for State, local mutation (moxie needs no `ST` monad, because values are immutable and have one owner, so an in-place update cannot escape), and `any Interface` as the existential, with a summary table. `eval pure` is accepted as the explicit spelling of a plain `eval`. Also fixed: the new unknown-method check wrongly rejected `List.ap` (a method declared in the prelude's own source). Writing the examples found that `x Array[Int][3] = fill(7)` (in the spec) aborts at run time with "tuple is not callable"; it is in FIXLIST.
+
 ### 2026-11-17 (`eval`, `fp.freer`, tail calls)
 
 - **`eval` blocks.** `eval` at the start of an indented block (a soft keyword) writes a monadic program as straight-line code: `name <- step` names a step's answer, a bare line is a step whose answer is dropped, `x = e` is an ordinary local, and the last line is the value. It desugars to `flat_map`, so it works for `Option`, `Result`, `State`, `Reader`, `Prog`, and any type of yours with a `flat_map`. Spec 2, Guide 24n, `tests/run_evalblock.py`.

@@ -418,6 +418,112 @@ This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwa
 
 One thing the no-GC dialect does not do is store a closure that captures values inside a tuple field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an interface and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
 
+## Encapsulating state without objects
+
+An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from five other tools, and moxie has all five. Modularity (above) covered two of them, the interface and the closure; this section covers the rest.
+
+**An opaque type protects an invariant.** `type opaque` is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules.
+
+```
+tuple AccountData
+  balance Double
+type opaque Account = AccountData
+
+export fn open_account(initial Double) Result[Account, Error]
+  if initial < 0
+    return Err(Error("opening balance can't be negative"))
+  Ok(Account(AccountData(initial)))
+
+export fn deposit(a Account, amount Double) Account
+  if amount > 0
+    return Account(AccountData(a.balance + amount))
+  a
+
+export fn balance(a Account) Double
+  a.balance
+
+when open_account(10.0)
+  Ok(a) -> println(balance(deposit(a, 5.0)))
+  Err(e) -> println(e.message)
+```
+
+This prints `15.0`. Outside the declaring package nobody can write `Account(...)` or read `a.balance`, so a negative balance can't be built, and a "change" is always a new `Account` made by a function that you wrote.
+
+**State is threaded, and the compiler can hide the threading.** Where a functional program would use the State monad, moxie lets a `ref` parameter carry the state. The callee gets a copy, rebinds it, and the final value goes back to the caller's variable, so the code reads like mutation while every value stays immutable and nothing is shared.
+
+```
+fn next_id(ref counter Int) Int
+  counter += 1
+  counter
+
+fn label(name String, ref counter Int) String
+  "${name}${next_id(ref counter)}"
+
+n = 0
+a = label("tmp", ref n)
+b = label("tmp", ref n)
+println("$a $b $n")
+```
+
+This prints `tmp1 tmp2 2`. When you want the state passed explicitly instead, return it with the answer, `(Int, Int)`, and bind both: `a, s1 = next(seed)`. (The `moxie/gc` dialect also has the State monad ready-made as `fp.state`; see its intro.)
+
+**Local mutation is allowed because it can't escape.** Haskell needs the `ST` monad and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still pure from outside. Moxie gets the same guarantee from two facts already in the language: a value never changes, and a value has one owner. `out(i) = total` is an update that rebinds `out` to a new array, and when the old one is dead the compiler writes into the same storage (here the first update copies, because `out` starts as the parameter `xs`, which the caller still owns, and the rest are in place). You get the in-place algorithm, the caller sees a pure function, and there is no mutable reference to return because there are no mutable references.
+
+```
+fn running_totals(xs Array[Int][5]) Array[Int][5]
+  out = xs
+  total = 0
+  for i in 0..5
+    total@1 += xs(i)
+    out@1(i) = total@1
+  out
+
+println(running_totals(Array(3, 1, 4, 1, 5)))
+```
+
+This prints `Array(3, 4, 8, 9, 14)`. `moxie build --report` lists any update that did have to copy and says why (usually because another name still holds the old value), so the performance is visible without being something the program's meaning depends on. The only truly mutable thing is the `Atom`, and it holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is the one place where state outlives a call.
+
+**An existential hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
+
+```
+interface Component
+  fn step(self) any Component
+  fn show(self) String
+
+tuple Counter
+  n Int
+impl Component for Counter
+  fn step(self) any Component
+    Counter(n: self.n + 1)
+  fn show(self) String
+    "count ${self.n}"
+
+tuple Blinker
+  on Bool
+impl Component for Blinker
+  fn step(self) any Component
+    Blinker(on: not self.on)
+  fn show(self) String
+    if self.on
+      return "on"
+    "off"
+
+parts = List[any Component][2](Counter(n: 0), Blinker(on: false))
+parts = parts.map((p) -> p.step())
+for p in parts
+  println(p.show())
+```
+
+This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a new component of the same kind with the next state, so the list is stepped without anyone knowing which is which.
+
+| Need | Moxie's tool | Mutability |
+| --- | --- | --- |
+| Enforce a rule about a value | `type opaque` with `export`ed functions | Immutable |
+| Hide a private counter or handle | A closure over an `Atom`, or a tuple field | Only the `Atom` |
+| Thread state through a pipeline | `ref` parameters, returned tuples (State in moxie/gc) | Immutable |
+| An in-place algorithm | Rebinding updates; the compiler reuses storage | Local only, never visible |
+| Parts with different hidden state | `any Interface` | Immutable |
+
 # Moxie's Superpowers
 
 What follows is a list of moxie's "superpowers" which, as I see it, run roughly from least to greatest. So here goes:
