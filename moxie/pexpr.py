@@ -851,6 +851,10 @@ class ExprParser(PBase):
             self.next()
             self.next()
             return self.parse_eval(line, free=True)
+        if v == "eval" and self.peek(1).kind == "NAME" and self.peek(1).val == "pure" and self.nl_indent_at(2):
+            self.next()
+            self.next()
+            return self.parse_eval(line)                 # `eval pure` says out loud what a plain `eval` already means
         if v == "scope" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):
             self.err("`scope` is now `wait`: write `wait` (or `wait token`) before the block")
         if v == "wait" and (self.nl_indent_at(1) or (self.peek(1).kind == "NAME" and self.nl_indent_at(2))):

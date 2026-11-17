@@ -6560,6 +6560,10 @@ class Checker(RefineMixin):
             self.err(n.line, f"an `eval` step needs a value with a `flat_map` method, and `{t}` has none")
             return
         if tn is None:
+            self.check_builtin_method(n, sc, t)
+            return
+        if tn in ("Option", "Result") and (tn, nm) not in self.methods:
+            self.check_builtin_method(n, sc, ("app", tn, ()))
             return
         if (tn, nm) in self.methods and "." not in tn and not getattr(decl, "tparams", None):
             self.check_method_args(n, self.methods[(tn, nm)], sc)
@@ -6585,6 +6589,38 @@ class Checker(RefineMixin):
                     and any(getattr(m, "name", None) == nm for m in st.members or []):
                 return                                       # an alias method (`fn bump = incremented`) has no body of its own
         self.err(n.line, f"`{tn}` has no method `{nm}`")
+
+    _prelude_methods = None
+
+    def prelude_method_names(self):
+        if Checker._prelude_methods is None:
+            from . import mxprelude
+            src = getattr(mxprelude, "SRC", None) or getattr(mxprelude, "PRELUDE", None) or ""
+            if not src:
+                src = "\n".join(v for v in vars(mxprelude).values() if isinstance(v, str))
+            Checker._prelude_methods = set(re.findall(r"\bfn\s+([A-Za-z_]\w*)", src))
+        return Checker._prelude_methods
+
+    BUILTIN_HEADS = {"List", "Array", "Dict", "Set", "Ring", "Option", "Result", "Stream"}
+
+    def check_builtin_method(self, n, sc, t):
+        """`xs.lenght()` or `r.unwrap_or(0)` on a value of a built-in type (a list, a dictionary, an `Option`, a `String`, a number) where
+        no function or method of that name exists anywhere: it would abort when run, so it is an error here."""
+        nm = n.fn.name
+        builtin = (t.__class__ is str and t in self.BUILTIN_VALUE_TYPES | {"Float"}) or \
+                  (t.__class__ is tuple and len(t) >= 2 and t[0] == "app" and t[1] in self.BUILTIN_HEADS)
+        if not builtin or not isinstance(nm, str):
+            return
+        if nm in self.fns or nm in self.prelude or nm in self.globals or nm in self.consumes or nm in self.load_sigs() or nm in self.pkg_calls \
+                or sc.find(nm) is not None or any(k[1] == nm for k in self.methods):
+            return
+        if any(getattr(x, "name", None) == nm for d in self.iface_decls.values() for x in d.members or []):
+            return
+        if any(getattr(f, "name", None) == nm for td in self.tuples.values() for f in td.fields or []):
+            return
+        if nm in self.prelude_method_names():
+            return                                           # `ap`, `pure`, ... declared in the prelude's own source
+        self.err(n.line, f"no method or function `{nm}` for a `{t[1] if t.__class__ is tuple and len(t) > 2 and not t[2] else tshow(t)}`")
 
     def check_method_args(self, n, md, sc):
         """`box.add("a")` where `fn add(k Int)` is an ordinary method of a declared type: the count and the types of the arguments.  Generic

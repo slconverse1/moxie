@@ -20,6 +20,8 @@ CASES = [
  ('a tuple pattern on the left of <-', 'fn pair(n Int) Option[(Int, Int)] = Some((n, n + 1))\nr = eval\n  (a, b) <- pair(1)\n  c <- Some(a + b)\n  Some(c * 10)\nprintln(r)\n', 0, 'Some(30)'),
  ('a tuple pattern still stops at None', 'fn pair(n Int) Option[(Int, Int)] = if n > 0 then Some((n, n)) else None\nr = eval\n  (a, b) <- pair(0)\n  Some(a + b)\nprintln(r)\n', 0, 'None'),
  ('eval impure allows a discarded print between steps', 'fn pair(n Int) Option[Int] = Some(n + 1)\nr = eval impure\n  a <- pair(1)\n  \\println("got ${a}")\n  b <- pair(a)\n  Some(a + b)\nprintln(r)\n', 0, 'got 2\nSome(5)'),
+ ('eval pure is the explicit spelling of the default', 'fn pair(n Int) Option[Int] = Some(n + 1)\nr = eval pure\n  a <- pair(1)\n  b <- pair(a)\n  Some(a + b)\nprintln(r)\n', 0, 'Some(5)'),
+ ('eval pure refuses a print and names eval impure', 'fn pair(n Int) Option[Int] = Some(n + 1)\nr = eval pure\n  a <- pair(1)\n  \\println("got ${a}")\n  Some(a)\n', 2, 'write `eval impure`'),
  ('a pure eval refuses a print and names eval impure', 'fn pair(n Int) Option[Int] = Some(n + 1)\nr = eval\n  a <- pair(1)\n  \\println("got ${a}")\n  Some(a)\n', 2, 'write `eval impure`'),
  ('the effect reaches the function that holds the block', 'fn pair(n Int) Option[Int] = Some(n + 1)\npure fn f() Option[Int] = eval impure\n  a <- pair(1)\n  \\println("x")\n  Some(a)\n', 2, 'pure'),
 ]
