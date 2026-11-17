@@ -36,7 +36,7 @@ def _tokens(src, file):
 SPACED = {"==", "~=", "<=", ">=", "->", "|>", "|>>", "<$>", "<*>", "~>", "<~", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^="}
 ARITH = {"+", "-", "*", "/", "%"}
 KEYWORDS = {"return", "and", "or", "not", "in", "is", "if", "elif", "else", "when", "while", "for", "yield", "break",
-            "continue", "move", "ref", "using", "assert", "match", "do", "then", "where", "as", "lazy", "go"}
+            "continue", "move", "ref", "using", "assert", "match", "do", "then", "where", "as", "lazy", "go", "try_go"}
 DECL_WORDS = {"fn", "type", "impl", "interface", "enum", "test", "export", "internal", "pure", "parks", "prints", "impure",
               "foreign", "fiber"}
 

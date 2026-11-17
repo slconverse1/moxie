@@ -855,8 +855,8 @@ class ExprParser(PBase):
         if v == "daemon" and self.nl_indent_at(1):
             self.next()
             return DaemonE(self.parse_block(), line=line)
-        if v == "go":
-            return self.parse_run()
+        if v == "go" or v == "try_go":
+            return self.parse_run(v == "try_go")
         if v == "fn":
             return self.parse_anon_fn()
         if v == "todo":
@@ -1500,13 +1500,13 @@ class ExprParser(PBase):
         self.expect_dedent()
         return SelectE(arms, line=line)
 
-    def parse_run(self):
+    def parse_run(self, try_=False):
         line = self.next().line
         if self.at_name("fn"):
             lam = self.parse_lambda(run=True)
-            return RunE(lam, None, line=line)
+            return RunE(lam, None, try_, line=line)
         target = self.parse_postfix()
-        return RunE(target, None, line=line)
+        return RunE(target, None, try_, line=line)
 
     def parse_recv_block(self, recv, kind, line):
         if kind == "do":

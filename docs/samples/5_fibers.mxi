@@ -3,9 +3,9 @@ fiber fn worker(id Int, out ChanW[Int]) Unit
   _ = write(out, id * 10)
 
 rx, tx = Chan[Int][3]()
-_ = go worker(1, clone(tx))
-_ = go worker(2, clone(tx))
-_ = go worker(3, move tx)
+go worker(1, clone(tx))
+go worker(2, clone(tx))
+go worker(3, move tx)
 
 a = read(rx).get_or(0)
 b = read(rx).get_or(0)

@@ -2712,15 +2712,15 @@ b = swap(hits, add(_, 5))
 println("$a $b ${@hits}")
 ```
 
-Output: `1 6 6`. **A function that `go` starts is declared `fiber fn`** (or `fiber[n] fn` to limit how many can be alive at once); `go` on a plain `fn` is a compile error that says so. A fiber function may use `?`, which ends it at the first failure, but the `Result` it returns goes nowhere, since nothing waits for it. An inline `go fn` has no return type, so `?` is an error there. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `go` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `go worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If `go` returns NO_SLOT, no fiber starts, and the resources you passed are released for you. The channel closes for readers when the last write handle is dropped:
+Output: `1 6 6`. **A function that `go` starts is declared `fiber fn`** (or `fiber[n] fn` to limit how many can be alive at once); `go` on a plain `fn` is a compile error that says so. A fiber function may use `?`, which ends it at the first failure, but the `Result` it returns goes nowhere, since nothing waits for it. An inline `go fn` has no return type, so `?` is an error there. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `go` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `go worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If every slot of a `fiber[n]` function is alive, `go` waits for one to free up before it starts the fiber (the resources you passed stay with you until then); `try_go` instead returns `Err(NO_SLOT)` at once, and the resources it was given are released for you. The channel closes for readers when the last write handle is dropped:
 
 ```
 fiber fn worker(id Int, out ChanW[Int]) Unit
   \write(out, id * 10)
 rx2, tx2 = Chan[Int][3]()
-\go worker(1, clone(tx2))
-\go worker(2, clone(tx2))
-\go worker(3, move tx2)
+go worker(1, clone(tx2))
+go worker(2, clone(tx2))
+go worker(3, move tx2)
 a = read(rx2).get_or(0)
 b = read(rx2).get_or(0)
 c = read(rx2).get_or(0)
@@ -2737,7 +2737,7 @@ fiber fn feed(tx ChanW[String], msg String) Unit
   \write(tx, msg)
 fn start_feed() ChanR[String]
   rx, tx = Chan[String][1]()
-  \go feed(tx, "hello from a fiber")
+  go feed(tx, "hello from a fiber")
   rx
 inbox = start_feed()
 timeout = after(5s)
@@ -2768,7 +2768,7 @@ A short fiber can be written inline. The short form gives only the arguments, an
 
 ```
 fn greet(tx ChanW[String]) Unit
-  \go fn (tx)
+  go fn (tx)
     \write(tx, "hi")
 ```
 
@@ -2776,13 +2776,32 @@ The full form puts the arguments first and the parameters second, so the names i
 
 ```
 fn start_counter(tx ChanW[Int], start Int) Unit
-  \go fn (tx, start)(out, first)
+  go fn (tx, start)(out, first)
     \write(out, first + 1)
 ```
 
 Without `go`, the same shape is a function called on the spot, which takes its parameters first (`(x)(5) -> ...`). To wait for fibers, use a `wait` block (17a), or read a result channel or futures until each has reported. **Mistakes:** `after(5s)` inside the daemon (create timers before the loop), an inline fiber body that ends in a value other than `Unit`, `return` in a daemon cycle (before `daemon` in the entry file it ends the program), and a literal in the short form (`go fn (5)` needs the full form, `go fn (5)(x)`).
 
-**Where `go` comes from.** The keyword is Go's, on purpose: moxie borrows Go's idea of starting a concurrent routine with one short word, and the name is our acknowledgment of that contribution. It is not hidden or renamed. The differences from Go's `go` are in the design, not the spirit: fibers take turns on one OS thread instead of running on many, `go` returns a `Result` so a function with a fixed number of fiber slots can say `NO_SLOT` when full, and a resource argument moves to the new fiber.
+**When every slot is alive.** A `fiber[n]` function allows `n` copies at once. `go` on a full one waits until a copy ends, then starts the fiber, so no fiber is ever silently skipped. `try_go` is the version that never waits: it returns `Ok(())` when the fiber started and `Err(NO_SLOT)` when no slot was free, which is how a program sheds load instead of queueing.
+
+```
+fiber[1] fn slow(n Int, out ChanW[Int]) Unit
+  sleep(20ms)
+  \write(out, n)
+
+rx, tx = Chan[Int][4]()
+go slow(1, clone(tx))
+when try_go slow(2, clone(tx))
+  Ok(_) -> println("2 started")
+  Err(e) -> println("2 would have to wait")
+go slow(2, move tx)
+println(read(rx))
+println(read(rx))
+```
+
+Output: `2 would have to wait`, then `Ok(1)`, then `Ok(2)`. The first `go` takes the only slot, so `try_go` is refused and gives its channel handle back to the pool at once. The last `go` waits about 20 ms for the slot and then runs. If nothing could ever free a slot (every copy is waiting on the caller), the program stops with the usual deadlock message. Dropping a `try_go` result is the usual warning for a dropped `Result`; write `\try_go ...` to ignore it on purpose.
+
+**Where `go` comes from.** The keyword is Go's, on purpose: moxie borrows Go's idea of starting a concurrent routine with one short word, and the name is our acknowledgment of that contribution. It is not hidden or renamed. The differences from Go's `go` are in the design, not the spirit: fibers take turns on one OS thread instead of running on many, `go` waits for a free slot when a function's fixed number of fiber slots is full (Go has no such limit; `try_go` is the version that returns `Err(NO_SLOT)` at once), and a resource argument moves to the new fiber.
 
 **17a. Cancelling fibers, and waiting for them with `wait`**
 
@@ -2801,8 +2820,8 @@ fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
         sleep(10ms)
 rx, tx = Chan[String][4]()
 wait s
-  \go worker(1, clone(tx), s)
-  \go worker(2, tx, s)
+  go worker(1, clone(tx), s)
+  go worker(2, tx, s)
   sleep(50ms)
   cancel(s)
 println("wait over")
@@ -2817,7 +2836,7 @@ fn parse(text String) Result[Int, Error]
   if text == "" then fail(7, "no input") else Ok(1)
 fn job(out ChanW[String]) Result[Int, Error]
   wait s
-    \go worker(1, out, s)
+    go worker(1, out, s)
     n = parse("")?
     Ok(n)
 ```
@@ -2844,7 +2863,7 @@ fn client(c session.Endpoint[Client]) Result[Int, Error]
   Ok(r)
 
 c, s = session.connect[Client]()
-\go serve(move s)
+go serve(move s)
 println(client(c))
 ```
 
@@ -2886,7 +2905,7 @@ fn client(c session.Endpoint[Client]) Result[Int, Error]
   Ok(r)
 
 c, s = session.connect[Client]()
-\go serve(move s)
+go serve(move s)
 println(client(c))
 ```
 
@@ -2922,7 +2941,7 @@ fiber fn server(e session.Endpoint[EchoServer]) Result[Unit, Error]
   serve(e)
 
 c, s = session.connect[EchoClient]()
-\go server(move s)
+go server(move s)
 println(ask(c, 3, 0))
 ```
 
@@ -2944,7 +2963,7 @@ fiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]
 
 mc, ms = session.connect[Main]()
 pc, ps = session.connect[Private]()
-\go worker(move ms)
+go worker(move ms)
 mc2 = session.send(mc, ps)?
 session.finish(mc2)
 pc2 = session.send(pc, 5)?
@@ -3281,7 +3300,7 @@ fiber fn serve(l Listener) Result[Unit, Error]
 init
   path = temp_dir() + "/demo.sock"
   l = listen_unix(path)?
-  \go serve(move l)
+  go serve(move l)
   c = connect_unix(path)?
   println(c, "hi")
   println(read_line(c)?)
@@ -3468,7 +3487,7 @@ fiber fn work(done ChanW[Int]) Unit
 
 rx = signals()
 done_r, done_w = Chan[Int][1]()
-\go work(done_w)
+go work(done_w)
 select
   case read(rx) -> exit(130)
   case read(done_r) -> println("finished")

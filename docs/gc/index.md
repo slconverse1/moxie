@@ -145,12 +145,12 @@ The Moxie Runtime is the small piece of machinery that starts your program, sche
 
 **Fibers.** A fiber is moxie's unit of concurrent work: a function running with its own call stack. The entry file is the first fiber, and a program can start more. Fibers are cheap, because each one starts with just a small stack, and they share nothing except Atoms and channels. **[gc]** (They do share one heap, which is safe because values never change.) Fibers talk to each other by passing values over channels.
 
-**`go`.** The keyword `go` starts a function as a new fiber. It returns right away, without waiting for the new fiber to do anything, and the new fiber joins the Runtime's ready queue. `go` hands back a `Result`. **[gc]** It can fail only when you've capped a fiber function with `fiber[3] fn` and all of its slots are in use.
+**`go`.** The keyword `go` starts a function as a new fiber. It returns right away, without waiting for the new fiber to do anything, and the new fiber joins the Runtime's ready queue. **[gc]** If you've capped a fiber function with `fiber[3] fn` and all of its slots are in use, `go` waits for a free one. `try_go` starts a fiber only if a slot is free, and hands back a `Result` (`Ok(())` or `Err(NO_SLOT)`) instead of waiting.
 
 **Fibers and OS threads.** Fibers are what other languages call green threads: the Runtime schedules them itself instead of asking the operating system to. All fibers run on a single OS thread, taking turns. A fiber runs until it parks (waits) at a `read`, `write`, `sleep`, `select`, or database query, and then the Runtime picks the next ready fiber. Nothing preempts a running fiber, so two fibers never run at the same instant. That's why they can share Atoms without locks, and also why a fiber stuck in a long computation holds up the rest. (Multi-core scheduling is an open question.)
 
 **What other languages call them.** If you know one of these, you already know the idea:
-- **Go:** a goroutine, and moxie's `go f()` is the same statement under the same name, in Go's honor. It starts `f` as a concurrent fiber, arguments evaluated at the call, and the two talk over channels. Four things differ. Go spreads goroutines across many OS threads and can preempt them, while moxie's fibers take turns and switch only where they park. `go` returns a `Result`, because a fiber function has a fixed number of slots (that is what lets no-GC moxie size memory before the program starts), so a full function gives `NO_SLOT` and the `\` acknowledges it. A resource argument moves to the new fiber. And a function must be declared `fiber fn` to be started.
+- **Go:** a goroutine, and moxie's `go f()` is the same statement under the same name, in Go's honor. It starts `f` as a concurrent fiber, arguments evaluated at the call, and the two talk over channels. Four things differ. Go spreads goroutines across many OS threads and can preempt them, while moxie's fibers take turns and switch only where they park. `go` waits when a fiber function has all its slots in use, because the number of slots is fixed (that is what lets no-GC moxie size memory before the program starts), and Go has no such limit; `try_go` is the version that returns `Err(NO_SLOT)` at once. A resource argument moves to the new fiber. And a function must be declared `fiber fn` to be started.
 - **Kotlin:** a coroutine, started with `launch`.
 - **Erlang and Elixir:** a process, started with `spawn`. Processes also talk by messages, but they're preemptively scheduled and each has its own heap, while moxie/gc fibers share one program heap. **[gc]**
 - **Python:** an `asyncio` task, which is also cooperative and single-threaded.
@@ -1418,18 +1418,18 @@ pure fn noisy(w Int) Int
 
 ## 20. Fibers, channels, and daemons
 
-A fiber is started for the entry file and with `go`. Here's a complete run routine:
+A fiber is started for the entry file and with `go`. Here's a complete go routine:
 
 ```
 fiber fn greeter(tx ChanW[String]) Unit
   \write(tx, "hello from a fiber")
 
 rx, tx = Chan[String][1]()
-\go greeter(tx)
+go greeter(tx)
 println(read(rx).get_or("nobody home"))
 ```
 
-Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element type, then room for one waiting value) and returns the channel's read and write ends as its result. `go greeter(tx)` starts the fiber and moves the write end to it, and the `\` acknowledges the `Result` that `go` returns: a statement that starts with `\` evaluates the rest of the line and throws the value away, which is how you say a `Result` is deliberately ignored. Meanwhile, `read(rx)` parks the main fiber until the greeter has written.
+Output: `hello from a fiber`. `Chan[String][1]()` makes a channel (the element type, then room for one waiting value) and returns the channel's read and write ends as its result. `go greeter(tx)` starts the fiber and moves the write end to it. (The `\` before `write` acknowledges the `Result` that `write` returns: a statement that starts with `\` evaluates the rest of the line and throws the value away, which is how you say a `Result` is deliberately ignored.) Meanwhile, `read(rx)` parks the main fiber until the greeter has written.
 
 **Who runs when.** Starting a fiber doesn't pause the one that started it. The starter keeps going until it parks, and only then does another fiber get a turn:
 
@@ -1439,7 +1439,7 @@ fiber fn worker(tx ChanW[String]) Unit
   \write(tx, "worker: done")
 
 rx, tx = Chan[String][1]()
-\go worker(tx)
+go worker(tx)
 println("runner: still going after run")
 println("runner: about to read (parks)")
 println(read(rx).get_or("nobody home"))
@@ -1476,8 +1476,8 @@ fn show(label String, f FutureR[Int]) Unit
 
 r1, w1 = Future[Int]()
 r2, w2 = Future[Int]()
-\go compute(w1)
-\go fail(w2)
+go compute(w1)
+go fail(w2)
 show("compute", r1)
 sleep(50ms)
 show("compute", r1)
@@ -1528,9 +1528,9 @@ fiber fn square(n Int, out ChanW[Int]) Unit
   \write(out, n * n)
 
 rx, tx = Chan[Int][3]()
-\go square(2, clone(tx))
-\go square(3, clone(tx))
-\go square(4, move tx)
+go square(2, clone(tx))
+go square(3, clone(tx))
+go square(4, move tx)
 total = read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)
 println("$total")
 ```
@@ -1543,10 +1543,10 @@ A short fiber can also be written inline, right where you start it. The full for
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
 // short form: parameter tx gets the variable tx
-\go fn (tx)
+go fn (tx)
   \write(tx, "short form")
 // full form: arguments, then parameters
-\go fn ("long form", tx2)(msg, out)
+go fn ("long form", tx2)(msg, out)
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
@@ -1557,7 +1557,7 @@ Output: `short form`, then `long form`. A literal or any other expression needs 
 Here's what you don't need: no `async`/`await` keywords, no IO monad to thread through your code, no executor or thread pool to configure, no locks, and no promises to chain. To wait for a fiber, just read from a channel it writes to.
 
 The fine print:
-- **Fibers are created on demand.** **[gc]** No slot is reserved in advance. A fiber function can declare a cap (`fiber[3] fn`), the Manifest can set a default cap, and `go` returns `NO_SLOT` only when a cap is full. Without a cap, `go` always succeeds.
+- **Fibers are created on demand.** **[gc]** No slot is reserved in advance. A fiber function can declare a cap (`fiber[3] fn`), the Manifest can set a default cap, and `go` waits for a free slot (and `try_go` returns `NO_SLOT`) only when a cap is full. Without a cap, `go` always starts the fiber at once.
 - **Arguments are shared or moved.** **[gc]** Any value that isn't a resource is fine, closures included, and since values never change, sharing them is safe. Channel ends and write handles move. `ref` arguments and Timers aren't allowed.
 - **A `wait` block keeps fibers from outliving it.** Everything started inside `wait` (and everything those start) is waited for before the block ends, and leaving early, with `?`, `return`, or `break`, cancels first and then waits. Write `wait stop` to name the block's `Cancel` token, which the fibers watch with `is_cancelled(stop)` or a `case cancelled(stop) ->` arm.
 - **Cancelling is a request.** A `Cancel` token is passed to the fiber, which ends itself when it sees the token in a `select` arm or a check. Nothing is killed mid-statement, and a fiber that never looks keeps running.
@@ -1647,7 +1647,7 @@ fiber[3] fn worker(out ChanW[Int], n Int) Unit
 
 rx, tx = Chan[Int][4]()
 for i in 1..=3
-  \go worker(clone(tx), i)
+  go worker(clone(tx), i)
 close(tx)
 println("${read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)}")
 ```

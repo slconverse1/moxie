@@ -93,7 +93,7 @@ def _defs():
         "Block": "stmts",
         "Lambda": "params body recv locals ret",
         "Param": "pat name type default mod variadic where wtext",
-        "RunE": "target limit",
+        "RunE": "target limit try_",
         "TodoE": "msg",
         "PathE": "segs",
         "SqlE": "conn parts",

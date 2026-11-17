@@ -53,9 +53,9 @@ fiber fn grader(s Student, out ChanW[Int]) Unit
   _ = write(out, s.score)
 
 rx, tx = Chan[Int][3]()
-_ = go grader(ada, clone(tx))
-_ = go grader(bob, clone(tx))
-_ = go grader(Student(name: "Cy", score: 71), move tx)
+go grader(ada, clone(tx))
+go grader(bob, clone(tx))
+go grader(Student(name: "Cy", score: 71), move tx)
 points = read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)
 println("points $points")
 

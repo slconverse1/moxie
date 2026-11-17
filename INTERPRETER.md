@@ -322,7 +322,7 @@ loop, lambda, daemon, or recursion adds a `problem`; `Interp.static_check` turns
 `parser.try_decl` reads `fiber[n]` before `fn` and adds the flags `fiber` and `fiber:n`. `moxie/manifest.py` loads
 the nearest `Moxie.toml` ([fibers] `limit`, `memory`, `stack`; [pools] `warn_threshold`; validated, errors exit 2)
 into `Interp.manifest`. `sched.run_op` counts live fibers per function (`Scheduler.live_fibers`, decremented in
-`_fiber_body`'s `finally`) and returns `Err(NO_SLOT)` at the limit (`fiber_limit`: the flag, else the manifest
+`_fiber_body`'s `finally`) and at the limit parks the caller (`sched.run_op`, `slot_waiters`, woken from `_fiber_body`'s `finally`) for `go`, or returns `Err(NO_SLOT)` for `try_go` (`fiber_limit`: the flag, else the manifest
 default, else unlimited). `Tally` no longer merges `go` callees into the starter: it records `starts[f]`, and
 `program()` walks the started functions once each, scaling their counts by `limit_of(f)`; no limit means the
 `fiber` reason and a warning. `fiber_count()` is 1 plus the limits. `format_header` writes JSON for

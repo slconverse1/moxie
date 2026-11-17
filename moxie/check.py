@@ -3086,7 +3086,7 @@ class Checker(RefineMixin):
             if st.__class__ is Assign:
                 self.rf_push(self.rf_bind_fact(st, inner))
             if st.__class__ is ExprStmt and (k < len(stmts) - 1 or in_loop) and last[0].__class__ is tuple and last[0][0] == "app" \
-                    and last[0][1] == "Result" and st.e.__class__ in (Call, Pipe):
+                    and last[0][1] == "Result" and st.e.__class__ in (Call, Pipe, RunE):
                 self.diags.append(Diag(getattr(st, "line", 0) or n.line, "this `Result` is dropped, so an `Err` would go unnoticed: "
                                        "use `?` to pass it on, `when` or `else` to handle it, or write `\\ call()` to drop it on purpose", "warning"))
             ff = self.fallthrough_facts(st, inner)
@@ -3941,7 +3941,9 @@ class Checker(RefineMixin):
             names = [p.name for p in (t.params or [])]
         for x in names:
             self.mark_gone(n, sc, x, "handed to the new fiber")
-        return None, None
+        if getattr(n, "try_", False):
+            return ("app", "Result", ("Unit", "Error")), None          # `try_go` says at once whether a slot was free
+        return "Unit", None
 
     # ------------------------------------------------------------ when
     def e_WhenE(self, n, sc):

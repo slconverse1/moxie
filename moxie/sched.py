@@ -648,8 +648,13 @@ def run_op(I, n, env):
     limit = fiber_limit(I, node)
     live = S.__dict__.setdefault("live_fibers", {})
     key = id(node)
-    if limit is not None and node is not None and live.get(key, 0) >= limit:
-        # no fiber starts, but the resources were handed over: release them as if the fiber had ended at once
+    while limit is not None and node is not None and live.get(key, 0) >= limit:
+        if not getattr(n, "try_", False):
+            # `go` waits for a slot (the arguments stay with the caller until the fiber starts)
+            S.__dict__.setdefault("slot_waiters", {}).setdefault(key, []).append(S.cur)
+            yield ("block",)
+            continue
+        # `try_go`: no fiber starts, but the resources were handed over: release them as if the fiber had ended at once
         for e in owned:
             try:
                 e.drop(S)
@@ -663,9 +668,9 @@ def run_op(I, n, env):
     counted = limit is not None and node is not None
     if counted:
         live[key] = live.get(key, 0) + 1
-    f = S.spawn(_fiber_body(I, gen, live, key if counted else None), name)
+    f = S.spawn(_fiber_body(I, gen, live, key if counted else None, S), name)
     f.owned = owned
-    return Ok(UNIT)
+    return Ok(UNIT) if getattr(n, "try_", False) else UNIT
 
 
 def fiber_limit(I, node):
@@ -676,12 +681,18 @@ def fiber_limit(I, node):
     return (getattr(I, "manifest", None) or {}).get("fibers", {}).get("limit")
 
 
-def _fiber_body(I, gen, live=None, key=None):
+def _fiber_body(I, gen, live=None, key=None, S=None):
     try:
         r = yield from gen
     finally:
         if key is not None:
             live[key] = live.get(key, 1) - 1
+            ws = S.__dict__.get("slot_waiters", {}).get(key) if S is not None else None
+            while ws:
+                w = ws.pop(0)
+                if not w.done:
+                    S.wake(w, None)            # a caller of `go` that was waiting for a slot
+                    break
     return r
 
 

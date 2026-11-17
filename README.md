@@ -20,6 +20,10 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 Newest first.
 
+### 2026-11-16 (`go` waits, `try_go`)
+
+- **`go` returns `Unit` and waits for a free slot** when a `fiber[n]` function (or the manifest's default cap) has all its copies alive, instead of returning an `Err(NO_SLOT)` that was easy to lose. **`try_go`** is the new keyword for the old behavior: it never waits and returns `Result[Unit, Error]` (`Err(NO_SLOT)` when full). A `go` that can never get a slot is reported as a deadlock. `\go` is no longer needed (it still compiles). Spec (fibers), Guide 17, `tests/run_tally.py`.
+
 ### 2026-11-16 (`go`)
 
 - **`go` starts a fiber** (was `run`; `run` is an ordinary name again). The keyword is Go's, and the name is our acknowledgment of Go's contribution of spawned routines. Existing functions named `go` are now a compile error (a method may still be called `go`). Spec (fibers), Guide 17, Site Intro.
