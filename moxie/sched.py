@@ -513,7 +513,7 @@ class Scheduler:
                     self.drain_ext(True)
                     continue
                 if not self.advance():
-                    raise ProgramExit(1, "deadlock: every fiber is waiting and nothing can wake them")
+                    raise ProgramExit(1, self.deadlock_message())
                 continue
             f = self.ready.popleft()
             if f.done:
@@ -522,6 +522,21 @@ class Scheduler:
         if main.error is not None:
             raise main.error
         return main.result
+
+    def deadlock_message(self):
+        # a `go` waiting for a slot that no running copy can free is the likeliest cause: say so
+        for key, ws in self.__dict__.get("slot_waiters", {}).items():
+            ws = [w for w in ws if not w.done]
+            if not ws:
+                continue
+            name, limit, line = self.__dict__.get("slot_info", {}).get(key, ("fiber", None, None))
+            live = self.__dict__.get("live_fibers", {}).get(key, 0)
+            at = f" at line {line}" if line else ""
+            return (f"deadlock: `go {name}(...)`{at} is waiting for a free slot of fiber function '{name}' "
+                    f"(limit {limit}), and the {live} running cop{'y' if live == 1 else 'ies'} "
+                    f"{'is itself' if live == 1 else 'are themselves'} waiting, so no slot can free up. "
+                    f"Use `try_go` if the caller can't wait, raise the limit, or make the running copies able to finish")
+        return "deadlock: every fiber is waiting and nothing can wake them"
 
     def step(self, f):
         if self.I.heap_limit is not None:
@@ -652,6 +667,7 @@ def run_op(I, n, env):
         if not getattr(n, "try_", False):
             # `go` waits for a slot (the arguments stay with the caller until the fiber starts)
             S.__dict__.setdefault("slot_waiters", {}).setdefault(key, []).append(S.cur)
+            S.__dict__.setdefault("slot_info", {})[key] = (name, limit, getattr(n, "line", None))
             yield ("block",)
             continue
         # `try_go`: no fiber starts, but the resources were handed over: release them as if the fiber had ended at once

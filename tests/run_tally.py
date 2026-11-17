@@ -74,7 +74,7 @@ for name in sorted(os.listdir(os.path.join(ROOT, "examples"))):
             fails.append(name)
 chk("go waits for a free slot instead of failing", ["run"], 'fiber[1] fn one(n Int, out ChanW[Int]) Unit\n  sleep(5ms)\n  _ = write(out, n)\nrx, tx = Chan[Int][8]()\ngo one(1, clone(tx))\ngo one(2, clone(tx))\ngo one(3, move tx)\nprintln(read(rx))\nprintln(read(rx))\nprintln(read(rx))\n', "Ok(1)\nOk(2)\nOk(3)", absent=("NO_SLOT", "deadlock"))
 chk("go under the manifest limit waits too", ["run"], 'fiber fn one(n Int, out ChanW[Int]) Unit\n  sleep(5ms)\n  _ = write(out, n)\nrx, tx = Chan[Int][8]()\ngo one(1, clone(tx))\ngo one(2, move tx)\nprintln(read(rx))\nprintln(read(rx))\n', "Ok(1)\nOk(2)", manifest="[fibers]\nlimit = 1\n", absent=("NO_SLOT",))
-chk("a go that can never get a slot is a deadlock", ["run"], 'fiber[1] fn hold(rx ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][1]()\ngo hold(clone(rx))\ngo hold(rx)\n', "deadlock", want=1)
+chk("a go that can never get a slot is a deadlock", ["run"], 'fiber[1] fn hold(rx ChanR[Int]) Unit\n  _ = read(rx)\nrx, tx = Chan[Int][1]()\ngo hold(clone(rx))\ngo hold(rx)\n', "deadlock", "waiting for a free slot of fiber function 'hold' (limit 1)", "Use `try_go`", want=1)
 chk("try_go has the Result type", ["check"], 'fiber[1] fn one() Unit\n  println(1)\nx Int = try_go one()\n', "expected `Int`", want=1)
 chk("go has no Result", ["check"], 'fiber fn one() Unit\n  println(1)\nx Result[Unit, Error] = go one()\n', "expected `Result", want=1)
 print("FAILED" if fails else "all passed")
