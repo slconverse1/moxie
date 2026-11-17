@@ -562,7 +562,12 @@ class PBase:
                 hi = self._pat_lit_expr()
             else:
                 hi = None
-            return PRange(lo, hi, op == "..=", line=plit.line)
+            st = None
+            t0, t1 = self.peek(), self.peek(1)
+            if t0.kind == "NAME" and t0.val == "step" and (t1.kind == "INT" or (t1.kind == "OP" and t1.val == "-" and not self.peek(2).sp)):
+                self.next()
+                st = self._pat_lit_expr()                  # `1..=9 step 2 ->`: only the numbers on the step
+            return PRange(lo, hi, op == "..=", st, line=plit.line)
         return plit
 
     def parse_pattern_args(self, dict_entries=False):

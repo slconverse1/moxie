@@ -464,13 +464,52 @@ class MultiV:
 
 
 class RangeV:
-    __slots__ = ("start", "limit", "step", "incl")
+    __slots__ = ("start", "limit", "step", "incl", "explicit")
 
-    def __init__(self, start, limit, step=1, incl=False):
+    def __init__(self, start, limit, step=1, incl=False, explicit=False):
         self.start = start
         self.limit = limit
         self.step = step
         self.incl = incl
+        self.explicit = explicit          # the step was written (`a..b step s`), so it is part of the range's meaning
+
+    def count(self):
+        """How many values the range has (a finite range only)."""
+        s, l, st = self.start, self.limit, self.step
+        if l is None or s is None:
+            raise Abort("an infinite range has no length")
+        if isinstance(s, Char):
+            s, l = ord(s), ord(l)
+        if st > 0:
+            end = l + 1 if self.incl else l
+            return max(0, -((s - end) // st))
+        end = l - 1 if self.incl else l
+        return max(0, -((end - s) // -st))
+
+    def indices(self, n, line=0):
+        """The positions a slice `xs(a..b step s)` picks from a sequence of length `n`, each checked against it."""
+        st = self.step
+        s = self.start if self.start is not None else (0 if st > 0 else n - 1)
+        if self.limit is None:
+            lim, incl = (n, False) if st > 0 else (0, True)
+        else:
+            lim, incl = self.limit, self.incl
+        out = []
+        v = s
+        if st > 0:
+            end = lim + 1 if incl else lim
+            while v < end:
+                out.append(v)
+                v += st
+        else:
+            end = lim - 1 if incl else lim
+            while v > end:
+                out.append(v)
+                v += st
+        for i in out:
+            if not 0 <= i < n:
+                raise Abort(f"slice index {i} out of range (length {n})", line)
+        return out
 
     def __eq__(self, o):
         return (isinstance(o, RangeV) and (o.start, o.limit, o.step, o.incl) == (self.start, self.limit, self.step, self.incl))

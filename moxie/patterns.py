@@ -51,6 +51,19 @@ class PatternsMixin:
             lo = self.lit_value(p.lo) if p.lo is not None else None
             hi = self.lit_value(p.hi) if p.hi is not None else None
             try:
+                if p.step is not None:
+                    st = self.lit_value(p.step)
+                    if st < 0:
+                        if lo is not None and v > lo:
+                            return False
+                        if hi is not None and not (v >= hi if p.incl else v > hi):
+                            return False
+                        return lo is None or (lo - v) % -st == 0
+                    if lo is not None and v < lo:
+                        return False
+                    if hi is not None and not (v <= hi if p.incl else v < hi):
+                        return False
+                    return lo is None or (v - lo) % st == 0
                 if lo is not None and v < lo:
                     return False
                 if hi is not None:

@@ -738,6 +738,8 @@ class CallsMixin:
                 raise Abort(pkg_missing(obj, name), line)
             return v
         if k is RangeV:
+            if name not in ("start", "limit", "step"):
+                raise Abort(f"a Range has the fields start, limit and step, not '{name}'; use first(r) and last(r) for the values it reaches", line)
             return {"start": obj.start, "limit": obj.limit, "step": obj.step}[name]
         if isinstance(name, int) and isinstance(obj, Seq):
             return obj.items[name]
@@ -800,6 +802,8 @@ class CallsMixin:
         if k is ListV or k is ArrayV or k is RingV:
             i = args[0]
             if isinstance(i, RangeV):
+                if i.explicit and i.step != 1:
+                    return self.new_seq_like(coll, [coll.items[k] for k in i.indices(len(coll.items), line)])
                 s, e = self.slice_bounds(i, len(coll.items), line)
                 return self.new_seq_like(coll, coll.items[s:e])
             if not isinstance(i, int):
@@ -811,6 +815,8 @@ class CallsMixin:
             i = args[0]
             b = coll.encode("utf-8")
             if isinstance(i, RangeV):
+                if i.explicit and i.step != 1:
+                    return bytes(b[k] for k in i.indices(len(b), line)).decode("utf-8", errors="replace")
                 s, e = self.slice_bounds(i, len(b), line)
                 return b[s:e].decode("utf-8", errors="replace")
             if i < 0 or i >= len(b):
@@ -845,6 +851,10 @@ class CallsMixin:
         keep = []
         for a, dim in zip(args, shape):
             if isinstance(a, RangeV):
+                if a.explicit and a.step != 1:
+                    ranges.append(a.indices(dim, line))
+                    keep.append(True)
+                    continue
                 s, e = self.slice_bounds(a, dim, line)
                 ranges.append(list(range(s, e)))
                 keep.append(True)

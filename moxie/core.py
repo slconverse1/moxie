@@ -484,7 +484,7 @@ def show(v, interp=None):
     if t is RangeV:
         s = "" if v.start is None else show_plain(v.start)
         e = "" if v.limit is None else show_plain(v.limit)
-        return f"{s}..{'=' if v.incl else ''}{e}"
+        return f"{s}..{'=' if v.incl else ''}{e}" + (f" step {v.step}" if v.explicit else "")
     if t is Closure or t is Builtin or t is PartialV or t is ComposeV:
         return "<function>"
     if t is PathV:

@@ -753,7 +753,16 @@ def b_len(I, a, kw, ta):
         return len(c)
     if isinstance(c, TupleV):
         return len(c.vals)
+    if isinstance(c, RangeV):
+        return c.count()
     raise Abort(f"len of {type_name(c)}")
+
+
+@bi("indices")
+def b_indices(I, a, kw, ta):
+    c = a[0]
+    n = len(c.encode("utf-8")) if isinstance(c, str) else len(c.items)
+    return RangeV(0, n, 1, False)
 
 
 @bi("char_count")
@@ -883,7 +892,13 @@ def _ext(I, src, which):
 
 @bi("clamp")
 def b_clamp(I, a, kw, ta):
-    x, lo, hi = a
+    if len(a) == 2:
+        r = a[1]
+        if not isinstance(r, RangeV) or r.start is None or r.limit is None or not r.incl:
+            raise Abort("clamp takes a closed range with both ends, such as 0..=100")
+        x, lo, hi = a[0], r.start, r.limit
+    else:
+        x, lo, hi = a
     if lt(x, lo):
         return lo
     if lt(hi, x):
@@ -1782,7 +1797,7 @@ def b_multi(I, a, kw, ta):
 def b_range(I, a, kw, ta):
     r = a[0]
     step = a[1] if len(a) > 1 else 1
-    return RangeV(r.start, r.limit, step, r.incl)
+    return RangeV(r.start, r.limit, step, r.incl, len(a) > 1)
 
 
 @bi("start")

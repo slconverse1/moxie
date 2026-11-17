@@ -91,18 +91,18 @@ Assume this code lives in its own file. Notice the two-space moxie indentation. 
 
 The elegance of moxie rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
 
-- **Go:** interfaces, goroutines, channels, and `select`, and (in moxie/gc) the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt` (it fixes indentation, blank lines, and operator spacing; it does not rewrap long lines).
-- **Python:** clean, human-readable visual spacing (indentation opens blocks), `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
-- **Kotlin:** scoped receiver blocks, field delegates (what Kotlin calls property delegates, written with `by`: `level Int delegate(Percent)`), Domain-Specific Languages, and labeled `break` and `continue`.
-- **Scala:** opaque types, contextual parameters (`using`), expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, which makes a recursive call that isn't a tail call an error, and type-level programming: matching on types, recursion, and numbers and strings as types.
+- **Go:** interfaces, goroutines, channels, and `select`, and the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt`.
+- **Python:** clean, human-readable visual spacing, `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
+- **Kotlin:** scoped receiver blocks, field delegates, Domain-Specific Languages, labeled `break` and `continue`, and the `step` syntax for ranges, as in `1..9 step 2`.
+- **Scala:** opaque types, contextual parameters, expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
-- **Clojure:** `cond`, lock-free state through Atoms and `swap`, and (in moxie/gc) persistent collections that share structure. **[gc]**
-- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections (`(+ 1)`, `(10 -)`, and `(- 4)` with a space for subtraction, which Haskell can't write), and QuickCheck-style property tests (`forall`).
+- **Clojure:** `cond`, lock-free state through Atoms and `swap`, and persistent collections that share structure. **[gc]**
+- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections, and QuickCheck-style property tests (`forall`).
 - **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
-- **Node.js:** module-level code (code that runs when the module loads).
-- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers (Swift's `willSet` and `didSet`), backing-field shorthand, and the idea that a function parameter has a name for the body and a label for the call (in moxie one name does both, and an `impl` has to keep its interface's names).
+- **Node.js:** module-level code.
+- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, and the idea that a function parameter has a name for the body and a label for the call.
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 - **C#:** multi-cast delegation.
@@ -1203,7 +1203,7 @@ No exceptions flying over your head, and no hidden control flow. Not bad! Your e
 
 ## 15. Iterators, generators, and comprehensions
 
-**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `Range(3..=1, -1)` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
+**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `3..=1 step -1` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
 
 **Generators.** A generator is a function that returns an `unfold` stream. The step takes the current state and returns a value together with the next state, or an `Err` to stop:
 

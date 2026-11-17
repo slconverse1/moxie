@@ -69,7 +69,7 @@ def _defs():
         "OrE": "l r",
         "InOp": "l r neg",
         "IsOp": "e pat",
-        "RangeE": "lo hi incl",
+        "RangeE": "lo hi incl step",
         "Pipe": "l stage",
         "Tick": "l fname r",
         "Q": "e",
@@ -133,7 +133,7 @@ def _defs():
         "PWild": "",
         "PBind": "name",
         "PLit": "expr",
-        "PRange": "lo hi incl",
+        "PRange": "lo hi incl step",
         "PTuple": "items",             # items: list of (label, pat)
         "PCon": "path args",           # args: list of (label, pat)
         "PAs": "name pat",

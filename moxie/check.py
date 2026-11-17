@@ -3924,6 +3924,20 @@ class Checker(RefineMixin):
             t = self.ev(x, sc)[0] if x is not None else None
             if t is not None and (t in ("String", "Bool") or (t.__class__ is tuple and t[0] in ("app", "tup", "fn"))):
                 self.err(n.line, f"a range runs over numbers, found `{tshow(t)}`")
+        if n.step is not None:
+            st = self.ev(n.step, sc)[0]
+            if st is not None and not (st in INTS or (st.__class__ is tuple and st[0] in ("lit", "bounded", "param", "rigid"))):
+                self.err(n.line, f"a range step is a whole number, found `{tshow(st)}`")
+            sv = self.const_int(n.step)
+            if sv == 0:
+                self.err(n.line, "a range step can't be 0")
+            elif sv is not None and n.lo is not None and n.hi is not None:
+                lo, hi = self.const_int(n.lo), self.const_int(n.hi)
+                if lo is not None and hi is not None:
+                    if sv > 0 and lo > hi:
+                        self.err(n.line, f"this range starts at {lo}, above its limit {hi}, but its step {sv} counts up, so it is empty: write `step -{sv}` to count down")
+                    elif sv < 0 and lo < hi:
+                        self.err(n.line, f"this range starts at {lo}, below its limit {hi}, but its step {sv} counts down, so it is empty: write `step {-sv}` to count up")
         return None, None
 
     def e_SelectE(self, n, sc):
@@ -4786,6 +4800,8 @@ class Checker(RefineMixin):
                 if k is None:
                     return
                 have.add({">=": (k, hi), ">": (k + 1, hi), "<=": (lo, k), "<": (lo, k - 1)}[p.op])
+            elif p.__class__ is PRange and p.step is not None:
+                continue                                  # a stepped range skips values, so it covers nothing by itself
             elif p.__class__ is PRange:
                 a_, b_ = self.const_int(p.lo) if p.lo else lo, self.const_int(p.hi) if p.hi else hi
                 if a_ is None or b_ is None:
@@ -4954,7 +4970,19 @@ class Checker(RefineMixin):
     def foreign_call(self, name):
         return any(id(c) in self.foreign_ids for c in self.fns.get(name) or [])
 
+    def check_range_calls(self, n, sc):
+        """The retired spellings: `Range(a..b, s)` (the step is written inside the range) and `random_int(lo, hi)` (it takes a range)."""
+        f = n.fn
+        if f.__class__ is not Name or f.name in self.fns or sc.find(f.name) is not None:
+            return
+        na = len(n.args or [])
+        if f.name == "Range" and "Range" not in self.tuples and na == 2:
+            self.err(n.line, "`Range(a..b, s)` is gone: write the step inside the range, `a..b step s` (a negative step counts down: `10..1 step -3`)")
+        if f.name == "random_int" and na == 2:
+            self.err(n.line, "`random_int` takes a range: write `random_int(lo..=hi)` (for example `random_int(1..=6)`)")
+
     def e_Call(self, n, sc, *a, **k):
+        self.check_range_calls(n, sc)
         self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
         self.rf_check_call(n, sc, k.get("extra", a[0] if a else 0))
         self.check_dict_spread(n, sc)

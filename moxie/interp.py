@@ -692,6 +692,13 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             lo = yield from self.ev(n.lo, env)
         if n.hi is not None:
             hi = yield from self.ev(n.hi, env)
+        if n.step is not None:
+            st = yield from self.ev(n.step, env)
+            if not isinstance(st, int) or isinstance(st, bool):
+                raise Abort("a range step is a whole number", n.line)
+            if st == 0:
+                raise Abort("a range step can't be 0", n.line)
+            return RangeV(lo, hi, int(st), n.incl, True)
         step = 1
         if (isinstance(n.lo, IntLit) or (isinstance(n.lo, Unary))) and n.hi is not None and lo is not None and hi is not None:
             if isinstance(lo, int) and isinstance(hi, int) and lo > hi and self._is_lit(n.lo) and self._is_lit(n.hi):
@@ -895,14 +902,18 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
 
     def contains(self, coll, x):
         if isinstance(coll, RangeV):
-            lo, hi = coll.start, coll.limit
+            lo, hi, st = coll.start, coll.limit, coll.step
+            if st < 0:
+                if lo is not None and x > lo:
+                    return False
+                if hi is not None and not (x >= hi if coll.incl else x > hi):
+                    return False
+                return lo is None or (lo - x) % -st == 0
             if lo is not None and x < lo:
                 return False
-            if hi is not None:
-                if coll.incl:
-                    return x <= hi
-                return x < hi
-            return True
+            if hi is not None and not (x <= hi if coll.incl else x < hi):
+                return False
+            return st == 1 or lo is None or (x - lo) % st == 0
         if isinstance(coll, Seq):
             return x in coll.items
         if isinstance(coll, SetV):

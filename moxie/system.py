@@ -13,7 +13,7 @@ import tempfile
 import time
 import signal as _signal
 from .values import *   # noqa
-from .core import ProgramExit, type_name
+from .core import ProgramExit, type_name, show_plain
 from . import sched as S_
 from .prelude import bi, denied, io_error, StdStream, IoV, GenR, _fs_guard
 
@@ -48,10 +48,13 @@ def b_random(I, a, kw, ta):
 
 @bi("random_int")
 def b_random_int(I, a, kw, ta):
-    lo, hi = int(a[0]), int(a[1])
-    if lo > hi:
-        raise Abort(f"random_int: the low end {lo} is above the high end {hi}")
-    return _rng(I).randint(lo, hi)
+    r = a[0]
+    if not isinstance(r, RangeV) or r.start is None or r.limit is None:
+        raise Abort("random_int takes a finite range of whole numbers, such as 1..=6")
+    n = r.count()
+    if n <= 0:
+        raise Abort(f"random_int: the range {show_plain(r)} is empty")
+    return r.start + r.step * _rng(I).randrange(n)
 
 
 @bi("random_bytes")

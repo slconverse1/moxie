@@ -4,14 +4,14 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 fails = []
 
 FIB = '''fn fib(n Int) Int
-  (a, _) = Range(1..=n, 1) |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
+  (a, _) = 1..=n |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
   a
 '''
 GRID = '''fn next_row(prev List[Int]) List[Int]
-  Range(1..len(prev), 1) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
+  1..len(prev) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
 fn paths(rows Int, cols Int) Int
   first = List(1 for _ in 0..cols)
-  last = Range(1..rows, 1) |> reduce(first, (prev, _) -> next_row(prev))
+  last = 1..rows |> reduce(first, (prev, _) -> next_row(prev))
   last(cols - 1)
 '''
 LCS = '''fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) Int
@@ -20,7 +20,7 @@ LCS = '''fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) In
   else
     max(prev(j), acc(j - 1))
 fn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]
-  Range(1..=len(ys), 1) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
+  1..=len(ys) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
 fn lcs(a String, b String) Int
   xs = List(c for c in chars(a))
   ys = List(c for c in chars(b))

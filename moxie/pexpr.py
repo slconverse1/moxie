@@ -245,11 +245,7 @@ class ExprParser(PBase):
                 left = Tick(left, t.val, right, line=line)
             elif t.val in ("..", "..="):
                 self.next()
-                nt = self.peek()
-                hi = None
-                if not self._ends_operand(nt):
-                    hi = self._climb(tier + 1)
-                left = RangeE(left, hi, t.val == "..=", line=line)
+                left = self.range_rest(left, t.val, tier + 1, line)
             elif t.val in ("+%", "-%"):
                 self.next()
                 right = self._climb(tier + 1)
@@ -278,6 +274,32 @@ class ExprParser(PBase):
                                                         Arg(None, StrLit([l.name], line=line), None, line=line),
                                                         Arg(None, r, None, line=line)], None, line=line)
         return Call(Name("off_change", line=line), [Arg(None, l.obj, None, line=line), Arg(None, r, None, line=line)], None, line=line)
+
+    def step_kw_ahead(self):
+        """`step` directly after a range, with an operand following on the same line (`1..9 step 2`, `10..1 step -3`).  Anywhere else
+        `step` is an ordinary name."""
+        t = self.peek()
+        if not (t.kind == "NAME" and t.val == "step"):
+            return False
+        n = self.peek(1)
+        if n.kind in ("INT", "FLOAT", "NAME") and n.val not in ("then", "do", "else", "elif", "and", "or", "if", "in", "is", "not"):
+            return True
+        if n.kind == "OP" and n.val == "(":
+            return True
+        return n.kind == "OP" and n.val == "-" and not self.peek(2).sp
+
+    def range_rest(self, left, op, hi_tier, line):
+        """What follows `..` or `..=`: the limit, then an optional `step` (the only place `step` is a keyword)."""
+        hi = None
+        if not self.step_kw_ahead() and not self._ends_operand(self.peek()):
+            hi = self._climb(hi_tier)
+        st = None
+        if self.step_kw_ahead():
+            self.next()
+            st = self._climb(hi_tier)
+            if self.step_kw_ahead():
+                self.err("a range takes one `step`")
+        return RangeE(left, hi, op == "..=", st, line=line)
 
     def _ends_operand(self, t):
         if t.kind in ("NL", "DEDENT", "INDENT", "EOF"):
@@ -320,10 +342,7 @@ class ExprParser(PBase):
                 return self.parse_unary()
             if t.val in ("..", "..="):
                 self.next()
-                hi = None
-                if not self._ends_operand(self.peek()):
-                    hi = self._climb(T_RANGE + 1)
-                return RangeE(None, hi, t.val == "..=", line=line)
+                return self.range_rest(None, t.val, T_RANGE + 1, line)
             if t.val == "/" and self.peek(1).kind == "NAME" and not self.peek(1).sp:
                 segs = []
                 while self.at_op("/") and self.peek(1).kind == "NAME" and not self.peek(1).sp:

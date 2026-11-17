@@ -981,7 +981,27 @@ for i in 3..=1
   println("$i")
 ```
 
-Output: `1 -1 true`, then `3`, `2`, `1`. An infinite range uses `Range(1.., 1)`, and `take_while` ends it. A string slice is a read-only view, indexed by byte offsets in UTF-8:
+Output: `1 -1 true`, then `3`, `2`, `1`. An infinite range uses `1..`, and `take_while` ends it.
+
+**Steps.** A range takes a step after its bounds, `a..b step s`. The step is signed, and its sign decides the direction: a positive step counts up and a negative step counts down, with literal or variable bounds. `step` is a keyword only directly after a range, so it is still a fine variable name everywhere else. A stepped range is an ordinary range value, so it works wherever a range does: in a `for`, in a pipeline, in an `in` test (which checks the step in constant time, with no loop), as a slice, and in a variable.
+
+```
+println(List(i for i in 0..=10 step 5))
+println(List(i for i in 10..1 step -4))
+println("${3 in 1..=9 step 2} ${4 in 1..=9 step 2}")
+letters = List("a", "b", "c", "d", "e")
+println(letters(0..=4 step 2))
+r = 1..=9 step 4
+println("${r} ${len(r)} ${step(r)}")
+println(1..=7 step 3 |> map(_ * 10) |> collect())
+hi = 3
+lo = 12
+println(List(i for i in lo..hi step -4))
+```
+
+Output: `List(0, 5, 10)`, then `List(10, 6, 2)`, then `true false`, then `List("a", "c", "e")`, then `1..=9 step 4 3 4`, then `List(10, 40, 70)`, then `List(12, 8, 4)`. A step of 0 is an error. When the bounds and the step are all literals and the step points the wrong way (`10..1 step 3`), the compiler says which sign to write; with variable bounds a wrong-way step gives an empty range, like an unstepped one. `len(r)` counts a finite range's values, `indices(xs)` is the range `0..len(xs)`, `clamp(x, 0..=100)` takes a closed range, and `random_int(1..=6)` draws from a range, so `random_int(1..=9 step 2)` draws an odd number. The older spelling `Range(a..b, s)` is gone and says to write the step inside the range.
+
+A string slice is a read-only view, indexed by byte offsets in UTF-8:
 
 ```
 s = "Python"
@@ -2544,9 +2564,9 @@ Output: `4 2 3`. `unzip()` turns a stream of pairs into two lists, and `group_by
 ```
 for x in numbers
   println("$x")
-for i in Range(0..=10, 2)
+for i in 0..=10 step 2
   println("step $i")
-for i in Range(3..=1, -1)
+for i in 3..=1 step -1
   println("countdown $i")
 ```
 
@@ -2631,7 +2651,7 @@ Nothing is memoized for you, and nothing is cached behind your back. Caching is 
 
 ```
 fn fib(n Int) Int
-  (a, _) = Range(1..=n, 1) |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
+  (a, _) = 1..=n |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
   a
 println("${fib(10)}")
 ```
@@ -2640,10 +2660,10 @@ Output: `55`. A grid of paths (move right or down, count the ways to the far cor
 
 ```
 fn next_row(prev List[Int]) List[Int]
-  Range(1..len(prev), 1) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
+  1..len(prev) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
 fn paths(rows Int, cols Int) Int
   first = List(1 for _ in 0..cols)
-  last = Range(1..rows, 1) |> reduce(first, (prev, _) -> next_row(prev))
+  last = 1..rows |> reduce(first, (prev, _) -> next_row(prev))
   last(cols - 1)
 println("${paths(3, 3)} ${paths(10, 10)}")
 ```
@@ -2657,7 +2677,7 @@ fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) Int
   else
     max(prev(j), acc(j - 1))
 fn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]
-  Range(1..=len(ys), 1) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
+  1..=len(ys) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
 fn lcs(a String, b String) Int
   xs = List(c for c in chars(a))
   ys = List(c for c in chars(b))
@@ -3498,7 +3518,7 @@ println("slept at least 50ms: ${elapsed.millis() >= 50}")
 println("it is after 2023: ${now().seconds() > 1.7e9}")
 ```
 
-Output: `slept at least 50ms: true`, then `it is after 2023: true`. Random numbers come in two kinds. `random()` and `random_int(lo, hi)` are for games and sampling, and `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a reproducible source that the generator functions from property tests (`gen_int`, `gen_pick`, `sample[T]`) read:
+Output: `slept at least 50ms: true`, then `it is after 2023: true`. Random numbers come in two kinds. `random()` and `random_int(r)` (a range, as in `random_int(1..=6)`) are for games and sampling, and `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a reproducible source that the generator functions from property tests (`gen_int`, `gen_pick`, `sample[T]`) read:
 
 ```
 g = seeded(7)
@@ -4184,12 +4204,12 @@ Output: `120 105`. A **Writer** is a function that returns the value together wi
 Streams are recipes, so an infinite source costs nothing until a terminal runs it:
 
 ```
-total = Range(1.., 1)
+total = 1.. step 1
   |> filter(_ % 3 == 0)
   |> map((n) -> n * n)
   |> take(4)
   |> sum()
-under_50 = Range(1.., 1) |> map((n) -> n * n) |> take_while(_ < 50) |> count()
+under_50 = 1.. step 1 |> map((n) -> n * n) |> take_while(_ < 50) |> count()
 println("$total $under_50")
 ```
 
