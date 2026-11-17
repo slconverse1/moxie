@@ -600,6 +600,8 @@ class Parser(ExprParser):
             self.expect_op(")")
         t = self.peek()
         if t.kind == "NAME":
+            if t.val in HARD and not getattr(self, "member_depth", 0):
+                self.err(f"`{t.val}` is a keyword, so it cannot name a function (a method may be called `run`, but a function may not): pick another name (`{t.val}_it`, `start`, ...)")
             name = self.next().val
         elif t.kind == "OP":
             name = self.next().val
@@ -1070,6 +1072,13 @@ class Parser(ExprParser):
         return ImplDecl(iface, target, tparams, members, False, proxy, line=line)
 
     def parse_members(self, iface):
+        self.member_depth = getattr(self, "member_depth", 0) + 1
+        try:
+            return self._parse_members(iface)
+        finally:
+            self.member_depth -= 1
+
+    def _parse_members(self, iface):
         members = []
         embeds = []
         self.expect_nl_indent()
