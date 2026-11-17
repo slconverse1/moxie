@@ -1569,10 +1569,10 @@ Servers don't end, so moxie has a place for that—`daemon` is the server progra
 ```
 daemon
   counter = select
-    case msg = read(inbox) ->
+    msg = read(inbox) ->
       println("got: $msg")
       break daemon
-    case read(timeout) ->
+    read(timeout) ->
       println("timed out")
       break daemon
     else
@@ -1623,7 +1623,7 @@ Here's what you don't need: no `async`/`await` keywords, no IO monad to thread t
 
 The fine print:
 - **Fiber slots are fixed up front.** Each fiber function has a limit on how many copies can be alive at once: `fiber[3] fn` declares its own, and an unannotated one takes the Manifest's default. That's why `go` waits for a free slot when its function's copies are all alive, and why `try_go` exists: it returns a `Result` and fails with `NO_SLOT` instead of waiting.
-- **A `wait` block keeps fibers from outliving it.** Everything started inside `wait` (and everything those start) is waited for before the block ends, and leaving early, with `?`, `return`, or `break`, cancels first and then waits. Write `wait stop` to name the block's `Cancel` token, which the fibers watch with `is_cancelled(stop)` or a `case cancelled(stop) ->` arm. Cancelling is a request, not a kill, and a fiber that never looks at the token runs on.
+- **A `wait` block keeps fibers from outliving it.** Everything started inside `wait` (and everything those start) is waited for before the block ends, and leaving early, with `?`, `return`, or `break`, cancels first and then waits. Write `wait stop` to name the block's `Cancel` token, which the fibers watch with `is_cancelled(stop)` or a `cancelled(stop) ->` arm. Cancelling is a request, not a kill, and a fiber that never looks at the token runs on.
 - **Arguments are copied or moved.** Plain values, static strings, Atoms, channel ends, and non-capturing functions are fine. Capturing closures, `ref` arguments, Timers, and run-time strings aren't.
 - **Cancelling is a request.** A `Cancel` token is passed to the fiber, which ends itself when it sees the token in a `select` arm or a check. Nothing is killed mid-statement, and a fiber that never looks keeps running.
 - **Everything shares one thread.** A long computation in one fiber holds up the others until it parks.

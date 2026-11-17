@@ -103,7 +103,7 @@ null
 ],
 [
 188,
-"#serve while\n  select\n    case n = read(inbox) ->\n      if n < 0\n        break #serve\n      println(\"got $n\")\n    case read(timeout) ->\n      break #serve\n",
+"#serve while\n  select\n    n = read(inbox) ->\n      if n < 0\n        break #serve\n      println(\"got $n\")\n    read(timeout) ->\n      break #serve\n",
 null
 ],
 [
@@ -1397,7 +1397,7 @@ null
 ],
 [
 2740,
-"fiber fn feed(tx ChanW[String], msg static String) Unit\n  sleep(1s)\n  \\write(tx, msg)\nfn start_feed() ChanR[String]\n  rx, tx = Chan[String][1]()\n  go feed(tx, \"hello from a fiber\")\n  rx\ninbox = start_feed()\ntimeout = after(5s)\ncounter = 0\ndaemon\n  counter = select\n    case msg = read(inbox) ->\n      text = \"got: $msg\"\n      println(text)\n      break daemon\n    case read(timeout) ->\n      println(\"timed out\")\n      break daemon\n    else\n      sleep(100ms)\n      counter + 1\n",
+"fiber fn feed(tx ChanW[String], msg static String) Unit\n  sleep(1s)\n  \\write(tx, msg)\nfn start_feed() ChanR[String]\n  rx, tx = Chan[String][1]()\n  go feed(tx, \"hello from a fiber\")\n  rx\ninbox = start_feed()\ntimeout = after(5s)\ncounter = 0\ndaemon\n  counter = select\n    msg = read(inbox) ->\n      text = \"got: $msg\"\n      println(text)\n      break daemon\n    read(timeout) ->\n      println(\"timed out\")\n      break daemon\n    else\n      sleep(100ms)\n      counter + 1\n",
 null
 ],
 [
@@ -1426,7 +1426,7 @@ null
 ],
 [
 2818,
-"fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit\n  while true\n    select\n      case cancelled(stop) ->\n        \\write(out, \"worker ${id} stopping\")\n        return\n      else\n        sleep(10ms)\nrx, tx = Chan[String][4]()\nwait s\n  go worker(1, clone(tx), s)\n  go worker(2, tx, s)\n  sleep(50ms)\n  cancel(s)\nprintln(\"wait over\")\nprintln(read(rx))\nprintln(read(rx))\n",
+"fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit\n  while true\n    select\n      cancelled(stop) ->\n        \\write(out, \"worker ${id} stopping\")\n        return\n      else\n        sleep(10ms)\nrx, tx = Chan[String][4]()\nwait s\n  go worker(1, clone(tx), s)\n  go worker(2, tx, s)\n  sleep(50ms)\n  cancel(s)\nprintln(\"wait over\")\nprintln(read(rx))\nprintln(read(rx))\n",
 [
 "wait over",
 "Ok(\"worker 1 stopping\")",
@@ -1623,7 +1623,7 @@ null
 ],
 [
 3291,
-"fn polite(c Cancel) Result[Int, Error]\n  while true\n    select\n      case cancelled(c) ->\n        return Err(Error(CLOSED, \"cancelled\"))\n      else\n        sleep(5ms)\n  Ok(0)\nfn quick(c Cancel) Result[Int, Error]\n  sleep(10ms)\n  Ok(42)\nprintln(race(polite, quick))\nprintln(with_timeout(1s, quick))\nprintln(with_timeout(50ms, polite))\n",
+"fn polite(c Cancel) Result[Int, Error]\n  while true\n    select\n      cancelled(c) ->\n        return Err(Error(CLOSED, \"cancelled\"))\n      else\n        sleep(5ms)\n  Ok(0)\nfn quick(c Cancel) Result[Int, Error]\n  sleep(10ms)\n  Ok(42)\nprintln(race(polite, quick))\nprintln(with_timeout(1s, quick))\nprintln(with_timeout(50ms, polite))\n",
 [
 "Ok(42)",
 "Ok(42)",
@@ -1746,7 +1746,7 @@ null
 ],
 [
 3521,
-"fiber fn work(done ChanW[Int]) Unit\n  sleep(1s)\n  \\write(done, 1)\n\nrx = signals()\ndone_r, done_w = Chan[Int][1]()\ngo work(done_w)\nselect\n  case read(rx) -> exit(130)\n  case read(done_r) -> println(\"finished\")\n",
+"fiber fn work(done ChanW[Int]) Unit\n  sleep(1s)\n  \\write(done, 1)\n\nrx = signals()\ndone_r, done_w = Chan[Int][1]()\ngo work(done_w)\nselect\n  read(rx) -> exit(130)\n  read(done_r) -> println(\"finished\")\n",
 null
 ],
 [

@@ -1640,9 +1640,10 @@ class ExprParser(PBase):
             if self.peek().kind in ("DEDENT", "EOF"):
                 break
             aline = self.peek().line
-            used_else = self.at_name("else")                            # `else body` is `case _ -> body`
-            if not used_else:
-                self.expect_name("case")
+            used_else = self.at_name("else")                            # `else body` is `_ -> body`
+            if self.at_name("case") and not self.at_op("=", 1):
+                self.err("`case` is gone from `select` arms, which are written like `when` arms: `v = read(ch) -> body`, "
+                         "`closed(ch) -> body`, `cancelled(c) -> body`, `_ -> body` (drop the word `case`)")
             kind = "read"
             bind = None
             ex = None

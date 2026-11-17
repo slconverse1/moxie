@@ -188,11 +188,11 @@ Output: `1`, `3`, `4`. Inside a `select`, a bare `break` leaves the select, so l
 ```
 #serve while
   select
-    case n = read(inbox) ->
+    n = read(inbox) ->
       if n < 0
         break #serve
       println("got $n")
-    case read(timeout) ->
+    read(timeout) ->
       break #serve
 ```
 
@@ -2310,7 +2310,7 @@ println("${grade(85.0)}")
 
 Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when` with no value tests conditions in order:
 
-**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq` can be written `else` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows on the same line or indented below it. In a `seq` every arm whose test passes runs in turn, so `else` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`, and in a `select` it is written without `case`. An arm after one that matches everything (`else`, `_`, or a bare name) never runs, and neither does a repeated literal or a repeated enum case: the compiler warns about both.
+**`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq` can be written `else` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows on the same line or indented below it. In a `seq` every arm whose test passes runs in turn, so `else` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`. An arm after one that matches everything (`else`, `_`, or a bare name) never runs, and neither does a repeated literal or a repeated enum case: the compiler warns about both.
 
 ```
 status = Dict("speed" -> 60, "limit" -> 100)
@@ -2761,11 +2761,11 @@ timeout = after(5s)
 counter = 0
 daemon
   counter = select
-    case msg = read(inbox) ->
+    msg = read(inbox) ->
       text = "got: $msg"
       println(text)
       break daemon
-    case read(timeout) ->
+    read(timeout) ->
       println("timed out")
       break daemon
     else
@@ -2822,7 +2822,7 @@ Output: `2 would have to wait`, then `Ok(1)`, then `Ok(2)`. The first `go` takes
 
 **17a. Cancelling fibers, and waiting for them with `wait`**
 
-A fiber that loops forever, such as a worker or a ticker, needs a way to be told to stop. Moxie gives you a `Cancel` token. You pass it to the fiber like any other argument, and the fiber looks at it when it is ready to: `is_cancelled(c)` says whether `cancel(c)` has been called, and `case cancelled(c) ->` is a `select` arm that fires once it has. Cancelling is a request, not a kill: nothing stops a fiber in the middle of a statement, and a fiber that never looks at the token runs on. A `Cancel` copies like an `Atom` handle, and cancelling twice is harmless.
+A fiber that loops forever, such as a worker or a ticker, needs a way to be told to stop. Moxie gives you a `Cancel` token. You pass it to the fiber like any other argument, and the fiber looks at it when it is ready to: `is_cancelled(c)` says whether `cancel(c)` has been called, and `cancelled(c) ->` is a `select` arm that fires once it has. Cancelling is a request, not a kill: nothing stops a fiber in the middle of a statement, and a fiber that never looks at the token runs on. A `Cancel` copies like an `Atom` handle, and cancelling twice is harmless.
 
 A `wait` block waits for every fiber started inside it (and every fiber those start) before the block ends. `wait token` also binds the name `token` to the block's own `Cancel`:
 
@@ -2830,7 +2830,7 @@ A `wait` block waits for every fiber started inside it (and every fiber those st
 fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
   while true
     select
-      case cancelled(stop) ->
+      cancelled(stop) ->
         \write(out, "worker ${id} stopping")
         return
       else
@@ -3265,13 +3265,13 @@ close(tx)
 
 Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, then the first line's `Err` again. An anonymous function that parks is written `fn () Result[Int, Error]` with the body indented below, as a plain lambda must be pure.
 
-**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `case cancelled(c) ->` in a `select`). Both are structured, like `wait`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c Cancel) ...`; a plain lambda must be pure.
+**Racing and time limits.** `timeout:` covers the calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`. Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the token, and when `with_timeout` runs out of time it sets it, and the other function ends only if it looks (`is_cancelled(c)`, or `cancelled(c) ->` in a `select`). Both are structured, like `wait`: they wait for the slower function to end before they return, so none outlives its call, and a function that never looks at its token delays the return until it finishes. `race` gives whatever finished first, an `Err` included, and the two functions must have the same result type. `with_timeout` takes a function that gives `Result[T, Error]` and gives the same type back, so `TIMED_OUT` joins the reserved errors you already handle (use `race` when your errors have another type). Each call site counts against the program's fibers (2 for `race`, 1 for `with_timeout`), which `moxie pools` shows. A function that waits or prints is written `fn name(c Cancel) ...`; a plain lambda must be pure.
 
 ```
 fn polite(c Cancel) Result[Int, Error]
   while true
     select
-      case cancelled(c) ->
+      cancelled(c) ->
         return Err(Error(CLOSED, "cancelled"))
       else
         sleep(5ms)
@@ -3506,8 +3506,8 @@ rx = signals()
 done_r, done_w = Chan[Int][1]()
 go work(done_w)
 select
-  case read(rx) -> exit(130)
-  case read(done_r) -> println("finished")
+  read(rx) -> exit(130)
+  read(done_r) -> println("finished")
 ```
 
 A program that has called `signals` no longer stops on Ctrl-C by itself, so it must read the channel. `cwd()`, `home_dir()`, `temp_dir()`, `hostname()`, and `os_name()` describe where the program runs, `is_terminal(stdout)` and `terminal_size()` say whether a person is watching, `lookup_host(name)` resolves a name, and `make_temp_file(prefix)` makes a file in the temporary directory and returns its path. These calls count as **uses the system** for effects, so a `pure fn` can't call them. Section 19e of the Spec lists them. **Mistakes:** using `random` for a password or token (use `random_bytes`), reading `now()` twice to time something (use `monotonic`, which does not jump when the clock is set), and a program that calls `signals` and then never reads the channel.

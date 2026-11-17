@@ -1623,10 +1623,10 @@ Servers don't end, so moxie has a place for that—`daemon` is the server progra
 ```
 daemon
   counter = select
-    case msg = read(inbox) ->
+    msg = read(inbox) ->
       println("got: $msg")
       break daemon
-    case read(timeout) ->
+    read(timeout) ->
       println("timed out")
       break daemon
     else
@@ -1678,7 +1678,7 @@ Here's what you don't need: no `async`/`await` keywords, no IO monad to thread t
 The fine print:
 - **Fibers are created on demand.** **[gc]** No slot is reserved in advance. A fiber function can declare a cap (`fiber[3] fn`), the Manifest can set a default cap, and `go` waits for a free slot (and `try_go` returns `NO_SLOT`) only when a cap is full. Without a cap, `go` always starts the fiber at once.
 - **Arguments are shared or moved.** **[gc]** Any value that isn't a resource is fine, closures included, and since values never change, sharing them is safe. Channel ends and write handles move. `ref` arguments and Timers aren't allowed.
-- **A `wait` block keeps fibers from outliving it.** Everything started inside `wait` (and everything those start) is waited for before the block ends, and leaving early, with `?`, `return`, or `break`, cancels first and then waits. Write `wait stop` to name the block's `Cancel` token, which the fibers watch with `is_cancelled(stop)` or a `case cancelled(stop) ->` arm.
+- **A `wait` block keeps fibers from outliving it.** Everything started inside `wait` (and everything those start) is waited for before the block ends, and leaving early, with `?`, `return`, or `break`, cancels first and then waits. Write `wait stop` to name the block's `Cancel` token, which the fibers watch with `is_cancelled(stop)` or a `cancelled(stop) ->` arm.
 - **Cancelling is a request.** A `Cancel` token is passed to the fiber, which ends itself when it sees the token in a `select` arm or a check. Nothing is killed mid-statement, and a fiber that never looks keeps running.
 - **Everything shares one thread.** A long computation in one fiber holds up the others until it parks.
 

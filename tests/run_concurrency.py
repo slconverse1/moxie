@@ -6,10 +6,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKER = '''fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
   while true
     select
-      case cancelled(stop) ->
+      cancelled(stop) ->
         \\write(out, "worker ${id} stopping")
         return
-      case _ ->
+      _ ->
         sleep(10ms)
 
 '''
@@ -86,8 +86,8 @@ println(is_cancelled(c))
 chk("a cancelled arm is ready at once when already cancelled", '''c = Cancel()
 cancel(c)
 select
-  case cancelled(c) -> println("seen")
-  case _ -> println("default")
+  cancelled(c) -> println("seen")
+  _ -> println("default")
 ''', 0, 'seen')
 
 chk("nested wait blocks wait for their own fibers", '''fiber fn task(name String, ms Int, out ChanW[String]) Unit

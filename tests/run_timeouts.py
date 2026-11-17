@@ -2,7 +2,7 @@
 Run: python3 tests/run_timeouts.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POLITE = 'fn polite(c Cancel) Result[Int, Error]\n  while true\n    select\n      case cancelled(c) ->\n        return Err(Error(CLOSED, "cancelled"))\n      case _ ->\n        sleep(5ms)\n  Ok(0)\nfn quick(c Cancel) Result[Int, Error]\n  sleep(10ms)\n  Ok(42)\n'
+POLITE = 'fn polite(c Cancel) Result[Int, Error]\n  while true\n    select\n      cancelled(c) ->\n        return Err(Error(CLOSED, "cancelled"))\n      _ ->\n        sleep(5ms)\n  Ok(0)\nfn quick(c Cancel) Result[Int, Error]\n  sleep(10ms)\n  Ok(42)\n'
 STUBBORN = 'done = Atom[Bool](false)\nfn stubborn(c Cancel) Result[Int, Error]\n  sleep(200ms)\n  _ = reset(done, true)\n  Ok(7)\n'
 CASES = [
  ("read times out on an empty channel", 'rx, tx = Chan[Int][1]()\nr = read(rx, timeout: 50ms)\nprintln(is_err(r))\nprintln(r)\nclose(tx)\n', 'true\nErr(Error(code: 12, message: "read: timed out"))'),
