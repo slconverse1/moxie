@@ -7,6 +7,7 @@ Anything the checker cannot type is "unknown" and never produces an error.
 import os
 import re
 from .ast import *   # noqa
+from .pexpr import MUT_RE
 from .values import UTAGS
 from . import tys
 
@@ -3406,6 +3407,18 @@ class Checker(RefineMixin):
                 self.__dict__.setdefault('slot_anns', {})[id(n.value)] = n.ann                   # a collection literal reads its written element type (`with (...)` layouts)
             self.expect_union(n.value, n.ann)
         t, c = self.ev(n.value, sc)
+        if id(n) in MUT_RE and t.__class__ is str:
+            tg = n.targets if not isinstance(n.targets, list) else n.targets[0]
+            if tg.__class__ is PPlace and tg.expr.__class__ is Gimme:
+                ov = self.gimme_var(Gimme(tg.expr.n, tg.expr.name, line=n.line), Sc(sc), False)
+                nm = tg.expr.name
+            elif tg.__class__ is PBind:
+                ov, nm = sc.find(tg.name), tg.name
+            else:
+                ov = nm = None
+            if ov is not None and ov.ty.__class__ is str and ov.ty != t and not (ov.ty in INTS and t in INTS):
+                self.err(n.line, f"`{nm}` is a mutable `{tshow(ov.ty)}` here and can't be assigned a `{tshow(t)}`: "
+                                 f"a variable in a `mutable` block keeps its type")
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
         self.note_expected(n.value, ann)
         self.has_expect(n.value, n.ann)

@@ -2,6 +2,7 @@
 from .pbase import PBase, HARD
 from .lexer import MoxieSyntaxError
 from .ast import *   # noqa
+MUT_RE = set()      # ids of `Assign` nodes that assign to a `mutable` block's name
 
 T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_ADD, T_MUL, T_OTHER = range(13)
 
@@ -844,6 +845,11 @@ class ExprParser(PBase):
         if v == "do" and self.nl_indent_at(1):
             self.next()
             return DoE(self.parse_block(), None, line=line)
+        if v == "mutable" and self.nl_indent_at(1):
+            self.next()
+            blk = self.parse_block()
+            self.mutable_rewrite(blk)
+            return DoE(blk, None, line=line)
         if v == "eval" and self.nl_indent_at(1):
             self.next()
             return self.parse_eval(line)
@@ -1259,6 +1265,93 @@ class ExprParser(PBase):
                     t2 = self.peek(k + 1)
                     return t2.kind == "OP" and t2.val == "-" and not t2.sp
             k += 1
+
+    def mutable_rewrite(self, blk):
+        """A `mutable` block assigns instead of rebinding: a name declared in the block (or on its `in` line) is changed by any
+        later `x = e`, `x += e`, `x(i) = e` or `x.f = e`, at any depth, so inside a nested block the target is rewritten to the
+        declaring block's name (`x@1`).  A name first assigned in a nested block is that block's own local."""
+        if not hasattr(self, "_mut_done"):
+            self._mut_done = set()
+        stack = [set()]
+
+        def names_of_pattern(pt):
+            out = []
+
+            def go(x):
+                if isinstance(x, (list, tuple)):
+                    for y in x:
+                        go(y)
+                elif hasattr(x, "_fields"):
+                    if x.__class__ is PBind:
+                        out.append(x.name)
+                    for f in x._fields:
+                        go(getattr(x, f))
+            go(pt)
+            return out
+
+        def root_swap(e):
+            """Replace the `Name` at the root of a place (`x`, `x(i)`, `x.f`) with `x@1`; True when it was one of ours."""
+            k = e.__class__
+            if k is Name:
+                return None if e.name not in outer_names() else Gimme(1, e.name, line=e.line)
+            for f in ("fn", "obj", "e", "target"):
+                sub = getattr(e, f, None) if f in e._fields else None
+                if sub is not None and hasattr(sub, "_fields"):
+                    r = root_swap(sub)
+                    if r is not None:
+                        setattr(e, f, r)
+                        return e
+                    return None
+            return None
+
+        def outer_names():
+            return set().union(*stack[:-1]) - stack[-1] if len(stack) > 1 else set()
+
+        def walk(n):
+            if isinstance(n, (list, tuple)):
+                for x in n:
+                    walk(x)
+                return
+            if not hasattr(n, "_fields"):
+                return
+            k = n.__class__
+            if k in (Lambda, FnDecl) or (k is DoE and id(n.body) in self._mut_done):
+                return
+            if k is Carry:
+                for it in n.items:
+                    stack[-1].add(it.name)
+                return
+            if k is Block:
+                stack.append(set())
+                walk(n.stmts)
+                stack.pop()
+                return
+            if k is Assign:
+                walk(n.value)
+                if n.op == "=" and n.targets.__class__ is PBind and n.targets.name in stack[-1]:
+                    MUT_RE.add(id(n))                  # an assignment to a mutable name: its type is already fixed
+                for t in (n.targets if isinstance(n.targets, list) else [n.targets]):
+                    if t.__class__ is PBind:
+                        if t.name in outer_names():
+                            if n.op == "=":
+                                MUT_RE.add(id(n))
+                            n.targets = PPlace(Gimme(1, t.name, line=n.line), line=n.line) if not isinstance(n.targets, list) else n.targets
+                            if isinstance(n.targets, list):
+                                n.targets[n.targets.index(t)] = PPlace(Gimme(1, t.name, line=n.line), line=n.line)
+                        else:
+                            stack[-1].add(t.name)
+                    elif t.__class__ is PPlace:
+                        r = root_swap(t.expr)
+                        if r is not None:
+                            t.expr = r
+                    else:
+                        for nm in names_of_pattern(t):
+                            stack[-1].add(nm)
+                return
+            for f in n._fields:
+                walk(getattr(n, f))
+        walk(blk.stmts)
+        self._mut_done.add(id(blk))
 
     def parse_eval(self, line, free=False):
         """`eval` block: `name <- e` binds the answer of `e`, a bare expression runs for its effect, a binding line is

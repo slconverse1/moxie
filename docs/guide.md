@@ -322,6 +322,23 @@ println("$average $total $count")
 
 Output: `81 0 0`. The first line `in total, count` makes a local `total` and a local `count` that start as the outer values (here `0`); after it, `total += score` is an ordinary update of the local, so no `@1` is needed. In a loop the copy happens once, on the first pass, and later passes carry the values forward like any loop state. The locals end with the block, so the outer `total` and `count` still hold `0`; the answer leaves through `break(...)` or `else`, or you write `total@1 = total` to hand a value back. Each item may name its source: `in total@2` copies the second layer out, and `in total@serve` copies the `total` outside the loop labeled `#serve`. The `in` line is a declaration with no value, so it must be the first line of its block. **Mistakes:** a name with no outer binding to copy, a name listed twice, and an `in` line anywhere but first.
 
+**Mutable blocks.** When a whole stretch of code is an in-place algorithm, a `mutable` block drops the `@N` bookkeeping altogether. Inside it, `x = e` declares `x` the first time and assigns to it after that (no rebinding, no shadowing), and `x += e`, `x(i) = e` and `x.f = e` write into `x` from any depth of `for`, `while`, `if` and `when`:
+
+```
+fn running_totals(xs Array[Int][5]) Array[Int][5]
+  mutable
+    out = xs
+    total = 0
+    for i in 0..5
+      total += xs(i)
+      out(i) = total
+    out
+
+println(running_totals(Array(3, 1, 4, 1, 5)))
+```
+
+Output: `Array(3, 4, 8, 9, 14)`. The block is an expression whose value is its last line. A variable keeps the type it was declared with, so `total = "x"` after `total = 0` is an error. Outer names are read-only inside the block unless they are copied in on an `in` line (`in total`), which makes a mutable local of the same name and leaves the outer one alone. The assignments are guaranteed in-place writes, which is the difference from an ordinary update (that is in place only when the old value is dead), and to keep that safe `b = a` inside the block copies `a`, values enter by copy and leave as plain immutable values, and a closure made inside takes the current values. So the block is pure from outside, and a `pure fn` may contain one. This is what Haskell's `ST` monad provides with `runST` and a rank-2 type, here as a block with a keyword.
+
 **Module scope and function scope.** A name bound at the top of a file lives in *module scope*: it is created once, when the program starts, and stays for the whole run, so every function in the file can read it. A name bound inside a function, including its parameters and loop variables, lives in *function scope*: it exists in that call's frame and is gone when the call returns, and each call gets its own. A function is a boundary for `name@N`, so it can read a module-level name by writing the name, but it cannot rebind one, which is why there is no `global`. Inside a function, `name@N` counts only that function's own blocks:
 
 ```

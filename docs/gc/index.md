@@ -520,21 +520,22 @@ println(state.traverse(List("a", "b", "c"), label).run(0))
 
 This prints `(List("a1", "b2", "c3"), 3)`.
 
-**Local mutation is allowed because it can't escape.** Haskell needs the `ST` monad and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still pure from outside. Moxie gets the same guarantee from two facts already in the language: a value never changes, and a value has one owner. `out(i) = total` is an update that rebinds `out` to a new array, and when the old one is dead the compiler writes into the same storage (here the first update copies, because `out` starts as the parameter `xs`, which the caller still owns, and the rest are in place). You get the in-place algorithm, the caller sees a pure function, and there is no mutable reference to return because there are no mutable references.
+**Local mutation gets a block of its own.** Haskell needs the `ST` monad and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still pure from outside. Moxie has a `mutable` block. Inside it, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write into the variable's storage from any depth of loop or branch, with no rebinding, no shadowing and no `@N`. The writes are guaranteed in place, so the in-place algorithms (a sieve, an in-place sort, union-find) cost what they should.
 
 ```
 fn running_totals(xs Array[Int][5]) Array[Int][5]
-  out = xs
-  total = 0
-  for i in 0..5
-    total@1 += xs(i)
-    out@1(i) = total@1
-  out
+  mutable
+    out = xs
+    total = 0
+    for i in 0..5
+      total += xs(i)
+      out(i) = total
+    out
 
 println(running_totals(Array(3, 1, 4, 1, 5)))
 ```
 
-This prints `Array(3, 4, 8, 9, 14)`. `moxie build --report` lists any update that did have to copy and says why (usually because another name still holds the old value), so the performance is visible without being something the program's meaning depends on. The only truly mutable thing is the `Atom`, and it holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is the one place where state outlives a call.
+This prints `Array(3, 4, 8, 9, 14)`. The block is an expression, and its last line is the value. Containment comes from the language's other rules rather than from a type trick: `b = a` inside the block copies, values enter by copy (or by move when the old one is dead) and leave as ordinary immutable values, and a closure made inside takes the current values, so no mutable variable can be reached from outside. A variable keeps its declared type, an outer name is read-only unless copied in on an `in` line, and the block is pure from outside, so a `pure fn` may contain one. Outside a `mutable` block, an update is in place only when the old value is dead, and `moxie build --report` lists the ones that copied. The only truly shared mutable thing is the `Atom`, which holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is where state outlives a call.
 
 **An existential hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
 
@@ -574,7 +575,7 @@ This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds
 | Enforce a rule about a value | `type opaque` with `export`ed functions | Immutable |
 | Hide a private counter or handle | A closure over an `Atom`, or a tuple field | Only the `Atom` |
 | Thread state through a pipeline | `ref` parameters, returned tuples (State in moxie/gc) | Immutable |
-| An in-place algorithm | Rebinding updates; the compiler reuses storage | Local only, never visible |
+| An in-place algorithm | A `mutable` block | Local only, never visible |
 | Parts with different hidden state | `any Interface` | Immutable |
 
 # Moxie's Superpowers

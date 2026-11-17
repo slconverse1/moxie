@@ -54,6 +54,8 @@ To do (Steve, 2026-11-09)
 
 - `fill(v)` as a declaration initializer (`a Array[Int][3] = fill(7)`, `MultiArray`) is in the spec (section on declarations) but the reference interpreter only returns a marker, so the program aborts with "tuple is not callable". Implement it, or remove it from the spec. (Found 2026-11-17.)
 
+- `mutable` blocks: handing a mutated `in` name back to the caller is written `a@1 = a` on the last lines (see the quicksort probe); a form such as `in ref a` that writes the final value back automatically would read better. A library of in-place algorithms (quicksort, in-place heapsort, union-find, sieve) is proposed but not written. (2026-11-17)
+
 ## Decisions 2026-11-10 (Steve)
 - No UI kit: coders will use a native toolkit.
 - Yes to a low-profile `http` socket library: built 2026-11-10 as `moxie/std/http.mxi` (client get/post/request, server serve_one/serve_n/serve; text bodies, Connection: close). Added `to_utf8`/`from_utf8` for it. Not yet: TLS (`connect_tls` exists in the prelude, so an `https` client is a small step), chunked bodies, keep-alive, binary bodies, the browser platform, and a `\r` string escape (the package builds CRLF from bytes).
