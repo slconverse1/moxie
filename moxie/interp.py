@@ -23,6 +23,9 @@ def declared_names(stmts):
 WARN_QUIET = [False]            # `--quiet` and `--release`: `moxie run` does not print the compiler's warnings
 
 
+FOR_SKIP = object()      # a failed `if` line in `for:`: the List item is skipped
+
+
 class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
     def __init__(self, out=None, err=None, search_dir=None, test_mode=False, inp=None):
         self.inp = inp if inp is not None else sys.stdin
@@ -1294,7 +1297,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
 
     # ------------------------------------------------------------ for: comprehension
     def ev_ForM(self, n, env):
-        return (yield from self.for_m(n, 0, Env(env)))
+        r = yield from self.for_m(n, 0, Env(env))
+        return UNIT if r is FOR_SKIP else r
 
     def for_m(self, n, i, env):
         lines = n.lines
@@ -1312,7 +1316,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             else:
                 c = yield from self.ev(ex, env)
                 if not c:
-                    return UNIT
+                    return FOR_SKIP
             i += 1
         if i >= len(lines):
             return (yield from self.ev_body(n.yield_, env))
@@ -1331,6 +1335,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 raise Abort("pattern did not match in for:", n.line)
             env2.vars.update(b)
             r = yield from self.for_m(n, i + 1, env2)
+            if r is FOR_SKIP:
+                raise Abort("an `if` line in `for:` can only skip items of a List", n.line)
             if last:
                 return Ok(r)
             return r
@@ -1343,6 +1349,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 raise Abort("pattern did not match in for:", n.line)
             env2.vars.update(b)
             r = yield from self.for_m(n, i + 1, env2)
+            if r is FOR_SKIP and not isinstance(m, (ListV, ArrayV)):
+                raise Abort("an `if` line in `for:` can only skip items of a List", n.line)
             return r
         kb = Builtin(k, "<for>", gen=True)
         if isinstance(m, (ListV, ArrayV)):
@@ -1350,6 +1358,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             out = []
             for x in list(m.items):
                 r = yield from k(self, [x], {})
+                if r is FOR_SKIP:
+                    continue
                 if last:
                     out.append(r)
                 elif isinstance(r, (ListV, ArrayV)):

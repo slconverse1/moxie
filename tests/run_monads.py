@@ -49,6 +49,19 @@ chk("for: over lists gives a List", """r = for
   yield a + b
 println(r)
 """, 0, "List(11, 21, 12, 22)")
+chk("for: over a List skips an item whose if line fails", """r = for
+  p in List((1, "a"), (2, "b"), (3, "c"))
+  (n, w) = p
+  if n > 1
+  yield "${n}${w}"
+println(r)
+s = for
+  a in List(1, 2, 3)
+  b in List(10, 20)
+  if a + b > 21
+  yield a + b
+println(s)
+""", 0, 'List("2b", "3c")\nList(22, 23)', flags=())
 chk("the ListM monad laws hold on an example", """f = (a Int) -> ListM(List(a, a + 1))
 g = (a Int) -> ListM(List(a * 2))
 m = ListM(List(1, 5))
