@@ -2005,7 +2005,10 @@ def src_of(I, v):
 
 def stage(name, pos, make):
     def f(I, a, kw, ta):
-        return make(I, a)
+        try:
+            return make(I, a)
+        except IndexError:
+            raise Abort(f"`{name}` is missing an argument (a pipeline stage takes its function and, unless it follows `|>`, its source)", 0)
     REG[name] = (f, pos, False)
 
 
