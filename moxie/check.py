@@ -529,6 +529,7 @@ class Checker(RefineMixin):
         self.ifacts = []
         FORGET[0] = self.rf_forget
         tys.REDUCER = self.reduce_tapp
+        tys.SOURCE_ELEM = self.source_elem
         tys.UNFOLD = self.unfold
         tys.CALLER = self.type_call
         tys.IMPLEMENTS = self.implements
@@ -2800,6 +2801,16 @@ class Checker(RefineMixin):
                 break
         rt = conv(m.ret) if m.ret is not None else None
         return tys.subst(rt, binds) if rt is not None and mtps else rt
+
+    def source_elem(self, t):
+        """A user type with `fn to_stream(self) Stream[T]` is a pipeline source of `T` (the type's own type arguments are not tracked)."""
+        m = self.methods.get((t[1], "to_stream"))
+        if m is None or m.tparams or m.ret is None or t[0] == "app":
+            return None
+        r = self.ty_of_type(m.ret)
+        if r.__class__ is tuple and r[0] == "app" and r[1] in ("Stream", "List", "Array") and len(r[2]) == 1 and not self.has_unsettled(r[2][0]):
+            return r[2][0]
+        return None
 
     def check_tparam_member(self, n, t):
         """`x.m` where x has the type parameter `T`: m must come from T's bounds, or be a function that takes x (`x.m()` is `m(x)`)."""

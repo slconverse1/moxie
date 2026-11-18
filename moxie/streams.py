@@ -45,7 +45,24 @@ def make_iter(I, v):
         return ChanIter(I, v)
     if isinstance(v, EnumV) and v.et is RESULT_T:
         return ListIter([v.vals[0]] if v.case == "Ok" else [])
+    if isinstance(v, (TupleV, EnumV)) and I.find_method_for(v, "to_stream") is not None:
+        return MethodIter(I, v)
     raise Abort(f"cannot iterate over {type_name(v)}")
+
+
+class MethodIter:
+    """A user type's own `to_stream()`: called on the first pull, then that stream is read."""
+    def __init__(self, I, v):
+        self.I = I
+        self.v = v
+        self.it = None
+
+    def nxt(self):
+        if self.it is None:
+            I = self.I
+            r = yield from I.apply_method(I.find_method_for(self.v, "to_stream"), self.v, [])
+            self.it = make_iter(I, r)
+        return (yield from self.it.nxt())
 
 
 class ListIter:

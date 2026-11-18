@@ -258,6 +258,7 @@ def subst_partial(t, binds):
 IMPLEMENTS = None        # set by the checker: (type, interface name) -> True / False / None
 CALLER = None            # set by the checker: (function name, argument values) -> ("lit", n) / ("slit", s) / ("bool", b), or None
 UNFOLD = None           # set by the checker: a declared tuple type -> the same as a labeled ("tup", ...), or None
+SOURCE_ELEM = None      # set by the checker: a user type with `to_stream()` -> its element type, or None
 REDUCER = None          # set by the checker: (name, args) -> the reduced type, or a symbolic ("tapp", name, args)
 
 
@@ -359,6 +360,10 @@ def unify(pat, act, binds):
         return unify(pat[2][0], "Char", binds)
     if pat[0] == "app" and pat[1] == "Seq" and act[0] == "app" and act[1] == "Dict" and len(act[2]) == 2:
         return unify(pat[2][0], ("tup", (act[2][0], act[2][1])), binds)
+    if pat[0] == "app" and pat[1] == "Seq" and act.__class__ is tuple and act[0] in ("named", "app") and act[1] not in SEQ_HEADS and SOURCE_ELEM is not None:
+        el = SOURCE_ELEM(act)
+        if el is not None:
+            return unify(pat[2][0], el, binds)
     if pat[0] == act[0] == "app" and (pat[1] == act[1] or (pat[1] == "Seq" and act[1] in SEQ_HEADS)) and len(pat[2]) == len(act[2]):
         for x, y in zip(pat[2], act[2]):
             r = unify(x, y, binds)
@@ -409,9 +414,16 @@ def match(pat, act, binds, strict=False):
     if pt == "app" and pat[1] == "Seq" and act == "String":
         return match(pat[2][0], "Char", binds, strict)
     if pt == "app":
+        if at == "named" and pat[1] == "Seq" and SOURCE_ELEM is not None and act[1] not in SEQ_HEADS:
+            el = SOURCE_ELEM(act)
+            return el is not None and match(pat[2][0], el, binds, strict)
         if at != "app":
             return False
         if pat[1] == "Seq":
+            if act[1] not in SEQ_HEADS and act[1] != "Dict" and SOURCE_ELEM is not None:
+                el = SOURCE_ELEM(act)
+                if el is not None:
+                    return match(pat[2][0], el, binds, strict)
             if act[1] == "Dict" and len(act[2]) == 2:       # a Dict is read as a sequence of (key, value) entries
                 return match(pat[2][0], ("tup", (act[2][0], act[2][1])), binds, strict)
             return act[1] in SEQ_HEADS and len(act[2]) == 1 and match(pat[2][0], act[2][0], binds, strict)
