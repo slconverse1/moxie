@@ -1220,11 +1220,27 @@ class Checker(RefineMixin):
                         self.err(n.line, msg)
                     break
 
+        def mentions(t):
+            if t.__class__ is not TName:
+                return False
+            if (len(t.path) == 1 and t.path[0] in assoc and not t.groups) or (len(t.path) == 2 and t.path[0] == "Self" and t.path[1] in assoc):
+                return True
+            return any(mentions(g) for grp in t.groups or [] for g in (grp if isinstance(grp, (list, tuple)) else [grp]))
+
         def own(t):
             if t.__class__ is TName and len(t.path) == 1 and t.path[0] in assoc and not t.groups:
                 return ("hid", at[2], t.path[0])
             if t.__class__ is TName and len(t.path) == 2 and t.path[0] == "Self" and t.path[1] in assoc:
                 return ("hid", at[2], t.path[1])
+            if t.__class__ is TName and t.groups and mentions(t):
+                # `Result[Item, Error]`, `Option[Item]`, `List[Item]`: the type with the hidden part put back in
+                args = []
+                for grp in t.groups:
+                    for g in (grp if isinstance(grp, (list, tuple)) else [grp]):
+                        args.append(own(g) if mentions(g) else self.ty_of_type(g))
+                if any(x is None for x in args):
+                    return None
+                return ("app", t.path[-1], tuple(args))
             return None
         for p, (act, const) in zip(d.params or [], ats):
             exp = own(p.type) if p.type is not None else None
@@ -2552,6 +2568,10 @@ class Checker(RefineMixin):
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`")
             return "Bool", None
         if op in ("+", "-", "*", "/", "%"):
+            for u in (a, b):
+                if u.__class__ is tuple and u and u[0] == "hid":
+                    self.err(n.line, f"cannot apply `{op}` to `{tshow(u)}`: its type is hidden (it belongs to an `any` value), so the interface does not say it can do arithmetic")
+                    return None, None
             if a in self.SCAL and b in self.SCAL:
                 num = {"Int", "Float", "Decimal"}
                 if {a, b} == {"Float", "Decimal"}:
@@ -3596,7 +3616,7 @@ class Checker(RefineMixin):
                         and not any(x.__class__ is tuple and x and x[0] == "spread" for x in vt[1]) and len(vt[1]) != len(tgt.items or []):
                     self.err(n.line, f"this pattern has {len(tgt.items or [])} names, but the value has {len(vt[1])} fields")
                 self.bind_pat(tgt, sc, vt, res)
-                if tgt.__class__ is PCon:
+                if tgt.__class__ is PCon and "'hid'" not in repr(vt):          # a payload of an `any` value's hidden type keeps that type
                     self.bind_payloads(tgt, self.var_node_of(n, sc), sc)       # `P(a) = p`: `a` is written as `P`'s field is
         return None, None
 
@@ -3644,7 +3664,7 @@ class Checker(RefineMixin):
             self.ev(n.else_, inner)
         else:
             self.ev(n.else_, sc)
-        self.bind_pat(n.pat, sc)
+        self.bind_pat(n.pat, sc, vt)
         return None, None
 
     def e_Incr(self, n, sc):
