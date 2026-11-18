@@ -6016,7 +6016,7 @@ class Checker(RefineMixin):
         if ov is not None and not ov[0] and n.trailing is None and all(hasattr(a, "expr") for a in sargs):
             sg_all = self.load_sigs().get(fn.name) or []
             low = min((len(sg[1]) for sg in sg_all), default=0)
-            if 0 < len(sargs) + extra < low and fn.__class__ in (Name, Field):
+            if 0 < len(sargs) + extra < low and fn.__class__ in (Name, Field) and fn.name not in ("min", "max"):
                 self.err(n.line, f"`{fn.name}` takes at least {low} argument{'s' if low != 1 else ''}, but {len(sargs) + extra} given")
         if ov is not None and ov[0] and all(hasattr(a, "expr") for a in sargs):
             ats, sigres = self.sig_args(n, ov[0], ov[1], sargs, asc, sc, extra)
