@@ -410,6 +410,10 @@ class CallsMixin:
                 callee = self.case_value(*cs)
             elif callee.__class__ is LazyV:
                 callee = yield from self._force_lazy(callee)
+            elif callee.__class__ is TypeV and isinstance(callee.info, EnumInfo) and callee.info.et.prelude:
+                cs = self.resolve_case(fnn.name, hint)             # `Key("a")` is the program's own case `Key`, not the prelude's type `Key`
+                if cs is not None and not cs[0].prelude:
+                    callee = self.case_value(*cs)
             elif callee.__class__ is Closure and callee.bound is not None and isinstance(callee.node, FnDecl):
                 # a receiver method found by bare name: if the call has more args than it takes,
                 # the name means an outer/prelude function instead
