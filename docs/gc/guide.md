@@ -2435,6 +2435,21 @@ println(half("ten"))
 
 Output: `Ok(5)`, then `Err(Error(code: 7, message: "bad number: cannot read"))`. The two patterns must cover every shape of the value between them (the compiler says which case is missing, as for `when`), so the `Err(e)` here is the only thing left once `Ok(n)` has failed to match. A plain name, as in `else other -> ...`, takes the whole value. The names of the first pattern are not in scope in the else, and the names of the second are not in scope after the line. Without the `->`, the else is a value as before. A lambda can't be the else value with a pattern-looking parameter list: write it with a name first.
 
+**Custom extraction is a function that returns an `Option`.** Moxie has no `unapply` or `componentN`, and a pattern matches the shape of a value as it is. To pull a value apart in your own way, write a function that returns an `Option`, then match its result with `is` or let-else, as in Rust. Three string functions return one: `split_once(s, sep)` splits at the first separator, and `strip_prefix(s, p)` and `strip_suffix(s, p)` remove an end that is there:
+
+```
+fn parse_email(raw String) Option[(String, String)]
+  Some((user, domain)) = split_once(raw, "@") else None
+  if len(user) > 0 and contains(domain, ".") then Some((user, domain)) else None
+if parse_email("alex@example.com") is Some((user, domain))
+  println("User: ${user}, Domain: ${domain}")
+println(parse_email("nonsense"))
+Some(text) = strip_prefix("say hello", "say ") else "no"
+println(text)
+```
+
+Output: `User: alex, Domain: example.com`, then `None`, then `hello`.
+
 **12a. Binary patterns**
 
 A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:

@@ -178,6 +178,16 @@ fn is_some[T](o Option[T]) Bool
 
 fn is_none[T](o Option[T]) Bool
   not is_some(o)
+
+fn strip_prefix(s String, prefix String) Option[String]
+  if starts_with(s, prefix) then Option.Some(s(len(prefix)..)) else Option.None
+
+fn strip_suffix(s String, suffix String) Option[String]
+  if ends_with(s, suffix) then Option.Some(s(..<len(s) - len(suffix))) else Option.None
+
+fn split_once(s String, sep String) Option[(String, String)]
+  parts = split(s, sep)
+  if sep == "" or len(parts) < 2 then Option.None else Option.Some((parts(0), s(len(parts(0)) + len(sep)..)))
 '''
 
 from .locales import tuple_source
