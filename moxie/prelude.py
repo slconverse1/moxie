@@ -2386,13 +2386,26 @@ def b_ring(I, a, kw, ta):
     return RingV([], n)
 
 
-@bi("Atom")
+@bi("Atom", "first", True)
 def b_atom(I, a, kw, ta):
     v = a[0]
     if ta and ta[0]:
         v = I.coerce(v, ta[0][0], I.module_env)
     I.pools.acquire("Atom")
-    return S_.AtomV(v)
+    at = S_.AtomV(v)
+    chk = kw.get("valid")
+    if chk is not None:
+        at.valid = chk
+        if not (yield from I.apply(chk, [v])):
+            raise Abort("the initial value was rejected by the Atom's `valid` check")
+    return at
+
+
+def _accepts(I, at, nv):
+    """Does the Atom's validator (if it has one) accept the new value?"""
+    if at.valid is None:
+        return True
+    return bool((yield from I.apply(at.valid, [nv])))
 
 
 @bi("Cancel")
@@ -2420,6 +2433,8 @@ def b_swap(I, a, kw, ta):
     at, f = a[0], a[1]
     old = at.atom_value
     nv = yield from I.apply(f, [old])
+    if not (yield from _accepts(I, at, nv)):
+        raise Abort("swap: the new value was rejected by the Atom's `valid` check; the Atom keeps its old value")
     at.atom_value = nv
     if at.watchers:
         yield from I.fire_watchers(at, old, nv)
@@ -2428,11 +2443,40 @@ def b_swap(I, a, kw, ta):
 
 @bi("reset", "first", True)
 def b_reset(I, a, kw, ta):
-    old = a[0].atom_value
-    a[0].atom_value = a[1]
-    if a[0].watchers:
-        yield from I.fire_watchers(a[0], old, a[1])
+    at = a[0]
+    old = at.atom_value
+    if not (yield from _accepts(I, at, a[1])):
+        raise Abort("reset: the new value was rejected by the Atom's `valid` check; the Atom keeps its old value")
+    at.atom_value = a[1]
+    if at.watchers:
+        yield from I.fire_watchers(at, old, a[1])
     return a[1]
+
+
+@bi("try_swap", "first", True)
+def b_try_swap(I, a, kw, ta):
+    """Like `swap`, but a value the Atom's `valid` check rejects gives `Err` and leaves the Atom as it was."""
+    at, f = a[0], a[1]
+    old = at.atom_value
+    nv = yield from I.apply(f, [old])
+    if not (yield from _accepts(I, at, nv)):
+        return err_reserved("OUT_OF_RANGE", "rejected by the Atom's valid check")
+    at.atom_value = nv
+    if at.watchers:
+        yield from I.fire_watchers(at, old, nv)
+    return Ok(nv)
+
+
+@bi("try_reset", "first", True)
+def b_try_reset(I, a, kw, ta):
+    at = a[0]
+    old = at.atom_value
+    if not (yield from _accepts(I, at, a[1])):
+        return err_reserved("OUT_OF_RANGE", "rejected by the Atom's valid check")
+    at.atom_value = a[1]
+    if at.watchers:
+        yield from I.fire_watchers(at, old, a[1])
+    return Ok(a[1])
 
 
 @bi("__set_delegate", "first", True)

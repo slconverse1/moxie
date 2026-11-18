@@ -31,7 +31,7 @@ BUILTIN = {"println": PRINTS, "print": PRINTS, "eprintln": PRINTS, "eprint": PRI
            "lookup_host": PARKS, "run_command": PARKS, "spawn": PARKS, "wait_child": PARKS, "kill_child": PARKS, "make_fifo": PARKS, "listen_unix": PARKS, "connect_unix": PARKS, "read_key": PARKS, "make_temp_file": PARKS, "make_temp_dir": PARKS, **{n: SYSTEM for n in SYSTEM_CALLS}}
 RESOURCE = "uses a resource"     # creating, closing, cloning, or changing a channel, timer, future, cancel token, or atom
 RESOURCE_CALLS = ("Chan", "Timer", "after", "Future", "Cancel", "Atom", "clone", "close", "arm", "arm_every", "disarm",
-                  "resolve", "reject", "cancel", "swap", "reset", "on_change", "off_change")
+                  "resolve", "reject", "cancel", "swap", "reset", "try_swap", "try_reset", "on_change", "off_change")
 BUILTIN.update({n: RESOURCE for n in RESOURCE_CALLS})
 EXEMPT = {"dbg", "trace"}
 
@@ -325,12 +325,19 @@ class Effects:
                                                  "a callback that C calls must not park"))
                     for eff, w in sub.items():
                         acc.setdefault(eff, w)
-        if name == "swap" and name not in self.defs and len(args) >= 2:
+        if name == "Atom" and name not in self.defs:
+            for a_ in call.args:
+                if getattr(a_, "label", None) == "valid" and a_.expr is not None:
+                    sub = {}
+                    self.arg_effects(a_.expr, fnnames, sub)
+                    if PARKS in sub:
+                        self.diags.append((line, f"an Atom's valid check may park (it calls '{sub[PARKS][2]}'); a valid check must not park"))
+        if name in ("swap", "try_swap") and name not in self.defs and len(args) >= 2:
             sub = {}
             self.arg_effects(args[1], fnnames, sub)
             if PARKS in sub:
                 c_, ln_, root = sub[PARKS]
-                self.diags.append((line, f"the function given to swap may park (it calls '{root}'); swap's function must not park"))
+                self.diags.append((line, f"the function given to {name} may park (it calls '{root}'); {name}'s function must not park"))
         if name == "debug_assert" and name not in self.defs and args:
             sub = {}
             self.walk(args[0], fnnames, sub, None)

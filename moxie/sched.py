@@ -255,6 +255,7 @@ class AtomV:
 
     def __init__(self, v):
         self.atom_value = v
+        self.valid = None       # the validator given as `valid:` at creation, or None
         self.watchers = []      # (token, property name, handler) added by on_change, in subscription order
         self.next_tok = 1
 

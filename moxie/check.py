@@ -4907,6 +4907,18 @@ class Checker(RefineMixin):
             return ("curried", inner[1] - 1) if inner[1] - 1 > 0 else None
         return None
 
+    def check_atom_valid(self, args, ats, n):
+        """The `valid:` argument of `Atom[T](v, valid: f)` must be a function that returns a Bool."""
+        if len(args) != 2 or getattr(args[1], "label", None) != "valid" or len(ats) < 2 or ats[1] is None:
+            return
+        t = ats[1][0]
+        if t is None:
+            return
+        if t.__class__ is not tuple or t[0] != "fn":
+            self.err(n.line, f"`valid:` must be a function from the Atom's type to Bool, not {tshow(t)}")
+        elif t[2] is not None and self.base(t[2]) not in ("Bool", ("named", "Bool")) and not self.has_unsettled(t[2]):
+            self.err(n.line, f"`valid:` must return a Bool, but this function returns {tshow(t[2])}")
+
     def check_curry_call(self, n, sc):
         """Typing rules for `curry(f)`, `curryN(f)`, and `uncurry[n](g)` themselves."""
         fn, args = n.fn, n.args or []
@@ -6157,12 +6169,13 @@ class Checker(RefineMixin):
             el = self.ty_of_type(fn.groups[0][0], 0, None, False)      # `try_cast[T](x)` is a `Result[T, Error]`
             if el is not None:
                 return ("app", "Result", (el, ("named", "Error"))), None
-        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Atom" and len(args) == 1 and n.trailing is None \
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Atom" and (len(args) == 1 or len(args) == 2 and getattr(args[1], "label", None) == "valid") and n.trailing is None \
                 and "Atom" not in self.fns and "Atom" not in self.tuples and "Atom" not in self.aliases \
-                and len(fn.groups or []) == 1 and len(fn.groups[0]) == 1 and not extra_bad(args):
+                and len(fn.groups or []) == 1 and len(fn.groups[0]) == 1 and not extra_bad(args[:1]):
             self.ev(fn, sc)                             # `Atom[Int](0)` is an Atom[Int], and 0 must be an Int
             el = self.ty_of_type(fn.groups[0][0], 0, None, False)
             self.compat(el, ats[0][0], ats[0][1], n.line)
+            self.check_atom_valid(args, ats, n)
             return ("app", "Atom", (el,)), None
         ends = {"Chan": ("ChanR", "ChanW"), "Future": ("FutureR", "FutureW")}
         if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name in ends and not args and n.trailing is None \
@@ -6598,8 +6611,9 @@ class Checker(RefineMixin):
         if name == "Dict" and not extra and name not in self.fns and name not in self.tuples and name not in self.aliases \
                 and args and n.trailing is None:
             return self.dict_ctor(args, ats, n), None
-        if name == "Atom" and not extra and len(args) == 1 and n.trailing is None and name not in self.fns and name not in self.tuples \
-                and name not in self.aliases and not extra_bad(args) and ats[0][0] is not None:
+        if name == "Atom" and not extra and (len(args) == 1 or len(args) == 2 and getattr(args[1], "label", None) == "valid") and n.trailing is None and name not in self.fns and name not in self.tuples \
+                and name not in self.aliases and not extra_bad(args[:1]) and ats[0][0] is not None:
+            self.check_atom_valid(args, ats, n)
             return ("app", "Atom", (self.base(ats[0][0]),)), None        # `Atom(Meter())` holds a Meter
         if name == "secret" and name not in self.fns:
             return ("secret",), None

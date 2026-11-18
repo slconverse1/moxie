@@ -2795,7 +2795,17 @@ b = swap(hits, add(_, 5))
 println("$a $b ${@hits}")
 ```
 
-Output: `1 6 6`. **A function that `go` starts is declared `fiber fn`** (or `fiber[n] fn` to limit how many can be alive at once); `go` on a plain `fn` is a compile error that says so. A fiber function may use `?`, which ends it at the first failure, but the `Result` it returns goes nowhere, since nothing waits for it. An inline `go fn` has no return type, so `?` is an error there. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `go` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `go worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If every slot of a `fiber[n]` function is alive, `go` waits for one to free up before it starts the fiber (the resources you passed stay with you until then); `try_go` instead returns `Err(NO_SLOT)` at once, and the resources it was given are released for you. The channel closes for readers when the last write handle is dropped:
+Output: `1 6 6`. **An Atom can guard its own rule.** Give it a `valid:` function when you create it, and every new value is checked before it is stored (and before any `on_change` watcher hears about it). `swap` and `reset` on a rejected value end the fiber with a message and leave the Atom as it was, because breaking the rule is a bug, like a failed `assert`. When rejection is an expected outcome, `try_swap` and `try_reset` give back `Ok(new)` or `Err(...)` instead:
+
+```
+level = Atom[Int](0, valid: (n) -> n in 0..100)
+println(swap(level, _ + 30))
+println(try_swap(level, _ + 90))
+println(try_reset(level, 50))
+println(@level)
+```
+
+Output: `30`, then `Err(Error(code: 6, message: "rejected by the Atom's valid check"))`, then `Ok(50)`, then `50`. The check must be pure and must not park, the same as the function given to `swap`, and the first value is checked too. Use a refined type when the rule belongs to the type everywhere, and `valid:` when it belongs to this one Atom. **A function that `go` starts is declared `fiber fn`** (or `fiber[n] fn` to limit how many can be alive at once); `go` on a plain `fn` is a compile error that says so. A fiber function may use `?`, which ends it at the first failure, but the `Result` it returns goes nowhere, since nothing waits for it. An inline `go fn` has no return type, so `?` is an error there. **Several writers.** A channel end moves by default, and `clone(end)` makes another handle to the same channel. A resource you pass to `go` goes to the new fiber, which closes it when it ends, so the name is gone afterward: `go worker(tx)` and then `write(tx, 1)` is a compile error, and a second fiber needs its own `clone(tx)`. If every slot of a `fiber[n]` function is alive, `go` waits for one to free up before it starts the fiber (the resources you passed stay with you until then); `try_go` instead returns `Err(NO_SLOT)` at once, and the resources it was given are released for you. The channel closes for readers when the last write handle is dropped:
 
 ```
 fiber fn worker(id Int, out ChanW[Int]) Unit
