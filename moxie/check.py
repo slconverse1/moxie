@@ -3125,6 +3125,8 @@ class Checker(RefineMixin):
                 if st.__class__ is Assign and st.targets.__class__ is PBind:
                     lost.pop(st.targets.name, None)
             self.last_loop_lost = {}
+            if k == len(stmts) - 1 and st.__class__ is ExprStmt and st.e.__class__ is Name and new_scope:
+                self.tail_ctx.setdefault(id(st.e), (inner, {}))          # a tail that is a name is looked up where the block bound it
             last = self.ev(st, inner)
             if self.last_loop_lost:
                 lost = {**lost, **self.last_loop_lost}

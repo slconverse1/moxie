@@ -1714,7 +1714,7 @@ when last_of(names)
   Err(e) -> println("empty")
 ```
 
-Output: `bob`. A type has exactly one impl of each interface, so `C.Item` is never ambiguous.
+Output: `bob`. A type has exactly one impl of each interface, so `C.Item` is never ambiguous. On an `any Container`, whose concrete type is hidden, `Item` is hidden too: each such value has its own, written `c.Item`. You can unwrap it, print it, pass it back to the same value (`c.put(x)`), or narrow `c` with `is`, but the checker never treats it as an `Int` or a `String`. `c.get(0).get_or(0)`, `x + 1`, returning it from a function that declares a concrete type, and handing `b`'s item to `a.put(...)` are all errors, because the hidden type may be something else. Write a generic function (`fn f[C Container](c C)`, as `last_of` does) when you need the concrete type.
 
 **3. Constructor classes**
 
