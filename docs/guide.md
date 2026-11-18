@@ -1537,12 +1537,19 @@ Output: `localhost:80 localhost 443 6 30 80`. `base` is unchanged, `&` inside th
 ```
 fn apply(base Config, change Config.() -> Config) Config
   base.change()
-bumped = apply(base)() -> self.update
-  port: & + 1
+bumped = apply(base, () -> Config(...self, port: port + 1))
 println("${bumped.port}")
 ```
 
-Output: `81`. The lambda can also go inside the call, `apply(base, () -> Config(...self, port: port + 1))`; its receiver comes from the expected type, and there is no `fn Config.()` form. Name lookup inside a receiver body is locals first, then the receiver's fields and methods, then the module; `self` is the innermost receiver. **Mistakes:** `port = 443` inside an `update` block (that binds a local), a field line in a plain `do` block, a misspelled or repeated field name, a nested block on a field that isn't a declared tuple, and expecting an outer receiver's fields to need `self`.
+Output: `81`. The lambda is an argument like any other: its receiver comes from the expected type, so `port` and `self` are the `Config` it is applied to, and there is no `fn Config.()` form. When the last parameter is a function, the lambda may instead go after the call's parentheses as a **trailing lambda**, which lets its body be a block of lines:
+
+```
+again = apply(base)() -> self.update
+  port: & + 1
+println("${again.port}")
+```
+
+Output: `81`. Here `apply(base)` is the call, and the lambda after it fills the last parameter, `change`. Name lookup inside a receiver body is locals first, then the receiver's fields and methods, then the module; `self` is the innermost receiver. **Mistakes:** `port = 443` inside an `update` block (that binds a local), a field line in a plain `do` block, a misspelled or repeated field name, a nested block on a field that isn't a declared tuple, and expecting an outer receiver's fields to need `self`.
 
 **8b. Composing interfaces, and extending without editing**
 
