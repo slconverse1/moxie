@@ -1345,6 +1345,15 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             r = yield from self.for_m(n, i + 1, env2)
             return r
         kb = Builtin(k, "<for>", gen=True)
+        if isinstance(m, (ListV, ArrayV)):
+            out = []
+            for x in list(m.items):
+                r = yield from k(self, [x], {})
+                if last:
+                    out.append(r)
+                elif isinstance(r, (ListV, ArrayV)):
+                    out.extend(r.items)
+            return ListV(out)
         meth = "fmap" if last else "flat_map"
         f = self.find_method_for(m, meth)
         if f is not None:

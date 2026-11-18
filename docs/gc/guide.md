@@ -4024,7 +4024,7 @@ interface Monad[F[_]]
   fn flat_map[A, B](self F[A], f (A) -> F[B]) F[B]
 ```
 
-The prelude has instances for `Result[_, E]`, `Stream`, `List[_]` **[gc]**, and `Array[_][N]`. You write one for your own type with no `for`, naming the constructor (`Box` and `half` from chapter 10):
+The prelude has instances for `Result[_, E]`, `Stream`, `ListM` **[gc]**, and `Array[_][N]` (and `Functor` for `List[_]`). You write one for your own type with no `for`, naming the constructor (`Box` and `half` from chapter 10):
 
 ```
 impl Monad[Box]
@@ -4226,7 +4226,7 @@ Output: `120 105`. A **Writer** is a function that returns the value together wi
 
 **More monads: List, Reader, Writer, Cont, and Free** **[gc]**
 
-`List[_]` is a monad, so `flat_map` returns a list, `List.pure(x)` is `List(x)`, and a `for` block over lists gives the pairs in order:
+A `List` is a pipeline source, not a monad: `xs.flat_map(f)` is the lazy stage (it ends in `collect()`), `xs.fmap(f)` keeps the List, and a `for` block over lists is a comprehension that gives a List, with the pairs in order:
 
 ```
 r = for
@@ -4236,7 +4236,7 @@ r = for
 println(r)
 ```
 
-Output: `List(11, 21, 12, 22)`. Four packages ship with moxie/gc, each one `import` away (they need closures with one type per signature, so no-GC moxie does not have them). `fp.reader` is a **Reader** monad, `fp.writer` is a **Writer** whose log is a `List`, `fp.cont` is a **continuation** monad with `call_cc`, and `fp.free` is the **free monad** over any functor:
+Output: `List(11, 21, 12, 22)`. When generic code written for any monad `F[_] Monad` needs the "try every branch" behavior, wrap the list in **`ListM`**: `ListM(xs)` is a monad whose `flat_map` returns a `ListM`, `ListM.pure(x)` is `ListM(List(x))`, and `.list()` unwraps it. The wrapping is explicit on purpose, so a pipeline stage and a monad step never share the name by accident. Four packages ship with moxie/gc, each one `import` away (they need closures with one type per signature, so no-GC moxie does not have them). `fp.reader` is a **Reader** monad, `fp.writer` is a **Writer** whose log is a `List`, `fp.cont` is a **continuation** monad with `call_cc`, and `fp.free` is the **free monad** over any functor:
 
 ```
 import fp.reader

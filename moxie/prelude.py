@@ -2080,8 +2080,6 @@ def _flat_map_dispatch(I, a, kw, ta):
             return I.apply_method(m, s, [f])
         if s.et is RESULT_T:
             return _res_flat_map(I, f, s)
-    if isinstance(s, (ListV, ArrayV)) and I.find_method_for(s, "flat_map"):
-        return I.apply_method(I.find_method_for(s, "flat_map"), s, [f])
     return Done(StreamV(lambda: FlatMapIter(I, src_of(I, s), f)))
 
 

@@ -98,8 +98,8 @@ chk("a StateT over a Result inner monad", IMP + """fn prog[M[_] Monad + MonadSta
 println(trans.run_state_t(prog[trans.StateT[Result[_, Error], Int, _]](), 4))
 """, 0, "Ok((5, 5))")
 
-chk("a StateT over List explores every branch", IMP + """m = trans.lift_state_t(List(1, 2)).flat_map((a) -> trans.StateT[List[_], Int, _].modify((n) -> n + a))
-println(trans.run_state_t(m, 10))
+chk("a StateT over ListM explores every branch", IMP + """m = trans.lift_state_t(ListM(List(1, 2))).flat_map((a) -> trans.StateT[ListM[_], Int, _].modify((n) -> n + a))
+println(trans.run_state_t(m, 10).list())
 """, 0, "List(((), 11), ((), 12))")
 
 chk("MonadWriter: listen and censor, also through a StateT", IMP + """fn logit[M[_] Monad + MonadWriter[String]]() M[Int]

@@ -185,15 +185,25 @@ SRC = SRC + tuple_source()
 
 
 GC_SRC = '''
-impl Monad[List[_]]
+impl Functor[List[_]]
   fn fmap[A, B](self List[A], f (A) -> B) List[B]
     self.reduce(List(), (acc, a) -> acc + List(f(a)))
-  static fn pure[A](a A) List[A]
-    List(a)
-  fn ap[A, B](self List[(A) -> B], x List[A]) List[B]
+
+tuple ListM[A]
+  items List[A]
+
+impl ListM[A]
+  fn list(self) List[A] = self.items
+
+impl Monad[ListM]
+  fn fmap[A, B](self ListM[A], f (A) -> B) ListM[B]
+    ListM(self.items.fmap(f))
+  static fn pure[A](a A) ListM[A]
+    ListM(List(a))
+  fn ap[A, B](self ListM[(A) -> B], x ListM[A]) ListM[B]
     self.flat_map((g) -> x.fmap(g))
-  fn flat_map[A, B](self List[A], f (A) -> List[B]) List[B]
-    self.reduce(List(), (acc, a) -> acc + f(a))
+  fn flat_map[A, B](self ListM[A], f (A) -> ListM[B]) ListM[B]
+    ListM(self.items.reduce(List(), (acc, a) -> acc + f(a).items))
 '''
 
 
