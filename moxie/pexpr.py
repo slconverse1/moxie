@@ -310,9 +310,9 @@ class ExprParser(PBase):
     def _ends_operand(self, t):
         if t.kind in ("NL", "DEDENT", "INDENT", "EOF"):
             return True
-        if t.kind == "OP" and t.val in (")", "]", ",", ":", "->", ";", "}"):
+        if t.kind == "OP" and t.val in (")", "]", ",", ":", "->", ";", "}", "|>"):
             return True
-        if t.kind == "NAME" and t.val in ("else", "elif", "and", "or", "if"):
+        if t.kind == "NAME" and t.val in ("else", "elif", "and", "or", "if", "then", "do"):
             return True
         return False
 

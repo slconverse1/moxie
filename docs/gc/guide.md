@@ -982,7 +982,7 @@ for i in 3..1
   println("$i")
 ```
 
-Output: `1 -1 true true`, then `3`, `2`, `1`. An infinite range uses `1..`, and `take_while` ends it.
+Output: `1 -1 true true`, then `3`, `2`, `1`. An infinite range uses `1..`, and `take_while` or `take` ends it; a pipe may follow it directly (`1.. |> take(3) |> collect()`).
 
 **Steps.** A range takes a step after its bounds, `a..<b step s`. The step is signed, and its sign decides the direction: a positive step counts up and a negative step counts down, with literal or variable bounds. `step` is a keyword only directly after a range, so it is still a fine variable name everywhere else. A stepped range is an ordinary range value, so it works wherever a range does: in a `for`, in a pipeline, in an `in` test (which checks the step in constant time, with no loop), as a slice, and in a variable.
 
