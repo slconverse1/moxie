@@ -229,8 +229,14 @@ class ExprParser(PBase):
                 left = (AndE if t.val == "and" else OrE)(left, right, line=line)
             elif t.kind == "NAME" and t.val == "is":
                 self.next()
+                neg = False
+                if self.peek().kind == "NAME" and self.peek().val == "not":
+                    self.next()
+                    neg = True
                 pat = self.parse_pattern()
                 left = IsOp(left, pat, line=line)
+                if neg:
+                    left = Unary("not", left, line=line)
             elif t.kind == "NAME" and (t.val == "in" or t.val == "not"):
                 neg = False
                 if t.val == "not":

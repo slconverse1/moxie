@@ -537,7 +537,7 @@ class PBase:
                         self.next()
                     if self.at_op("..."):
                         self.next()
-                        nm = self.next().val
+                        nm = None if self.at_op(",") or self.at_op(")") else self.next().val      # a bare `...` skips the rest
                         items.append((label, PRest(nm, line=line)))
                     else:
                         items.append((label, self.parse_pattern()))
@@ -612,7 +612,7 @@ class PBase:
             label = None
             if self.at_op("..."):
                 self.next()
-                nm = self.next().val
+                nm = None if self.at_op(",") or self.at_op(")") else self.next().val          # a bare `...` skips the rest
                 args.append((None, PRest(nm, line=self.peek().line)))
             else:
                 if dict_entries and self.peek().kind in ("NAME", "STR") and self.at_op(":", 1):

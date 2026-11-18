@@ -1276,7 +1276,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         elif c is PBin:
             out.update(e[1] for e in p.elems if e[0] == "field" and e[1])
         elif c is PRest:
-            out.add(p.name)
+            if p.name:
+                out.add(p.name)
 
     def ev_WaitE(self, n, env):
         from .sched import scope_op
@@ -1346,6 +1347,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             env2 = Env(env)
             b = {}
             if not self.pmatch(pat, x, b, env2):
+                if isinstance(m, (ListV, ArrayV)):
+                    return FOR_SKIP                 # over a List, an item the pattern does not fit is skipped
                 raise Abort("pattern did not match in for:", n.line)
             env2.vars.update(b)
             r = yield from self.for_m(n, i + 1, env2)

@@ -112,7 +112,8 @@ class PatternsMixin:
         if c is PBin:
             return self.match_bin(p, v, b)
         if c is PRest:
-            b[p.name] = v
+            if p.name:
+                b[p.name] = v
             return True
         if c is PPlace:
             raise Abort("a place cannot be used as a pattern")
@@ -216,7 +217,8 @@ class PatternsMixin:
         n = len(vals)
         for label, q in args:
             if q.__class__ is PRest:
-                b[q.name] = ListV(list(vals[i:]))
+                if q.name:
+                    b[q.name] = ListV(list(vals[i:]))
                 i = n
                 continue
             if label is not None:
@@ -331,7 +333,8 @@ class PatternsMixin:
             if not self.pmatch(q, x, b, env):
                 return False
         rest = items[len(head):mid_end]
-        b[args[rest_i][1].name] = ListV(list(rest)) if v.kind == "List" else ArrayV(list(rest))
+        if args[rest_i][1].name:
+            b[args[rest_i][1].name] = ListV(list(rest)) if v.kind == "List" else ArrayV(list(rest))
         return True
 
 

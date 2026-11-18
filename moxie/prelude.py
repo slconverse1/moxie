@@ -2015,6 +2015,17 @@ def stage(name, pos, make):
 stage("to_stream", "first", lambda I, a: stream_of(I, a[0]))
 stage("map", "last", lambda I, a: _map(I, a))
 stage("filter", "last", lambda I, a: StreamV(lambda: FilterIter(I, src_of(I, a[1]), a[0])))
+def _filter_map_stage(I, a):
+    f = a[0]
+
+    def one(I2, args, kw, targs=None):
+        r = yield from I2.apply(f, [args[0]])
+        return ListV([r.vals[0]]) if (isinstance(r, EnumV) and r.case == "Some") else ListV([])
+    g = Builtin(one, "<filter_map>", gen=True)
+    return StreamV(lambda: FlatMapIter(I, src_of(I, a[1]), g))
+
+
+stage("filter_map", "last", _filter_map_stage)
 stage("flat_map", "last", lambda I, a: StreamV(lambda: FlatMapIter(I, src_of(I, a[1]), a[0])))
 stage("take", "last", lambda I, a: StreamV(lambda: TakeIter(I, src_of(I, a[1]), a[0])))
 stage("drop", "last", lambda I, a: StreamV(lambda: DropIter(I, src_of(I, a[1]), a[0])))

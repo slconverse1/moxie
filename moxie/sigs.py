@@ -12,6 +12,7 @@ fn fmap[T, U, N](f (T) -> U, xs Array[T][N]) Array[U][N] = 0
 fn fmap[T, U](f (T) -> U, o Option[T]) Option[U] = 0
 fn fmap[T, U, E](f (T) -> U, r Result[T, E]) Result[U, E] = 0
 fn filter[T](f (T) -> Bool, xs Seq[T]) Stream[T] = 0
+fn filter_map[T, U](f (T) -> Option[U], xs Seq[T]) Stream[U] = 0
 fn take[T](n Int, xs Seq[T]) Stream[T] = 0
 fn drop[T](n Int, xs Seq[T]) Stream[T] = 0
 fn take_while[T](f (T) -> Bool, xs Seq[T]) Stream[T] = 0

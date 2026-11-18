@@ -2382,7 +2382,24 @@ fn show_reading(r Reading) String
 println("${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}")
 ```
 
-Output: `value 7 missing`. A **let-else**, `Pattern = expr else value`, leaves the whole function with the else value when the pattern doesn't match:
+Output: `value 7 missing`. `is not` is the negated test: `o is not Some(_)` is `not (o is Some(_))`, and since it can be true only when the pattern failed, it binds nothing. A bare `...` in a tuple or List pattern skips whatever is left, so `User(role: "guest", ...)` needs no `_` for each other field and `List(first, ...)` needs no name for the tail. In a `for:` block over a List, a generator whose pattern doesn't fit simply skips that item (a plain `for` loop stays strict and aborts), and `filter_map` does the same in a pipeline for a function that returns an `Option`:
+
+```
+tuple User
+  name String,
+  role String,
+  age Int
+fn label(u User) String
+  if u is not User(role: "guest", ...) then "member ${u.name}" else "guest"
+os = List(Some(1), None, Some(3))
+doubled = for
+  Some(x) in os
+  yield x * 2
+println("${label(User("ann", "admin", 3))} ${label(User("bo", "guest", 5))} ${doubled}")
+println(os |> filter_map((o) -> o) |> collect())
+```
+
+Output: `member ann guest List(2, 6)`, then `List(1, 3)`. A **let-else**, `Pattern = expr else value`, leaves the whole function with the else value when the pattern doesn't match:
 
 ```
 fn times_ten(r Reading) Reading
