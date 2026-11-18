@@ -1537,7 +1537,8 @@ Output: `localhost:80 localhost 443 6 30 80`. `base` is unchanged, `&` inside th
 ```
 fn apply(base Config, change Config.() -> Config) Config
   base.change()
-bumped = apply(base)() -> Config(...self, port: port + 1)
+bumped = apply(base)() -> self.update
+  port: & + 1
 println("${bumped.port}")
 ```
 
@@ -1663,11 +1664,11 @@ impl Monoid for Max
 fn mconcat[T Monoid, N](xs Array[T][N]) T
   xs |> reduce(T.empty(), (a, b) -> a.combine(b))
 nums Array[Int] = (1, 2, 3)
-maxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
+maxes Array[Max] = (Max(3), Max(9), Max(4))
 println("${mconcat(nums)} ${mconcat(maxes).value}")
 ```
 
-Output: `6 9`. `Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. The prelude already declares `Semigroup` and `Monoid` (chapter 24l) with instances for `String` and `List`; this example writes its own so you can see how an interface is built, and a declaration in your program is the one it uses. A member with no receiver is a `static fn`, reached through the type, so Haskell's `mempty` is `T.empty()`. The compiler specializes `mconcat` for each type, with no tables at run time.
+Output: `6 9`. The tuple `Max` is built both ways: `Max(value: -1000000)` names the field and `Max(3)` is positional. A constructor is also a function, so `Array(3, 9, 4).fmap(Max)` builds the same array as `maxes`. `Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. The prelude already declares `Semigroup` and `Monoid` (chapter 24l) with instances for `String` and `List`; this example writes its own so you can see how an interface is built, and a declaration in your program is the one it uses. A member with no receiver is a `static fn`, reached through the type, so Haskell's `mempty` is `T.empty()`. The compiler specializes `mconcat` for each type, with no tables at run time.
 
 **2. Associated types**
 

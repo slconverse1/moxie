@@ -568,7 +568,7 @@ null
 ]
 ],
 [
-990,
+992,
 "println(List(i for i in 0..10 step 5))\nprintln(List(i for i in 10..<1 step -4))\nprintln(\"${3 in 1..9 step 2} ${4 in 1..9 step 2}\")\nletters = List(\"a\", \"b\", \"c\", \"d\", \"e\")\nprintln(letters(0..4 step 2))\nr = 1..9 step 4\nprintln(\"${r} ${len(r)} ${step(r)}\")\nprintln(1..7 step 3 |> map(_ * 10) |> collect())\nhi = 3\nlo = 12\nprintln(List(i for i in lo..<hi step -4))\n",
 [
 "List(0, 5, 10)",
@@ -581,21 +581,21 @@ null
 ]
 ],
 [
-1008,
+1010,
 "s = \"Python\"\nprintln(\"${s(2..)} ${s(..<3)} ${s(..3)} ${s(..)}\")\n",
 [
 "thon Pyt Pyth Python"
 ]
 ],
 [
-1015,
+1017,
 "t = \"na\u00efve\"\nprintln(\"${len(t)} ${char_count(t)} ${t |> chars() |> count()}\")\n",
 [
 "6 5 5"
 ]
 ],
 [
-1022,
+1024,
 "s = \"e\\u{301}\\u{1F1FA}\\u{1F1F8}a\"\nprintln(\"${char_count(s)} ${grapheme_count(s)}\")\nfor g in graphemes(s)\n  println(len(g))\n",
 [
 "5 3",
@@ -605,56 +605,56 @@ null
 ]
 ],
 [
-1033,
+1035,
 "fn add(x Int, y Int) Int\n  x + y\nfn make_scaler(factor Int) (Int) -> Int\n  (n) -> n * factor\nfn bump(ref counter Int) Unit\n  counter++\nfn pick(use_it Bool, lazy costly Int) Int\n  if use_it\n    costly\n  else\n    0\nscale = make_scaler(3)\nn = 1\nbump(ref n)\nprintln(\"${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}\")\n",
 [
 "5 15 2 0"
 ]
 ],
 [
-1055,
+1057,
 "fn transfer(source Int, dest Int, count Int = 10) Int (src, dst, n)\n  src - dst + n\nprint(\"${transfer(100, 40)} ${transfer(count: 5, dest: 40, source: 100)} \")\nprintln(\"${transfer(100, dest: 40)}\")\n",
 [
 "70 65 70"
 ]
 ],
 [
-1064,
+1066,
 "fn sum_squares(x Double, y Double) Double\n  x * x + y * y\npt = (x: 3.0, y: 4.0)\nprintln(\"${sum_squares(pt)} ${sum_squares(...pt)}\")\n",
 [
 "25.0 25.0"
 ]
 ],
 [
-1073,
+1075,
 "numbers = List(1, 2, 3)\ndoubled = numbers |> map(_ * 2)\ntripled = numbers |> map()(x) -> x * 3\ntotal = numbers |> reduce(0)(acc, x) ->\n  acc + x\nprintln(\"$total\")\n",
 [
 "6"
 ]
 ],
 [
-1086,
+1088,
 "xs = List(1, 2, 3)\nys = List(4, 5, 6)\ndot = zip(xs, ys) |> map()(x, y) -> x * y\n  |> reduce(0, _1 + _2)\nnamed = (name: \"Ada\", age: 36)\nshow = ((name: n, age: a)) -> \"$n is $a\"\nprintln(\"$dot ${show(named)}\")\n",
 [
 "32 Ada is 36"
 ]
 ],
 [
-1098,
+1100,
 "double = ((x Int) -> x * 2)(21)\nprintln(\"$double\")\n",
 [
 "42"
 ]
 ],
 [
-1105,
+1107,
 "fn total(base Int, numbers ...Int) Int\n  numbers |> reduce(base, _1 + _2)\nvalues = Array(10, 20, 30)\nprintln(\"${total(100, 10, 20, 30)} ${total(100, ...values)} ${total(100)}\")\n",
 [
 "160 160 100"
 ]
 ],
 [
-1114,
+1116,
 "fn greet(msg String, using who String) Unit\n  println(\"$who: $msg\")\nusing who = \"ada\"\ngreet(\"hello\", using)\ngreet(\"hi\", \"bob\")\n",
 [
 "ada: hello",
@@ -662,7 +662,7 @@ null
 ]
 ],
 [
-1126,
+1128,
 "tuple Config\n  url String\nfn connect(using cfg Config) String\n  \"connecting to ${cfg.url}\"\nfn retry(attempts Int, using cfg Config) String\n  connect(using)\nusing c = Config(url: \"example.com\")\nprintln(retry(2, using))\nprintln(connect(using))\n",
 [
 "connecting to example.com",
@@ -670,54 +670,54 @@ null
 ]
 ],
 [
-1142,
+1144,
 "fn later(x Int) Int\n  todo \"finish later\"\n",
 null
 ],
 [
-1153,
+1155,
 "fn swap_pair[A, B](p (A, B)) (B, A)\n  (p(1), p(0))\ns = swap_pair((1, \"one\"))\nprintln(\"${s(0)} ${s(1)}\")\n",
 [
 "one 1"
 ]
 ],
 [
-1162,
+1164,
 "fn apply_twice[T](x T, f (T) -> T) T\n  f(f(x))\nprintln(\"${apply_twice(3, (n) -> n * 2)} ${apply_twice(5, (n) -> n + 8)}\")\n",
 [
 "12 21"
 ]
 ],
 [
-1170,
+1172,
 "fn sum_all[N](a Array[Int][N]) Int\n  a |> reduce(0, _1 + _2)\nfn size_of[N](a Array[Int][N]) Int\n  N\nfn dot[N](a Array[Int][N], b Array[Int][N]) Int\n  zip(a, b) |> map()(x, y) -> x * y\n  |> reduce(0, _1 + _2)\nfn first_of[T, N where N > 0](a Array[T][N]) T\n  a(0)\nx Array[Int] = (1, 2, 3)\ny Array[Int] = (1, 2, 3, 4, 5)\nprintln(\"${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}\")\n",
 [
 "6 15 14 5 1"
 ]
 ],
 [
-1187,
+1189,
 "fn bigger[T Ordered](a T, b T) T\n  if a < b then b else a\nprintln(\"${bigger(3, 9)} ${bigger(\"pear\", \"apple\")}\")\n",
 [
 "9 pear"
 ]
 ],
 [
-1195,
+1197,
 "fn show_max[T Ordered + Equatable](a T, b T) String\n  if a == b then \"same\" else \"max is ${if a < b then b else a}\"\nprintln(\"${show_max(3, 9)} ${show_max(4, 4)}\")\n",
 [
 "max is 9 same"
 ]
 ],
 [
-1205,
+1207,
 "fn add(x Int, y Int) Int\n  x + y\nfn shout(s String) String\n  \"${s}!\"\nfn call_with[A, R](f (A) -> R, args A) R\n  f(args)\nfn twice[A](f (A) -> A, args A) A\n  f(f(args))\nprint(\"${call_with(add, (3, 4))} ${call_with(shout, \"hi\")} \")\nprintln(\"${twice(shout, \"yo\")}\")\n",
 [
 "7 hi! yo!!"
 ]
 ],
 [
-1222,
+1224,
 "tuple Pixel deriving show, eq, hash\n  x Int,\n  y Int\nfn total[T Numeric](xs Array[T][3]) T\n  xs(0) + xs(1) * xs(2)\nfn unit_of[T Numeric](x T) T\n  T.one()\nfn parse[T Read](text String) Result[T, Error]\n  T.read(text)\nfn label[T Show + Hashable](x T) String\n  \"${x.show()} ${x.hash() == x.hash()}\"\nprint(\"${total(Array(1, 2, 3))} ${total(Array(1.5, 2.0, 3.0))} ${unit_of(7)} \")\nprintln(\"${unit_of(2.5)}\")\nprintln(\"${parse[Int](\"42\")} ${parse[Bool](\"true\")}\")\nprintln(label(Pixel(x: 1, y: 2)))\nprint(\"${hash(Pixel(x: 1, y: 2)) == hash(Pixel(x: 1, y: 2))} \")\nprintln(\"${hash(Pixel(x: 1, y: 2)) == hash(Pixel(x: 2, y: 1))}\")\n",
 [
 "7 7.5 1 1.0",
@@ -727,33 +727,33 @@ null
 ]
 ],
 [
-1246,
+1248,
 "fn costly() Int\n  println(\"computing\")\n  10\nfn by_value(x Int) Int\n  x + x\nfn by_name(lazy x Int) Int\n  x + x\nfn by_need(lazy x Int) Int\n  once = x\n  once + once\nfn maybe(use_it Bool, lazy x Int) Int\n  if use_it then x else 0\nfn by_ref(ref n Int) Int\n  n += 5\n  n * 2\nfn by_copy(n Int) Int\n  n += 5\n  n * 2\nprintln(\"value: ${by_value(costly())}\")\nprintln(\"name: ${by_name(costly())}\")\nprintln(\"need: ${by_need(costly())}\")\nprintln(\"skipped: ${maybe(false, costly())}\")\nn = 1\nr = by_ref(ref n)\nm = 1\nc = by_copy(m)\nprintln(\"ref: $r $n\")\nprintln(\"copy: $c $m\")\n",
 null
 ],
 [
-1287,
+1289,
 "tuple Player\n  name String,\n  score Int,\n  level Int\nfn level_up(ref p Player) Unit\n  p.level += 1\n  p.score = 0\nfn add_points(ref p Player, points Int) Int\n  p = Player(...p, score: p.score + points)\n  p.score\nhero = Player(name: \"Ada\", score: 40, level: 1)\nlevel_up(ref hero)\ntotal = add_points(ref hero, 10)\nprintln(\"${hero.name} ${hero.level} ${hero.score} $total\")\n",
 [
 "Ada 2 10 10"
 ]
 ],
 [
-1310,
+1312,
 "factor = 5\nscale = (n Int) -> n * factor\nfn make_adder(k Int) (Int) -> Int\n  (n) -> n + k\nadd_n = make_adder(10)\nprintln(\"${scale(6)} ${add_n(5)}\")\n",
 [
 "30 15"
 ]
 ],
 [
-1321,
+1323,
 "curried = curry(add)\nadd40 = (y Int) -> add(40, y)\nprint(\"${add(40, 60)} ${curried(40)(60)} ${add40(60)} ${60 |> add(40, &)} \")\nprintln(\"${((x Int, y Int) -> x + y)(40, 60)}\")\n",
 [
 "100 100 100 100 100"
 ]
 ],
 [
-1332,
+1334,
 "fn log(level String, message String) Unit\n  println(\"[$level] $message\")\nfn log_error = log(\"ERROR\", _)\nfn log_info = log(\"INFO\", _)\nhandlers = Dict[String, (String) -> Unit]()\nhandlers(info) = log_info\nhandlers(error) = log_error\nfn dispatch(\n  table Dict[String, (String) -> Unit],\n  kind String,\n  msg String\n) Unit\n  when table($kind)\n    Ok(h) -> h(msg)\n    Err(e) -> println(\"unknown handler\")\ndispatch(handlers, \"info\", \"Application started.\")\ndispatch(handlers, \"error\", \"Database connection timed out!\")\n",
 [
 "[INFO] Application started.",
@@ -761,21 +761,21 @@ null
 ]
 ],
 [
-1356,
+1358,
 "fn inc(x Int) Int = x + 1\nfn twice(x Int) Int = x * 2\nprint(\"${(inc ~> twice)(5)} ${(twice <~ inc)(5)} ${(twice ~> inc)(5)} \")\nprintln(\"${5 |> (inc ~> twice)()}\")\n",
 [
 "12 12 11 12"
 ]
 ],
 [
-1365,
+1367,
 "tuple Op\n  apply (Int) -> Int\nop = Op(apply: (n) -> n * 2)\nprintln(\"${op.apply(21)}\")\n",
 [
 "42"
 ]
 ],
 [
-1374,
+1376,
 "fn sub(x Int, y Int) Int = x - y\nfn mul(x Int, y Int) Int = x * y\nops = Dict[String, (Int, Int) -> Int]()\nops(plus) = add\nops(minus) = sub\nops(times) = mul\nfn run_op(\n  table Dict[String, (Int, Int) -> Int],\n  name String,\n  a Int,\n  b Int\n) Unit\n  when table($name)\n    Ok(f) -> println(\"$name: ${f(a, b)}\")\n    Err(e) -> println(\"unknown operation\")\nrun_op(ops, \"times\", 6, 7)\nrun_op(ops, \"power\", 2, 3)\nrun_op(ops, \"plus\", 4, 6)\nrun_op(ops, \"minus\", 10, 4)\nrun_op(ops, \"times\", 2, 8)\n",
 [
 "times: 42",
@@ -786,7 +786,7 @@ null
 ]
 ],
 [
-1401,
+1403,
 "fn div_by(a Int, b Int) Int\n  a / b\nprintln(List(1, 2, 3).map((+ 1)).collect())\nprintln(List(1, 2, 3).map((10 -)).collect())\nprintln(List(1, 2, 3).map((- 1)).collect())\nprintln(List(8, 9).map((`div_by` 2)).collect())\nprintln((-4))\nprintln((- 4)(10))\nprintln(List(1, 2, 3, 4).filter((in List(2, 4))).collect())\n",
 [
 "List(2, 3, 4)",
@@ -799,14 +799,14 @@ null
 ]
 ],
 [
-1415,
+1417,
 "fn pick(flag Bool, k Int) (Int) -> Int\n  when flag\n    true -> (n) -> n + k\n    false -> (n) -> n * k\nfns = List(pick(true, 3), pick(false, 3))\nprintln(\"${fns(0)(10)} ${fns(1)(10)}\")\n",
 [
 "13 30"
 ]
 ],
 [
-1428,
+1430,
 "interface Speaker[T]\n  fn speak() String,\n  fn update(new_value T) Self\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Speaker[String] for Dog\n  fn speak() String\n    \"Woof! My name is ${name}\"\n  fn update(new_value String) Dog\n    Self(..., name: new_value)\nimpl Speaker[Int] for Robot\n  fn speak() String\n    \"Beep Boep! Serial count is ${serial}\"\n  fn update(new_value Int) Robot\n    Self(..., serial: new_value)\nfn make_them_speak(item Speaker) Unit\n  println(item.speak())\nfn update_speaker[T, S Speaker[T]](item S, new_value T) S\n  item.update(new_value)\nmy_dog = Dog(name: \"Rover\")\nmy_robot = Robot(serial: 101)\nmake_them_speak(my_dog)\nmake_them_speak(my_robot)\ns1 = update_speaker(my_dog, \"Max\")\ns2 = update_speaker(my_robot, 500)\nmake_them_speak(s1)\nmake_them_speak(s2)\n",
 [
 "Woof! My name is Rover",
@@ -816,7 +816,7 @@ null
 ]
 ],
 [
-1462,
+1464,
 "type union Entity = Dog | Robot\ncrowd Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
 [
 "Woof! My name is Rex",
@@ -824,42 +824,42 @@ null
 ]
 ],
 [
-1471,
+1473,
 "tuple Counter\n  count Int,\n  label String\nimpl Counter\n  fn (ref Self) increment() Unit\n    count += 1\n  fn incremented() Counter\n    Self(..., count: count + 1)\ntally = Counter(count: 0, label: \"hits\")\nref tally.increment()\nnext = tally.incremented()\nprintln(\"${tally.count} ${next.count}\")\n",
 [
 "1 2"
 ]
 ],
 [
-1488,
+1490,
 "interface ProfileManager\n  fn age() Int,\n  fn (ref Self) set_age(new_age Int) Unit\ntuple Profile\n  years Int\nimpl ProfileManager for Profile\n  fn age() Int\n    years\n  fn (ref Self) set_age(new_age Int) Unit\n    years = new_age\nfn birthday[P ProfileManager](ref p P) Unit\n  ref p.set_age(p.age() + 1)\nme = Profile(years: 30)\nbirthday(ref me)\nprintln(\"${me.age()}\")\n",
 [
 "31"
 ]
 ],
 [
-1508,
+1510,
 "impl Int\n  fn double() Int\n    self * 2\nimpl Counter\n  fn bump = incremented\nprintln(\"${21.double()} ${tally.bump().count}\")\n",
 [
 "42 2"
 ]
 ],
 [
-1523,
+1525,
 "tuple Limits\n  retries Int,\n  timeout Int\ntuple Config\n  host String,\n  port Int,\n  limits Limits\nbase = Config(\n  host: \"localhost\",\n  port: 80,\n  limits: Limits(retries: 3, timeout: 30)\n)\nlabel = base.do\n  \"$host:$port\"\nsecure = base.update\n  port: 443,\n  limits:\n    retries: & * 2\nprint(\"$label ${secure.host} ${secure.port} ${secure.limits.retries} \")\nprintln(\"${secure.limits.timeout} ${base.port}\")\n",
 [
 "localhost:80 localhost 443 6 30 80"
 ]
 ],
 [
-1548,
-"fn apply(base Config, change Config.() -> Config) Config\n  base.change()\nbumped = apply(base)() -> Config(...self, port: port + 1)\nprintln(\"${bumped.port}\")\n",
+1550,
+"fn apply(base Config, change Config.() -> Config) Config\n  base.change()\nbumped = apply(base)() -> self.update\n  port: & + 1\nprintln(\"${bumped.port}\")\n",
 [
 "81"
 ]
 ],
 [
-1561,
+1564,
 "interface Speaker\n  fn speak() String\ninterface Mover\n  fn move_by(dx Int) Self\ninterface Actor\n  Speaker,\n  Mover\ntuple Robot2\n  name String,\n  x Int\nimpl Actor for Robot2\n  fn speak() String\n    \"$name at $x\"\n  fn move_by(dx Int) Robot2\n    Self(..., x: x + dx)\nfn announce(s Speaker) Unit\n  println(s.speak())\nfn step[A Actor](a A) String\n  a.move_by(5).speak()\nr = Robot2(name: \"R2\", x: 1)\nannounce(r)\nprintln(step(r))\n",
 [
 "R2 at 1",
@@ -867,56 +867,56 @@ null
 ]
 ],
 [
-1588,
+1591,
 "interface Describable\n  fn describe() String\nimpl Describable for Int\n  fn describe() String\n    \"the number $self\"\nprintln(7.describe())\n",
 [
 "the number 7"
 ]
 ],
 [
-1601,
+1604,
 "interface Named\n  name String\ntuple User\n  id Int,\n  name String\ntuple Pet\n  name String,\n  owner String\nimpl Named for User\nimpl Named for Pet\nfn greet[T Named](x T) String\n  \"Hello, ${x.name}\"\nprint(\"${greet(User(id: 1, name: \"Ada\"))} / \")\nprintln(\"${greet(Pet(name: \"Rex\", owner: \"Bo\"))}\")\n",
 [
 "Hello, Ada / Hello, Rex"
 ]
 ],
 [
-1624,
+1627,
 "interface Mailer\n  fn (ref Self) notify(user_id Int, amount Int) Unit\ntuple FakeMailer\n  calls Int,\n  last_user Int\nimpl Mailer for FakeMailer\n  fn (ref Self) notify(user_id Int, amount Int) Unit\n    calls += 1\n    last_user = user_id\ntuple SmtpMailer\n  outbox ChanW[Int]\nimpl Mailer for SmtpMailer\n  fn (ref Self) notify(user_id Int, amount Int) Unit\n    \\write(outbox, user_id)\nfn charge[M Mailer](ref mailer M, user_id Int, amount Int) Int\n  fee = amount / 100\n  ref mailer.notify(user_id, amount - fee)\n  fee\nmock = FakeMailer(calls: 0, last_user: 0)\nfee = charge(ref mock, 7, 500)\nprintln(\"$fee ${mock.calls} ${mock.last_user}\")\n",
 [
 "5 1 7"
 ]
 ],
 [
-1656,
-"interface Semigroup\n  fn combine(other Self) Self\ninterface Monoid\n  Semigroup\n  static fn empty() Self\nimpl Monoid for Int\n  fn combine(other Int) Int\n    self + other\n  static fn empty() Int\n    0\ntuple Max\n  value Int\nimpl Monoid for Max\n  fn combine(other Max) Max\n    if value > other.value then self else other\n  static fn empty() Max\n    Max(value: -1000000)\nfn mconcat[T Monoid, N](xs Array[T][N]) T\n  xs |> reduce(T.empty(), (a, b) -> a.combine(b))\nnums Array[Int] = (1, 2, 3)\nmaxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))\nprintln(\"${mconcat(nums)} ${mconcat(maxes).value}\")\n",
+1659,
+"interface Semigroup\n  fn combine(other Self) Self\ninterface Monoid\n  Semigroup\n  static fn empty() Self\nimpl Monoid for Int\n  fn combine(other Int) Int\n    self + other\n  static fn empty() Int\n    0\ntuple Max\n  value Int\nimpl Monoid for Max\n  fn combine(other Max) Max\n    if value > other.value then self else other\n  static fn empty() Max\n    Max(value: -1000000)\nfn mconcat[T Monoid, N](xs Array[T][N]) T\n  xs |> reduce(T.empty(), (a, b) -> a.combine(b))\nnums Array[Int] = (1, 2, 3)\nmaxes Array[Max] = (Max(3), Max(9), Max(4))\nprintln(\"${mconcat(nums)} ${mconcat(maxes).value}\")\n",
 [
 "6 9"
 ]
 ],
 [
-1687,
+1690,
 "interface Container\n  type Item\n  fn get(i Int) Result[Item, Error]\n  fn size() Int\ntuple Names\n  items List[String]\nimpl Container for Names\n  type Item = String\n  fn get(i Int) Result[String, Error]\n    get(items, i)\n  fn size() Int\n    len(items)\nfn last_of[C Container](c C) Result[C.Item, Error]\n  c.get(c.size() - 1)\nnames = Names(items: List(\"ada\", \"bob\"))\nwhen last_of(names)\n  Ok(n) -> println(n)\n  Err(e) -> println(\"empty\")\n",
 [
 "bob"
 ]
 ],
 [
-1714,
+1717,
 "fn double_in[F[_] Monad](m F[Int]) F[Int]\n  m.flat_map((x) -> F.pure(x * 2))\nr Result[Int, Error] = Ok(21)\nprintln(\"${double_in(Box.Full(21))} ${double_in(r)}\")\n",
 [
 "Box.Full(42) Ok(42)"
 ]
 ],
 [
-1723,
+1726,
 "fn lift2[F[_] Applicative, A, B, C](f (A, B) -> C, a F[A], b F[B]) F[C]\n  a.map(curry(f)).ap(b)\nnone Box[Int] = Box.Empty\nprint(\"${lift2(add, Box.Full(2), Box.Full(3))} \")\nprintln(\"${lift2(add, none, Box.Full(3))}\")\n",
 [
 "Box.Full(5) Box.Empty"
 ]
 ],
 [
-1735,
+1738,
 "fn one[M[_] Monad]() M[Int]\n  M.pure(1)\ntype alias Fail[A] = Result[A, String]\nprintln(\"${one[[A] -> Result[A, String]]()} ${one[Fail]()}\")\nx ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n",
 [
 "Ok(1) Ok(1)",
@@ -924,19 +924,19 @@ null
 ]
 ],
 [
-1748,
+1751,
 "type alias Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n\ntype alias Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n\ntype alias Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n\nfn head_of(xs Array[Int][3]) Elem[Array[Int][3]]\n  xs(0)\njoined Concat[(Int, String), (Bool,)] = (1, \"a\", true)\nsized Array[Int][Length[(Int, String)]] = Array(1, 2)\nprintln(\"${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}\")\n",
 null
 ],
 [
-1783,
+1786,
 "interface Describable\n  fn describe() String\nimpl Describable for Int\n  fn describe() String\n    \"int $self\"\ntuple Crate[A]\n  value A\nimpl[A Describable] Describable for Crate[A]\n  fn describe() String\n    \"crate(${self.value.describe()})\"\nprintln(Crate(7).describe())\n",
 [
 "crate(int 7)"
 ]
 ],
 [
-1803,
+1806,
 "interface Voice\n  fn speak() String\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Voice for Dog\n  fn speak() String\n    \"Woof! My name is ${name}\"\nimpl Voice for Robot\n  fn speak() String\n    \"Beep Boep! Serial count is ${serial}\"\ncrowd List[any Voice] = List(Dog(name: \"Rex\"), Robot(serial: 7))\nfor s in crowd\n  println(s.speak())\n",
 [
 "Woof! My name is Rex",
@@ -944,14 +944,14 @@ null
 ]
 ],
 [
-1827,
+1830,
 "interface Greeter\n  fn name() String\n  fn greet() String\n    \"Hello, ${self.name()}\"\ntuple Pal\n  id String\ntuple Boss\n  title String\nimpl Greeter for Pal\n  fn name() String\n    id\nimpl Greeter for Boss\n  fn name() String\n    title\n  fn greet() String\n    \"Good day, ${self.name()}\"\nprintln(\"${Pal(id: \"ada\").greet()} / ${Boss(title: \"Chief\").greet()}\")\n",
 [
 "Hello, ada / Good day, Chief"
 ]
 ],
 [
-1862,
+1865,
 "tuple Percent\n  value Int\nimpl FieldHandler[Int] for Percent\n  fn get_value() Int\n    value\n  fn (ref Self) set_value(new_value Int) Unit\n    value = if new_value < 0 then 0 elif new_value > 100 then 100 else new_value\ntuple Gauge\n  level Int delegate(Percent)\ng = Gauge(level: 150)\nprintln(\"${g.level}\")\ng.level = -20\nprintln(\"${g.level}\")\n",
 [
 "100",
@@ -959,7 +959,7 @@ null
 ]
 ],
 [
-1884,
+1887,
 "interface Printer\n  fn print_message(msg String) Unit,\n  fn print_status() Unit\n\ntuple Console\n  prefix String\n\nimpl Printer for Console\n  fn print_message(msg String) Unit\n    println(\"${prefix}: ${msg}\")\n  fn print_status() Unit\n    println(\"${prefix} is ready\")\n\ntuple Logger\n  printer Console\n  calls Int\n\nimpl Printer for Logger proxy(printer)\n  fn print_message(msg String) Unit\n    println(\"log: ${calls} earlier calls\")\n    printer.print_message(msg)\n\nl = Logger(printer: Console(prefix: \"console\"), calls: 2)\nl.print_message(\"hello\")\nl.print_status()\n",
 [
 "log: 2 earlier calls",
@@ -968,7 +968,7 @@ null
 ]
 ],
 [
-1922,
+1925,
 "tuple Account\n  owner String,\n  property balance Int = 0\n    priv set(value)\n      assert(value >= 0)\n      field = value\n    did_set(old)\n      println(\"balance ${old} -> ${field}\")\nimpl Account\n  fn (ref Self) deposit(n Int) Unit\n    balance = balance + n\na = Account(owner: \"Ann\", balance: 5)\na.deposit(3)\nprintln(a.balance)\n",
 [
 "balance 5 -> 8",
@@ -976,7 +976,7 @@ null
 ]
 ],
 [
-1943,
+1946,
 "tuple Account\n  owner String,\n  property balance Int = 0\n    set(value Int) Result[Unit, Error]\n      if value < 0\n        fail(1, \"negative\")\n      else\n        field = value\n        Ok(())\nwhen Account(owner: \"Ann\", balance: 5)\n  Err(e) -> println(\"rejected\")\n  Ok(a) ->\n    when a.set_balance(-1)\n      Ok(b) -> println(\"changed\")\n      Err(e) -> println(\"rejected, still ${a.balance}\")\n    when a.set_balance(9)\n      Ok(b) -> println(\"${b.balance}, was ${a.balance}\")\n      Err(e) -> println(\"rejected\")\n",
 [
 "rejected, still 5",
@@ -984,7 +984,7 @@ null
 ]
 ],
 [
-1968,
+1971,
 "tuple Rect\n  width Int,\n  height Int,\n  property area Int\n    get\n      width * height\n    set(value)\n      width = value / height\nr = Rect(width: 3, height: 4)\nprintln(\"${r.area} ${r}\")\nr.area = 24\nprintln(\"${r.width} ${r.area}\")\n",
 [
 "12 Rect(width: 3, height: 4)",
@@ -992,7 +992,7 @@ null
 ]
 ],
 [
-1987,
+1990,
 "tuple Report\n  data List[Int],\n  lazy property total Int\n    get\n      data |> sum()\n  static property title String = \"Weekly\"\nr = Report(data: List(4, 5, 6))\nprintln(\"${Report.title}: ${r.total} ${r.total}\")\nr.data = List(10, 20)\nprintln(r.total)\nlazy size = len(r.data) * 100\nprintln(\"${size}\")\n",
 [
 "Weekly: 15 15",
@@ -1001,14 +1001,14 @@ null
 ]
 ],
 [
-2006,
+2009,
 "interface Named\n  name String\ninterface Wallet\n  property balance Int\n    get\n    set\ntuple Person\n  given String,\n  family String,\n  property name String\n    get\n      \"${given} ${family}\"\ntuple Purse\n  property balance Int = 0\nimpl Named for Person\nimpl Wallet for Purse\nfn greet[T Named](x T) String\n  \"Hello, ${x.name}\"\nprintln(greet(Person(given: \"Ada\", family: \"Lovelace\")))\n",
 [
 "Hello, Ada Lovelace"
 ]
 ],
 [
-2032,
+2035,
 "tuple Account\n  owner String,\n  property balance Int = 0\nfn save_row(old Int, new Int) Unit\n  println(\"db: ${old} -> ${new}\")\nshared = Atom[Account](Account(owner: \"Ann\"))\ndb = shared.on_change(balance, save_row)\nui = shared.balance +% fn (old Int, new Int) Unit\n  println(\"ui: ${new}\")\n\\swap(shared, (a) -> Account(owner: a.owner, balance: 5))\nshared.off_change(ui)\n\\swap(shared, (a) -> Account(owner: a.owner, balance: 5))\n\\swap(shared, (a) -> Account(owner: a.owner, balance: 9))\nshared.balance -% db\n\\swap(shared, (a) -> Account(owner: a.owner, balance: 1))\nprintln(@shared)\n",
 [
 "db: 0 -> 5",
@@ -1018,7 +1018,7 @@ null
 ]
 ],
 [
-2059,
+2062,
 "fn get(xs List[Int], i Int where i >= 0 and i < len(xs)) Int\n  xs(i)\nfn first_or(xs List[Int], fallback Int) Int\n  if len(xs) > 0 then get(xs, 0) else fallback\nfn last_or(xs List[Int], fallback Int) Int\n  n = len(xs)\n  if n > 0 then get(xs, n - 1) else fallback\nprintln(first_or(List(4, 5, 6), 0))\nprintln(last_or(List(4, 5, 6), 0))\nprintln(last_or(List(), 7))\n",
 [
 "4",
@@ -1027,7 +1027,7 @@ null
 ]
 ],
 [
-2074,
+2077,
 "fn half(n Int where n > 0) Int\n  n / 2\nfn safe_half(n Int) Int\n  if n > 0 then half(n) else 0\nfn pct_half(p Int[1..100]) Int\n  half(p)\nprintln(safe_half(9))\nprintln(safe_half(-3))\nprintln(pct_half(50))\n",
 [
 "4",
@@ -1036,14 +1036,14 @@ null
 ]
 ],
 [
-2088,
+2091,
 "fn pick(xs List[Int], i Int where i >= 0 and i < len(xs)) Int\n  xs(i)\nf (List[Int], Int) -> Int = pick\nprintln(f(List(1, 2), 1))\n",
 [
 "2"
 ]
 ],
 [
-2099,
+2102,
 "type alias Pos = Int where self > 0\ntype alias Pct = Int where self >= 0 and self <= 100\nfn half(n Pos) Int\n  n / 2\nfn twice_half(m Pos) Int\n  half(m) * 2\nfn describe(p Pct) String\n  \"${p} percent\"\nprintln(twice_half(8))\nprintln(half(7))\nprintln(describe(40))\n",
 [
 "8",
@@ -1052,7 +1052,7 @@ null
 ]
 ],
 [
-2115,
+2118,
 "type alias Pos = Int where self > 0\ntuple Account\n  balance Pos\n  name String\nfn half(n Pos) Int\n  n / 2\nfn open_amount(n Int) Int\n  if n > 0 then\n    x Pos = n\n    half(x) * 2\n  else\n    0\nprintln(open_amount(9))\nprintln(Account(balance: 40, name: \"ann\"))\n",
 [
 "8",
@@ -1060,82 +1060,82 @@ null
 ]
 ],
 [
-2138,
+2141,
 "tuple Money deriving show\n  cents Int\nimpl Money\n  fn + (other Money) Money\n    Money(cents: cents + other.cents)\n  fn < (other Money) Bool\n    cents < other.cents\na = Money(cents: 150)\nb = Money(cents: 250)\nprintln(\"${(a + b).cents} ${a < b} ${b >= a}\")\n",
 [
 "400 true true"
 ]
 ],
 [
-2153,
+2156,
 "impl Addable for Money\n  fn +(other Money) Money\n    Money(cents: cents + other.cents)\n  static fn zero() Money\n    Money(cents: 0)\nfn sum_two[T Addable](x T, y T) T\n  x + y\nprintln(\"${sum_two(3, 4)} ${sum_two(a, b).cents}\")\n",
 [
 "7 400"
 ]
 ],
 [
-2166,
+2169,
 "fn larger[T Ordered](x T, y T) T\n  if x < y then y else x\nprintln(\"${larger(a, b).cents} ${larger(2, 5)}\")\n",
 [
 "250 5"
 ]
 ],
 [
-2174,
+2177,
 "enum Box[A] deriving show\n  Full(value A),\n  Empty\nimpl[A] Box[A]\n  fn |>>[B] (f (A) -> Box[B]) Box[B]\n    when self\n      Full(v) -> f(v)\n      Empty -> Box.Empty\nfn half(n Int) Box[Int]\n  if n % 2 == 0 then Box.Full(n / 2) else Box.Empty\nx = Box.Full(20) |>> half |>> half\ny = Box.Full(10) |>> half |>> half\nprintln(\"$x $y\")\n",
 [
 "Box.Full(5) Box.Empty"
 ]
 ],
 [
-2192,
+2195,
 "fn parse_ok(n Int) Result[Int, Error]\n  if n < 0 then fail(1, \"negative\") else Ok(n)\nr1 = parse_ok(5) |>> ((v) -> Ok(v * 2))\nm = map_ok(parse_ok(20), (v) -> v + 1)\nbad = map_err(parse_ok(-1), (e) -> e)\nprintln(\"${is_ok(r1)} ${is_err(bad)} ${m.get_or(-1)}\")\n",
 [
 "true true 21"
 ]
 ],
 [
-2203,
+2206,
 "inc = (x Int) -> x + 1\ntwo Result[Int, Error] = Ok(2)\nf Result[(Int) -> Int, Error] = Ok(inc)\nprintln(\"${(inc <$> two)} ${(f <*> two)}\")\n",
 [
 "Ok(3) Ok(3)"
 ]
 ],
 [
-2214,
+2217,
 "fn add(x Int, y Int) Int\n  x + y\nfn multiply(factor Int, value Int) Int\n  factor * value\nfinal_score = 10\n  |> add(5, &)\n  |> multiply(2, &)\nfn is_big(n Int) Bool\n  n > 100\nfn halve(n Int) Int\n  n / 2\nshrunk = 500\n  |> seq\n    is_big -> halve()\n    is_big -> halve()\nprintln(\"$final_score $shrunk\")\n",
 [
 "30 125"
 ]
 ],
 [
-2235,
+2238,
 "numbers = Array(1, 2, 3, 4)\na = numbers |> map(_ * 2) |> take(3) |> sum()\nb = numbers.map(_ * 2).take(3).sum()\nprintln(\"$a $b\")\n",
 [
 "12 12"
 ]
 ],
 [
-2244,
+2247,
 "fn calculate_yield(base Int, factor Int) Int\n  base * factor\n",
 [
 "500"
 ]
 ],
 [
-2252,
+2255,
 "10 |> subtract(&, 3)    // subtract(10, 3), which is 7\n10 |> subtract(3, &)    // subtract(3, 10), which is -7\n",
 null
 ],
 [
-2259,
+2262,
 "fn fetch_sensor_data(id Int) (Float, Float, Float)\n  (12.5, 45.0, 0.8)\nfn calculate_velocity(\n  x Float,\n  y Float,\n  z Float\n) (speed Float, angle Float)\n  (95.2, 14.6)\nfn update_physics(speed Float, angle Float) Unit\n  println(\"Physics vector updated: speed $speed, angle $angle\")\n1042\n  |> fetch_sensor_data()\n  |> calculate_velocity()\n  |> update_physics()\n",
 [
 "Physics vector updated: speed 95.2, angle 14.6"
 ]
 ],
 [
-2280,
+2283,
 "my_list = List(105, 210, 315, 420)\nwhen my_list\n  List(head, ...tail) ->\n    println(\"head $head\")\n    for cell in tail\n      println(\"tail $cell\")\n  else println(\"empty\")\n",
 [
 "head 105",
@@ -1145,28 +1145,28 @@ null
 ]
 ],
 [
-2292,
+2295,
 "tuple Account\n  name String,\n  score Int\nplayer = Account(name: \"Bob\", score: 150)\nwhen player\n  p@Account(name, score) if score > 200 -> println(\"top tier: $name\")\n  p@Account(name, score) if score > 100 -> println(\"elite: ${p.name}\")\n  else println(\"standard\")\n",
 [
 "elite: Bob"
 ]
 ],
 [
-2305,
+2308,
 "limit = 100\nreading = 100\nwhen reading\n  ^limit -> println(\"exactly at the limit\")\n  ^(limit + 1) -> println(\"just over\")\n  n -> println(\"reading $n\")\n",
 [
 "exactly at the limit"
 ]
 ],
 [
-2316,
+2319,
 "fn describe(status Int) String\n  when status\n    200 -> \"Success\"\n    in 400..499 -> \"Client Error\"\n    >= 500 -> \"Server Error\"\n    else \"Unknown\"\nfn grade(score Double) String\n  when score\n    >= 90.0 -> \"A\"\n    >= 80.0 -> \"B\"\n    else \"C\"\nprint(\"${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} \")\nprintln(\"${grade(85.0)}\")\n",
 [
 "Success Client Error Server Error Unknown B"
 ]
 ],
 [
-2336,
+2339,
 "status = Dict(\"speed\" -> 60, \"limit\" -> 100)\nwhen status\n  Dict(\"speed\" -> current, \"limit\" -> 100) -> println(\"moving at $current\")\n  else println(\"idle\")\nnumber = 25\nwhen\n  number < 0 -> println(\"negative\")\n  number % 2 == 0 -> println(\"even\")\n  else println(\"odd and positive\")\n",
 [
 "moving at 60",
@@ -1174,42 +1174,42 @@ null
 ]
 ],
 [
-2350,
+2353,
 "fn route_status(200) String = \"Success\"\nfn route_status(404) String = \"Not Found\"\nfn route_status(_) String = \"Unknown Error\"\nfn sum_to(0, total Int) Int = total\nfn sum_to(n, total Int) Int = sum_to(n - 1, total + n)\nprintln(\"${route_status(404)} ${sum_to(4, 0)}\")\n",
 [
 "Not Found 10"
 ]
 ],
 [
-2361,
+2364,
 "fn classify(n Int) String if n < 0 = \"neg\"\nfn classify(n) if n == 0 = \"zero\"\nfn classify(n) = \"pos\"\ntailrec fn count_up(0, acc Int) Int = acc\ntailrec fn count_up(n, acc) = count_up(n - 1, acc + n)\nprintln(\"${classify(-1)} ${classify(0)} ${classify(5)} ${count_up(100, 0)}\")\n",
 [
 "neg zero pos 5050"
 ]
 ],
 [
-2372,
+2375,
 "Point(x, y) = Point(x: 1.5, y: 2.0)\nprintln(\"$x $y\")\n",
 [
 "1.5 2.0"
 ]
 ],
 [
-2379,
+2382,
 "enum Reading\n  Value(n Int)\n  Missing\nfn show_reading(r Reading) String\n  if r is Value(n) then \"value $n\" else \"missing\"\nprintln(\"${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}\")\n",
 [
 "value 7 missing"
 ]
 ],
 [
-2390,
+2393,
 "fn times_ten(r Reading) Reading\n  Value(n) = r else Reading.Missing\n  Reading.Value(n * 10)\nprint(\"${times_ten(Reading.Value(7))} \")\nprintln(\"${times_ten(Reading.Missing)}\")\n",
 [
 "Reading.Value(70) Reading.Missing"
 ]
 ],
 [
-2402,
+2405,
 "fn half(text String) Result[Int, Error]\n  Ok(n) = read[Int](text) else Err(e) -> Err(Error(code: 7, message: \"bad number: ${e.message}\"))\n  Ok(n / 2)\nprintln(half(\"10\"))\nprintln(half(\"ten\"))\n",
 [
 "Ok(5)",
@@ -1217,7 +1217,7 @@ null
 ]
 ],
 [
-2416,
+2419,
 "fn describe(packet Array[Byte]) String\n  when packet\n    Bin(\n      0xCA,\n      version: bits(4),\n      kind: bits(4),\n      size: u16be,\n      body: bytes(size),\n      rest: bytes\n    ) -> \"v$version k$kind size $size body ${len(body)} rest ${len(rest)}\"\n    Bin(a: u8, b: i16le) -> \"short $a $b\"\n    else \"no match\"\nprintln(describe(b\"\\xCA\\x21\\x00\\x02hiXYZ\"))\nprintln(describe(b\"\\xCA\\x21\\x00\\x09hi\"))\nprintln(describe(b\"\\x07\\xFE\\xFF\"))\nprintln(describe(b\"\\x07\"))\n",
 [
 "v2 k1 size 2 body 2 rest 3",
@@ -1227,7 +1227,7 @@ null
 ]
 ],
 [
-2440,
+2443,
 "p = Bin(0xCA, 2: bits(4), 1: bits(4), 2: u16be, b\"hi\": bytes, b\"XYZ\": bytes)\nprintln(p)\nprintln(describe(p))\n",
 [
 "Array(202, 33, 0, 2, 104, 105, 88, 89, 90)",
@@ -1235,7 +1235,7 @@ null
 ]
 ],
 [
-2450,
+2453,
 "type union Value = Int | String\nfn describe(v Value) String\n  when v\n    n@Int -> \"the number ${n + 1}\"\n    s@String -> \"the text ${s}\"\nprintln(describe(41))\nprintln(describe(\"hi\"))\n",
 [
 "the number 42",
@@ -1243,7 +1243,7 @@ null
 ]
 ],
 [
-2464,
+2467,
 "interface Speaker\n  fn speak(self) String\ntuple Dog\n  name String\ntuple Robot\n  serial Int\nimpl Speaker for Dog\n  fn speak(self) String\n    \"Woof\"\nimpl Speaker for Robot\n  fn speak(self) String\n    \"Beep\"\ncrowd List[any Speaker] = List(Dog(name: \"Rex\"), Robot(serial: 7))\nfor s in crowd\n  when s\n    Dog(name) -> println(\"a dog named ${name}\")\n    r@Robot() -> println(\"a robot, ${r}\")\n    _ -> println(\"something else\")\n",
 [
 "a dog named Rex",
@@ -1251,7 +1251,7 @@ null
 ]
 ],
 [
-2491,
+2494,
 "numbers = Array(10, 20, 30, 40)\nfor v in numbers |> map(_ * 2)\n  println(\"$v\")\ntotal = numbers |> reduce(0, _1 + _2)\nbig List[Int] = numbers |> filter(_ > 15) |> collect()\nprintln(\"$total ${len(big)}\")\n",
 [
 "20",
@@ -1262,14 +1262,14 @@ null
 ]
 ],
 [
-2502,
+2505,
 "nums = Array(5, 3, 8, 1)\ns = nums |> to_stream()\ntotal = s |> sum()\ncount_big = s |> filter(_ > 4) |> count()\nlowest = s |> min()\nprint(\"$total $count_big ${lowest.get_or(0)} ${s |> any(_ == 8)} \")\nprintln(\"${s |> all(_ > 0)}\")\n",
 [
 "17 2 1 true true"
 ]
 ],
 [
-2514,
+2517,
 "running List[Int] = List(1, 2, 3, 4)\n  |> scan(0, _1 + _2)\n  |> collect()\nprintln(\"${running(0)} ${running(1)} ${running(2)} ${running(3)}\")\nfor (i, v) in List(10, 20) |> enumerate()\n  println(\"$i:$v\")\n",
 [
 "1 3 6 10",
@@ -1278,19 +1278,19 @@ null
 ]
 ],
 [
-2526,
+2528,
 "ordered List[Int] = nums |> sort() |> collect()\nflipped List[Int] = nums |> reverse() |> collect()\nprintln(\"${ordered(0)} ${flipped(0)}\")\n",
 [
 "1 1"
 ]
 ],
 [
-2534,
+2536,
 "fn tag_map(x Int) Int\n  println(\"map $x\")\n  x * 2\nfn tag_keep(y Int) Bool\n  println(\"keep $y\")\n  y > 2\nsrc = List(3, 1, 2)\nh = src |> map(tag_map) |> filter(tag_keep) |> count()\nv = src |> map(tag_map) |> sort() |> filter(tag_keep) |> count()\n",
 null
 ],
 [
-2548,
+2550,
 "nums5 = List(1, 2, 3, 4, 5)\ncs List[List[Int]] = nums5 |> chunks(2) |> collect()\nws List[Array[Int][2]] = nums5 |> windows(2) |> collect()\nprintln(\"${len(cs)} ${len(cs(0))} ${len(cs(2))}\")\nprintln(\"${len(ws)} ${ws(1)(0)} ${ws(3)(1)}\")\n",
 [
 "3 2 1",
@@ -1298,26 +1298,26 @@ null
 ]
 ],
 [
-2558,
+2560,
 "readings = List(3, 6, 9, 12, 15)\navg List[Int] = readings\n  |> windows(3)\n  |> map((w) -> (w |> sum()) / 3)\n  |> collect()\nprintln(\"${avg(0)} ${avg(1)} ${avg(2)}\")\n",
 [
 "6 9 12"
 ]
 ],
 [
-2570,
+2571,
 "(small, big2) = nums5 |> partition(_ < 3)\nprintln(\"${len(ws)} ${len(small)} ${len(big2)}\")\n",
 [
 "4 2 3"
 ]
 ],
 [
-2577,
+2578,
 "for x in numbers\n  println(\"$x\")\nfor i in 0..10 step 2\n  println(\"step $i\")\nfor i in 3..1 step -1\n  println(\"countdown $i\")\n",
 null
 ],
 [
-2588,
+2589,
 "names = List(\"alice\", \"bob\")\nages = List(30, 25)\nfor (name, age) in zip(names, ages)\n  println(\"$name is $age\")\n",
 [
 "alice is 30",
@@ -1325,7 +1325,7 @@ null
 ]
 ],
 [
-2597,
+2598,
 "words = List(\"pear\", \"fig\", \"banana\", \"fig\", \"kiwi\")\nprintln(\"${words |> distinct() |> collect()}\")\njoined = words\n  |> distinct()\n  |> intersperse(\"|\")\n  |> reduce(\"\", _1 + _2)\nprintln(\"$joined\")\nprint(\"${words |> min_by(len)} \")\nprintln(\"${words |> max_by(len)}\")\n(short, rest) = words |> span((w) -> len(w) < 6)\nprintln(\"$short ${len(rest)}\")\n",
 [
 "List(\"pear\", \"fig\", \"banana\", \"kiwi\")",

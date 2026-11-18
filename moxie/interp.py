@@ -1346,6 +1346,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             return r
         kb = Builtin(k, "<for>", gen=True)
         if isinstance(m, (ListV, ArrayV)):
+            # a List is not a Monad; `for:` over one acts as if each List were wrapped in ListM and the result unwrapped
             out = []
             for x in list(m.items):
                 r = yield from k(self, [x], {})
