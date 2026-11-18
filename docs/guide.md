@@ -2438,6 +2438,35 @@ println(text)
 
 Output: `User: alex, Domain: example.com`, then `None`, then `hello`.
 
+**Which pattern tool fits.** Three tools take a collection of mixed items apart, and they differ in what they do with the items that don't fit:
+
+| You want | Use |
+|---|---|
+| One kind of item, drop the rest | a `for:` block with a pattern, or `filter_map` |
+| Every kind of item gets its own result | `map` with a lambda that is a `when` |
+| A function you already have that returns an `Option` | `filter_map` |
+
+```
+enum Event
+  Click(x Int, y Int),
+  Press(c String),
+  Quit
+evs = List(Click(1, 2), Press("a"), Quit, Click(5, 6))
+xs = for
+  Click(x, _) in evs
+  yield x
+println(xs)
+ys = evs |> filter_map((e) -> if e is Click(_, y) then Some(y) else None) |> collect()
+println(ys)
+labels = evs.map()(e) -> when e
+  Click(x, y) -> "click ${x},${y}"
+  Press(c) -> "key ${c}"
+  Quit -> "quit"
+println(labels |> collect())
+```
+
+Output: `List(1, 5)`, then `List(2, 6)`, then `List("click 1,2", "key a", "quit", "click 5,6")`. The first two drop what they don't match, and the third must cover every case, as a `when` always does.
+
 **12a. Binary patterns**
 
 A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:
