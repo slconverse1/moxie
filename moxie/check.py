@@ -289,7 +289,6 @@ STRICT_SAFETY = [False]          # Moxie.toml `safety = "strict"`
 from .refinecheck import RefineMixin
 
 
-LIST_STAGE_NAMES = {"filter", "take", "drop", "take_while", "drop_while", "flat_map", "sort_by", "take_last", "scan", "enumerate", "concat", "zip", "sort", "reverse", "distinct", "intersperse", "distinct_by"}
 
 class Checker(RefineMixin):
     def __init__(self, prelude_names):
@@ -4440,17 +4439,15 @@ class Checker(RefineMixin):
                 ns = [self.decl_node(a.expr, sc, depth + 1) for a in args]
                 if all(x is not None for x in ns) and len({self.type_node_text(x) for x in ns}) == 1:
                     return TName(["Dict"], [[TName(["Any"], []), ns[0]]])
-            if nm in ("get", "map", "filter", "reverse", "take", "drop") and args and args[0].label is None and args[0].expr is not None:
+            if nm == "fmap" and len(args) == 2 and args[1].expr.__class__ is Lambda:
+                ln = self.body_node(args[1].expr.body, sc, depth + 1, call_only=True)      # `fmap` keeps the container: a List of what the lambda gives
+                dn = self.decl_node(args[0].expr, sc, depth + 1) if args[0].expr is not None and args[0].label is None else None
+                if ln is not None and (dn is None or dn.__class__ is TName and dn.path[-1] in ("List", "Array")):
+                    return TName(["List"], [[ln]])
+            if nm == "get" and len(args) == 2 and args[0].label is None and args[0].expr is not None:
                 dn = self.decl_node(args[0].expr, sc, depth + 1)
                 if dn.__class__ is TName and dn.path[-1] in ("List", "Array") and dn.groups and len(dn.groups[0]) == 1:
-                    if nm == "get" and len(args) == 2:
-                        return TName(["Result"], [[dn.groups[0][0], TName(["String"], [])]])
-                    if nm in ("filter", "reverse", "take", "drop"):
-                        return TName(["List"], dn.groups)
-                if nm == "map" and len(args) == 2 and args[1].expr.__class__ is Lambda:
-                    ln = self.body_node(args[1].expr.body, sc, depth + 1, call_only=True)
-                    if ln is not None:
-                        return TName(["List"], [[ln]])
+                    return TName(["Result"], [[dn.groups[0][0], TName(["String"], [])]])
         if c is Q:                                                              # `mk()?` of a `Result[V, E]` or an `Option[V]` is a `V`
             dn = self.decl_node(e.e, sc, depth + 1)
             if dn.__class__ is TName and dn.path[-1] in ("Result", "Option") and dn.groups and dn.groups[0]:
@@ -6471,6 +6468,11 @@ class Checker(RefineMixin):
             if getattr(n.fn, "name", None) == "len" and any(t is not None and (t[0] == "tup" or t[0] == "named" and t[1] in self.tuples)
                                                            for t in ft if t.__class__ is tuple):
                 return ats, "Int"                 # `len` of a tuple counts its fields
+            if getattr(n.fn, "name", None) == "map" and any(
+                    t[0] in ("named", "app") and t[1] not in ("List", "Array", "Set", "Dict", "Ring", "Stream", "MultiArray", "Result", "Option", "Range", "Atom")
+                    and (((t[1], "fmap") in self.methods or (t[1], "map") in self.methods) if (t[1] in self.tuples or t[1] in self.enums) and "." not in t[1] else True)
+                    for t in ft if t.__class__ is tuple):
+                return ats, None                  # `map` on a type with its own `Functor` impl goes through its `fmap`
             known = [t if t is not None and t[0] != "fn" and not self.has_unsettled(t) else None for t in ft]
             alone0 = lambda sg: all(tys.match(pt, self.base(t), {}) for pt, t in zip(sg[1], known) if t is not None)
             if any(t is not None for t in known) and not any(self.sig_fit(sg, known) is not None for sg in over) \
@@ -6500,20 +6502,6 @@ class Checker(RefineMixin):
             if t is not None:
                 tys.unify(pt, self.base(t), binds)
         ret = tys.subst(sg[2], binds)
-        if getattr(n.fn, "name", None) == "map" and ret.__class__ is tuple and ret[0] == "app" and ret[1] == "Stream" and len(ret[2]) == 1:
-            for t in full(None):                            # Functor for List and Array: the same container comes back
-                b = self.base(t) if t is not None else None
-                if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Array") and b[2]:
-                    return ats, ("app", b[1], (ret[2][0],) + tuple(b[2][1:]) if ret[2].__class__ is tuple else [ret[2][0]] + list(b[2][1:]))
-        if getattr(n.fn, "name", None) in LIST_STAGE_NAMES and ret.__class__ is tuple and ret[0] == "app" and ret[1] == "Stream" and len(ret[2]) == 1:
-            first_seq = None
-            for t in full(None):                            # the source is the first argument that is a collection or a stream
-                b = self.base(t) if t is not None else None
-                if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Stream", "Array", "Ring", "Set", "Dict") or b == "Range":
-                    first_seq = b
-                    break
-            if first_seq.__class__ is tuple and first_seq[1] == "List":                # a List stays a List
-                return ats, ("app", "List", (ret[2][0],))
         return ats, ret
 
     def arg_plan(self, fn, args, sc, extra, trailing=None, line=None):

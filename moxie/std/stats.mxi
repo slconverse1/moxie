@@ -13,14 +13,14 @@ fn count_of[N](xs Array[Double][N]) Double
   cast[Double](len(xs))
 
 fn sorted[N](xs Array[Double][N]) Array[Double][N]
-  xs |> to_stream() |> sort() |> collect()
+  xs |> sort() |> collect()
 
 /// The sum of the values.
 ///
 /// > total((1.0, 2.0, 3.0, 4.0))
 /// 10.0
 export fn total[N](xs Array[Double][N]) Double
-  xs |> to_stream() |> sum()
+  xs |> sum()
 
 /// The average: the total divided by the count.
 ///
@@ -35,7 +35,7 @@ export fn mean[N](xs Array[Double][N]) Double
 /// 4.0
 export fn variance[N](xs Array[Double][N]) Double
   m = mean(xs)
-  (xs |> to_stream() |> map((x) -> square(x - m)) |> sum()) / count_of(xs)
+  (xs |> map((x) -> square(x - m)) |> sum()) / count_of(xs)
 
 /// The square root of the variance, in the units of the data.
 ///
@@ -53,7 +53,7 @@ export fn sample_variance[N](xs Array[Double][N]) Double
     0.0
   else
     m = mean(xs)
-    (xs |> to_stream() |> map((x) -> square(x - m)) |> sum()) / (count_of(xs) - 1.0)
+    (xs |> map((x) -> square(x - m)) |> sum()) / (count_of(xs) - 1.0)
 
 /// The square root of the sample variance.
 export fn sample_stddev[N](xs Array[Double][N]) Double
@@ -100,7 +100,7 @@ export fn z_scores[N](xs Array[Double][N]) Result[Array[Double][N], Error]
   if sd == 0.0
     fail(1, "z_scores: the values do not vary")
   else
-    Ok(xs |> to_stream() |> map((x) -> (x - m) / sd) |> collect())
+    Ok(xs |> map((x) -> (x - m) / sd) |> collect())
 
 // ---------------------------------------------------------------- two lists: how they move together
 
@@ -112,7 +112,7 @@ export fn covariance[N](xs Array[Double][N], ys Array[Double][N]) Double
   assert(len(xs) == len(ys))
   mx = mean(xs)
   my = mean(ys)
-  (xs |> to_stream() |> zip(ys |> to_stream()) |> map((p) -> (p(0) - mx) * (p(1) - my)) |> sum()) / count_of(xs)
+  (xs |> zip(ys |> to_stream()) |> map((p) -> (p(0) - mx) * (p(1) - my)) |> sum()) / count_of(xs)
 
 /// From -1.0 (a perfect downhill line) through 0.0 (no straight-line relationship) to 1.0 (a perfect uphill line).
 ///
@@ -162,7 +162,7 @@ export fn predict(line Line, x Double) Double
 /// > predict_all(Line(slope: 2.0, intercept: 1.0, r_squared: 1.0), (1.0, 2.0))
 /// Array(3.0, 5.0)
 export fn predict_all[N](line Line, xs Array[Double][N]) Array[Double][N]
-  xs |> to_stream() |> map((x) -> predict(line, x)) |> collect()
+  xs |> map((x) -> predict(line, x)) |> collect()
 
 // ---------------------------------------------------------------- how good is a prediction
 
@@ -172,7 +172,7 @@ export fn predict_all[N](line Line, xs Array[Double][N]) Array[Double][N]
 /// 0.0
 export fn rmse[N](actual Array[Double][N], predicted Array[Double][N]) Double
   assert(len(actual) == len(predicted))
-  sqrt((actual |> to_stream() |> zip(predicted |> to_stream()) |> map((p) -> square(p(0) - p(1))) |> sum()) / count_of(actual))
+  sqrt((actual |> zip(predicted |> to_stream()) |> map((p) -> square(p(0) - p(1))) |> sum()) / count_of(actual))
 
 /// The average size of the errors, with every error counting the same.
 ///
@@ -180,7 +180,7 @@ export fn rmse[N](actual Array[Double][N], predicted Array[Double][N]) Double
 /// 1.0
 export fn mean_absolute_error[N](actual Array[Double][N], predicted Array[Double][N]) Double
   assert(len(actual) == len(predicted))
-  (actual |> to_stream() |> zip(predicted |> to_stream()) |> map((p) -> abs(p(0) - p(1))) |> sum()) / count_of(actual)
+  (actual |> zip(predicted |> to_stream()) |> map((p) -> abs(p(0) - p(1))) |> sum()) / count_of(actual)
 
 // ---------------------------------------------------------------- a series over time
 
@@ -189,7 +189,7 @@ export fn mean_absolute_error[N](actual Array[Double][N], predicted Array[Double
 /// > moving_average((1.0, 2.0, 3.0, 4.0), 2)
 /// List(1.5, 2.5, 3.5)
 export fn moving_average[N](xs Array[Double][N], window Int) List[Double]
-  xs |> to_stream() |> windows(window) |> map((w) -> mean(w)) |> collect()
+  xs |> windows(window) |> map((w) -> mean(w)) |> collect()
 
 /// Exponential smoothing: each new value pulls the running level toward itself by `alpha` (0.0 to 1.0). A big alpha follows
 /// the data closely, and a small one changes slowly. The level after the last value is also the forecast for the next one.
@@ -198,5 +198,5 @@ export fn moving_average[N](xs Array[Double][N], window Int) List[Double]
 /// 15.0
 export fn smooth[N](xs Array[Double][N], alpha Double) Double
   first_value = xs(0)
-  rest = xs |> to_stream() |> drop(1)
+  rest = xs |> drop(1)
   rest |> reduce(first_value, (level, x) -> alpha * x + (1.0 - alpha) * level)

@@ -6,12 +6,12 @@ export tuple Writer[W, A]
   log List[W]
 
 impl[W] Monad[Writer[W, _]]
-  fn map[A, B](self Writer[W, A], f (A) -> B) Writer[W, B]
+  fn fmap[A, B](self Writer[W, A], f (A) -> B) Writer[W, B]
     Writer(value: f(self.value), log: self.log)
   static fn pure[A](a A) Writer[W, A]
     Writer(value: a, log: List())
   fn ap[A, B](self Writer[W, (A) -> B], x Writer[W, A]) Writer[W, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self Writer[W, A], f (A) -> Writer[W, B]) Writer[W, B]
     next = f(self.value)
     Writer(value: next.value, log: self.log + next.log)

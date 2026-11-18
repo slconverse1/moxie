@@ -7,9 +7,9 @@ CASES = [
  ("_ + 1 on Strings", 'xs List[String] = List("a")\nys = xs.map(_ + 1)\n', "cannot apply `+` to `String` and `Int`"),
  ("(> \"x\") on Ints", 'ys = List(1, 2).filter((> "x"))\n', "cannot compare `Int` and `String`"),
  ("(and true) on Ints", 'ys = List(1, 2).filter((and true))\n', "`and` needs `Bool` operands"),
- ("(- 1) fits Ints", "ys = List(1, 2).map((- 1))\nprintln(ys)\n", None),
- ("(+ \"z\") fits Strings", 'ys = List("a").map((+ "z"))\nprintln(ys)\n', None),
- ("(* 2) fits Floats", "ys = List(1.5).map((* 2))\nprintln(ys)\n", None),
+ ("(- 1) fits Ints", "ys = List(1, 2).fmap((- 1))\nprintln(ys)\n", None),
+ ("(+ \"z\") fits Strings", 'ys = List("a").fmap((+ "z"))\nprintln(ys)\n', None),
+ ("(* 2) fits Floats", "ys = List(1.5).fmap((* 2))\nprintln(ys)\n", None),
  ("(and true) fits Bools", "ys = List(true, false).filter((and true)).collect()\nprintln(ys)\n", None),
  ("(in allowed) fits", "allowed = Set(1, 2)\nys = List(1, 3).filter((in allowed)).collect()\nprintln(ys)\n", None),
 ]

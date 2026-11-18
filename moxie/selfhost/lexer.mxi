@@ -26,7 +26,7 @@ ops = List("...", "..<", "..", "|>>", "<$>", "<*>", ">>=", "<<=",
            "{", "}", ",", ":", ".", "?", "@", ";", "!", "$", "\\")
 
 fn text_of(cs List[Char], from Int, to Int) String
-  cs |> to_stream() |> drop(from) |> take(to - from) |> map((c) -> "$c") |> join("")
+  cs |> drop(from) |> take(to - from) |> map((c) -> "$c") |> join("")
 
 fn op_at(cs List[Char], i Int) String
   for op in ops
@@ -313,7 +313,7 @@ fn bracket_delta(t Token) Int
     0
 
 fn depth_after(depth Int, row List[Token]) Int
-  depth + (row |> to_stream() |> map(bracket_delta) |> sum())
+  depth + (row |> map(bracket_delta) |> sum())
 
 fn step_line(sx Sx, row List[Token]) Sx
   first = row(0)

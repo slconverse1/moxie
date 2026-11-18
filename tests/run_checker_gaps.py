@@ -23,7 +23,7 @@ BAD = [
  ("x = \"s\"\nprint(x, 3)\n", "`print` can't take (String, Int)"),
  ("println(1, 2, 3)\n", "`println` takes at most 2 arguments, but 3 given"),
  ('fn many[T](xs Seq[T]) Int\n  1\n', "`Seq` is not a type you can write"),
- ("x = map(5, 7)\n", "{List, Array, Set, Ring, Stream} of T"),
+ ("x = map(5, 7)\n", "a range} of T"),
  ('fn total[T Monoid](xs List[T]) T\n  fold_all(xs)\nprintln(total(List(1, 2)))\n', "doesn't implement `Monoid`"),
  ('tuple Box[T]\n  items List[T]\na Box[Int] = Box(items: List(1, "a"))\n', "must share one type"),
  ('tuple Box[T]\n  items List[T]\nfn mk() Box[Int]\n  Box(items: List(1, "a"))\n', "must share one type"),

@@ -8,12 +8,12 @@ export enum Prog[C[_], A]
   Bind[X](cmd C[X], k (X) -> Prog[C, A])
 
 impl[C[_]] Monad[Prog[C, _]]
-  fn map[A, B](self Prog[C, A], f (A) -> B) Prog[C, B]
+  fn fmap[A, B](self Prog[C, A], f (A) -> B) Prog[C, B]
     self.flat_map((a) -> Pure(f(a)))
   static fn pure[A](a A) Prog[C, A]
     Pure(a)
   fn ap[A, B](self Prog[C, (A) -> B], x Prog[C, A]) Prog[C, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self Prog[C, A], f (A) -> Prog[C, B]) Prog[C, B]
     when self
       Pure(a) -> f(a)

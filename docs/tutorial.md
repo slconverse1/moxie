@@ -152,10 +152,9 @@ roster = List(
   Student(name: "Cy", score: 71),
   Student(name: "Di", score: 58)
 )
-total = roster |> to_stream() |> map((s) -> s.score) |> sum()
+total = roster |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
 passing List[Student][4] = roster
-  |> to_stream()
   |> filter((s) -> s.score >= 60)
   |> collect()
 for s in passing
@@ -186,7 +185,7 @@ Two moxie-specific details:
 <summary>Solution</summary>
 
 ```moxie
-below = roster |> to_stream() |> filter((s) -> s.score < 60) |> count()
+below = roster |> filter((s) -> s.score < 60) |> count()
 println("below 60: $below")
 points_total = 0
 for s in roster

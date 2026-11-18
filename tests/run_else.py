@@ -22,7 +22,7 @@ CASES = [
  ("the old else -> form is gone", 'n = 1\nr = when n\n  1 -> 2\n  else -> 3\n', 2, "syntax error"),
  ("else must be last in a when", 'n = 1\nr = when n\n  else 1\n  2 -> 3\n', 2, "must be the last arm"),
  ("else must be last in a select", 'rx, tx = Chan[Int][1]()\nselect\n  else println("a")\n  v = read(rx) -> println("b")\n', 2, "must be the last arm"),
- ("else must be last in a seq", 'xs = List(1)\nys = xs |> to_stream() |> seq\n  else collect()\n  else collect()\n', 2, "must be the last arm"),
+ ("else must be last in a seq", 'xs = List(1)\nys = xs |> seq\n  else collect()\n  else collect()\n', 2, "must be the last arm"),
 ]
 fails = []
 for name, src, rc_want, want in CASES:

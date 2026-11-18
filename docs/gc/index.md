@@ -1379,7 +1379,7 @@ tuple Box[A]
   value A
 
 impl Functor[Box]
-  fn map[A, B](self Box[A], f (A) -> B) Box[B]
+  fn fmap[A, B](self Box[A], f (A) -> B) Box[B]
     Box(f(self.value))
 
 fn twice[F[_] Functor](m F[Int]) F[Int]
@@ -1424,7 +1424,7 @@ impl Describable for Int
   fn describe(self) String
     "the number ${self}"
 fn describe_all[T Describable](items List[T]) String
-  items |> to_stream() |> map((x) -> x.describe()) |> join(", ")
+  items |> map((x) -> x.describe()) |> join(", ")
 fn same_voice[T Speaker + Equatable](a T, b T) String
   if a == b then a.speak() else "two different voices"
 println(describe_all(List(Dog(name: "Rex"), Dog(name: "Ann"))))
@@ -1936,7 +1936,7 @@ This is the one the whole language is built around.
 **Fast execution.** Take the humble `map`:
 
 ```
-a = numbers |> to_stream() |> map(_ * 2) |> take(3) |> sum()
+a = numbers |> map(_ * 2) |> take(3) |> sum()
 ```
 
 In most languages, that line allocates iterators or intermediate collections and calls through function objects. In moxie, it should compile to roughly the loop you'd have written in assembly by hand. The reasons, at the highest level:

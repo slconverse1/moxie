@@ -22,7 +22,7 @@ impl Dyn
   fn field(self, key String) Result[Dyn, Error]
     when self
       DMap(es) ->
-        when es |> to_stream() |> filter((e) -> e.key == key) |> first()
+        when es |> filter((e) -> e.key == key) |> first()
           Ok(e) -> Ok(e.value)
           Err(_) -> Err(Error(code: 4, message: "no key \"$key\""))
       _ -> Err(Error(code: 1, message: "not a map"))
@@ -197,7 +197,7 @@ fn read_number(cs List[Char], i Int) Result[Pr, Error]
       break(k)
   else
     len(cs)
-  text = cs |> to_stream() |> drop(i) |> take(j - i) |> map((c) -> "$c") |> join("")
+  text = cs |> drop(i) |> take(j - i) |> map((c) -> "$c") |> join("")
   if text.contains(".") or text.contains("e") or text.contains("E")
     when read[Float](text)
       Ok(x) -> Ok(Pr(v: Dyn.DFloat(x), i: j))

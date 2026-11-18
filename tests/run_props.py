@@ -38,7 +38,7 @@ CASES = [
  ("a one-line get",
   'tuple R\n  w Int,\n  property twice Int\n    get -> w * 2\nprintln(R(w: 4).twice)\n', "run", "8"),
  ("a lazy property is recomputed for a rebuilt value",
-  'tuple R\n  data List[Int],\n  lazy property total Int\n    get\n      data |> to_stream() |> sum()\nr = R(data: List(1, 2, 3))\nprintln("${r.total} ${r.total}")\nr.data = List(10, 20)\nprintln(r.total)\n', "run", "6 6\n30"),
+  'tuple R\n  data List[Int],\n  lazy property total Int\n    get\n      data |> sum()\nr = R(data: List(1, 2, 3))\nprintln("${r.total} ${r.total}")\nr.data = List(10, 20)\nprintln(r.total)\n', "run", "6 6\n30"),
  ("a lazy property must be pure",
   'tuple R\n  w Int,\n  lazy property t Int\n    get\n      println("hi")\n      w\nprintln(1)\n', "fail", "prints"),
  ("a static property is read through the type",

@@ -35,7 +35,6 @@ A lambda is a function with no name, written `(params) -> body`, with a space on
 
   ```
   total = scores
-    |> to_stream()
     |> filter()(s) -> s >= 60
     |> sum()
   ```

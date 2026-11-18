@@ -2031,18 +2031,27 @@ def _map(I, a):
 
 
 def _map_dispatch(I, a, kw, ta):
+    """`map` is the lazy stage on every collection, range and string.  Only a value that is not a source (an `Option`, a `Result`, a
+    type with its own `Functor` impl) maps through its `fmap`."""
     f, s = a[0], a[1]
-    if isinstance(s, EnumV):
-        m = I.find_method_for(s, "map")
+    if isinstance(s, (EnumV, TupleV)):
+        m = I.find_method_for(s, "fmap") or I.find_method_for(s, "map")
         if m is not None:
             return I.apply_method(m, s, [f])
-        if s.et is RESULT_T:
+        if isinstance(s, EnumV) and s.et is RESULT_T:
             return _res_map(I, f, s)
-    if isinstance(s, (ListV, ArrayV)) and I.find_method_for(s, "map"):
-        return I.apply_method(I.find_method_for(s, "map"), s, [f])
-    if isinstance(s, (ListV, ArrayV)):
-        return _seq_map(I, f, s)                   # Functor for List[_][N] and Array[_][N]: the same container comes back
     return Done(StreamV(lambda: MapIter(I, src_of(I, s), f)))
+
+
+def _fmap(I, a, kw, ta):
+    """`fmap(f, x)`: the `Functor` method.  A List or Array gives the same container back, an Option or Result the same constructor."""
+    f, s = a[0], a[1]
+    if isinstance(s, (ListV, ArrayV)):
+        m = I.find_method_for(s, "fmap")
+        if m is not None:
+            return I.apply_method(m, s, [f])
+        return _seq_map(I, f, s)
+    return _map_dispatch(I, a, kw, ta)
 
 
 def _seq_map(I, f, s):
@@ -2060,6 +2069,7 @@ def _res_map(I, f, r):
 
 
 REG["map"] = (_map_dispatch, "last", True)
+REG["fmap"] = (_fmap, "last", True)
 
 
 def _flat_map_dispatch(I, a, kw, ta):
@@ -3285,28 +3295,3 @@ from . import pipes  # noqa: E402,F401  (Unix sockets and pipes)
 from . import watch  # noqa: E402,F401  (file watching)
 from . import secret  # noqa: E402,F401  (Secret[T])
 
-
-# A List flowing through a transformer comes out a List: `xs |> filter(f) |> map(g)` needs no `to_stream()` or `collect()`.
-# The source's length bounds the result, so the capacity is the source's.  Stream sources stay lazy streams.
-_LIST_STAGES = {"filter": -1, "take": -1, "drop": -1, "take_while": -1, "drop_while": -1, "flat_map": -1, "sort_by": -1, "take_last": -1,
-                "scan": -1, "enumerate": 0, "concat": 0, "zip": 0, "sort": 0, "reverse": 0, "distinct": 0, "intersperse": 0, "distinct_by": -1}
-
-
-def _listify(name, ix):
-    fn, pos, gen = REG[name]
-
-    def wrapped(I, a, kw, ta):
-        src = a[ix]
-        r = fn(I, a, kw, ta)
-        if gen:
-            r = yield from r
-        if isinstance(src, ListV) and isinstance(r, StreamV):
-            items = yield from drain(I, r)
-            return ListV(items, max(src.cap, len(items)))
-        return r
-    REG[name] = (wrapped, pos, True)
-
-
-for _n, _i in _LIST_STAGES.items():
-    if _n in REG:
-        _listify(_n, _i)

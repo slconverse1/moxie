@@ -856,7 +856,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 return ListV(out, len(out)) if isinstance(l, ListV) else ArrayV(out, len(out))
             raise Abort("'|>>' needs a Monad on the left")
         if op == "<$>":
-            m = self.find_method_for(r, "map")
+            m = self.find_method_for(r, "fmap")
             if m is not None:
                 return (yield from self.apply_method(m, r, [l]))
             if isinstance(r, EnumV) and r.et is RESULT_T:
@@ -1345,7 +1345,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             r = yield from self.for_m(n, i + 1, env2)
             return r
         kb = Builtin(k, "<for>", gen=True)
-        meth = "map" if last else "flat_map"
+        meth = "fmap" if last else "flat_map"
         f = self.find_method_for(m, meth)
         if f is not None:
             return (yield from self.apply_method(f, m, [kb]))

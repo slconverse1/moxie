@@ -1073,8 +1073,8 @@ Output: `25.0 25.0`. A function type is just its parameter types, so `(Double, D
 
 ```
 numbers = List(1, 2, 3)
-doubled = numbers |> to_stream() |> map(_ * 2)
-tripled = numbers |> to_stream() |> map()(x) -> x * 3
+doubled = numbers |> map(_ * 2)
+tripled = numbers |> map()(x) -> x * 3
 total = numbers |> reduce(0)(acc, x) ->
   acc + x
 println("$total")
@@ -1402,10 +1402,10 @@ Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. *
 ```
 fn div_by(a Int, b Int) Int
   a / b
-println(List(1, 2, 3).map((+ 1)))
-println(List(1, 2, 3).map((10 -)))
-println(List(1, 2, 3).map((- 1)))
-println(List(8, 9).map((`div_by` 2)))
+println(List(1, 2, 3).map((+ 1)).collect())
+println(List(1, 2, 3).map((10 -)).collect())
+println(List(1, 2, 3).map((- 1)).collect())
+println(List(8, 9).map((`div_by` 2)).collect())
 println((-4))
 println((- 4)(10))
 println(List(1, 2, 3, 4).filter((in List(2, 4))).collect())
@@ -2235,8 +2235,8 @@ Output: `30 125`. `|>` tries the first and the last mandatory parameter of the c
 
 ```
 numbers = Array(1, 2, 3, 4)
-a = numbers |> to_stream() |> map(_ * 2) |> take(3) |> sum()
-b = numbers.to_stream().map(_ * 2).take(3).sum()
+a = numbers |> map(_ * 2) |> take(3) |> sum()
+b = numbers.map(_ * 2).take(3).sum()
 println("$a $b")
 ```
 
@@ -2491,10 +2491,10 @@ Inside an arm, the variable has the narrowed type: in the `Int` arm above, `v` i
 
 ```
 numbers = Array(10, 20, 30, 40)
-for v in numbers |> to_stream() |> map(_ * 2)
+for v in numbers |> map(_ * 2)
   println("$v")
 total = numbers |> reduce(0, _1 + _2)
-big List[Int] = numbers |> to_stream() |> filter(_ > 15) |> collect()
+big List[Int] = numbers |> filter(_ > 15) |> collect()
 println("$total ${len(big)}")
 ```
 
@@ -2514,19 +2514,18 @@ Output: `17 2 1 true true`. `avg()` gives the mean of numbers as a `Result[Float
 
 ```
 running List[Int] = List(1, 2, 3, 4)
-  |> to_stream()
   |> scan(0, _1 + _2)
   |> collect()
 println("${running(0)} ${running(1)} ${running(2)} ${running(3)}")
-for (i, v) in List(10, 20) |> to_stream() |> enumerate()
+for (i, v) in List(10, 20) |> enumerate()
   println("$i:$v")
 ```
 
 Output: `1 3 6 10`, then `0:10`, `1:20`. Sorting needs every element first:
 
 ```
-ordered List[Int] = nums |> to_stream() |> sort() |> collect()
-flipped List[Int] = nums |> to_stream() |> reverse() |> collect()
+ordered List[Int] = nums |> sort() |> collect()
+flipped List[Int] = nums |> reverse() |> collect()
 println("${ordered(0)} ${flipped(0)}")
 ```
 
@@ -2540,16 +2539,16 @@ fn tag_keep(y Int) Bool
   println("keep $y")
   y > 2
 src = List(3, 1, 2)
-h = src |> to_stream() |> map(tag_map) |> filter(tag_keep) |> count()
-v = src |> to_stream() |> map(tag_map) |> sort() |> filter(tag_keep) |> count()
+h = src |> map(tag_map) |> filter(tag_keep) |> count()
+v = src |> map(tag_map) |> sort() |> filter(tag_keep) |> count()
 ```
 
 The first prints `map 3`, `keep 6`, `map 1`, `keep 2`, `map 2`, `keep 4`, and `h` is `2`. The second prints `map 3`, `map 1`, `map 2`, then `keep 2`, `keep 4`, `keep 6`, and `v` is `2`. **Chunks and windows.** `chunks(n)` yields consecutive groups (each a `List[T]`, the last possibly shorter), and `windows(n)` yields every run of `n` neighbors (each an `Array[T][n]`):
 
 ```
 nums5 = List(1, 2, 3, 4, 5)
-cs List[List[Int]] = nums5 |> to_stream() |> chunks(2) |> collect()
-ws List[Array[Int][2]] = nums5 |> to_stream() |> windows(2) |> collect()
+cs List[List[Int]] = nums5 |> chunks(2) |> collect()
+ws List[Array[Int][2]] = nums5 |> windows(2) |> collect()
 println("${len(cs)} ${len(cs(0))} ${len(cs(2))}")
 println("${len(ws)} ${ws(1)(0)} ${ws(3)(1)}")
 ```
@@ -2559,7 +2558,6 @@ Output: `3 2 1`, then `4 2 5`. The chunks are `[1, 2]`, `[3, 4]`, `[5]`, and the
 ```
 readings = List(3, 6, 9, 12, 15)
 avg List[Int] = readings
-  |> to_stream()
   |> windows(3)
   |> map((w) -> (w |> sum()) / 3)
   |> collect()
@@ -2569,7 +2567,7 @@ println("${avg(0)} ${avg(1)} ${avg(2)}")
 Output: `6 9 12`. The terminals `partition`, `unzip`, and `group_by` split a stream:
 
 ```
-(small, big2) = nums5 |> to_stream() |> partition(_ < 3)
+(small, big2) = nums5 |> partition(_ < 3)
 println("${len(ws)} ${len(small)} ${len(big2)}")
 ```
 
@@ -2597,16 +2595,15 @@ Output: `alice is 30`, then `bob is 25`. More stages shape a stream. `distinct()
 
 ```
 words = List("pear", "fig", "banana", "fig", "kiwi")
-println("${words |> to_stream() |> distinct() |> collect()}")
+println("${words |> distinct() |> collect()}")
 joined = words
-  |> to_stream()
   |> distinct()
   |> intersperse("|")
   |> reduce("", _1 + _2)
 println("$joined")
 print("${words |> min_by(len)} ")
 println("${words |> max_by(len)}")
-(short, rest) = words |> to_stream() |> span((w) -> len(w) < 6)
+(short, rest) = words |> span((w) -> len(w) < 6)
 println("$short ${len(rest)}")
 ```
 
@@ -2614,9 +2611,9 @@ Output: `List("pear", "fig", "banana", "kiwi")`, `pear|fig|banana|kiwi`, `Ok("fi
 
 ```
 sums = zip_with(_1 + _2, List(1, 2, 3), List(10, 20, 30)) |> collect()
-flat = List(List(1, 2), List(3)) |> to_stream() |> flatten() |> collect()
-loop3 = List(1, 2) |> to_stream() |> cycle() |> take(5) |> collect()
-(head, tail) = List(1, 2, 3, 4) |> to_stream() |> split_at(1)
+flat = List(List(1, 2), List(3)) |> flatten() |> collect()
+loop3 = List(1, 2) |> cycle() |> take(5) |> collect()
+(head, tail) = List(1, 2, 3, 4) |> split_at(1)
 println("$sums $flat $loop3 $head $tail")
 ```
 
@@ -3671,13 +3668,13 @@ tuple Html
 tuple Li
   text String
 fn join(parts List[Html]) String
-  parts |> to_stream() |> map(_.text) |> reduce("", _1 + _2)
+  parts |> map(_.text) |> reduce("", _1 + _2)
 fn h1(text String) Html
   Html(text: "<h1>$text</h1>")
 fn li(text String) Li
   Li(text: "<li>$text</li>")
 fn ul(items ...Li) Html
-  inner = items |> to_stream() |> map(_.text) |> reduce("", _1 + _2)
+  inner = items |> map(_.text) |> reduce("", _1 + _2)
   Html(text: "<ul>$inner</ul>")
 fn body(children ...Html) Html
   Html(text: "<body>${join(children)}</body>")
@@ -3785,7 +3782,7 @@ println("$total")
 ```
 test "reversing twice changes nothing"
   forall xs List[Int]
-    assert_eq(xs |> to_stream() |> reverse() |> reverse() |> collect(), xs)
+    assert_eq(xs |> reverse() |> reverse() |> collect(), xs)
 ```
 
 The values come from the types: whole numbers (with the edge cases mixed in), `Bool`, `Char`, `String`, `Float`, `Double`, lists and arrays of those, tuples, your own tuples, and enums. The run is seeded, so it repeats exactly. When a case fails, moxie shrinks it before reporting, so a failure reads `x = 1000` and not `x = 2030568236571276233`, along with the seed that replays it. `moxie test --seed 7 FILE` replays or varies the run, and `--cases 1000` runs more of them. The body must be pure, so it can't print or read a channel, and `forall` goes directly inside a `test`. A type with a rule needs its own generator, or `forall` would mostly make values the rule forbids. Implement `Generatable`, building a value from the `Gen` it is handed, and optionally list simpler values for shrinking:
@@ -3869,7 +3866,7 @@ fn inc(x Int) Int = x + 1
 fn twice(x Int) Int = x * 2
 fn square(x Int) Int = x * x
 pipeline = inc ~> twice ~> square
-out List[Int] = List(1, 2, 3) |> to_stream() |> map(pipeline) |> collect()
+out List[Int] = List(1, 2, 3) |> map(pipeline) |> collect()
 println("${pipeline(2)} ${out(0)} ${out(1)} ${out(2)}")
 ```
 
@@ -4017,7 +4014,7 @@ These are prelude interfaces over a type constructor `F[_]` (chapter 8d), with t
 
 ```
 interface Functor[F[_]]
-  fn map[A, B](self F[A], f (A) -> B) F[B]
+  fn fmap[A, B](self F[A], f (A) -> B) F[B]
 interface Applicative[F[_]]
   Functor[F]
   static fn pure[A](a A) F[A]
@@ -4031,7 +4028,7 @@ The prelude has instances for `Result[_, E]`, `Stream`, `List[_]` **[gc]**, and 
 
 ```
 impl Monad[Box]
-  fn map[A, B](self Box[A], f (A) -> B) Box[B]
+  fn fmap[A, B](self Box[A], f (A) -> B) Box[B]
     when self
       Full(v) -> Box.Full(f(v))
       Empty -> Box.Empty
@@ -4039,7 +4036,7 @@ impl Monad[Box]
     Box.Full(a)
   fn ap[A, B](self Box[(A) -> B], x Box[A]) Box[B]
     when self
-      Full(g) -> x.map(g)
+      Full(g) -> x.fmap(g)
       Empty -> Box.Empty
   fn flat_map[A, B](self Box[A], f (A) -> Box[B]) Box[B]
     when self
@@ -4051,7 +4048,7 @@ println("${Box.pure(20).flat_map(half).flat_map(half)}")
 
 Output: `Box.Full(4) Box.Full(5)`. The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `map`, `ap`, and `flat_map` for any such type. Code written once for every monad (`double_in`, `lift2`) is in chapter 8d. The compiler does not check the monad laws, evaluation is eager, and there is no return-type dispatch: write `Box.pure(42)`, never a bare `pure(42)`. A type that accumulates several errors should implement `Applicative` only.
 
-**Transformers on a List.** A `List` stays a `List` through `map`, `filter`, `take`, `drop`, `take_while`, `drop_while`, `sort`, `sort_by`, `reverse`, `zip`, `enumerate`, `concat`, `scan` and `distinct`, so `xs |> filter(p) |> map(f)` is a `List` you can print, index and take the `len` of, with no `to_stream()` or `collect()`. The result's capacity is the source's, which is a safe bound even for `filter`. `Array` has a `Functor` impl for `map` and keeps its size (`Array[Int][3]` becomes `Array[String][3]`); the other stages on an `Array`, and every stage on a range, give a `Stream`. A `Stream` gives a `Stream`, and printing or interpolating one is a compile error that says to `collect()` it first. Each stage on a List runs `f` on every element at once; when a chain should stay lazy (a `take` that stops early, an `f` with effects), start it with `to_stream()`.
+**Pipelines.** Every collection, range and string is a pipeline source as it stands, so `xs |> filter(p) |> map(f) |> collect()` needs nothing at the start, and `collect()` (or a terminal such as `sum`, `reduce`, `first` and `count`, or a `for` loop) is the only conversion at the end. Every stage (`map`, `filter`, `take`, `drop`, `sort`, `reverse`, `zip`, `enumerate`, `scan`, `distinct`, ...) is lazy and returns a `Stream`, on a `List` as on anything else, so a chain runs as one fused loop and builds no intermediate list. Printing, indexing or taking the `len` of a `Stream` is a compile error that says to `collect()` it first. `to_stream()` is needed only to hand a collection to something that asks for a `Stream[T]` (a function parameter, `traverse`), or to bind a stream to a name. `map` is the stage; the `Functor` method is `fmap`, which keeps the container: `xs.fmap(f)` on a `List` is a `List`, on an `Array` an `Array`, and on an `Option` or `Result` the same constructor, and generic code over `F[_]` uses it, as does `<$>`.
 
 **Sequences with the operators.** With `Box` and its `Monad` impl in scope (they are your code, not the prelude's), `|>>` chains steps that each return a `Box`, `<$>` maps a plain function over the value inside, and `<*>` combines independent values. `Result` and `List` work the same way with no impl of your own, because the prelude supplies them. `Maybe`, `Option`, `Either`, and similar types are never built in: you define the type and its impl.
 
@@ -4128,7 +4125,7 @@ fn pay_for(id Int, bonus_pct Int) Result[Int, PayError]
     base = base_pay(rank)
     yield base + base * bonus_pct / 100
 fn process_batch(ids List[Int], bonus_pct Int) Result[List[Int], PayError]
-  ids |> to_stream() |> traverse(pay_one(_, bonus_pct))
+  ids |> traverse(pay_one(_, bonus_pct))
 println("${pay_one(42, 10)} ${pay_for(42, 10)}")
 when process_batch(List(42, 7), 10)
   Ok(all) -> println("${all(0)} ${all(1)}")
@@ -4192,12 +4189,12 @@ fn bind_state[S, A, B](m State[S, A], f (A) -> State[S, B], s S) (B, S)
   (a, s2) = m.run(s)
   f(a).run(s2)
 impl[S] Monad[State[S, _]]
-  fn map[A, B](self State[S, A], f (A) -> B) State[S, B]
+  fn fmap[A, B](self State[S, A], f (A) -> B) State[S, B]
     State(run: (s) -> map_state(self, f, s))
   static fn pure[A](a A) State[S, A]
     State(run: (s) -> (a, s))
   fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]
     State(run: (s) -> bind_state(self, f, s))
 next_id = State(run: (c Int) -> (c + 1, c + 1))
@@ -4264,7 +4261,7 @@ enum Cmd[Next]
   Ask((String) -> Next)
 
 impl Functor[Cmd]
-  fn map[A, B](self Cmd[A], f (A) -> B) Cmd[B]
+  fn fmap[A, B](self Cmd[A], f (A) -> B) Cmd[B]
     when self
       Say(s, n) -> Say(s, f(n))
       Ask(k) -> Ask((x) -> f(k(x)))
@@ -4962,7 +4959,7 @@ When the live data passes `heap`, the program stops with an `out of memory` mess
 A name that is finished with holds nothing. The collector counts a local only until its last use, so a variable you have finished with doesn't keep its value alive:
 
 ```
-xs List[Int] = 1..1000000 |> to_stream() |> collect()
+xs List[Int] = 1..1000000 |> collect()
 total = xs |> reduce(0, _1 + _2)
 println("$total")
 ```
@@ -4992,7 +4989,7 @@ println("${len(r)} ${r(0)} ${r(2)}")
 Output: `3 m3 m5`. The ring never holds more than three messages, however many are written, and `to_stream(r)` yields them oldest first. For a stream, `take_last(n)` keeps just the last `n` elements:
 
 ```
-last2 = List(1, 2, 3, 4, 5) |> to_stream() |> take_last(2) |> collect()
+last2 = List(1, 2, 3, 4, 5) |> take_last(2) |> collect()
 println("${last2}")
 ```
 

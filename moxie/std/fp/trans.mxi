@@ -10,7 +10,7 @@ export tuple Identity[A]
   value A
 
 impl Monad[Identity]
-  fn map[A, B](self Identity[A], f (A) -> B) Identity[B]
+  fn fmap[A, B](self Identity[A], f (A) -> B) Identity[B]
     Identity(value: f(self.value))
   static fn pure[A](a A) Identity[A]
     Identity(value: a)
@@ -56,12 +56,12 @@ export tuple StateT[M[_], S, A]
   run (S) -> M[(A, S)]
 
 impl[M[_] Monad, S] Monad[StateT[M, S, _]]
-  fn map[A, B](self StateT[M, S, A], f (A) -> B) StateT[M, S, B]
-    StateT(run: (s) -> self.run(s).map((p) -> (f(p(0)), p(1))))
+  fn fmap[A, B](self StateT[M, S, A], f (A) -> B) StateT[M, S, B]
+    StateT(run: (s) -> self.run(s).fmap((p) -> (f(p(0)), p(1))))
   static fn pure[A](a A) StateT[M, S, A]
     StateT(run: (s) -> M.pure((a, s)))
   fn ap[A, B](self StateT[M, S, (A) -> B], x StateT[M, S, A]) StateT[M, S, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self StateT[M, S, A], f (A) -> StateT[M, S, B]) StateT[M, S, B]
     StateT(run: (s) -> self.run(s).flat_map((p) -> f(p(0)).run(p(1))))
 
@@ -77,7 +77,7 @@ impl[M[_] Monad, S] MonadState[StateT[M, S, _], S]
 
 /// Run an action of the inner monad `m` inside a `StateT`.
 export fn lift_state_t[M[_] Monad, S, A](m M[A]) StateT[M, S, A]
-  StateT(run: (s S) -> m.map((a) -> (a, s)))
+  StateT(run: (s S) -> m.fmap((a) -> (a, s)))
 
 /// Run with a starting state: the inner monad's `(result, final state)`.
 export fn run_state_t[M[_] Monad, S, A](m StateT[M, S, A], s S) M[(A, S)]
@@ -85,11 +85,11 @@ export fn run_state_t[M[_] Monad, S, A](m StateT[M, S, A], s S) M[(A, S)]
 
 /// Run and keep only the result.
 export fn eval_state_t[M[_] Monad, S, A](m StateT[M, S, A], s S) M[A]
-  m.run(s).map((p) -> p(0))
+  m.run(s).fmap((p) -> p(0))
 
 /// Run and keep only the final state.
 export fn exec_state_t[M[_] Monad, S, A](m StateT[M, S, A], s S) M[S]
-  m.run(s).map((p) -> p(1))
+  m.run(s).fmap((p) -> p(1))
 
 // ---------------------------------------------------------------- ReaderT
 
@@ -98,12 +98,12 @@ export tuple ReaderT[M[_], R, A]
   run (R) -> M[A]
 
 impl[M[_] Monad, R] Monad[ReaderT[M, R, _]]
-  fn map[A, B](self ReaderT[M, R, A], f (A) -> B) ReaderT[M, R, B]
-    ReaderT(run: (r) -> self.run(r).map(f))
+  fn fmap[A, B](self ReaderT[M, R, A], f (A) -> B) ReaderT[M, R, B]
+    ReaderT(run: (r) -> self.run(r).fmap(f))
   static fn pure[A](a A) ReaderT[M, R, A]
     ReaderT(run: (r) -> M.pure(a))
   fn ap[A, B](self ReaderT[M, R, (A) -> B], x ReaderT[M, R, A]) ReaderT[M, R, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self ReaderT[M, R, A], f (A) -> ReaderT[M, R, B]) ReaderT[M, R, B]
     ReaderT(run: (r) -> self.run(r).flat_map((a) -> f(a).run(r)))
 
@@ -130,26 +130,26 @@ export tuple WriterT[M[_], W, A]
   run M[(A, List[W])]
 
 impl[M[_] Monad, W] Monad[WriterT[M, W, _]]
-  fn map[A, B](self WriterT[M, W, A], f (A) -> B) WriterT[M, W, B]
-    WriterT(run: self.run.map((p) -> (f(p(0)), p(1))))
+  fn fmap[A, B](self WriterT[M, W, A], f (A) -> B) WriterT[M, W, B]
+    WriterT(run: self.run.fmap((p) -> (f(p(0)), p(1))))
   static fn pure[A](a A) WriterT[M, W, A]
     WriterT(run: M.pure((a, List())))
   fn ap[A, B](self WriterT[M, W, (A) -> B], x WriterT[M, W, A]) WriterT[M, W, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self WriterT[M, W, A], f (A) -> WriterT[M, W, B]) WriterT[M, W, B]
-    WriterT(run: self.run.flat_map((p) -> f(p(0)).run.map((q) -> (q(0), p(1) + q(1)))))
+    WriterT(run: self.run.flat_map((p) -> f(p(0)).run.fmap((q) -> (q(0), p(1) + q(1)))))
 
 impl[M[_] Monad, W] MonadWriter[WriterT[M, W, _], W]
   static fn tell(entry W) WriterT[M, W, Unit]
     WriterT(run: M.pure(((), List(entry))))
   static fn listen[A](m WriterT[M, W, A]) WriterT[M, W, (A, List[W])]
-    WriterT(run: m.run.map((p) -> ((p(0), p(1)), p(1))))
+    WriterT(run: m.run.fmap((p) -> ((p(0), p(1)), p(1))))
   static fn censor[A](f (List[W]) -> List[W], m WriterT[M, W, A]) WriterT[M, W, A]
-    WriterT(run: m.run.map((p) -> (p(0), f(p(1)))))
+    WriterT(run: m.run.fmap((p) -> (p(0), f(p(1)))))
 
 /// Run an action of the inner monad `m` inside a `WriterT`.
 export fn lift_writer_t[M[_] Monad, W, A](m M[A]) WriterT[M, W, A]
-  WriterT(run: m.map((a) -> (a, List())))
+  WriterT(run: m.fmap((a) -> (a, List())))
 
 /// Run: the inner monad's `(result, log)`.
 export fn run_writer_t[M[_] Monad, W, A](m WriterT[M, W, A]) M[(A, List[W])]
@@ -162,12 +162,12 @@ export tuple ExceptT[M[_], E, A]
   run M[Result[A, E]]
 
 impl[M[_] Monad, E] Monad[ExceptT[M, E, _]]
-  fn map[A, B](self ExceptT[M, E, A], f (A) -> B) ExceptT[M, E, B]
-    ExceptT(run: self.run.map((r) -> map_ok(r, f)))
+  fn fmap[A, B](self ExceptT[M, E, A], f (A) -> B) ExceptT[M, E, B]
+    ExceptT(run: self.run.fmap((r) -> map_ok(r, f)))
   static fn pure[A](a A) ExceptT[M, E, A]
     ExceptT(run: M.pure(Ok(a)))
   fn ap[A, B](self ExceptT[M, E, (A) -> B], x ExceptT[M, E, A]) ExceptT[M, E, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self ExceptT[M, E, A], f (A) -> ExceptT[M, E, B]) ExceptT[M, E, B]
     next = (r) -> when r
       Ok(a) -> f(a).run
@@ -185,7 +185,7 @@ impl[M[_] Monad, E] MonadError[ExceptT[M, E, _], E]
 
 /// Run an action of the inner monad `m` inside an `ExceptT`.
 export fn lift_except_t[M[_] Monad, E, A](m M[A]) ExceptT[M, E, A]
-  ExceptT(run: m.map((a) -> Ok(a)))
+  ExceptT(run: m.fmap((a) -> Ok(a)))
 
 /// Run: the inner monad's `Result`.
 export fn run_except_t[M[_] Monad, E, A](m ExceptT[M, E, A]) M[Result[A, E]]
@@ -251,7 +251,7 @@ impl[M[_] Monad + MonadWriter[W], W, S] MonadWriter[StateT[M, S, _], W]
   static fn tell(entry W) StateT[M, S, Unit]
     lift_state_t(M.tell(entry))
   static fn listen[A](m StateT[M, S, A]) StateT[M, S, (A, List[W])]
-    StateT(run: (s) -> M.listen(m.run(s)).map((q) -> ((q(0)(0), q(1)), q(0)(1))))
+    StateT(run: (s) -> M.listen(m.run(s)).fmap((q) -> ((q(0)(0), q(1)), q(0)(1))))
   static fn censor[A](f (List[W]) -> List[W], m StateT[M, S, A]) StateT[M, S, A]
     StateT(run: (s) -> M.censor(f, m.run(s)))
 
@@ -267,7 +267,7 @@ impl[M[_] Monad + MonadWriter[W], W, E] MonadWriter[ExceptT[M, E, _], W]
   static fn tell(entry W) ExceptT[M, E, Unit]
     lift_except_t(M.tell(entry))
   static fn listen[A](m ExceptT[M, E, A]) ExceptT[M, E, (A, List[W])]
-    ExceptT(run: M.listen(m.run).map((q) -> map_ok(q(0), (a) -> (a, q(1)))))
+    ExceptT(run: M.listen(m.run).fmap((q) -> map_ok(q(0), (a) -> (a, q(1)))))
   static fn censor[A](f (List[W]) -> List[W], m ExceptT[M, E, A]) ExceptT[M, E, A]
     ExceptT(run: M.censor(f, m.run))
 
@@ -296,12 +296,12 @@ export tuple ContT[M[_], R, A]
   run ((A) -> M[R]) -> M[R]
 
 impl[M[_] Monad, R] Monad[ContT[M, R, _]]
-  fn map[A, B](self ContT[M, R, A], f (A) -> B) ContT[M, R, B]
+  fn fmap[A, B](self ContT[M, R, A], f (A) -> B) ContT[M, R, B]
     ContT(run: (k) -> self.run((a) -> k(f(a))))
   static fn pure[A](a A) ContT[M, R, A]
     ContT(run: (k) -> k(a))
   fn ap[A, B](self ContT[M, R, (A) -> B], x ContT[M, R, A]) ContT[M, R, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self ContT[M, R, A], f (A) -> ContT[M, R, B]) ContT[M, R, B]
     ContT(run: (k) -> self.run((a) -> f(a).run(k)))
 
@@ -367,16 +367,16 @@ export tuple FreeT[F[_], M[_], A]
   run M[FreeStep[F, M, A]]
 
 impl[F[_] Functor, M[_] Monad] Monad[FreeT[F, M, _]]
-  fn map[A, B](self FreeT[F, M, A], f (A) -> B) FreeT[F, M, B]
+  fn fmap[A, B](self FreeT[F, M, A], f (A) -> B) FreeT[F, M, B]
     self.flat_map((a) -> FreeT(run: M.pure(FtDone(f(a)))))
   static fn pure[A](a A) FreeT[F, M, A]
     FreeT(run: M.pure(FtDone(a)))
   fn ap[A, B](self FreeT[F, M, (A) -> B], x FreeT[F, M, A]) FreeT[F, M, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self FreeT[F, M, A], f (A) -> FreeT[F, M, B]) FreeT[F, M, B]
     next = (st) -> when st
       FtDone(a) -> f(a).run
-      FtMore(fa) -> M.pure(FtMore(fa.map((n) -> n.flat_map(f))))
+      FtMore(fa) -> M.pure(FtMore(fa.fmap((n) -> n.flat_map(f))))
     FreeT(run: self.run.flat_map(next))
 
 /// A monad that can issue the instructions of a functor `F`.
@@ -387,17 +387,17 @@ impl[F[_] Functor, M[_] Monad] MonadFree[FreeT[F, M, _], F]
   static fn wrap[A](fa F[A]) FreeT[F, M, A]
     fn leaf(a A) FreeT[F, M, A]
       FreeT(run: M.pure(FtDone(a)))
-    FreeT(run: M.pure(FtMore(fa.map(leaf))))
+    FreeT(run: M.pure(FtMore(fa.fmap(leaf))))
 
 /// Run an action of the inner monad `m` inside a `FreeT`.
 export fn lift_free_t[F[_] Functor, M[_] Monad, A](m M[A]) FreeT[F, M, A]
-  FreeT(run: m.map((a) -> FtDone(a)))
+  FreeT(run: m.fmap((a) -> FtDone(a)))
 
 /// Interpret a program: `on_done` handles the final value, `step` one instruction whose rest has been interpreted; both work in `M`.
 export fn fold_free_t[F[_] Functor, M[_] Monad, A, B](m FreeT[F, M, A], on_done (A) -> M[B], step (F[M[B]]) -> M[B]) M[B]
   next = (st) -> when st
     FtDone(a) -> on_done(a)
-    FtMore(fa) -> step(fa.map((n) -> fold_free_t(n, on_done, step)))
+    FtMore(fa) -> step(fa.fmap((n) -> fold_free_t(n, on_done, step)))
   m.run.flat_map(next)
 
 // ---------------------------------------------------------------- MonadTrans

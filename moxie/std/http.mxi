@@ -29,7 +29,7 @@ fn lower_eq(a String, b String) Bool
 
 /// The value of the first header called `name` (names compare without regard to case), or an `Err` (MISSING).
 export fn header_value(headers List[Header], name String) Result[String, Error]
-  hits = headers |> to_stream() |> filter((h) -> lower_eq(h.name, name)) |> collect()
+  hits = headers |> filter((h) -> lower_eq(h.name, name)) |> collect()
   if len(hits) == 0
     Err(Error(code: MISSING, message: "no such header"))
   else
@@ -57,7 +57,7 @@ export fn text(status Int, body String) Response
 
 fn parse_header(line String) Header
   parts = split(line, ":")
-  rest = parts(1..) |> to_stream() |> join(":")
+  rest = parts(1..) |> join(":")
   Header(name: trim(parts(0)), value: trim(rest))
 
 // Header lines up to the blank line that ends them.
@@ -89,7 +89,7 @@ export fn read_request(c Io) Result[Request, Error]
   Ok(Request(method: parts(0), path: parts(1), headers: headers, body: body))
 
 fn header_lines(headers List[Header]) String
-  headers |> to_stream() |> map((h) -> "${h.name}: ${h.value}${crlf()}") |> join("")
+  headers |> map((h) -> "${h.name}: ${h.value}${crlf()}") |> join("")
 
 fn length_of(body String) Int
   len(to_utf8(body))

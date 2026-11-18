@@ -21,7 +21,7 @@ CASES = [
  ("reading a Dyn in an untagged fn is an error", 'import json\nfn f(d json.Dyn) Result[Int, Error]\n  d.field("a")?.as_int()\n', False, 2, "must be declared `dynamic fn`"),
  ("dynamic fn may read a Dyn", 'import json\ndynamic fn f(d json.Dyn) Result[Int, Error]\n  d.field("a")?.as_int()\nprintln(f(json.parse("{\\"a\\": 4}")?))\n', False, 0, "Ok(4)"),
  ("top-level code may read a Dyn", 'import json\nd = json.parse("[7]")?\nprintln(d.at(0)?.as_int())\n', False, 0, "Ok(7)"),
- ("a lambda uses its enclosing fn's tag", 'import json\ndynamic fn f(d json.Dyn) Result[Int, Error]\n  d.as_list()?.map((x) -> x.as_int()) |> len() |> Ok\nprintln(f(json.parse("[1,2]")?))\n', False, 0, "Ok(2)"),
+ ("a lambda uses its enclosing fn's tag", 'import json\ndynamic fn f(d json.Dyn) Result[Int, Error]\n  d.as_list()?.fmap((x) -> x.as_int()) |> len() |> Ok\nprintln(f(json.parse("[1,2]")?))\n', False, 0, "Ok(2)"),
  ("a caller of a dynamic fn is fine by default", 'import json\ndynamic fn f(d json.Dyn) Result[Int, Error]\n  d.as_int()\nfn g(d json.Dyn) Result[Int, Error]\n  f(d)\nprintln(g(json.parse("5")?))\n', False, 0, "Ok(5)"),
  ("strict: a caller of a dynamic fn must be tagged", 'import json\ndynamic fn f(d json.Dyn) Result[Int, Error]\n  d.as_int()\nfn g(d json.Dyn) Result[Int, Error]\n  f(d)\n', True, 2, "with `safety = \"strict\"`"),
  ("strict: a tagged caller is fine", 'import json\ndynamic fn f(d json.Dyn) Result[Int, Error]\n  d.as_int()\ndynamic fn g(d json.Dyn) Result[Int, Error]\n  f(d)\nprintln(g(json.parse("5")?))\n', True, 0, "Ok(5)"),

@@ -30,7 +30,7 @@ CASES = [
  ("struct returned by value", 'println("${div(17i32, 5i32)}")\n', 0, "DivT(quot: 3, rem: 2)"),
  ("CString", 'println("${strlen(cstr("héllo"))} ${atoi(cstr("42"))}")\n', 0, "6 42"),
  ("CString needs cstr", 'println("${strlen("abc")}")\n', 1, "cstr"),
- ("a foreign result is an ordinary value", 'xs = List(1.0, 4.0, 9.0)\nprintln("${xs |> to_stream() |> map(pow(_, 0.5)) |> collect()}")\n', 0, "List(1.0, 2.0, 3.0)"),
+ ("a foreign result is an ordinary value", 'xs = List(1.0, 4.0, 9.0)\nprintln("${xs |> map(pow(_, 0.5)) |> collect()}")\n', 0, "List(1.0, 2.0, 3.0)"),
  ("foreign function without an effect declaration is an error", 'foreign "m"\n  fn sin(x Double) Double\nprintln("x")\n', 2, "needs an effect declaration"),
  ("pure fn may not call an impure foreign function", 'foreign "m"\n  impure fn sin(x Double) Double\npure fn f(x Double) Double = sin(x)\n', 2, "pure fn"),
  ("unknown function in a library", 'foreign "m"\n  pure fn no_such_function(x Double) Double\nprintln("x")\n', 1, "has no function"),

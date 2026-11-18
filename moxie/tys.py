@@ -49,7 +49,7 @@ def show(t):
     if tag == "unionv":
         return t[1]
     if tag == "app" and t[1] == "Seq" and len(t[2]) == 1:      # the library's name for any collection; not a type a program writes
-        return "{List, Array, Set, Ring, Stream} of " + show(t[2][0])
+        return "{List, Array, Set, Dict, Ring, Stream, String, a range} of " + show(t[2][0])
     if tag == "app":
         return f"{t[1]}[{', '.join(show(a) for a in t[2])}]" + (f"[{show_size(t[3])}]" if len(t) > 3 and t[3] is not None else "")
     if tag == "fn":
@@ -355,6 +355,8 @@ def unify(pat, act, binds):
                 if r:
                     return r
         return None
+    if pat[0] == "app" and pat[1] == "Seq" and act == "String":                 # a String is a source of its Chars
+        return unify(pat[2][0], "Char", binds)
     if pat[0] == "app" and pat[1] == "Seq" and act[0] == "app" and act[1] == "Dict" and len(act[2]) == 2:
         return unify(pat[2][0], ("tup", (act[2][0], act[2][1])), binds)
     if pat[0] == act[0] == "app" and (pat[1] == act[1] or (pat[1] == "Seq" and act[1] in SEQ_HEADS)) and len(pat[2]) == len(act[2]):
@@ -404,6 +406,8 @@ def match(pat, act, binds, strict=False):
         return True
     if at in ("param", "appv", "ctor", "tapp", "overloads") or pt in ("appv", "ctor", "tapp"):
         return True
+    if pt == "app" and pat[1] == "Seq" and act == "String":
+        return match(pat[2][0], "Char", binds, strict)
     if pt == "app":
         if at != "app":
             return False

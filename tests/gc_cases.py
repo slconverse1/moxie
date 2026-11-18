@@ -50,7 +50,7 @@ println("${len(d)} ${len(d3)} ${d3("z").get_or(0)}")
 ''', ["0 2 9"], 0),
 ("variadic is a List", '''
 fn total(base Int, numbers ...Int) Int
-  numbers |> to_stream() |> reduce(base, _1 + _2)
+  numbers |> reduce(base, _1 + _2)
 vs = List(10, 20, 30, 40, 50)
 println("${total(100, 10, 20, 30)} ${total(100, ...vs)} ${total(100)}")
 ''', ["160 250 100"], 0),
@@ -78,7 +78,7 @@ println("$total")
 ''', ["150"], 0),
 ("a stream can be returned", '''
 fn evens(xs List[Int]) Stream[Int]
-  xs |> to_stream() |> filter(_ % 2 == 0)
+  xs |> filter(_ % 2 == 0)
 for x in evens(List(1, 2, 3, 4, 5, 6))
   println("$x")
 ''', ["2", "4", "6"], 0),
@@ -102,8 +102,8 @@ a = Atom[Tree](t)
 println("${size(d("t1").get_or(Leaf))} ${size(@a)}")
 ''', ["2 2"], 0),
 ("dead names hold nothing: a big list summed", '''
-xs List[Int] = 1..100000 |> to_stream() |> collect()
-total = xs |> to_stream() |> reduce(0, _1 + _2)
+xs List[Int] = 1..100000 |> collect()
+total = xs |> reduce(0, _1 + _2)
 println("$total")
 ''', ["5000050000"], 0),
 ("the Atom that keeps everything", '''
@@ -127,7 +127,7 @@ r = @log
 println("${len(r)} ${r(0)} ${r(2)}")
 ''', ["3 m3 m5"], 0),
 ("take_last keeps the last n", '''
-last2 = List(1, 2, 3, 4, 5) |> to_stream() |> take_last(2) |> collect()
+last2 = List(1, 2, 3, 4, 5) |> take_last(2) |> collect()
 println("${last2}")
 ''', ["List(4, 5)"], 0),
 ]

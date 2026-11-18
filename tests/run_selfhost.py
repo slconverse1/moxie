@@ -71,7 +71,7 @@ def main():
     lib = open(os.path.join(ROOT, "moxie", "selfhost", "lexer.mxi"), encoding="utf-8").read()
     driver = lib + '''
 when read_all()
-  Ok(s) -> println(lex_lines(s) |> to_stream() |> map(show_token) |> join("\\n"))
+  Ok(s) -> println(lex_lines(s) |> map(show_token) |> join("\\n"))
   Err(e) -> println("no input")
 '''
     path = os.path.join(ROOT, "tests", "_selfhost_driver.mxi")

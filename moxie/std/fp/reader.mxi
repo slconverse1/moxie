@@ -5,12 +5,12 @@ export tuple Reader[R, A]
   run (R) -> A
 
 impl[R] Monad[Reader[R, _]]
-  fn map[A, B](self Reader[R, A], f (A) -> B) Reader[R, B]
+  fn fmap[A, B](self Reader[R, A], f (A) -> B) Reader[R, B]
     Reader(run: (r) -> f(self.run(r)))
   static fn pure[A](a A) Reader[R, A]
     Reader(run: (r) -> a)
   fn ap[A, B](self Reader[R, (A) -> B], x Reader[R, A]) Reader[R, B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self Reader[R, A], f (A) -> Reader[R, B]) Reader[R, B]
     Reader(run: (r) -> f(self.run(r)).run(r))
 

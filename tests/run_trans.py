@@ -133,7 +133,7 @@ FREE = """enum Cmd[Next]
   Say(String, Next)
   Ask((String) -> Next)
 impl Functor[Cmd]
-  fn map[A, B](self Cmd[A], f (A) -> B) Cmd[B]
+  fn fmap[A, B](self Cmd[A], f (A) -> B) Cmd[B]
     when self
       Say(s, n) -> Say(s, f(n))
       Ask(k) -> Ask((x) -> f(k(x)))

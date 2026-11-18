@@ -127,13 +127,13 @@ impl[T Ordered] Semigroup for Max[T]
   fn combine(self, other Max[T]) Max[T] = Max(max(self.value, other.value))
 
 fn fold_all[T Monoid](xs) T
-  items = xs |> to_stream() |> collect()
+  items = xs |> collect()
   when items
-    List(h, ...t) -> t |> to_stream() |> reduce(h, (acc, x) -> acc.combine(x))
+    List(h, ...t) -> t |> reduce(h, (acc, x) -> acc.combine(x))
     _ -> T.empty()
 
 fn fold_map[T, M Monoid](f, xs) M
-  fold_all[M](xs |> to_stream() |> map(f) |> collect())
+  fold_all[M](xs |> map(f) |> collect())
 
 tuple NonEmpty[T]
   head T
@@ -148,16 +148,16 @@ impl NonEmpty[T]
   fn to_list(self) List[T] = List(self.head) + self.tail
   fn len(self) Int = 1 + len(self.tail)
   fn to_stream(self) = to_stream(List(self.head) + self.tail)
-  fn map(self, f) = NonEmpty(f(self.head), self.tail |> to_stream() |> map(f) |> collect())
-  fn reduce1(self, f) = self.tail |> to_stream() |> reduce(self.head, f)
-  fn min(self) = self.tail |> to_stream() |> reduce(self.head, min)
-  fn max(self) = self.tail |> to_stream() |> reduce(self.head, max)
+  fn map(self, f) = NonEmpty(f(self.head), self.tail |> map(f) |> collect())
+  fn reduce1(self, f) = self.tail |> reduce(self.head, f)
+  fn min(self) = self.tail |> reduce(self.head, min)
+  fn max(self) = self.tail |> reduce(self.head, max)
 enum Option[T] deriving eq, show, read
   Some(value T)
   None
 
 impl Monad[Option]
-  fn map[A, B](self Option[A], f (A) -> B) Option[B]
+  fn fmap[A, B](self Option[A], f (A) -> B) Option[B]
     when self
       Some(v) -> Option.Some(f(v))
       None -> Option.None
@@ -165,7 +165,7 @@ impl Monad[Option]
     Option.Some(a)
   fn ap[A, B](self Option[(A) -> B], x Option[A]) Option[B]
     when self
-      Some(g) -> x.map(g)
+      Some(g) -> x.fmap(g)
       None -> Option.None
   fn flat_map[A, B](self Option[A], f (A) -> Option[B]) Option[B]
     when self
@@ -186,12 +186,12 @@ SRC = SRC + tuple_source()
 
 GC_SRC = '''
 impl Monad[List[_]]
-  fn map[A, B](self List[A], f (A) -> B) List[B]
+  fn fmap[A, B](self List[A], f (A) -> B) List[B]
     self.reduce(List(), (acc, a) -> acc + List(f(a)))
   static fn pure[A](a A) List[A]
     List(a)
   fn ap[A, B](self List[(A) -> B], x List[A]) List[B]
-    self.flat_map((g) -> x.map(g))
+    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self List[A], f (A) -> List[B]) List[B]
     self.reduce(List(), (acc, a) -> acc + f(a))
 '''

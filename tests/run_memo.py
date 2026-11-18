@@ -24,7 +24,7 @@ fn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]
 fn lcs(a String, b String) Int
   xs = List(c for c in chars(a))
   ys = List(c for c in chars(b))
-  last = xs |> to_stream() |> reduce(List(0 for _ in 0..len(ys)), (prev, x) -> lcs_row(prev, x, ys))
+  last = xs |> reduce(List(0 for _ in 0..len(ys)), (prev, x) -> lcs_row(prev, x, ys))
   last(len(ys))
 '''
 CASES = [

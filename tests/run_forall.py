@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-REV = 'xs |> to_stream() |> reverse() |> reverse() |> collect()'
+REV = 'xs |> reverse() |> reverse() |> collect()'
 CASES = [
  ("a true property passes", f'test "rev"\n  forall xs List[Int]\n    assert_eq({REV}, xs)\n', [], 0, "ok    rev"),
  ("several names", 'test "two"\n  forall a Int8, b Bool, s String\n    assert(len(s) >= 0)\n', [], 0, "ok    two"),
@@ -21,7 +21,7 @@ CASES = [
  ("a mixer-written Generatable keeps its rule", 'tuple Pct\n  n Int\n\nimpl Generatable for Pct\n  static fn generate(g Gen) Self = Pct(gen_int(g, 0, 100))\n  fn shrink() List[Pct]\n    when n\n      0 -> List()\n      _ -> List(Pct(0), Pct(n - 1))\n\ntest "t"\n  forall p Pct\n    assert(p.n >= 0 and p.n <= 100)\n', [], 0, "ok    t"),
  ("a mixer-written shrink is used", 'tuple Pct\n  n Int\n\nimpl Generatable for Pct\n  static fn generate(g Gen) Self = Pct(gen_int(g, 0, 100))\n  fn shrink() List[Pct]\n    when n\n      0 -> List()\n      _ -> List(Pct(0), Pct(n - 1))\n\ntest "t"\n  forall p Pct\n    assert(p.n < 10, "big")\n', [], 1, "Pct(n: 10)"),
  ("Generatable values nest inside other types", 'tuple Pct\n  n Int\n\nimpl Generatable for Pct\n  static fn generate(g Gen) Self = Pct(gen_int(g, 0, 100))\n  fn shrink() List[Pct]\n    when n\n      0 -> List()\n      _ -> List(Pct(0), Pct(n - 1))\n\ntest "t"\n  forall xs List[Pct]\n    assert(len(xs) < 3, "long")\n', [], 1, "xs = List(Pct("),
- ("sample builds a value inside generate", 'tuple Sorted\n  items List[Int]\n\nimpl Generatable for Sorted\n  static fn generate(g Gen) Self\n    xs = sample[List[Int8]](g)\n    Sorted(xs |> to_stream() |> sort() |> collect())\n\ntest "t"\n  forall s Sorted\n    assert_eq(s.items |> to_stream() |> sort() |> collect(), s.items)\n', [], 0, "ok    t"),
+ ("sample builds a value inside generate", 'tuple Sorted\n  items List[Int]\n\nimpl Generatable for Sorted\n  static fn generate(g Gen) Self\n    xs = sample[List[Int8]](g)\n    Sorted(xs |> sort() |> collect())\n\ntest "t"\n  forall s Sorted\n    assert_eq(s.items |> sort() |> collect(), s.items)\n', [], 0, "ok    t"),
  ("gen_pick chooses from a list", 'tuple Day\n  name String\n\nimpl Generatable for Day\n  static fn generate(g Gen) Self = Day(gen_pick(g, List("Mon", "Tue")))\n\ntest "t"\n  forall d Day\n    assert(d.name == "Mon" or d.name == "Tue")\n', [], 0, "ok    t"),
  ("an invariant filters the built-in generator", 'tuple Person\n  name String\n  invariant len(name) > 0\n\ntest "t"\n  forall p Person\n    assert(len(p.name) > 0)\n', [], 0, "ok    t"),
  ("an impossible invariant is reported", 'tuple Never\n  n Int\n  invariant n ~= n\n\ntest "t"\n  forall x Never\n    assert(true)\n', [], 1, "write impl Generatable"),
