@@ -43,7 +43,7 @@ def show(t):
     if tag == "named":
         return t[1]
     if tag == "bounded":
-        return f"Int[{t[1]}..={t[2]}]"
+        return f"Int[{t[1]}..{t[2]}]"
     if tag == "secret":
         return "Secret"
     if tag == "unionv":

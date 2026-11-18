@@ -90,7 +90,7 @@ SAMPLES = [
  ("Bool", "contains(d, \"a\")"),
  ("Double", "random()"),
  ("List[Int]", 'iterate(1, (n) -> n * 2) |> take(3) |> collect()'),
- ("Int", "random_int(1..=1)"),
+ ("Int", "random_int(1..1)"),
  ("String", '"  hi ".trim()'),
  ("Bool", 'starts_with("abc", "a")'),
  ("Bool", 'starts_with("abc", \'a\')'),

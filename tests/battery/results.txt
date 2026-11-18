@@ -87,29 +87,29 @@ fn g(e E) Int = when e
   A(n) -> n
 ### bounded int range coverage missing
 reject: 
-type alias Percent = Int[0..=100]
+type alias Percent = Int[0..100]
 fn d(p Percent) String = when p
   0 -> "e"
-  in 1..=99 -> "p"
+  in 1..99 -> "p"
 ### bounded int range coverage complete
 ok
-type alias Percent = Int[0..=100]
+type alias Percent = Int[0..100]
 fn d(p Percent) String = when p
   0 -> "e"
-  in 1..=99 -> "p"
+  in 1..99 -> "p"
   100 -> "f"
 ### bounded value out of range literal
 reject: 
-type alias Percent = Int[0..=100]
+type alias Percent = Int[0..100]
 x Percent = 101
 ### bounded arithmetic widening needs a cast
 reject: 
-type alias Percent = Int[0..=100]
+type alias Percent = Int[0..100]
 a Percent = 40
 b Percent = a + 70
 ### bounded in range ok
 ok
-type alias Percent = Int[0..=100]
+type alias Percent = Int[0..100]
 a Percent = 40
 println(a)
 ### integer literal too big for UInt8

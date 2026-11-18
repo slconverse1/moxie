@@ -15,7 +15,7 @@ OK = [
  ("a long condition", 'n = 5\nq = false\nprintln("go")\n  if n > 3 and not q\n', "go\n"),
  ("same as the one-line form", 'n = 5\nprintln("a")\n  if n > 3\nprintln("a") if n > 3\n', "a\na\n"),
  ("return", 'fn f(n Int) Int\n  return 0\n    if n < 0\n  n\nprintln("${f(-3)} ${f(3)}")\n', "0 3\n"),
- ("continue and break in a loop", 'for i in 1..5 do\n  continue\n    if i == 2\n  break\n    if i == 4\n  println("i=$i")\n', "i=1\ni=3\n"),
+ ("continue and break in a loop", 'for i in 1..<5 do\n  continue\n    if i == 2\n  break\n    if i == 4\n  println("i=$i")\n', "i=1\ni=3\n"),
  ("else value on one line", 'fn f(n Int) Int\n  println("ok $n") if n >= 0 else -1\n  n * 2\nprintln("${f(3)} ${f(-3)}")\n', "ok 3\n6 -1\n"),
  ("else value on the wrapped line", 'fn f(n Int) Int\n  println("ok $n")\n    if n >= 0 else -1\n  n * 2\nprintln("${f(3)} ${f(-3)}")\n', "ok 3\n6 -1\n"),
  ("else value on its own line", 'fn g(n Int) Result[Int, Error]\n  println("in range $n")\n    if n >= 0 and n <= 100\n    else fail(1, "out of range")\n  Ok(n)\nprintln("${g(5)} ${g(200)}")\n', 'in range 5\nOk(5) Err(Error(code: 1, message: "out of range"))\n'),

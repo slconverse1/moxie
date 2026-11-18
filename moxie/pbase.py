@@ -571,7 +571,7 @@ class PBase:
                     e = self._pat_lit_expr()
                 return PRel(t.val, e, line=line)
             if t.val in ("..", "..="):
-                self.err("a range in a pattern is written with `in`: `in ..=9 -> ...`")
+                self.err("a range in a pattern is written with `in`: `in ..9 -> ...`")
         if t.kind in ("INT", "FLOAT", "STR", "CHAR", "HASH", "DEC"):
             self.next()
             lit = self._lit_from_tok(t)
@@ -592,7 +592,7 @@ class PBase:
     def _range_tail(self, plit, lo, allow=False):
         if self.at_op("..") or self.at_op("..="):
             if not allow:
-                self.err("a range in a pattern is written with `in`: `in 1..=9 -> ...` (or `not in 1..=9 -> ...`)")
+                self.err("a range in a pattern is written with `in`: `in 1..9 -> ...` (or `not in 1..9 -> ...`)")
             op = self.next().val
             nt = self.peek()
             if nt.kind in ("INT", "FLOAT", "CHAR") or (nt.kind == "OP" and nt.val == "-"):

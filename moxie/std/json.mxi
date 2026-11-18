@@ -141,7 +141,7 @@ fn jerr(msg String, i Int) Error
   Error(code: 1, message: "$msg at character $i")
 
 fn skip_ws(cs List[Char], i Int) Int
-  for k in i..len(cs)
+  for k in i..<len(cs)
     c = cs(k)
     if not (c == ' ' or c == '\n' or c == '\t' or c == '\r')
       break(k)
@@ -152,7 +152,7 @@ fn lit_at(cs List[Char], i Int, word String) Bool
   w = word |> chars() |> collect()
   if i + len(w) > len(cs)
     return false
-  for k in 0..len(w)
+  for k in 0..<len(w)
     if cs(i + k) ~= w(k)
       break(false)
   else
@@ -192,7 +192,7 @@ fn is_num_char(c Char) Bool
   c >= '0' and c <= '9' or c == '-' or c == '+' or c == '.' or c == 'e' or c == 'E'
 
 fn read_number(cs List[Char], i Int) Result[Pr, Error]
-  j = for k in i..len(cs)
+  j = for k in i..<len(cs)
     if not is_num_char(cs(k))
       break(k)
   else

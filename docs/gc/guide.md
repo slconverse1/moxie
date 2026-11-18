@@ -143,7 +143,7 @@ println("$first_big $none")
 Output: `6 -1`. In the first loop `break(n)` fires at 6, and the loop's `else` is never reached. In the second the condition turns false first, so the `else` supplies `-1`. A bare `break` gives `()`, `break(value)` needs a matching `else`, and a loop with no `break` takes the `else` value or `()`. `continue` starts the next iteration with the top-level bindings as they stand:
 
 ```
-for n in 1..=6
+for n in 1..6
   if n % 2 == 1
     continue
   println("even $n")
@@ -285,7 +285,7 @@ println("$total $count")
 Output: `245 3`. This is the direct way when a loop updates two or three names at once. When the loop computes one value, the more functional way is to let the value carry the state, with `reduce` (or `break(value)` with `else`), and no outer name is written at all:
 
 ```
-total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s) -> acc + s)
+total = List(70, 85, 90) |> reduce(0, (acc, s) -> acc + s)
 println(total)
 ```
 
@@ -330,7 +330,7 @@ fn running_totals(xs Array[Int][5]) Array[Int][5]
   mutable
     out = xs
     total = 0
-    for i in 0..5
+    for i in 0..<5
       total += xs(i)
       out(i) = total
     out
@@ -560,11 +560,11 @@ println("${is_inf(1.0 / 0.0)} ${is_nan(0.0 / 0.0)}")
 Output: `true true`. `==` on floats gets a warning, and `finite(x)` returns a `Result`. **Bounded integers** state a range in the type, and a `when` that covers the range needs no `_`:
 
 ```
-type alias Percent = Int[0..=100]
+type alias Percent = Int[0..100]
 fn describe(p Percent) String
   when p
     0 -> "empty"
-    in 1..=99 -> "partial"
+    in 1..99 -> "partial"
     100 -> "full"
 a Percent = 40
 println(describe(a))
@@ -814,7 +814,7 @@ Output: `Initech 1 2 Acme`, then `Initech Ltd Initech`. The first segment is a t
 
 ```
 numbers Array[Int] = (10, 20, 30, 40, 50)
-middle = numbers(1..=3)
+middle = numbers(1..3)
 fixed = set(middle, 1, 99)
 println("${numbers(0)} ${len(numbers)} ${middle(0)} ${fixed(1)} ${middle(1)}")
 ```
@@ -836,7 +836,7 @@ when numbers
 Output: `first 10`. To visit every index, an exclusive range ends at `len`:
 
 ```
-for i in 0..len(numbers)
+for i in 0..<len(numbers)
   println("$i: ${numbers(i)}")
 ```
 
@@ -942,9 +942,9 @@ grid MultiArray[Int][2, 3] = (
   40, 50, 60
 )
 row = grid(1, ..)
-kept = grid(1..=1, ..)
+kept = grid(1..1, ..)
 col = grid(.., 1)
-block = grid(0..=1, 1..=2)
+block = grid(0..1, 1..2)
 println("${grid(1, 2)} ${row(2)} ${kept(0, 2)} ${col(0)} ${block(1, 1)}")
 patched = set(row, 2, 99)
 println("${patched(2)} ${grid(1, 2)}")
@@ -966,7 +966,7 @@ Output: `8 12 9`. A function can take a grid of any shape with generic sizes:
 
 ```
 fn row_sum[R, C](grid MultiArray[Int][R, C], r Int) Int
-  grid(r, ..) |> to_stream() |> reduce(0, _1 + _2)
+  grid(r, ..) |> reduce(0, _1 + _2)
 println("${row_sum(grid, 1)}")
 ```
 
@@ -974,41 +974,41 @@ Output: `150`. **Mistakes:** a literal with the wrong cell count, and leaving th
 
 **5f. Ranges and strings**
 
-A `Range` is an opaque value holding a start, a limit, and a step, with accessors `start`, `limit`, and `step`. `1..=10` stands alone as a value. When both bounds are number literals the step is inferred, so `3..=1` counts down; with variables the step is 1 and a range whose start is past its limit is empty. A float range is only for tests:
+A `Range` is an opaque value holding a first value, a limit, and a step, with accessors `first` and `last` (the first and last values it reaches, each a `Result`), `limit`, and `step`. As in Kotlin, `a..b` includes `b` and `a..<b` stops before it, so `1..10` stands alone as a value with ten values and `0..<len(xs)` visits every index. When both bounds are number literals the step is inferred, so `3..1` counts down; with variables the step is 1 and a range whose first value is past its limit is empty (`is_empty(r)` tells). A range over any ordered type (`String`, `Float`, `Decimal`, durations) is for tests with `in` and for `when` arms, and only whole numbers and characters can be walked:
 
 ```
-println("${step(1..=10)} ${step(3..=1)} ${2.5 in 1.0..=5.0}")
-for i in 3..=1
+println("${step(1..10)} ${step(3..1)} ${2.5 in 1.0..5.0} ${"b" in "a".."c"}")
+for i in 3..1
   println("$i")
 ```
 
-Output: `1 -1 true`, then `3`, `2`, `1`. An infinite range uses `1..`, and `take_while` ends it.
+Output: `1 -1 true true`, then `3`, `2`, `1`. An infinite range uses `1..`, and `take_while` ends it.
 
-**Steps.** A range takes a step after its bounds, `a..b step s`. The step is signed, and its sign decides the direction: a positive step counts up and a negative step counts down, with literal or variable bounds. `step` is a keyword only directly after a range, so it is still a fine variable name everywhere else. A stepped range is an ordinary range value, so it works wherever a range does: in a `for`, in a pipeline, in an `in` test (which checks the step in constant time, with no loop), as a slice, and in a variable.
+**Steps.** A range takes a step after its bounds, `a..<b step s`. The step is signed, and its sign decides the direction: a positive step counts up and a negative step counts down, with literal or variable bounds. `step` is a keyword only directly after a range, so it is still a fine variable name everywhere else. A stepped range is an ordinary range value, so it works wherever a range does: in a `for`, in a pipeline, in an `in` test (which checks the step in constant time, with no loop), as a slice, and in a variable.
 
-**Range arms in `when`.** A range arm is written with a leading `in`, and `not in` negates it: `in 1..=99 ->`, `in 1..=9 step 2 ->`, `not in 0..100 ->`. The bounds after `in` may be variables (`in lo..=hi ->`) and the arm may name any range or collection (`in xs ->`), so a guard like `n if n in lo..=hi` is not needed. A bare `1..=99` arm is an error that points to `in`. With literal bounds the compiler still counts the arm toward coverage.
+**Range arms in `when`.** A range arm is written with a leading `in`, and `not in` negates it: `in 1..99 ->`, `in 1..9 step 2 ->`, `not in 0..<100 ->`. The bounds after `in` may be variables (`in lo..hi ->`) and the arm may name any range or collection (`in xs ->`), so a guard like `n if n in lo..hi` is not needed. A bare `1..99` arm is an error that points to `in`. With literal bounds the compiler still counts the arm toward coverage.
 
 ```
-println(List(i for i in 0..=10 step 5))
-println(List(i for i in 10..1 step -4))
-println("${3 in 1..=9 step 2} ${4 in 1..=9 step 2}")
+println(List(i for i in 0..10 step 5))
+println(List(i for i in 10..<1 step -4))
+println("${3 in 1..9 step 2} ${4 in 1..9 step 2}")
 letters = List("a", "b", "c", "d", "e")
-println(letters(0..=4 step 2))
-r = 1..=9 step 4
+println(letters(0..4 step 2))
+r = 1..9 step 4
 println("${r} ${len(r)} ${step(r)}")
-println(1..=7 step 3 |> map(_ * 10) |> collect())
+println(1..7 step 3 |> map(_ * 10) |> collect())
 hi = 3
 lo = 12
-println(List(i for i in lo..hi step -4))
+println(List(i for i in lo..<hi step -4))
 ```
 
-Output: `List(0, 5, 10)`, then `List(10, 6, 2)`, then `true false`, then `List("a", "c", "e")`, then `1..=9 step 4 3 4`, then `List(10, 40, 70)`, then `List(12, 8, 4)`. A step of 0 is an error. When the bounds and the step are all literals and the step points the wrong way (`10..1 step 3`), the compiler says which sign to write; with variable bounds a wrong-way step gives an empty range, like an unstepped one. `len(r)` counts a finite range's values, `indices(xs)` is the range `0..len(xs)`, `clamp(x, 0..=100)` takes a closed range, and `random_int(1..=6)` draws from a range, so `random_int(1..=9 step 2)` draws an odd number. The older spelling `Range(a..b, s)` is gone and says to write the step inside the range.
+Output: `List(0, 5, 10)`, then `List(10, 6, 2)`, then `true false`, then `List("a", "c", "e")`, then `1..9 step 4 3 4`, then `List(10, 40, 70)`, then `List(12, 8, 4)`. A step of 0 is an error. When the bounds and the step are all literals and the step points the wrong way (`10..<1 step 3`), the compiler says which sign to write; with variable bounds a wrong-way step gives an empty range, like an unstepped one. `len(r)` counts a finite range's values, `indices(xs)` is the range `0..<len(xs)`, `clamp(x, 0..100)` takes a closed range, and `random_int(1..6)` draws from a range, so `random_int(1..9 step 2)` draws an odd number. The older spelling `Range(a..<b, s)` is gone and says to write the step inside the range.
 
 A string slice **[gc]** is an ordinary `String` that may share storage with the original, indexed by byte offsets in UTF-8:
 
 ```
 s = "Python"
-println("${s(2..)} ${s(..3)} ${s(..=3)} ${s(..)}")
+println("${s(2..)} ${s(..<3)} ${s(..3)} ${s(..)}")
 ```
 
 Output: `thon Pyt Pyth Python`. A cut inside a multi-byte character aborts (a compile error for constants). **[gc]** A slice can be kept and returned as it is. `len` counts bytes, `char_count` counts characters, and `chars` yields them:
@@ -1075,7 +1075,7 @@ Output: `25.0 25.0`. A function type is just its parameter types, so `(Double, D
 numbers = List(1, 2, 3)
 doubled = numbers |> to_stream() |> map(_ * 2)
 tripled = numbers |> to_stream() |> map()(x) -> x * 3
-total = numbers |> to_stream() |> reduce(0)(acc, x) ->
+total = numbers |> reduce(0)(acc, x) ->
   acc + x
 println("$total")
 ```
@@ -1105,7 +1105,7 @@ Output: `42`. A variadic parameter takes any number of trailing arguments. **[gc
 
 ```
 fn total(base Int, numbers ...Int) Int
-  numbers |> to_stream() |> reduce(base, _1 + _2)
+  numbers |> reduce(base, _1 + _2)
 values = Array(10, 20, 30)
 println("${total(100, 10, 20, 30)} ${total(100, ...values)} ${total(100)}")
 ```
@@ -1170,7 +1170,7 @@ Output: `12 21`. A size parameter is a number that sizes a collection, and it ca
 
 ```
 fn sum_all[N](a Array[Int][N]) Int
-  a |> to_stream() |> reduce(0, _1 + _2)
+  a |> reduce(0, _1 + _2)
 fn size_of[N](a Array[Int][N]) Int
   N
 fn dot[N](a Array[Int][N], b Array[Int][N]) Int
@@ -1673,7 +1673,7 @@ impl Monoid for Max
   static fn empty() Max
     Max(value: -1000000)
 fn mconcat[T Monoid, N](xs Array[T][N]) T
-  xs |> to_stream() |> reduce(T.empty(), (a, b) -> a.combine(b))
+  xs |> reduce(T.empty(), (a, b) -> a.combine(b))
 nums Array[Int] = (1, 2, 3)
 maxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))
 println("${mconcat(nums)} ${mconcat(maxes).value}")
@@ -1990,7 +1990,7 @@ tuple Report
   data List[Int],
   lazy property total Int
     get
-      data |> to_stream() |> sum()
+      data |> sum()
   static property title String = "Weekly"
 r = Report(data: List(4, 5, 6))
 println("${Report.title}: ${r.total} ${r.total}")
@@ -2070,21 +2070,21 @@ println(last_or(List(4, 5, 6), 0))
 println(last_or(List(), 7))
 ```
 
-Output: `4`, `6`, `7`. Each call to `get` has to be *proved*. In `first_or`, the test `len(xs) > 0` is enough to show that index `0` is in range. In `last_or`, `n` is bound to `len(xs)`, so `n - 1` is in range when `n > 0`. Remove either test and the call is a compile error that shows the condition it could not prove. The checker uses what it can see: the function's own `where` clauses, the tests of an `if`/`elif`/`else`, an early `return ... if`, the range of `for i in 0..len(xs)`, a name bound once to a sum or difference, constants, and the range of a bounded integer (`k Int[1..=10]`). It reasons about whole numbers with `+`, `-`, a constant factor, and comparisons, and it is exact for those. Anything else, such as a product of two variables, is "unknown", and unknown is an error, with the same message: check it first, or give the caller the same `where`.
+Output: `4`, `6`, `7`. Each call to `get` has to be *proved*. In `first_or`, the test `len(xs) > 0` is enough to show that index `0` is in range. In `last_or`, `n` is bound to `len(xs)`, so `n - 1` is in range when `n > 0`. Remove either test and the call is a compile error that shows the condition it could not prove. The checker uses what it can see: the function's own `where` clauses, the tests of an `if`/`elif`/`else`, an early `return ... if`, the range of `for i in 0..<len(xs)`, a name bound once to a sum or difference, constants, and the range of a bounded integer (`k Int[1..10]`). It reasons about whole numbers with `+`, `-`, a constant factor, and comparisons, and it is exact for those. Anything else, such as a product of two variables, is "unknown", and unknown is an error, with the same message: check it first, or give the caller the same `where`.
 
 ```
 fn half(n Int where n > 0) Int
   n / 2
 fn safe_half(n Int) Int
   if n > 0 then half(n) else 0
-fn pct_half(p Int[1..=100]) Int
+fn pct_half(p Int[1..100]) Int
   half(p)
 println(safe_half(9))
 println(safe_half(-3))
 println(pct_half(50))
 ```
 
-Output: `4`, `0`, `25`. The bounded type `Int[1..=100]` already says `p > 0`, so `pct_half` needs no test. Rebinding a name forgets what was known about it, and so does `+=`, a `ref` argument, or a `ref` method on it. The condition is also kept as a `requires`, so a call the compiler can't see, such as one through a function value, is still checked when it runs:
+Output: `4`, `0`, `25`. The bounded type `Int[1..100]` already says `p > 0`, so `pct_half` needs no test. Rebinding a name forgets what was known about it, and so does `+=`, a `ref` argument, or a `ref` method on it. The condition is also kept as a `requires`, so a call the compiler can't see, such as one through a function value, is still checked when it runs:
 
 ```
 fn pick(xs List[Int], i Int where i >= 0 and i < len(xs)) Int
@@ -2318,7 +2318,7 @@ Output: `exactly at the limit`. A relational pattern (`>=`, `>`, `<=`, `<`) matc
 fn describe(status Int) String
   when status
     200 -> "Success"
-    in 400..=499 -> "Client Error"
+    in 400..499 -> "Client Error"
     >= 500 -> "Server Error"
     else "Unknown"
 fn grade(score Double) String
@@ -2330,7 +2330,7 @@ print("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} ")
 println("${grade(85.0)}")
 ```
 
-Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..=100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when` with no value tests conditions in order:
+Output: `Success Client Error Server Error Unknown B`. On an unbounded type the compiler can't tell whether relational arms cover everything, so the `when` needs a `_` arm; on a bounded integer such as `Int[0..100]`, `>= 50` and `< 50` together count as covering it. A Dict pattern matches a subset of entries, and a `when` with no value tests conditions in order:
 
 **`else` for the last arm.** The last arm of a `when` (with or without a value to match), of a `select`, and of a `seq` can be written `else` instead of `_ ->`. In a `when` and a `select` it means exactly what `_ ->` means, and its body follows on the same line or indented below it. In a `seq` every arm whose test passes runs in turn, so `else` is the stage that runs only when none of the earlier arms did. It must come last, and in a `select` it is the arm that runs when no channel is ready. It never takes `->`. An arm after one that matches everything (`else`, `_`, or a bare name) never runs, and neither does a repeated literal or a repeated enum case: the compiler warns about both.
 
@@ -2493,7 +2493,7 @@ Inside an arm, the variable has the narrowed type: in the `Int` arm above, `v` i
 numbers = Array(10, 20, 30, 40)
 for v in numbers |> to_stream() |> map(_ * 2)
   println("$v")
-total = numbers |> to_stream() |> reduce(0, _1 + _2)
+total = numbers |> reduce(0, _1 + _2)
 big List[Int] = numbers |> to_stream() |> filter(_ > 15) |> collect()
 println("$total ${len(big)}")
 ```
@@ -2561,7 +2561,7 @@ readings = List(3, 6, 9, 12, 15)
 avg List[Int] = readings
   |> to_stream()
   |> windows(3)
-  |> map((w) -> (w |> to_stream() |> sum()) / 3)
+  |> map((w) -> (w |> sum()) / 3)
   |> collect()
 println("${avg(0)} ${avg(1)} ${avg(2)}")
 ```
@@ -2578,9 +2578,9 @@ Output: `4 2 3`. `unzip()` turns a stream of pairs into two lists, and `group_by
 ```
 for x in numbers
   println("$x")
-for i in 0..=10 step 2
+for i in 0..10 step 2
   println("step $i")
-for i in 3..=1 step -1
+for i in 3..1 step -1
   println("countdown $i")
 ```
 
@@ -2604,8 +2604,8 @@ joined = words
   |> intersperse("|")
   |> reduce("", _1 + _2)
 println("$joined")
-print("${words |> to_stream() |> min_by(len)} ")
-println("${words |> to_stream() |> max_by(len)}")
+print("${words |> min_by(len)} ")
+println("${words |> max_by(len)}")
 (short, rest) = words |> to_stream() |> span((w) -> len(w) < 6)
 println("$short ${len(rest)}")
 ```
@@ -2665,7 +2665,7 @@ Nothing is memoized for you, and nothing is cached behind your back. Caching is 
 
 ```
 fn fib(n Int) Int
-  (a, _) = 1..=n |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
+  (a, _) = 1..n |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))
   a
 println("${fib(10)}")
 ```
@@ -2674,10 +2674,10 @@ Output: `55`. A grid of paths (move right or down, count the ways to the far cor
 
 ```
 fn next_row(prev List[Int]) List[Int]
-  1..len(prev) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
+  1..<len(prev) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))
 fn paths(rows Int, cols Int) Int
-  first = List(1 for _ in 0..cols)
-  last = 1..rows |> reduce(first, (prev, _) -> next_row(prev))
+  first = List(1 for _ in 0..<cols)
+  last = 1..<rows |> reduce(first, (prev, _) -> next_row(prev))
   last(cols - 1)
 println("${paths(3, 3)} ${paths(10, 10)}")
 ```
@@ -2691,11 +2691,11 @@ fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) Int
   else
     max(prev(j), acc(j - 1))
 fn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]
-  1..=len(ys) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
+  1..len(ys) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))
 fn lcs(a String, b String) Int
   xs = List(c for c in chars(a))
   ys = List(c for c in chars(b))
-  last = xs |> to_stream() |> reduce(List(0 for _ in 0..=len(ys)), (prev, x) -> lcs_row(prev, x, ys))
+  last = xs |> reduce(List(0 for _ in 0..len(ys)), (prev, x) -> lcs_row(prev, x, ys))
   last(len(ys))
 println("${lcs("ABCBDAB", "BDCABA")}")
 ```
@@ -3510,7 +3510,7 @@ foreign "sensor"
 rx, tx = Chan[(Int32, Double)][16]()
 on_reading(move tx)
 on_query((id) -> id * 2i32)
-for i in 1..=3
+for i in 1..3
   println(read(rx)?)
 ```
 
@@ -3539,7 +3539,7 @@ println("slept at least 50ms: ${elapsed.millis() >= 50}")
 println("it is after 2023: ${now().seconds() > 1.7e9}")
 ```
 
-Output: `slept at least 50ms: true`, then `it is after 2023: true`. Random numbers come in two kinds. `random()` and `random_int(r)` (a range, as in `random_int(1..=6)`) are for games and sampling, and `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a reproducible source that the generator functions from property tests (`gen_int`, `gen_pick`, `sample[T]`) read:
+Output: `slept at least 50ms: true`, then `it is after 2023: true`. Random numbers come in two kinds. `random()` and `random_int(r)` (a range, as in `random_int(1..6)`) are for games and sampling, and `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a reproducible source that the generator functions from property tests (`gen_int`, `gen_pick`, `sample[T]`) read:
 
 ```
 g = seeded(7)
@@ -3877,7 +3877,7 @@ Output: `36 16 36 64`. `~>` composes left to right, so `pipeline(2)` is `square(
 
 ```
 steps Array[(Int) -> Int] = (inc, twice, square)
-result = steps |> to_stream() |> reduce(0)(acc, f) -> f(acc)
+result = steps |> reduce(0)(acc, f) -> f(acc)
 println("$result")
 ```
 
@@ -4051,7 +4051,7 @@ println("${Box.pure(20).flat_map(half).flat_map(half)}")
 
 Output: `Box.Full(4) Box.Full(5)`. The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `map`, `ap`, and `flat_map` for any such type. Code written once for every monad (`double_in`, `lift2`) is in chapter 8d. The compiler does not check the monad laws, evaluation is eager, and there is no return-type dispatch: write `Box.pure(42)`, never a bare `pure(42)`. A type that accumulates several errors should implement `Applicative` only.
 
-**`map` and `filter` on a List or an Array.** `List` and `Array` have a `Functor` impl, so `xs.map(f)`, `xs |> map(f)`, and `map(f, xs)` are the same call (section 12) and give the same kind of container back (an `Array` keeps its size). A `Stream` gives a `Stream`. `filter` is a stream stage with no `Functor` behind it, so `xs.filter(p)` is a stream: write `xs |> filter(p) |> collect()`. Printing or interpolating a stream is a compile error that says to `collect()` it first. `map` on a List runs `f` on every element at once; when a chain should stay lazy (a `take` that stops early, an `f` with effects), start it with `to_stream()`.
+**Transformers on a List.** A `List` stays a `List` through `map`, `filter`, `take`, `drop`, `take_while`, `drop_while`, `sort`, `sort_by`, `reverse`, `zip`, `enumerate`, `concat`, `scan` and `distinct`, so `xs |> filter(p) |> map(f)` is a `List` you can print, index and take the `len` of, with no `to_stream()` or `collect()`. The result's capacity is the source's, which is a safe bound even for `filter`. `Array` has a `Functor` impl for `map` and keeps its size (`Array[Int][3]` becomes `Array[String][3]`); the other stages on an `Array`, and every stage on a range, give a `Stream`. A `Stream` gives a `Stream`, and printing or interpolating one is a compile error that says to `collect()` it first. Each stage on a List runs `f` on every element at once; when a chain should stay lazy (a `take` that stops early, an `f` with effects), start it with `to_stream()`.
 
 **Sequences with the operators.** With `Box` and its `Monad` impl in scope (they are your code, not the prelude's), `|>>` chains steps that each return a `Box`, `<$>` maps a plain function over the value inside, and `<*>` combines independent values. `Result` and `List` work the same way with no impl of your own, because the prelude supplies them. `Maybe`, `Option`, `Either`, and similar types are never built in: you define the type and its impl.
 
@@ -4931,7 +4931,7 @@ Most habits carry over:
 
 ```
 xs = List(1, 2, 3)
-sum = xs |> to_stream() |> reduce(0, _1 + _2)
+sum = xs |> reduce(0, _1 + _2)
 println("$sum")
 ```
 
@@ -4962,8 +4962,8 @@ When the live data passes `heap`, the program stops with an `out of memory` mess
 A name that is finished with holds nothing. The collector counts a local only until its last use, so a variable you have finished with doesn't keep its value alive:
 
 ```
-xs List[Int] = 1..=1000000 |> to_stream() |> collect()
-total = xs |> to_stream() |> reduce(0, _1 + _2)
+xs List[Int] = 1..1000000 |> to_stream() |> collect()
+total = xs |> reduce(0, _1 + _2)
 println("$total")
 ```
 
@@ -4983,7 +4983,7 @@ Every call to `note` makes the list longer, and the list stays reachable through
 log = Atom[Ring[String]](Ring[String](3))
 fn note(msg String) Unit
   \swap(log, _ + msg)
-for i in 1..=5
+for i in 1..5
   note("m$i")
 r = @log
 println("${len(r)} ${r(0)} ${r(2)}")

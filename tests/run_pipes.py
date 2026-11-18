@@ -122,7 +122,7 @@ init
 '''
 chk("a timeout fires while another fiber waits on a pipe", run(WATCH), 3, "timed out", under=10)
 chk("sleeping fibers keep time while another waits on a child", run('''fiber fn ticker() Unit
-  for i in 1..=3
+  for i in 1..3
     sleep(50ms)
     println("tick $i")
 

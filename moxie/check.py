@@ -263,7 +263,7 @@ def _old_tshow(t):
     if t[0] == "named":
         return t[1]
     if t[0] == "bounded":
-        return f"Int[{t[1]}..={t[2]}]"
+        return f"Int[{t[1]}..{t[2]}]"
     if t[0] == "coll":
         return f"{t[1]}[{tshow(t[2])}]"
     if t[0] == "secret":
@@ -3818,6 +3818,11 @@ class Checker(RefineMixin):
 
     def e_ForE(self, n, sc):
         it = self.ev(n.iter, sc)[0]
+        if n.iter.__class__ is RangeE:
+            for b in (n.iter.lo, n.iter.hi):
+                if b is not None and self.ev(b, sc)[0] == "String":
+                    self.err(n.line, "a range of strings cannot be walked: it only tests membership with `in`")
+                    break
         inner = Sc(sc)
         el = None
         if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream") and len(it[2]) == 1 \
@@ -3924,8 +3929,10 @@ class Checker(RefineMixin):
     def e_RangeE(self, n, sc):
         for x in (n.lo, n.hi):
             t = self.ev(x, sc)[0] if x is not None else None
-            if t is not None and (t in ("String", "Bool") or (t.__class__ is tuple and t[0] in ("app", "tup", "fn"))):
-                self.err(n.line, f"a range runs over numbers, found `{tshow(t)}`")
+            if t is not None and (t == "Bool" or (t.__class__ is tuple and t[0] in ("app", "tup", "fn"))):
+                self.err(n.line, f"a range runs over numbers, characters and other ordered types such as `String`, found `{tshow(t)}`")
+            if t == "String" and n.step is not None:
+                self.err(n.line, "a range of strings has no `step`: it only tests `in`")
         if n.step is not None:
             st = self.ev(n.step, sc)[0]
             if st is not None and not (st in INTS or (st.__class__ is tuple and st[0] in ("lit", "bounded", "param", "rigid"))):
@@ -4817,7 +4824,7 @@ class Checker(RefineMixin):
                 break
             pos = max(pos, b_ + 1)
         if pos <= hi:
-            self.err(n.line, f"`when` does not cover `{pos}..={hi}` of `{tshow(st)}`")
+            self.err(n.line, f"`when` does not cover `{pos}..{hi}` of `{tshow(st)}`")
 
     # ------------------------------------------------------------ calls
     # ---------------------------------------------------------------- curry and uncurry (Spec 11)
@@ -4981,7 +4988,7 @@ class Checker(RefineMixin):
         if f.name == "Range" and "Range" not in self.tuples and na == 2:
             self.err(n.line, "`Range(a..b, s)` is gone: write the step inside the range, `a..b step s` (a negative step counts down: `10..1 step -3`)")
         if f.name == "random_int" and na == 2:
-            self.err(n.line, "`random_int` takes a range: write `random_int(lo..=hi)` (for example `random_int(1..=6)`)")
+            self.err(n.line, "`random_int` takes a range: write `random_int(lo..hi)` (for example `random_int(1..6)`)")
 
     def e_Call(self, n, sc, *a, **k):
         self.check_range_calls(n, sc)

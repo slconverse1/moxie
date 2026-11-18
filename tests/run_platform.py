@@ -11,7 +11,7 @@ CASES = [
  ("a listener needs net", "check", 'println(listen(8080))\n', 1, "not granted (the browser)"),
  ("udp needs net", "check", 'println(bind_udp(0))\n', 1, "not granted (the browser)"),
  ("files work (in memory in the page)", "run", 'write_file("a.txt", "hi")?\nprintln(read_file("a.txt")?)\nremove_file("a.txt")?\n', 0, "hi"),
- ("the clock and random work", "run", 'println(now().seconds() > 1.0)\nprintln(random_int(2..=2))\n', 0, "true\n2"),
+ ("the clock and random work", "run", 'println(now().seconds() > 1.0)\nprintln(random_int(2..2))\n', 0, "true\n2"),
  ("temp files work", "run", 'p = make_temp_file("t-")?\nprintln(path_exists(p))\nremove_file(p)?\n', 0, "true"),
  ("os_name says browser", "run", 'println(os_name())\n', 0, "browser"),
  ("is_terminal is false", "run", 'println(is_terminal(stdout))\n', 0, "false"),

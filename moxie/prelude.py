@@ -758,6 +758,20 @@ def b_len(I, a, kw, ta):
     raise Abort(f"len of {type_name(c)}")
 
 
+@bi("is_empty")
+def b_is_empty(I, a, kw, ta):
+    c = a[0]
+    if isinstance(c, RangeV):
+        if c.limit is None or c.start is None:
+            return False
+        return c.count() == 0
+    if isinstance(c, str):
+        return len(c) == 0
+    if isinstance(c, (Seq, SetV, DictV, MultiV)):
+        return len(c) == 0
+    raise Abort(f"is_empty of {type_name(c)}")
+
+
 @bi("indices")
 def b_indices(I, a, kw, ta):
     c = a[0]
@@ -895,7 +909,7 @@ def b_clamp(I, a, kw, ta):
     if len(a) == 2:
         r = a[1]
         if not isinstance(r, RangeV) or r.start is None or r.limit is None or not r.incl:
-            raise Abort("clamp takes a closed range with both ends, such as 0..=100")
+            raise Abort("clamp takes a closed range with both ends, such as 0..100")
         x, lo, hi = a[0], r.start, r.limit
     else:
         x, lo, hi = a

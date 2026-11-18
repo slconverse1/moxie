@@ -84,7 +84,7 @@ chk("closing the reader ends the wait, so a real deadlock is still found", run('
 
 fresh()
 chk("sleepers keep time while a fiber waits for a change", run('''fiber fn ticker() Unit
-  for i in 1..=3
+  for i in 1..3
     sleep(50ms)
     println("tick $i")
 
@@ -100,7 +100,7 @@ init
 fresh()
 chk("a burst the reader does not keep up with is dropped with a warning", run('''init
   rx = watch("@D@")?
-  for i in 1..=40
+  for i in 1..40
     write_file("@D@/f${i}.txt", "x")?
   sleep(600ms)
   println("done")

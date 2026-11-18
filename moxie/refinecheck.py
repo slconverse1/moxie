@@ -196,7 +196,7 @@ class RefineMixin:
         return None
 
     def rf_loop_facts(self, n, sc):
-        """`for i in a..b`: i is at least a and below b (at most b for `..=`), when both ends are linear and the range counts up."""
+        """`for i in a..<b`: i is at least a and below b (at most b for `a..b`), when both ends are linear and the range counts up."""
         it = n.iter
         if it.__class__ is not RangeE or n.pat.__class__ is not PBind or it.lo is None or it.hi is None:
             return None

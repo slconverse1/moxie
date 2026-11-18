@@ -35,7 +35,7 @@ RD = 'println(read_file("data/a.txt"))\nprintln(read_file("other/b.txt"))\n'
 chk("unrestricted by default", run(RD), 0, "Ok(\"secret\")")
 chk("--allow-read=PATH allows inside and denies outside", run(RD, "--allow-read=data"), 0, "Ok(\"hello\")")
 chk("outside the allowed path is DENIED", run(RD, "--allow-read=data"), 0, "code: 10")
-chk("a path cannot climb out with ..", run('println(read_file("data/../other/b.txt"))\n', "--allow-read=data"), 0, "code: 10")
+chk("a path cannot climb out with ..<", run('println(read_file("data/../other/b.txt"))\n', "--allow-read=data"), 0, "code: 10")
 chk("write is separate from read", run('println(write_file("data/new.txt", "x"))\n', "--allow-read=data"), 0, "fs.write is not permitted")
 chk("write denied where only read is granted (runtime)", run('println(write_file("data/new.txt", "x"))\nprintln(read_file("data/a.txt"))\n', "--allow-read=data", "--allow-write=other"), 0, "code: 10")
 chk("write allowed in its path", run('println(write_file("other/n.txt", "x"))\n', "--allow-write=other"), 0, "Ok(())")

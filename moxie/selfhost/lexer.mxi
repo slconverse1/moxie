@@ -19,9 +19,9 @@ fn is_id_char(c Char) Bool
   is_id_start(c) or is_digit(c)
 
 // The operators, longest first, so `|>>` wins over `|>` and `|`.
-ops = List("...", "..=", "|>>", "<$>", "<*>", ">>=", "<<=",
+ops = List("...", "..<", "..", "|>>", "<$>", "<*>", ">>=", "<<=",
            "<~", "~>", "|>", "->", "==", "~=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "+%", "-%",
-           "&=", "|=", "^=", "<<", ">>", "++", "--", "..",
+           "&=", "|=", "^=", "<<", ">>", "++", "--",
            "+", "-", "*", "/", "%", "<", ">", "=", "&", "|", "^", "~", "(", ")", "[", "]",
            "{", "}", ",", ":", ".", "?", "@", ";", "!", "$", "\\")
 
@@ -47,7 +47,7 @@ fn emit(st Lx, kind String, text String, to Int) Lx
   Lx(...st, i: to, out: st.out + t)
 
 fn skip_while(cs List[Char], from Int, ok (Char) -> Bool) Int
-  for k in from..len(cs)
+  for k in from..<len(cs)
     if not ok(cs(k))
       break(k)
   else
@@ -61,7 +61,7 @@ fn is_alnum(c Char) Bool
 
 // A run of digits where a single `_` may sit between two digits (`1_000`).
 fn skip_digits(cs List[Char], from Int) Int
-  for k in from..len(cs)
+  for k in from..<len(cs)
     ok = is_digit(cs(k)) or (cs(k) == '_' and k > from and k + 1 < len(cs) and is_digit(cs(k + 1)) and is_digit(cs(k - 1)))
     if not ok
       break(k)
@@ -182,7 +182,12 @@ fn scan_operator(cs List[Char], st Lx) Lx
   if op == ""
     emit(st, "ERR", "${cs(st.i)}", st.i + 1)
   else
-    emit(st, "OP", op, st.i + len(op))
+    // the parser's names for the ranges: `..` (closed) is `..=`, and `..<` (half-open) is `..`
+    name = when op
+      ".." -> "..="
+      "..<" -> ".."
+      else op
+    emit(st, "OP", name, st.i + len(op))
 
 // One step: the state after the token (or the blank, comment, or line break) at the current position.
 fn step(cs List[Char], st Lx) Lx
@@ -273,7 +278,7 @@ tuple Sx
   out List[Token]
 
 fn drop_last(xs List[Int]) List[Int]
-  xs(..len(xs) - 1)
+  xs(..<len(xs) - 1)
 
 fn top_of(stack List[Int]) Int
   stack(len(stack) - 1)

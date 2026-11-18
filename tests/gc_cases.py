@@ -60,7 +60,7 @@ rx, tx = Chan[Int][n + 1]()
 _ = write(tx, 1)
 _ = write(tx, 2)
 u, w = Chan[Int][#unbounded]()
-for i in 1..=100
+for i in 1..100
   _ = write(w, i)
 println("${read(rx).get_or(0)} ${read(u).get_or(0)}")
 ''', ["1 1"], 0),
@@ -68,7 +68,7 @@ println("${read(rx).get_or(0)} ${read(u).get_or(0)}")
 fiber fn worker(id Int, out ChanW[Int]) Unit
   _ = write(out, id * 10)
 rx, tx = Chan[Int][8]()
-for i in 1..=5
+for i in 1..5
   _ = go worker(i, clone(tx))
 drop = move tx
 fn drain(rx ChanR[Int], n Int) Int
@@ -102,7 +102,7 @@ a = Atom[Tree](t)
 println("${size(d("t1").get_or(Leaf))} ${size(@a)}")
 ''', ["2 2"], 0),
 ("dead names hold nothing: a big list summed", '''
-xs List[Int] = 1..=100000 |> to_stream() |> collect()
+xs List[Int] = 1..100000 |> to_stream() |> collect()
 total = xs |> to_stream() |> reduce(0, _1 + _2)
 println("$total")
 ''', ["5000050000"], 0),
@@ -110,7 +110,7 @@ println("$total")
 log = Atom[List[String]](List())
 fn note(msg String) Unit
   _ = swap(log, _ + msg)
-for i in 1..=50
+for i in 1..50
   note("m$i")
 println("${len(@log)}")
 ''', ["50"], 0),
@@ -121,7 +121,7 @@ println(t)
 ''', [], 1),
 ("Ring keeps only the most recent items", '''
 log = Atom[Ring[String]](Ring[String](3))
-for i in 1..=5
+for i in 1..5
   _ = swap(log, _ + "m$i")
 r = @log
 println("${len(r)} ${r(0)} ${r(2)}")

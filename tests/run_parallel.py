@@ -17,7 +17,7 @@ CASES = [
  ("par_map_all gives every error in argument order", PMA + 'c1 = fn () Result[Int, String]\n  bad("first")\nc2 = fn () Result[Int, String]\n  ok_n(2)\nc3 = fn () Result[Int, String]\n  bad("third")\nprintln(par_map_all(add3, c1, c2, c3, limit: 3))\n', 'Err(List("first", "third"))'),
  ("par_map_all with a limit of one runs them one by one", PMA + 'c1 = fn () Result[Int, String]\n  ok_n(1)\nc2 = fn () Result[Int, String]\n  bad("two")\nc3 = fn () Result[Int, String]\n  ok_n(3)\nprintln(par_map_all(add3, c1, c2, c3, limit: 1))\n', 'Err(List("two"))'),
  ("par_map_all really overlaps", 'peak = Atom[Int](0)\nlive = Atom[Int](0)\nfn work(n Int) Result[Int, String]\n  now = swap(live, _ + 1)\n  _ = swap(peak, max(_, now))\n  sleep(10ms)\n  _ = swap(live, _ - 1)\n  Ok(n)\nfn pair(a Int, b Int) Int\n  a + b\nc1 = fn () Result[Int, String]\n  work(1)\nc2 = fn () Result[Int, String]\n  work(2)\n_ = par_map_all(pair, c1, c2, limit: 2)\nprintln(@peak > 1)\n', "true"),
- ("par_map inside a loop", SLOW + 'for i in 1..=2\n  println(par_map(slow_double, List(i, i + 1), limit: 2))\n', "List(2, 4)\nList(4, 6)"),
+ ("par_map inside a loop", SLOW + 'for i in 1..2\n  println(par_map(slow_double, List(i, i + 1), limit: 2))\n', "List(2, 4)\nList(4, 6)"),
  ("retry around par_traverse", 'n = Atom[Int](0)\nfn work(x Int) Result[Int, Error]\n  k = swap(n, _ + 1)\n  when k < 3\n    true -> Err(Error(TIMED_OUT, "slow"))\n    false -> Ok(x)\nfn once() Result[List[Int], Error]\n  par_traverse(work, List(1), limit: 1)\nprintln(retry(5, 1ms, once))\n', "Ok(List(1))"),
 ]
 BAD = [

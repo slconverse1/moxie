@@ -71,7 +71,7 @@ null
 ],
 [
 146,
-"for n in 1..=6\n  if n % 2 == 1\n    continue\n  println(\"even $n\")\n",
+"for n in 1..6\n  if n % 2 == 1\n    continue\n  println(\"even $n\")\n",
 [
 "even 2",
 "even 4",
@@ -157,7 +157,7 @@ null
 ],
 [
 288,
-"total = List(70, 85, 90) |> to_stream() |> reduce(0, (acc, s) -> acc + s)\nprintln(total)\n",
+"total = List(70, 85, 90) |> reduce(0, (acc, s) -> acc + s)\nprintln(total)\n",
 [
 "245"
 ]
@@ -182,7 +182,7 @@ null
 ],
 [
 329,
-"fn running_totals(xs Array[Int][5]) Array[Int][5]\n  mutable\n    out = xs\n    total = 0\n    for i in 0..5\n      total += xs(i)\n      out(i) = total\n    out\n\nprintln(running_totals(Array(3, 1, 4, 1, 5)))\n",
+"fn running_totals(xs Array[Int][5]) Array[Int][5]\n  mutable\n    out = xs\n    total = 0\n    for i in 0..<5\n      total += xs(i)\n      out(i) = total\n    out\n\nprintln(running_totals(Array(3, 1, 4, 1, 5)))\n",
 [
 "Array(3, 4, 8, 9, 14)"
 ]
@@ -315,7 +315,7 @@ null
 ],
 [
 563,
-"type alias Percent = Int[0..=100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    in 1..=99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
+"type alias Percent = Int[0..100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    in 1..99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
 [
 "partial",
 "out of range",
@@ -449,7 +449,7 @@ null
 ],
 [
 816,
-"numbers Array[Int] = (10, 20, 30, 40, 50)\nmiddle = numbers(1..=3)\nfixed = set(middle, 1, 99)\nprintln(\"${numbers(0)} ${len(numbers)} ${middle(0)} ${fixed(1)} ${middle(1)}\")\n",
+"numbers Array[Int] = (10, 20, 30, 40, 50)\nmiddle = numbers(1..3)\nfixed = set(middle, 1, 99)\nprintln(\"${numbers(0)} ${len(numbers)} ${middle(0)} ${fixed(1)} ${middle(1)}\")\n",
 [
 "10 5 20 99 30"
 ]
@@ -470,7 +470,7 @@ null
 ],
 [
 839,
-"for i in 0..len(numbers)\n  println(\"$i: ${numbers(i)}\")\n",
+"for i in 0..<len(numbers)\n  println(\"$i: ${numbers(i)}\")\n",
 null
 ],
 [
@@ -537,7 +537,7 @@ null
 ],
 [
 940,
-"grid MultiArray[Int][2, 3] = (\n  10, 20, 30 ;\n  40, 50, 60\n)\nrow = grid(1, ..)\nkept = grid(1..=1, ..)\ncol = grid(.., 1)\nblock = grid(0..=1, 1..=2)\nprintln(\"${grid(1, 2)} ${row(2)} ${kept(0, 2)} ${col(0)} ${block(1, 1)}\")\npatched = set(row, 2, 99)\nprintln(\"${patched(2)} ${grid(1, 2)}\")\n",
+"grid MultiArray[Int][2, 3] = (\n  10, 20, 30 ;\n  40, 50, 60\n)\nrow = grid(1, ..)\nkept = grid(1..1, ..)\ncol = grid(.., 1)\nblock = grid(0..1, 1..2)\nprintln(\"${grid(1, 2)} ${row(2)} ${kept(0, 2)} ${col(0)} ${block(1, 1)}\")\npatched = set(row, 2, 99)\nprintln(\"${patched(2)} ${grid(1, 2)}\")\n",
 [
 "60 60 60 20 60",
 "99 60"
@@ -552,16 +552,16 @@ null
 ],
 [
 968,
-"fn row_sum[R, C](grid MultiArray[Int][R, C], r Int) Int\n  grid(r, ..) |> to_stream() |> reduce(0, _1 + _2)\nprintln(\"${row_sum(grid, 1)}\")\n",
+"fn row_sum[R, C](grid MultiArray[Int][R, C], r Int) Int\n  grid(r, ..) |> reduce(0, _1 + _2)\nprintln(\"${row_sum(grid, 1)}\")\n",
 [
 "150"
 ]
 ],
 [
 980,
-"println(\"${step(1..=10)} ${step(3..=1)} ${2.5 in 1.0..=5.0}\")\nfor i in 3..=1\n  println(\"$i\")\n",
+"println(\"${step(1..10)} ${step(3..1)} ${2.5 in 1.0..5.0} ${\"b\" in \"a\"..\"c\"}\")\nfor i in 3..1\n  println(\"$i\")\n",
 [
-"1 -1 true",
+"1 -1 true true",
 "3",
 "2",
 "1"
@@ -569,20 +569,20 @@ null
 ],
 [
 990,
-"println(List(i for i in 0..=10 step 5))\nprintln(List(i for i in 10..1 step -4))\nprintln(\"${3 in 1..=9 step 2} ${4 in 1..=9 step 2}\")\nletters = List(\"a\", \"b\", \"c\", \"d\", \"e\")\nprintln(letters(0..=4 step 2))\nr = 1..=9 step 4\nprintln(\"${r} ${len(r)} ${step(r)}\")\nprintln(1..=7 step 3 |> map(_ * 10) |> collect())\nhi = 3\nlo = 12\nprintln(List(i for i in lo..hi step -4))\n",
+"println(List(i for i in 0..10 step 5))\nprintln(List(i for i in 10..<1 step -4))\nprintln(\"${3 in 1..9 step 2} ${4 in 1..9 step 2}\")\nletters = List(\"a\", \"b\", \"c\", \"d\", \"e\")\nprintln(letters(0..4 step 2))\nr = 1..9 step 4\nprintln(\"${r} ${len(r)} ${step(r)}\")\nprintln(1..7 step 3 |> map(_ * 10) |> collect())\nhi = 3\nlo = 12\nprintln(List(i for i in lo..<hi step -4))\n",
 [
 "List(0, 5, 10)",
 "List(10, 6, 2)",
 "true false",
 "List(\"a\", \"c\", \"e\")",
-"1..=9 step 4 3 4",
+"1..9 step 4 3 4",
 "List(10, 40, 70)",
 "List(12, 8, 4)"
 ]
 ],
 [
 1008,
-"s = \"Python\"\nprintln(\"${s(2..)} ${s(..3)} ${s(..=3)} ${s(..)}\")\n",
+"s = \"Python\"\nprintln(\"${s(2..)} ${s(..<3)} ${s(..3)} ${s(..)}\")\n",
 [
 "thon Pyt Pyth Python"
 ]
@@ -627,7 +627,7 @@ null
 ],
 [
 1073,
-"numbers = List(1, 2, 3)\ndoubled = numbers |> to_stream() |> map(_ * 2)\ntripled = numbers |> to_stream() |> map()(x) -> x * 3\ntotal = numbers |> to_stream() |> reduce(0)(acc, x) ->\n  acc + x\nprintln(\"$total\")\n",
+"numbers = List(1, 2, 3)\ndoubled = numbers |> to_stream() |> map(_ * 2)\ntripled = numbers |> to_stream() |> map()(x) -> x * 3\ntotal = numbers |> reduce(0)(acc, x) ->\n  acc + x\nprintln(\"$total\")\n",
 [
 "6"
 ]
@@ -648,7 +648,7 @@ null
 ],
 [
 1105,
-"fn total(base Int, numbers ...Int) Int\n  numbers |> to_stream() |> reduce(base, _1 + _2)\nvalues = Array(10, 20, 30)\nprintln(\"${total(100, 10, 20, 30)} ${total(100, ...values)} ${total(100)}\")\n",
+"fn total(base Int, numbers ...Int) Int\n  numbers |> reduce(base, _1 + _2)\nvalues = Array(10, 20, 30)\nprintln(\"${total(100, 10, 20, 30)} ${total(100, ...values)} ${total(100)}\")\n",
 [
 "160 160 100"
 ]
@@ -690,7 +690,7 @@ null
 ],
 [
 1170,
-"fn sum_all[N](a Array[Int][N]) Int\n  a |> to_stream() |> reduce(0, _1 + _2)\nfn size_of[N](a Array[Int][N]) Int\n  N\nfn dot[N](a Array[Int][N], b Array[Int][N]) Int\n  zip(a, b) |> map()(x, y) -> x * y\n  |> reduce(0, _1 + _2)\nfn first_of[T, N where N > 0](a Array[T][N]) T\n  a(0)\nx Array[Int] = (1, 2, 3)\ny Array[Int] = (1, 2, 3, 4, 5)\nprintln(\"${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}\")\n",
+"fn sum_all[N](a Array[Int][N]) Int\n  a |> reduce(0, _1 + _2)\nfn size_of[N](a Array[Int][N]) Int\n  N\nfn dot[N](a Array[Int][N], b Array[Int][N]) Int\n  zip(a, b) |> map()(x, y) -> x * y\n  |> reduce(0, _1 + _2)\nfn first_of[T, N where N > 0](a Array[T][N]) T\n  a(0)\nx Array[Int] = (1, 2, 3)\ny Array[Int] = (1, 2, 3, 4, 5)\nprintln(\"${sum_all(x)} ${sum_all(y)} ${dot(x, x)} ${size_of(y)} ${first_of(x)}\")\n",
 [
 "6 15 14 5 1"
 ]
@@ -889,7 +889,7 @@ null
 ],
 [
 1656,
-"interface Semigroup\n  fn combine(other Self) Self\ninterface Monoid\n  Semigroup\n  static fn empty() Self\nimpl Monoid for Int\n  fn combine(other Int) Int\n    self + other\n  static fn empty() Int\n    0\ntuple Max\n  value Int\nimpl Monoid for Max\n  fn combine(other Max) Max\n    if value > other.value then self else other\n  static fn empty() Max\n    Max(value: -1000000)\nfn mconcat[T Monoid, N](xs Array[T][N]) T\n  xs |> to_stream() |> reduce(T.empty(), (a, b) -> a.combine(b))\nnums Array[Int] = (1, 2, 3)\nmaxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))\nprintln(\"${mconcat(nums)} ${mconcat(maxes).value}\")\n",
+"interface Semigroup\n  fn combine(other Self) Self\ninterface Monoid\n  Semigroup\n  static fn empty() Self\nimpl Monoid for Int\n  fn combine(other Int) Int\n    self + other\n  static fn empty() Int\n    0\ntuple Max\n  value Int\nimpl Monoid for Max\n  fn combine(other Max) Max\n    if value > other.value then self else other\n  static fn empty() Max\n    Max(value: -1000000)\nfn mconcat[T Monoid, N](xs Array[T][N]) T\n  xs |> reduce(T.empty(), (a, b) -> a.combine(b))\nnums Array[Int] = (1, 2, 3)\nmaxes Array[Max] = (Max(value: 3), Max(value: 9), Max(value: 4))\nprintln(\"${mconcat(nums)} ${mconcat(maxes).value}\")\n",
 [
 "6 9"
 ]
@@ -993,7 +993,7 @@ null
 ],
 [
 1987,
-"tuple Report\n  data List[Int],\n  lazy property total Int\n    get\n      data |> to_stream() |> sum()\n  static property title String = \"Weekly\"\nr = Report(data: List(4, 5, 6))\nprintln(\"${Report.title}: ${r.total} ${r.total}\")\nr.data = List(10, 20)\nprintln(r.total)\nlazy size = len(r.data) * 100\nprintln(\"${size}\")\n",
+"tuple Report\n  data List[Int],\n  lazy property total Int\n    get\n      data |> sum()\n  static property title String = \"Weekly\"\nr = Report(data: List(4, 5, 6))\nprintln(\"${Report.title}: ${r.total} ${r.total}\")\nr.data = List(10, 20)\nprintln(r.total)\nlazy size = len(r.data) * 100\nprintln(\"${size}\")\n",
 [
 "Weekly: 15 15",
 "30",
@@ -1028,7 +1028,7 @@ null
 ],
 [
 2074,
-"fn half(n Int where n > 0) Int\n  n / 2\nfn safe_half(n Int) Int\n  if n > 0 then half(n) else 0\nfn pct_half(p Int[1..=100]) Int\n  half(p)\nprintln(safe_half(9))\nprintln(safe_half(-3))\nprintln(pct_half(50))\n",
+"fn half(n Int where n > 0) Int\n  n / 2\nfn safe_half(n Int) Int\n  if n > 0 then half(n) else 0\nfn pct_half(p Int[1..100]) Int\n  half(p)\nprintln(safe_half(9))\nprintln(safe_half(-3))\nprintln(pct_half(50))\n",
 [
 "4",
 "0",
@@ -1160,7 +1160,7 @@ null
 ],
 [
 2316,
-"fn describe(status Int) String\n  when status\n    200 -> \"Success\"\n    in 400..=499 -> \"Client Error\"\n    >= 500 -> \"Server Error\"\n    else \"Unknown\"\nfn grade(score Double) String\n  when score\n    >= 90.0 -> \"A\"\n    >= 80.0 -> \"B\"\n    else \"C\"\nprint(\"${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} \")\nprintln(\"${grade(85.0)}\")\n",
+"fn describe(status Int) String\n  when status\n    200 -> \"Success\"\n    in 400..499 -> \"Client Error\"\n    >= 500 -> \"Server Error\"\n    else \"Unknown\"\nfn grade(score Double) String\n  when score\n    >= 90.0 -> \"A\"\n    >= 80.0 -> \"B\"\n    else \"C\"\nprint(\"${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)} \")\nprintln(\"${grade(85.0)}\")\n",
 [
 "Success Client Error Server Error Unknown B"
 ]
@@ -1252,7 +1252,7 @@ null
 ],
 [
 2491,
-"numbers = Array(10, 20, 30, 40)\nfor v in numbers |> to_stream() |> map(_ * 2)\n  println(\"$v\")\ntotal = numbers |> to_stream() |> reduce(0, _1 + _2)\nbig List[Int] = numbers |> to_stream() |> filter(_ > 15) |> collect()\nprintln(\"$total ${len(big)}\")\n",
+"numbers = Array(10, 20, 30, 40)\nfor v in numbers |> to_stream() |> map(_ * 2)\n  println(\"$v\")\ntotal = numbers |> reduce(0, _1 + _2)\nbig List[Int] = numbers |> to_stream() |> filter(_ > 15) |> collect()\nprintln(\"$total ${len(big)}\")\n",
 [
 "20",
 "40",
@@ -1299,7 +1299,7 @@ null
 ],
 [
 2558,
-"readings = List(3, 6, 9, 12, 15)\navg List[Int] = readings\n  |> to_stream()\n  |> windows(3)\n  |> map((w) -> (w |> to_stream() |> sum()) / 3)\n  |> collect()\nprintln(\"${avg(0)} ${avg(1)} ${avg(2)}\")\n",
+"readings = List(3, 6, 9, 12, 15)\navg List[Int] = readings\n  |> to_stream()\n  |> windows(3)\n  |> map((w) -> (w |> sum()) / 3)\n  |> collect()\nprintln(\"${avg(0)} ${avg(1)} ${avg(2)}\")\n",
 [
 "6 9 12"
 ]
@@ -1313,7 +1313,7 @@ null
 ],
 [
 2577,
-"for x in numbers\n  println(\"$x\")\nfor i in 0..=10 step 2\n  println(\"step $i\")\nfor i in 3..=1 step -1\n  println(\"countdown $i\")\n",
+"for x in numbers\n  println(\"$x\")\nfor i in 0..10 step 2\n  println(\"step $i\")\nfor i in 3..1 step -1\n  println(\"countdown $i\")\n",
 null
 ],
 [
@@ -1326,7 +1326,7 @@ null
 ],
 [
 2597,
-"words = List(\"pear\", \"fig\", \"banana\", \"fig\", \"kiwi\")\nprintln(\"${words |> to_stream() |> distinct() |> collect()}\")\njoined = words\n  |> to_stream()\n  |> distinct()\n  |> intersperse(\"|\")\n  |> reduce(\"\", _1 + _2)\nprintln(\"$joined\")\nprint(\"${words |> to_stream() |> min_by(len)} \")\nprintln(\"${words |> to_stream() |> max_by(len)}\")\n(short, rest) = words |> to_stream() |> span((w) -> len(w) < 6)\nprintln(\"$short ${len(rest)}\")\n",
+"words = List(\"pear\", \"fig\", \"banana\", \"fig\", \"kiwi\")\nprintln(\"${words |> to_stream() |> distinct() |> collect()}\")\njoined = words\n  |> to_stream()\n  |> distinct()\n  |> intersperse(\"|\")\n  |> reduce(\"\", _1 + _2)\nprintln(\"$joined\")\nprint(\"${words |> min_by(len)} \")\nprintln(\"${words |> max_by(len)}\")\n(short, rest) = words |> to_stream() |> span((w) -> len(w) < 6)\nprintln(\"$short ${len(rest)}\")\n",
 [
 "List(\"pear\", \"fig\", \"banana\", \"kiwi\")",
 "pear|fig|banana|kiwi",
@@ -1367,21 +1367,21 @@ null
 ],
 [
 2665,
-"fn fib(n Int) Int\n  (a, _) = 1..=n |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))\n  a\nprintln(\"${fib(10)}\")\n",
+"fn fib(n Int) Int\n  (a, _) = 1..n |> reduce((0, 1), (s, _) -> (s(1), s(0) + s(1)))\n  a\nprintln(\"${fib(10)}\")\n",
 [
 "55"
 ]
 ],
 [
 2674,
-"fn next_row(prev List[Int]) List[Int]\n  1..len(prev) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))\nfn paths(rows Int, cols Int) Int\n  first = List(1 for _ in 0..cols)\n  last = 1..rows |> reduce(first, (prev, _) -> next_row(prev))\n  last(cols - 1)\nprintln(\"${paths(3, 3)} ${paths(10, 10)}\")\n",
+"fn next_row(prev List[Int]) List[Int]\n  1..<len(prev) |> reduce(List(prev(0)), (acc, j) -> acc + (prev(j) + acc(j - 1)))\nfn paths(rows Int, cols Int) Int\n  first = List(1 for _ in 0..<cols)\n  last = 1..<rows |> reduce(first, (prev, _) -> next_row(prev))\n  last(cols - 1)\nprintln(\"${paths(3, 3)} ${paths(10, 10)}\")\n",
 [
 "6 48620"
 ]
 ],
 [
 2686,
-"fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) Int\n  if ys(j - 1) == x\n    prev(j - 1) + 1\n  else\n    max(prev(j), acc(j - 1))\nfn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]\n  1..=len(ys) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))\nfn lcs(a String, b String) Int\n  xs = List(c for c in chars(a))\n  ys = List(c for c in chars(b))\n  last = xs |> to_stream() |> reduce(List(0 for _ in 0..=len(ys)), (prev, x) -> lcs_row(prev, x, ys))\n  last(len(ys))\nprintln(\"${lcs(\"ABCBDAB\", \"BDCABA\")}\")\n",
+"fn step(prev List[Int], acc List[Int], ys List[Char], x Char, j Int) Int\n  if ys(j - 1) == x\n    prev(j - 1) + 1\n  else\n    max(prev(j), acc(j - 1))\nfn lcs_row(prev List[Int], x Char, ys List[Char]) List[Int]\n  1..len(ys) |> reduce(List(0), (acc, j) -> acc + step(prev, acc, ys, x, j))\nfn lcs(a String, b String) Int\n  xs = List(c for c in chars(a))\n  ys = List(c for c in chars(b))\n  last = xs |> reduce(List(0 for _ in 0..len(ys)), (prev, x) -> lcs_row(prev, x, ys))\n  last(len(ys))\nprintln(\"${lcs(\"ABCBDAB\", \"BDCABA\")}\")\n",
 [
 "4"
 ]
@@ -1725,7 +1725,7 @@ null
 ],
 [
 3505,
-"foreign \"sensor\"\n  impure fn on_reading(cb Events[(Int32, Double)])\n  impure fn on_query(cb Handler[(Int32) -> Int32])\nrx, tx = Chan[(Int32, Double)][16]()\non_reading(move tx)\non_query((id) -> id * 2i32)\nfor i in 1..=3\n  println(read(rx)?)\n",
+"foreign \"sensor\"\n  impure fn on_reading(cb Events[(Int32, Double)])\n  impure fn on_query(cb Handler[(Int32) -> Int32])\nrx, tx = Chan[(Int32, Double)][16]()\non_reading(move tx)\non_query((id) -> id * 2i32)\nfor i in 1..3\n  println(read(rx)?)\n",
 null
 ],
 [
@@ -1881,7 +1881,7 @@ null
 ],
 [
 3877,
-"steps Array[(Int) -> Int] = (inc, twice, square)\nresult = steps |> to_stream() |> reduce(0)(acc, f) -> f(acc)\nprintln(\"$result\")\n",
+"steps Array[(Int) -> Int] = (inc, twice, square)\nresult = steps |> reduce(0)(acc, f) -> f(acc)\nprintln(\"$result\")\n",
 [
 "4"
 ]
@@ -2208,7 +2208,7 @@ null
 ],
 [
 4931,
-"xs = List(1, 2, 3)\nsum = xs |> to_stream() |> reduce(0, _1 + _2)\nprintln(\"$sum\")\n",
+"xs = List(1, 2, 3)\nsum = xs |> reduce(0, _1 + _2)\nprintln(\"$sum\")\n",
 [
 "6"
 ]
@@ -2220,7 +2220,7 @@ null
 ],
 [
 4963,
-"xs List[Int] = 1..=1000000 |> to_stream() |> collect()\ntotal = xs |> to_stream() |> reduce(0, _1 + _2)\nprintln(\"$total\")\n",
+"xs List[Int] = 1..1000000 |> to_stream() |> collect()\ntotal = xs |> reduce(0, _1 + _2)\nprintln(\"$total\")\n",
 [
 "500000500000"
 ]
@@ -2232,7 +2232,7 @@ null
 ],
 [
 4981,
-"log = Atom[Ring[String]](Ring[String](3))\nfn note(msg String) Unit\n  \\swap(log, _ + msg)\nfor i in 1..=5\n  note(\"m$i\")\nr = @log\nprintln(\"${len(r)} ${r(0)} ${r(2)}\")\n",
+"log = Atom[Ring[String]](Ring[String](3))\nfn note(msg String) Unit\n  \\swap(log, _ + msg)\nfor i in 1..5\n  note(\"m$i\")\nr = @log\nprintln(\"${len(r)} ${r(0)} ${r(2)}\")\n",
 [
 "3 m3 m5"
 ]

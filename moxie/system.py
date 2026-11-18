@@ -50,7 +50,7 @@ def b_random(I, a, kw, ta):
 def b_random_int(I, a, kw, ta):
     r = a[0]
     if not isinstance(r, RangeV) or r.start is None or r.limit is None:
-        raise Abort("random_int takes a finite range of whole numbers, such as 1..=6")
+        raise Abort("random_int takes a finite range of whole numbers, such as 1..6")
     n = r.count()
     if n <= 0:
         raise Abort(f"random_int: the range {show_plain(r)} is empty")

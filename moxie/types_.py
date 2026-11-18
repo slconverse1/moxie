@@ -79,7 +79,7 @@ class TypesMixin:
         return self.run_sync(self.ev(e, env))
 
     def bounded_range(self, t, env):
-        """For Int[lo..=hi] return (lo, hi) or None."""
+        """For Int[lo..hi] return (lo, hi) or None."""
         if isinstance(t, TName) and t.groups:
             g = t.groups[0]
             if len(g) == 1 and isinstance(g[0], TExpr) and isinstance(g[0].expr, RangeE):

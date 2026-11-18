@@ -51,7 +51,7 @@ println(state.traverse(List("a", "b", "c"), label).run(0))
 
 chk("traverse over a long list", HEAD + '''fn add(x Int) state.State[Int, Int]
   state.modify((n Int) -> n + x).flat_map((u) -> state.get())
-big = List(i for i in 0..3000)
+big = List(i for i in 0..<3000)
 println(state.exec(state.traverse(big, add), 0))
 ''', 0, "4498500")
 

@@ -139,7 +139,7 @@ def _defs():
         "PAs": "name pat",
         "PPin": "expr",
         "PRel": "op operand",
-        "PIn": "expr neg",            # `in 1..=9 ->`, `in lo..=hi step 2 ->`, `not in xs ->`: a membership test on any range or collection
+        "PIn": "expr neg",            # `in 1..9 ->`, `in lo..hi step 2 ->`, `not in xs ->`: a membership test on any range or collection
         "PRest": "name",
         "PPlace": "expr",
         "PTyped": "pat type",

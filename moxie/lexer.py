@@ -40,7 +40,7 @@ class Tok:
 
 
 OPS = [
-    "...", "..=", "|>>", "<$>", "<*>", ">>=", "<<=",
+    "...", "..=", "..<", "|>>", "<$>", "<*>", ">>=", "<<=",
     "<~", "~>", "|>", "->", "==", "~=", "<=", ">=", "+=", "-=", "*=", "/=", "%=", "+%", "-%",
     "&=", "|=", "^=", "<<", ">>", "++", "--", "..",
     "+", "-", "*", "/", "%", "<", ">", "=", "&", "|", "^", "~", "(", ")", "[", "]",
@@ -335,6 +335,12 @@ class Lexer:
             if src.startswith(op, i):
                 # '..' after an int literal is handled in _number
                 self.i = i + len(op)
+                if op == "..=":
+                    self.err("`..=` is gone: `a..b` includes `b` (as in Kotlin), and `a..<b` leaves it out")
+                if op == "..":                      # the parser's names: `..=` is the closed range, `..` the half-open one
+                    op = "..="
+                elif op == "..<":
+                    op = ".."
                 if op in "([{":
                     self.depth += 1
                 elif op in ")]}":

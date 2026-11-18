@@ -19,7 +19,7 @@ CASES = [
  ("the right cases are fine", 'fn f(xs List[Int]) Int\n  when first(xs)\n    Ok(n) -> n\n    Err(_) -> 0\nfn g(o Option[Int]) Int\n  when o\n    Some(n) -> n\n    None -> 0\n', None),
  ("a program's own Some is left alone", 'enum Box\n  Some(n Int)\n  Empty\nfn f(b Box) Int\n  when b\n    Some(n) -> n\n    Empty -> 0\n', None),
  ("a dropped Result", F + 'fn g() Int\n  f()\n  2\n', "this `Result` is dropped"),
- ("a dropped Result in a loop", F + 'for i in 0..2\n  f()\n', "this `Result` is dropped"),
+ ("a dropped Result in a loop", F + 'for i in 0..<2\n  f()\n', "this `Result` is dropped"),
  ("a dropped library Result", 'fn g() Int\n  write_file("/tmp/x", "a")\n  2\n', "this `Result` is dropped"),
  ("backslash drops on purpose", F + 'fn g() Int\n  \\ f()\n  2\n', None),
  ("a Result passed on with ?", F + 'fn g() Result[Int, Error]\n  f()?\n  Ok(2)\n', None),

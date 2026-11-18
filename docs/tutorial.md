@@ -71,7 +71,7 @@ Three things to notice:
 
 - **The shape of a function.** `fn name(parameters) ReturnType` then an indented block. The block's last line is its value, so there is no `return` to write. (You may write one, and a guard like `return x if n < 0` can be handy.)
 - **Indentation is the structure.** Two spaces open a block, and there are no braces.
-- **`when` picks the first arm that matches.** The patterns can be literals, ranges such as `80..=89`, or comparisons such as `>= 90`. The last arm, `_`, matches anything, and the compiler insists you have one when it can't tell that every value is covered. If you remove the `_` arm, the program won't run.
+- **`when` picks the first arm that matches.** The patterns can be literals, ranges such as `80..89`, or comparisons such as `>= 90`. The last arm, `_`, matches anything, and the compiler insists you have one when it can't tell that every value is covered. If you remove the `_` arm, the program won't run.
 
 **Exercise.** Add a grade `D` for scores from 60 up to 69, and print `letter(65)`.
 

@@ -15,7 +15,7 @@ CASES = [
  ("+= makes the length unknown", 'ws = List(1, 2)\nws += 3\nprintln(ws(2))\n', 0, "3"),
  ("another function's list of the same name does not matter", 'fn a() Int\n  q = List(1, 2, 3)\n  q(2)\nfn b() Int\n  q = List(1)\n  q(0)\nprintln(a() + b())\n', 0, "4"),
  ("a variable index is not checked here", 'xs = List(1, 2)\ni = 5\nprintln(xs(i))\n', 1, "out of range"),
- ("a comprehension has no known length", 'xs = List(x * 2 for x in 0..3)\nprintln(xs(2))\n', 0, "4"),
+ ("a comprehension has no known length", 'xs = List(x * 2 for x in 0..<3)\nprintln(xs(2))\n', 0, "4"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

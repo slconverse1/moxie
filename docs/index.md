@@ -94,7 +94,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 
 - **Go:** interfaces, goroutines, channels, and `select`, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt`.
 - **Python:** clean, human-readable visual spacing, `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
-- **Kotlin:** scoped receiver blocks, field delegates, Domain-Specific Languages, labeled `break` and `continue`, and the `step` syntax for ranges, as in `1..9 step 2`.
+- **Kotlin:** scoped receiver blocks, field delegates, Domain-Specific Languages, labeled `break` and `continue`, and the `step` syntax for ranges, as in `1..<9 step 2`.
 - **Scala:** opaque types, contextual parameters, expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
@@ -474,7 +474,7 @@ fn running_totals(xs Array[Int][5]) Array[Int][5]
   mutable
     out = xs
     total = 0
-    for i in 0..5
+    for i in 0..<5
       total += xs(i)
       out(i) = total
     out
@@ -664,12 +664,12 @@ So moxie has no null (and, obviously, no nullable types) and no "zero value" sta
 - `.get_or(0)` supplies a default on the spot.
 - A `Result` of a tuple forwards field access, so `find_user(id).name` is itself a `Result`, and the error goes along for the ride.
 - Let-else turns "unwrap or bail out" into a single line.
-- Bounded types (`Int[0..=100]`) and exhaustive `when` checking move whole classes of "what if it's missing or wrong?" out of run time and into the compiler.
+- Bounded types (`Int[0..100]`) and exhaustive `when` checking move whole classes of "what if it's missing or wrong?" out of run time and into the compiler.
 - Truly impossible situations (an out-of-range array index, say) abort the fiber with a diagnostic instead of making you thread a Result through code that can't recover anyway.
 
 ## 6. Numbers that tell the truth
 
-Integer overflow aborts instead of silently wrapping, unless you ask for `wrapping_add`, `saturating_add`, or `checked_add` by name. A range can live in the type (`Int[0..=100]`), and a `when` that covers the range needs no `_` arm. Big integers have a fixed size (`BigInt[128]`) and never touch the heap. `Decimal[10, 2]` does exact money math, and rounding is always something you say out loud (`round_to[2](x, #half_even)`). Floats follow IEEE and warn you when you compare them with `==`.
+Integer overflow aborts instead of silently wrapping, unless you ask for `wrapping_add`, `saturating_add`, or `checked_add` by name. A range can live in the type (`Int[0..100]`), and a `when` that covers the range needs no `_` arm. Big integers have a fixed size (`BigInt[128]`) and never touch the heap. `Decimal[10, 2]` does exact money math, and rounding is always something you say out loud (`round_to[2](x, #half_even)`). Floats follow IEEE and warn you when you compare them with `==`.
 
 ## 7. Data paths: lenses you get for free
 
@@ -761,7 +761,7 @@ Output: `Physics vector updated: speed 95.2, angle 14.6`. There are no intermedi
 ```
 fn add(x Int, y Int) Int = x + y
 fn total(base Int, numbers ...Int) Int
-  numbers |> to_stream() |> reduce(base, _1 + _2)
+  numbers |> reduce(base, _1 + _2)
 pair = (3, 5)
 values = Array(10, 20, 30)
 print("${add(...pair)} ${total(100, 1, 2, 3)} ${total(100, ...values)} ")
@@ -841,7 +841,7 @@ fn area(s Shape) Double
     Rect(w, h) -> w * h      // error: `when` does not cover `Dot`
 ```
 
-The payoff comes later. Add a case to `Shape` six months from now, and the compiler points to every `when` that needs a new arm, so you don't have to hunt for what might break. Enums are closed on purpose for this reason. A `when` over a bounded integer such as `Int[0..=100]` whose patterns cover the whole range needs no `_` arm either.
+The payoff comes later. Add a case to `Shape` six months from now, and the compiler points to every `when` that needs a new arm, so you don't have to hunt for what might break. Enums are closed on purpose for this reason. A `when` over a bounded integer such as `Int[0..100]` whose patterns cover the whole range needs no `_` arm either.
 
 **Deep destructuring.** Patterns nest to any depth, so one arm can check a case, look inside a tuple, and test a literal at the same time:
 
@@ -926,14 +926,14 @@ Output: `Ann: top tier`, `Bob: elite`, `Cy: standard`. A guarded arm doesn't cou
 fn describe(status Int) String
   when status
     200 -> "Success"
-    in 400..=499 -> "Client Error"
+    in 400..499 -> "Client Error"
     >= 500 -> "Server Error"
     else "Unknown"
 
 println("${describe(200)} ${describe(404)} ${describe(503)} ${describe(302)}")
 ```
 
-Output: `Success Client Error Server Error Unknown`. The subject is named once, on the `when` line, and each arm only says which values it takes. Use `..=` for a closed band such as `400..=499`, and `>=`, `>`, `<=` or `<` when one end is open. A comparison works on any ordered type, so `>= 90.0` is fine for a `Double`, and its operand is a literal or a pin like `^limit`. The compiler can't tell whether comparisons alone cover every value, so a `when` like this one keeps its `_ ->` arm.
+Output: `Success Client Error Server Error Unknown`. The subject is named once, on the `when` line, and each arm only says which values it takes. Use `..` for a closed band such as `400..499`, and `>=`, `>`, `<=` or `<` when one end is open. A comparison works on any ordered type, so `>= 90.0` is fine for a `Double`, and its operand is a literal or a pin like `^limit`. The compiler can't tell whether comparisons alone cover every value, so a `when` like this one keeps its `_ ->` arm.
 
 **Conditions, not just shapes.** A plain `when` is a chain of Boolean tests: the first arm that is true wins, and the chain must end with an `else` arm. It's the right tool when the tests involve different things:
 
@@ -997,7 +997,7 @@ println(message(Rectangle(origin: Point(x: 1, y: 0), w: 10, h: 10)))
 
 Output: `Standard square at origin`, then `Unknown`.
 
-**More patterns.** A pattern can be a literal, a range (`90..=100`), a name that binds, or `_`. Beyond that:
+**More patterns.** A pattern can be a literal, a range (`90..100`), a name that binds, or `_`. Beyond that:
 - `p@Account(name, score)` binds the whole value to `p` as well as its fields.
 - `^limit` pins an existing variable, so the arm compares against its value instead of binding a new name.
 - `List(head, ...tail)` and `Array(a, b, c)` take sequences apart, and a Dict pattern matches a subset of entries.
@@ -1148,7 +1148,7 @@ No exceptions flying over your head, and no hidden control flow. Not bad! Your e
 
 ## 15. Iterators, generators, and comprehensions
 
-**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `3..=1 step -1` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
+**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `3..1 step -1` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
 
 **Generators.** A generator is a function that returns an `unfold` stream. The step takes the current state and returns a value together with the next state, or an `Err` to stop:
 
@@ -1699,7 +1699,7 @@ finish(tx)   // error: `finish` takes ownership of `tx` (it closes it, moves it,
 **Loops are where it bites.** A loop runs its body again, and a resource that moved the first time round isn't there the second time. So the compiler refuses a move that could be followed by another trip round:
 
 ```
-for i in 1..=3
+for i in 1..3
   finish(move tx)   // error: `tx` is moved inside a loop; a resource may be
                     // moved only on an exiting path
 ```
@@ -1711,7 +1711,7 @@ fiber[3] fn worker(out ChanW[Int], n Int) Unit
   \write(out, n)
 
 rx, tx = Chan[Int][4]()
-for i in 1..=3
+for i in 1..3
   go worker(clone(tx), i)
 close(tx)
 println("${read(rx).get_or(0) + read(rx).get_or(0) + read(rx).get_or(0)}")
@@ -1925,7 +1925,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 - **No mixing `_` and `_1` in one partial call.** The two numbering schemes together read like a puzzle.
 - **Unused imports and module-level rebinding are errors.** The link report stays honest, and a program's top-level names stay stable.
 - **A fiber abort still ends the whole program.** `wait` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.
-- **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..=100]` values can leave the range, so you say when to narrow it again.
+- **Bounded-integer arithmetic yields plain integers.** Adding two `Int[0..100]` values can leave the range, so you say when to narrow it again.
 - **Transactions don't nest.** It keeps the commit-or-roll-back rule simple to state.
 - **Delegates apply only to declared tuple fields.** The field's layout has to be known.
 - **Permissions belong to the program, and a package can be given less.** By default a dependency has the program's rights. A `[permissions.packages.NAME]` table in `Moxie.toml` sets a ceiling for code written in that package, and the compiler checks the whole package against it.

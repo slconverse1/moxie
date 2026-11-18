@@ -840,7 +840,7 @@ class CallsMixin:
         else:
             e = r.limit + 1 if r.incl else r.limit
         if s < 0 or e > n or s > e:
-            raise Abort(f"slice {s}..{e} out of range (length {n})", line)
+            raise Abort(f"slice {s}..<{e} out of range (length {n})", line)
         return s, e
 
     def multi_index(self, m, args, line=0):
