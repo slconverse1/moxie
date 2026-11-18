@@ -2464,6 +2464,22 @@ def b_reset(I, a, kw, ta):
     return a[1]
 
 
+@bi("swap_vals", "first", True)
+def b_swap_vals(I, a, kw, ta):
+    """Like `swap`, but returns `(old, new)`."""
+    old = a[0].atom_value
+    nv = yield from b_swap(I, a, kw, ta)
+    return TupleV([old, nv])
+
+
+@bi("reset_vals", "first", True)
+def b_reset_vals(I, a, kw, ta):
+    """Like `reset`, but returns `(old, new)`."""
+    old = a[0].atom_value
+    nv = yield from b_reset(I, a, kw, ta)
+    return TupleV([old, nv])
+
+
 @bi("try_swap", "first", True)
 def b_try_swap(I, a, kw, ta):
     """Like `swap`, but a value the Atom's `valid` check rejects gives `Err` and leaves the Atom as it was."""
@@ -2506,6 +2522,16 @@ def b_set_delegate(I, a, kw, ta):
 @bi("on_change")
 def b_on_change(I, a, kw, ta):
     """`on_change(atom, "prop", handler)`: call `handler(old, new)` whenever a write through the Atom changes the property."""
+    if len(a) == 2:                                        # `on_change(atom, handler)`: watch the whole value
+        at, h = a[0], a[1]
+        if not hasattr(at, "watchers"):
+            raise Abort("on_change watches an Atom")
+        if not GC[0] and sum(1 for w in at.watchers if w[1] is None) >= 8:
+            raise Abort("the Atom already has 8 whole-value observers")
+        tok = at.next_tok
+        at.next_tok += 1
+        at.watchers.append((tok, None, h))
+        return tok
     at, prop, h = a[0], a[1], a[2]
     if not hasattr(at, "watchers"):
         raise Abort("on_change watches a property of a value held in an Atom")

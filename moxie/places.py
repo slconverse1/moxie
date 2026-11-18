@@ -203,9 +203,13 @@ class PlacesMixin:
 
     def fire_watchers(self, at, old, new):
         """After a write through an Atom: call each `on_change` handler whose property now has a different value."""
-        if old.__class__ is not TupleV or new.__class__ is not TupleV:
-            return
         for tok, prop, h in list(at.watchers):
+            if prop is None:                                   # a whole-value observer
+                if not self.values_eq(old, new):
+                    yield from self.apply(h, [old, new])
+                continue
+            if old.__class__ is not TupleV or new.__class__ is not TupleV:
+                continue
             if self.prop_of(new, prop) is None:
                 continue
             ov = self.field_get(old, prop)

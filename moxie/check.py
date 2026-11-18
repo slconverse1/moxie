@@ -5560,6 +5560,9 @@ class Checker(RefineMixin):
         if f.__class__ is Name and f.name == "on_change" and f.name not in self.fns and sc.find(f.name) is None \
                 and len(n.args or []) == 3 and not extra:
             self.check_observer(n)
+        if f.__class__ is Name and f.name == "on_change" and f.name not in self.fns and sc.find(f.name) is None \
+                and len(n.args or []) == 2 and not extra:
+            self.check_observer_whole(n)
         if f.__class__ is Name and f.name in ("print", "println", "eprint", "eprintln") \
                 and f.name not in self.fns and sc.find(f.name) is None:
             if len(n.args or []) == 1 and not extra:
@@ -8404,6 +8407,32 @@ class Checker(RefineMixin):
         if ty is None:
             return None, None
         return ("fn", (("named", td.name),), ty), None
+
+    def check_observer_whole(self, n):
+        """`on_change(atom, handler)`: the atom's value changed, and the handler takes the old and the new value of the Atom's type."""
+        a0, a1 = (a.expr for a in n.args)
+        at = self.base(self.arg_ty.get(id(a0)))
+        if at.__class__ is not tuple or at[0] != "app" or at[1] != "Atom" or len(at[2]) != 1:
+            if at is not None and at.__class__ is tuple and at[0] in ("named", "app"):
+                self.err(n.line, f"`on_change` watches an Atom, not {tshow(at)}")
+            return
+        et = self.base(at[2][0])
+        if a1.__class__ is Lambda:
+            if len(a1.params or []) != 2:
+                self.err(n.line, f"a handler for an Atom takes two parameters, the old and the new value, but this one takes {len(a1.params or [])}")
+                return
+            for prm in a1.params:
+                if getattr(prm, "type", None) is not None:
+                    self.compat(et, self.ty_of_type(prm.type), None, n.line)
+            return
+        ht = self.base(self.arg_ty.get(id(a1)))
+        if ht.__class__ is tuple and ht[0] == "fn":
+            if len(ht[1]) != 2:
+                self.err(n.line, f"a handler for an Atom takes two parameters, the old and the new value, but this one takes {len(ht[1])}")
+                return
+            for q in ht[1]:
+                if q is not None:
+                    self.compat(et, self.base(q), None, n.line)
 
     def check_observer(self, n):
         """`on_change(atom, prop, handler)` (and `atom.prop +% handler`): the atom holds a tuple with that property, and the handler
