@@ -223,6 +223,20 @@ class TypesMixin:
                 caps = [self.const_of(g, env) for g in groups[1]]
             else:
                 caps = self.const_of(groups[1][0], env)
+        if isinstance(v, tuple) and len(v) == 2 and v[0] == "fill":      # `fill(x)`: x repeated over the declared size or shape
+            x = v[1]
+            if elem_t is not None and not isinstance(elem_t, THole):
+                x = self.coerce(x, elem_t, env)
+            if name == "MultiArray":
+                if not caps or not all(isinstance(c, int) for c in caps):
+                    raise Abort("fill(value) needs the shape written on the declaration: `MultiArray[Int][2, 3]`")
+                n = 1
+                for c in caps:
+                    n *= c
+                return MultiV([x] * n, caps)
+            if name in ("Array", "List") and isinstance(caps, int):
+                return (ArrayV if name == "Array" else ListV)([x] * caps, caps)
+            raise Abort(f"fill(value) needs a size written on the declaration: `{name}[Int][5]`")
         if name == "MultiArray":
             if isinstance(v, MultiV):
                 return v

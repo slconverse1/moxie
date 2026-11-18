@@ -3263,3 +3263,29 @@ from . import terminal  # noqa: E402,F401  (raw terminal input)
 from . import pipes  # noqa: E402,F401  (Unix sockets and pipes)
 from . import watch  # noqa: E402,F401  (file watching)
 from . import secret  # noqa: E402,F401  (Secret[T])
+
+
+# A List flowing through a transformer comes out a List: `xs |> filter(f) |> map(g)` needs no `to_stream()` or `collect()`.
+# The source's length bounds the result, so the capacity is the source's.  Stream sources stay lazy streams.
+_LIST_STAGES = {"filter": -1, "take": -1, "drop": -1, "take_while": -1, "drop_while": -1, "flat_map": -1, "sort_by": -1, "take_last": -1,
+                "scan": -1, "enumerate": 0, "concat": 0, "zip": 0, "sort": 0, "reverse": 0, "distinct": 0, "intersperse": 0, "distinct_by": -1}
+
+
+def _listify(name, ix):
+    fn, pos, gen = REG[name]
+
+    def wrapped(I, a, kw, ta):
+        src = a[ix]
+        r = fn(I, a, kw, ta)
+        if gen:
+            r = yield from r
+        if isinstance(src, ListV) and isinstance(r, StreamV):
+            items = yield from drain(I, r)
+            return ListV(items, max(src.cap, len(items)))
+        return r
+    REG[name] = (wrapped, pos, True)
+
+
+for _n, _i in _LIST_STAGES.items():
+    if _n in REG:
+        _listify(_n, _i)

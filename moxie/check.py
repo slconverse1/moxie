@@ -289,6 +289,8 @@ STRICT_SAFETY = [False]          # Moxie.toml `safety = "strict"`
 from .refinecheck import RefineMixin
 
 
+LIST_STAGE_NAMES = {"filter", "take", "drop", "take_while", "drop_while", "flat_map", "sort_by", "take_last", "scan", "enumerate", "concat", "zip", "sort", "reverse", "distinct", "intersperse", "distinct_by"}
+
 class Checker(RefineMixin):
     def __init__(self, prelude_names):
         self.diags = []
@@ -6426,6 +6428,15 @@ class Checker(RefineMixin):
                 b = self.base(t) if t is not None else None
                 if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Array") and b[2]:
                     return ats, ("app", b[1], (ret[2][0],) + tuple(b[2][1:]) if ret[2].__class__ is tuple else [ret[2][0]] + list(b[2][1:]))
+        if getattr(n.fn, "name", None) in LIST_STAGE_NAMES and ret.__class__ is tuple and ret[0] == "app" and ret[1] == "Stream" and len(ret[2]) == 1:
+            first_seq = None
+            for t in full(None):                            # the source is the first argument that is a collection or a stream
+                b = self.base(t) if t is not None else None
+                if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Stream", "Array", "Ring", "Set", "Dict") or b == "Range":
+                    first_seq = b
+                    break
+            if first_seq.__class__ is tuple and first_seq[1] == "List":                # a List stays a List
+                return ats, ("app", "List", (ret[2][0],))
         return ats, ret
 
     def arg_plan(self, fn, args, sc, extra, trailing=None, line=None):
