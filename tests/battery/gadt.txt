@@ -1,0 +1,65 @@
+### GADT constructor payload type
+reject: 
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+  Add(a Value[Int], b Value[Int]) Value[Int]
+x = Add(Num(1), Flag(true))
+### GADT well typed
+ok
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+  Add(a Value[Int], b Value[Int]) Value[Int]
+x = Add(Num(1), Num(2))
+println(1)
+### GADT eval result type per case
+ok: 3
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+  Add(a Value[Int], b Value[Int]) Value[Int]
+fn eval[T](v Value[T]) T = when v
+  Num(n) -> n
+  Flag(b) -> b
+  Add(a, b) -> eval(a) + eval(b)
+println(eval(Add(Num(1), Num(2))))
+### GADT eval arm returns the wrong type
+reject: 
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+fn eval[T](v Value[T]) T = when v
+  Num(n) -> "x"
+  Flag(b) -> b
+### GADT impossible arm
+reject: 
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+fn f(v Value[Int]) Int = when v
+  Num(n) -> n
+  Flag(b) -> 0
+### GADT scrutinee refinement covers only the possible case
+ok
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+fn f(v Value[Bool]) Bool = when v
+  Flag(b) -> b
+println(f(Flag(true)))
+### GADT only possible cases required
+ok
+enum Value[T]
+  Num(n Int) Value[Int]
+  Flag(b Bool) Value[Bool]
+fn f(v Value[Bool]) Bool = when v
+  Flag(b) -> b
+println(1)
+### existential used consistently
+ok: 5
+enum Box
+  Hide[A](v A, show (A) -> String)
+fn peek(b Box) String = when b
+  Hide(v, show) -> show(v)
+println(peek(Hide(5, (n) -> "${n}")))

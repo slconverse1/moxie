@@ -1,0 +1,48 @@
+### constant index out of range on a sized array
+reject: 
+a = Array(1, 2, 3)
+println(a(5))
+### constant index in range
+ok: 3
+a = Array(1, 2, 3)
+println(a(2))
+### negative constant index
+reject: 
+a = Array(1, 2, 3)
+println(a(-1))
+### array size mismatch on assignment
+reject: 
+a Array[Int][3] = Array(1, 2)
+### array size match
+ok
+a Array[Int][3] = Array(1, 2, 3)
+println(1)
+### size-generic function ok
+ok: 1
+fn first_of[T, N where N > 0](a Array[T][N]) T = a(0)
+println(first_of(Array(1, 2)))
+### wrong array size passed
+reject: 
+fn two(a Array[Int][2]) Int = a(0)
+println(two(Array(1, 2, 3)))
+### refinement parameter violated by a constant
+reject: 
+fn pos(n Int where n > 0) Int = n
+println(pos(0))
+### refinement parameter ok
+ok: 2
+fn pos(n Int where n > 0) Int = n
+println(pos(2))
+### refinement not provable from an unknown argument
+reject: 
+fn pos(n Int where n > 0) Int = n
+fn g(m Int) Int = pos(m)
+### refinement proven by a guard
+ok
+fn pos(n Int where n > 0) Int = n
+fn g(m Int) Int = if m > 0 then pos(m) else 0
+println(g(1))
+### try_cast result must be handled
+reject: mismatched types
+type alias Percent = Int[0..100]
+x Percent = try_cast[Percent](5)

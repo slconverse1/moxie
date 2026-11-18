@@ -1,0 +1,58 @@
+### pure fn calls println
+reject: 
+pure fn f(n Int) Int
+  println(n)
+  n
+### pure fn calling an impure function
+reject: 
+fn noisy(n Int) Int
+  println(n)
+  n
+pure fn f(n Int) Int = noisy(n)
+### pure fn ok
+ok: 3
+pure fn f(n Int) Int = n + 1
+println(f(2))
+### lambda printing is refused
+reject: a lambda must be pure
+xs = List(1, 2)
+ys = xs |> map((x) -> println(x))
+### sleep in a pure fn
+reject: 
+pure fn f() Unit
+  sleep(1ms)
+### a function that prints is allowed to be called from main
+ok: x
+fn noisy() Unit
+  println("x")
+noisy()
+### declared prints but does not print
+reject: never does
+prints fn f() Int = 1
+println(f())
+### tailrec with a non-tail self call
+reject: not in tail position
+tailrec fn f(n Int) Int = if n == 0 then 0 else 1 + f(n - 1)
+### tailrec ok
+ok: 0
+tailrec fn f(n Int) Int = if n == 0 then 0 else f(n - 1)
+println(f(5))
+### requires on a constant argument
+reject: 
+fn f(n Int) Int
+  requires n > 0
+  n
+println(f(0))
+### ensures violated statically is not claimed (runtime) -- just parses
+ok
+fn f(n Int) Int
+  ensures result > 0
+  n + 1
+println(f(1))
+### recursive lambda
+reject: 
+f = (n) -> if n == 0 then 0 else f(n - 1)
+### local function used before it exists
+reject: 
+println(g(1))
+g = (n Int) -> n

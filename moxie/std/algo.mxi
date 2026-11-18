@@ -1,0 +1,139 @@
+//! algo: well-known algorithms that are fastest with in-place writes, each a `mutable` block.
+//!
+//! Every function takes an array and gives back a new one: the array is copied in, the algorithm writes into the copy in
+//! place, and the caller gets an ordinary immutable value, so none of these functions is visible from outside as anything but
+//! a pure function. The sizes are compile-time sizes (`Array[T][N]`), so `N` is the same for the argument and the result.
+
+/// The values in ascending order (an in-place quicksort with an explicit stack, so a long sorted input cannot overflow the
+/// call stack).
+///
+/// > quicksort((5, 2, 9, 1, 5, 6))
+/// Array(1, 2, 5, 5, 6, 9)
+export fn quicksort[T Ordered, N](xs Array[T][N]) Array[T][N]
+  mutable
+    in xs
+    lows Array[Int][N] = fill(0)
+    highs Array[Int][N] = fill(0)
+    top = 0
+    if len(xs) > 1
+      highs(0) = len(xs) - 1
+      top = 1
+    while top > 0
+      top -= 1
+      lo = lows(top)
+      hi = highs(top)
+      if lo < hi
+        pivot = xs(hi)
+        i = lo
+        for j in lo..<hi
+          if xs(j) < pivot
+            tmp = xs(i)
+            xs(i) = xs(j)
+            xs(j) = tmp
+            i += 1
+        tmp = xs(i)
+        xs(i) = xs(hi)
+        xs(hi) = tmp
+        if lo < i - 1
+          lows(top) = lo
+          highs(top) = i - 1
+          top += 1
+        if i + 1 < hi
+          lows(top) = i + 1
+          highs(top) = hi
+          top += 1
+    xs
+
+/// The values in ascending order (an in-place heapsort: no stack, and the same speed whatever the input).
+///
+/// > heapsort((5, 2, 9, 1, 5, 6))
+/// Array(1, 2, 5, 5, 6, 9)
+export fn heapsort[T Ordered, N](xs Array[T][N]) Array[T][N]
+  mutable
+    in xs
+    n = len(xs)
+    start = n / 2
+    while start > 0
+      start -= 1
+      root = start
+      while 2 * root + 1 < n
+        child = 2 * root + 1
+        if child + 1 < n and xs(child) < xs(child + 1)
+          child += 1
+        if xs(root) < xs(child)
+          tmp = xs(root)
+          xs(root) = xs(child)
+          xs(child) = tmp
+          root = child
+        else
+          break
+    end = n
+    while end > 1
+      end -= 1
+      tmp = xs(0)
+      xs(0) = xs(end)
+      xs(end) = tmp
+      root = 0
+      while 2 * root + 1 < end
+        child = 2 * root + 1
+        if child + 1 < end and xs(child) < xs(child + 1)
+          child += 1
+        if xs(root) < xs(child)
+          tmp = xs(root)
+          xs(root) = xs(child)
+          xs(child) = tmp
+          root = child
+        else
+          break
+    xs
+
+/// The sieve of Eratosthenes: pass an array of `true`, and `flags(i)` comes back `true` exactly when `i` is a prime (0 and 1
+/// are not).
+///
+/// ```
+/// flags Array[Bool][10] = fill(true)
+/// sieve(flags)   // false, false, true, true, false, true, false, true, false, false
+/// ```
+export fn sieve[N](flags Array[Bool][N]) Array[Bool][N]
+  mutable
+    in flags
+    if len(flags) > 0
+      flags(0) = false
+    if len(flags) > 1
+      flags(1) = false
+    p = 2
+    while p * p < len(flags)
+      if flags(p)
+        for m in (p * p)..<len(flags) step p
+          flags(m) = false
+      p += 1
+    flags
+
+/// Union-find with path halving and union by index: pass `Array(0, 1, 2, ...)` (each item its own root) and a list of edges,
+/// and every item comes back labeled with the smallest item connected to it, so two items are connected exactly when their
+/// labels are equal.
+///
+/// > components((0, 1, 2, 3, 4), List((0, 1), (3, 4), (1, 0)))
+/// Array(0, 0, 2, 3, 3)
+export fn components[N](parent Array[Int][N], edges List[(Int, Int)]) Array[Int][N]
+  mutable
+    in parent
+    for (a, b) in edges
+      x = a
+      while parent(x) ~= x
+        parent(x) = parent(parent(x))
+        x = parent(x)
+      y = b
+      while parent(y) ~= y
+        parent(y) = parent(parent(y))
+        y = parent(y)
+      if x < y
+        parent(y) = x
+      elif y < x
+        parent(x) = y
+    for i in 0..<len(parent)
+      r = i
+      while parent(r) ~= r
+        r = parent(r)
+      parent(i) = r
+    parent

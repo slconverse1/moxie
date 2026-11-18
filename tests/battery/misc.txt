@@ -1,0 +1,102 @@
+### break value type disagrees with else
+reject: 
+xs = List(1, 2)
+r = for x in xs
+  if x > 5
+    break(x)
+else "none"
+### loop result ok
+ok: 15
+xs = List(5, 15)
+r = for x in xs
+  if x > 10
+    break(x)
+else -1
+println(r)
+### assigning to a loop variable shadows it
+ok
+for x in List(1, 2)
+  x = 5
+### string index type
+reject: 
+s = "abc"
+println(s("a"))
+### list index must be Int
+reject: 
+xs = List(1, 2)
+println(xs("a"))
+### dict key type
+reject: 
+d = Dict("a" -> 1)
+println(d(1))
+### tuple field assignment of wrong type
+reject: 
+tuple P(x Int)
+p = P(x: 1)
+p.x = "a"
+### tuple field assignment ok
+ok: 2
+tuple P(x Int)
+p = P(x: 1)
+p.x = 2
+println(p.x)
+### unused result of a pure call
+ok
+fn f(n Int) Int = n
+f(1)
+### name@N to an unknown binding
+reject: 
+fn f() Int
+  x = 1
+  x@3
+### Bool and Int in arithmetic
+reject: 
+println(true + 1)
+### not on Int
+reject: 
+println(not 1)
+### and/or on Ints
+reject: 
+println(1 and 2)
+### comparison chain type
+reject: 
+println(1 < "a" < 3)
+### string multiplication
+reject: 
+println("a" * 2)
+### negative of String
+reject: 
+println(-"a")
+### decimal and float mix
+reject: 
+a Decimal = 1.5d
+b Float = 2.5
+println(a + b)
+### char vs string
+reject: 
+c Char = "a"
+### unit used as a value
+reject: 
+x Int = ()
+### function returns wrong type via when arm
+reject: 
+fn f(o Option[Int]) String = when o
+  Some(n) -> n
+  None -> "no"
+### interpolation of a function value
+reject: 
+f = (n Int) -> n
+println("${f}")
+### printing a stream
+reject: no text form
+println(List(1) |> to_stream() |> filter((x) -> x > 0))
+### sum of strings joins them
+ok: ab
+println(List("a", "b") |> sum())
+### map over an Int
+reject: 
+println(map((x) -> x, 5))
+### pipe into a non-function
+reject: 
+x = 5
+println(1 |> x)

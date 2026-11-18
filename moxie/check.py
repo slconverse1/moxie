@@ -315,6 +315,7 @@ class Checker(RefineMixin):
         self.else_names = []              # for each enclosing loop, the names its `else:` mentions
         self.cond_names = []              # for each enclosing loop, the names its `while` condition reads (a `for` has none)
         self.break_names = []             # for each enclosing loop, the names its `break(value)` hands out
+        self.break_tys = []               # for each enclosing loop, the types of the values its unlabeled `break(value)`s give
         self.loop_lost = []               # for each enclosing loop, the outer names its body rebinds only for the loop's own condition
         self.last_loop_lost = set()       # ... the set of the loop that just ended
         self.exit_ctx = False
@@ -1769,6 +1770,10 @@ class Checker(RefineMixin):
                 elif act == "Int":
                     self.err(line, f"`Int` does not convert to `{tshow(exp)}`; use `cast[...]` or `try_cast[...]`")
                 return
+            if act in ("String", "Bool", "Char", "Float", "Decimal", "Unit") or (act.__class__ is tuple and act[0] in ("app", "tup", "fn")):
+                hint = ": `try_cast` gives a `Result`, so handle it with `when`, `?` or `unwrap_or`" if act.__class__ is tuple and act[1:2] == ("Result",) else ""
+                self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`{hint}")
+                return
         if exp == "Int" and act.__class__ is tuple and act[0] == "bounded":
             return
         if exp == "Float" and act == "Int" and const is None:
@@ -2542,12 +2547,17 @@ class Checker(RefineMixin):
             if a == ("secret",) or b == ("secret",):
                 self.err(n.line, "a Secret can't be compared with " + op + "; use secret_eq(a, b), or compare what reveal gives")
                 return "Bool", None
+            if {a, b} == {"Float", "Decimal"}:
+                self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`: convert one side on purpose (`cast[Decimal](x)` or `cast[Double](d)`)")
             if a in self.SCAL and b in self.SCAL and a != b and {a, b} - {"Int", "Float", "Decimal"}:
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`")
             return "Bool", None
         if op in ("+", "-", "*", "/", "%"):
             if a in self.SCAL and b in self.SCAL:
                 num = {"Int", "Float", "Decimal"}
+                if {a, b} == {"Float", "Decimal"}:
+                    self.err(n.line, f"cannot apply `{op}` to `{tshow(a)}` and `{tshow(b)}`: a Decimal is exact and a Float is not, so one side must be converted on purpose (`cast[Decimal](x)` or `cast[Double](d)`)")
+                    return None, None
                 if not (a in num and b in num) and not (op == "+" and a == b == "String"):
                     self.err(n.line, f"cannot apply `{op}` to `{tshow(a)}` and `{tshow(b)}`")
                     return None, None
@@ -3189,7 +3199,9 @@ class Checker(RefineMixin):
         return None, None
 
     def e_Break(self, n, sc):
-        self.ev(n.e, sc)
+        bt = self.ev(n.e, sc)[0]
+        if n.e is not None and n.label is None and self.break_tys and bt is not None:
+            self.break_tys[-1].append(bt)
         self.check_label(n)
         return None, None
 
@@ -3449,6 +3461,7 @@ class Checker(RefineMixin):
             self.check_type_arity(n.ann, n.line)
         if n.ann is not None and n.op == "=":
             self.compat(ann, t, c, n.line)
+            self.check_union_member(n.ann, t, n.line)
             m = self.union_member_tag(n.ann, t)
             if m is not None:
                 UTAGS[id(n.value)] = (n.value, m)
@@ -3488,6 +3501,14 @@ class Checker(RefineMixin):
             if tgt.__class__ is PPlace:
                 self.warn_place_shadow(tgt, sc, n)
                 self.check_prop_write(tgt.expr, sc, n.line)
+                if tgt.expr.__class__ is Field and n.op == "=" and not isinstance(n.targets, list):
+                    ot = self.quiet(tgt.expr.obj, sc)[0]                  # `p.x = "a"`: the field's declared type
+                    if ot.__class__ is tuple and ot[0] in ("named", "app") and ot[1] in self.tuples:
+                        uf = self.unfold(ot)
+                        if uf is not None and tgt.expr.name in uf[2]:
+                            ft = uf[1][uf[2].index(tgt.expr.name)]
+                            if ft is not None and t is not None and not self.has_unsettled(ft) and not self.has_unsettled(t):
+                                self.compat(ft, t, c, n.line)
                 root = tgt.expr
                 while root.__class__ in (Field, Call) and (root.__class__ is Field or root.fn.__class__ in (Field, Name, Call)):
                     root = root.obj if root.__class__ is Field else root.fn
@@ -3852,6 +3873,7 @@ class Checker(RefineMixin):
         self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.break_names.append(break_value_names(n.body))
+        self.break_tys.append([])
         self.cond_names.append(self.break_names[-1])
         self.loop_lost.append({})
         rf_mark = len(self.ifacts)
@@ -3866,8 +3888,18 @@ class Checker(RefineMixin):
         self.cond_names.pop()
         self.break_names.pop()
         self.last_loop_lost = self.loop_lost.pop()
-        self.ev(n.else_, sc)
+        self.check_loop_else_type(n, sc, self.break_tys.pop())
         return None, None
+
+    def check_loop_else_type(self, n, sc, bts):
+        et = self.ev(n.else_, sc)[0]
+        sc_ = lambda t: t.__class__ is str and (t in INTS or t in ("Float", "Decimal", "String", "Bool", "Char", "Unit"))
+        if n.else_ is None or et is None or not sc_(et):
+            return
+        for bt in bts:
+            if sc_(bt) and bt != et and not (bt in INTS and et in INTS) and not ({bt, et} <= {"Int", "Float", "Decimal"}):
+                self.err(n.line, f"this loop's `break` gives a `{tshow(bt)}` but its `else` gives a `{tshow(et)}`: the loop has one result type")
+                return
 
     def need_loop_else(self, n):
         if n.else_ is None:
@@ -3883,6 +3915,7 @@ class Checker(RefineMixin):
         self.need_loop_else(n)
         self.else_names.append(names_of(n.else_) if n.else_ is not None else set())
         self.break_names.append(break_value_names(n.body))
+        self.break_tys.append([])
         self.cond_names.append(names_of(n.cond) | self.break_names[-1])
         self.loop_lost.append({})
         self.loop([n.body], sc, n.label)
@@ -3890,7 +3923,7 @@ class Checker(RefineMixin):
         self.cond_names.pop()
         self.break_names.pop()
         self.last_loop_lost = self.loop_lost.pop()
-        self.ev(n.else_, sc)
+        self.check_loop_else_type(n, sc, self.break_tys.pop())
         return None, None
 
     def e_ForAll(self, n, sc):
@@ -4546,6 +4579,11 @@ class Checker(RefineMixin):
                         self.err(getattr(q, "line", 0) or n.line, f"`{q.path[0]}` could be {' or '.join('`' + h + '`' for h in hs)} here: write the full type")
                         return
                     covered.add(hs[0])                          # the union has one `List[...]` member, so `List` names it
+                elif q.__class__ is PCon and len(q.path) == 1 and q.args is None and q.path[0] in ("Int", "String", "Bool", "Float", "Double", "Char", "Decimal") \
+                        and q.path[0] not in members and not any(m.startswith(q.path[0] + "[") for m in members) \
+                        and q.path[0] not in self.tuples and q.path[0] not in self.enums and q.path[0] not in self.aliases:
+                    self.err(getattr(q, "line", 0) or n.line, f"`{q.path[0]}` is not a member of this union ({' | '.join(members)}), so this arm can never match")
+                    return
                 else:
                     return                                      # not a plain member pattern: do not guess
         miss = [m for m in members if m not in covered]
@@ -5180,6 +5218,16 @@ class Checker(RefineMixin):
             if self.implements(("named", name), "Read") is False:
                 self.err(n.line, f"`{name}` doesn't implement `Read`, which `read` requires: add `deriving read` to `{name}`")
 
+    def check_union_member(self, ut, st, line):
+        """`x IS = true` where `IS` is `Int | String`: a plain value that is none of the union's members."""
+        members = self.union_members(ut) if ut is not None else None
+        if not members or st.__class__ is not str or not (st in INTS or st in ("Float", "Decimal", "String", "Bool", "Char", "Unit")):
+            return
+        ms = {m.replace(" ", "") for m in members}
+        ok = st in ms or (st in INTS and ms & (INTS | {"Int"})) or (st == "Float" and "Double" in ms)
+        if not ok:
+            self.err(line, f"`{tshow(st)}` is not a member of `{self.type_node_text(ut)}` ({' | '.join(members)})")
+
     def union_member_tag(self, ut, st):
         """The written member of union type `ut` that the static type `st` is, when the union has members with type
         arguments (`List[Int] | List[String]`): the member to tag a list with, else None."""
@@ -5811,7 +5859,11 @@ class Checker(RefineMixin):
         if ct == "String":
             if ex.__class__ is RangeE:
                 return "String"
-            return "Byte" if self.quiet(ex, sc)[0] == "Int" else None
+            ixt = self.quiet(ex, sc)[0]
+            if ixt is not None and (ixt in ("String", "Bool", "Float", "Char") or (ixt.__class__ is tuple and ixt[0] in ("app", "tup"))):
+                self.err(getattr(ex, "line", 0) or self.cur_line, f"an index must be an `Int`, found `{tshow(ixt)}`")
+                return None
+            return "Byte" if ixt == "Int" else None
         if ct.__class__ is not tuple:
             return None
         if ct[0] == "app" and ct[1] in ("List", "Array", "Ring") and len(ct[2]) == 1:
@@ -6069,6 +6121,17 @@ class Checker(RefineMixin):
                 if fn.name not in self.globals and fn.name not in self.prelude and not sc.open:
                     self.err(n.line, f"undefined function `{fn.name}`")
                     return None, None
+                if fn.name in self.globals and fn.name not in self.fns and fn.name not in self.tuples and fn.name not in self.cases \
+                        and fn.name not in self.prelude and not sc.open and fn.name[:1].islower():
+                    x, infn = sc, False
+                    while x is not None:
+                        if getattr(x, "fnb", False):
+                            infn = True
+                            break
+                        x = x.parent
+                    if not infn:
+                        self.err(n.line, f"`{fn.name}` is used before it is defined: top-level bindings run in order, so write it above this line")
+                        return None, None
                 if sigres is not None:
                     return sigres, None
                 return self.call_known(n, fn.name, args, ats, extra)
@@ -6085,6 +6148,13 @@ class Checker(RefineMixin):
             r = self.FIT.get(tn)
             if cv is not None and r and not r[0] <= cv <= r[1]:
                 self.err(n.line, f"the constant {cv} does not fit `{tn}`, so this `cast` would abort: write a value that fits, or use `try_cast`")
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "try_cast" and "try_cast" not in self.fns and len(args) == 1 \
+                and fn.groups and len(fn.groups[0]) == 1 and fn.groups[0][0].__class__ is TName and not fn.groups[0][0].groups \
+                and (fn.groups[0][0].path[-1] in INTS or fn.groups[0][0].path[-1] in self.aliases):
+            self.ev(args[0].expr, sc) if hasattr(args[0], "expr") else None
+            el = self.ty_of_type(fn.groups[0][0], 0, None, False)      # `try_cast[T](x)` is a `Result[T, Error]`
+            if el is not None:
+                return ("app", "Result", (el, ("named", "Error"))), None
         if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name == "Atom" and len(args) == 1 and n.trailing is None \
                 and "Atom" not in self.fns and "Atom" not in self.tuples and "Atom" not in self.aliases \
                 and len(fn.groups or []) == 1 and len(fn.groups[0]) == 1 and not extra_bad(args):
@@ -7081,6 +7151,9 @@ class Checker(RefineMixin):
             if c is TTuple:
                 for _, ft in t.items:
                     self.check_type_arity(ft, line, depth + 1)
+            elif c is TUnion:
+                for m in t.members:
+                    self.check_type_arity(m, line, depth + 1)
             return
         for g in t.groups or []:
             for x in g if isinstance(g, list) else [g]:
@@ -7464,7 +7537,10 @@ class Checker(RefineMixin):
                 if lt is not None and ft[1][0] is not None:
                     self.compat(ft[1][0], lt, None, n.line)
                 return ft[2], None
-        self.ev(st, sc)
+        stt = self.ev(st, sc)[0]
+        if stt is not None and (stt in INTS or stt in ("String", "Bool", "Float", "Char", "Decimal", "Unit")
+                                or (stt.__class__ is tuple and stt[0] in ("app", "tup", "bounded") and stt[0] != "fn")):
+            self.err(n.line, f"`|>` pipes into a function, and this is a `{tshow(stt)}`")
         return None, None
 
     # ------------------------------------------------------------ declarations

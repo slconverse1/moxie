@@ -1,0 +1,26 @@
+### go argument type mismatch
+reject: 
+fiber fn w(n Int) Unit
+  println(n)
+go w("a")
+### go on a non-fiber function
+reject: 
+fn w(n Int) Unit
+  println(n)
+go w(1)
+### try_go result matched
+ok
+fiber[1] fn w(n Int) Unit
+  println(n)
+r = try_go w(1)
+println(r)
+### go with wrong argument count
+reject: 
+fiber fn w(n Int) Unit
+  println(n)
+go w(1, 2)
+### select arm on a non-channel
+reject: can't take (Int)
+x = 5
+select
+  v = read(x) -> println(v)

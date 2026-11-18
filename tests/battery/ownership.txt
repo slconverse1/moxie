@@ -1,0 +1,81 @@
+### channel end moved into go then used
+reject: moved
+fiber fn w(tx ChanW[Int]) Unit
+  \write(tx, 1)
+rx, tx = Chan[Int][1]()
+go w(tx)
+\write(tx, 2)
+### channel end cloned then both used
+ok
+fiber fn w(tx ChanW[Int]) Unit
+  \write(tx, 1)
+rx, tx = Chan[Int][2]()
+go w(clone(tx))
+\write(tx, 2)
+println(read(rx))
+### use of a moved value in a loop
+reject: 
+fiber fn w(tx ChanW[Int]) Unit
+  \write(tx, 1)
+rx, tx = Chan[Int][1]()
+for i in 1..2
+  go w(tx)
+### ref argument must be written ref at the call
+reject: 
+fn bump(ref n Int) Unit
+  n += 1
+x = 1
+bump(x)
+### ref argument given where not expected
+reject: 
+fn inc(n Int) Int = n + 1
+x = 1
+println(inc(ref x))
+### ref to a non-variable
+reject: 
+fn bump(ref n Int) Unit
+  n += 1
+bump(ref 5)
+### ref parameter ok
+ok: 2
+fn bump(ref n Int) Unit
+  n += 1
+x = 1
+bump(ref x)
+println(x)
+### ref argument of wrong type
+reject: 
+fn bump(ref n Int) Unit
+  n += 1
+s = "a"
+bump(ref s)
+### write to the wrong element type
+reject: 
+rx, tx = Chan[Int][1]()
+\write(tx, "a")
+### read end used as write end
+reject: 
+rx, tx = Chan[Int][1]()
+\write(rx, 1)
+### write end used as read end
+reject: 
+rx, tx = Chan[Int][1]()
+println(read(tx))
+### channel element type flows to read
+reject: 
+rx, tx = Chan[Int][1]()
+\write(tx, 1)
+x String = read(rx)?
+### Atom of wrong type
+reject: 
+a = Atom(1)
+\swap(a, (s) -> "x")
+### function value cannot capture a resource silently
+reject: 
+rx, tx = Chan[Int][1]()
+f = () -> write(tx, 1)
+\write(tx, 2)
+println(f())
+### returning a moved parameter twice
+reject: 
+fn two(tx ChanW[Int]) (ChanW[Int], ChanW[Int]) = (tx, tx)

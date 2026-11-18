@@ -1122,6 +1122,8 @@ def cast_to(self, v, t, mode):
     if cls is not None:
         if isinstance(v, Char):
             iv = ord(v)
+        elif isinstance(v, Dec):
+            iv = int(v.v)
         elif isinstance(v, float):
             if v != v or v in (math.inf, -math.inf):
                 if mode == "result":
@@ -1142,11 +1144,16 @@ def cast_to(self, v, t, mode):
         if mode == "result":
             return err_reserved("OUT_OF_RANGE", "does not fit")
         raise Abort(f"{iv} does not fit {name}")
+    if isinstance(v, Dec):
+        v = float(v.v) if name in ("Double", "LongDouble", "Float") else v
     if name in ("Double", "LongDouble"):
         r = float(v)
         return Ok(r) if mode == "result" else r
     if name == "Float":
         r = F32.of(float(v))
+        return Ok(r) if mode == "result" else r
+    if name == "Decimal" and isinstance(v, (int, float)) and not isinstance(v, bool):
+        r = Dec(Decimal(str(v)) if isinstance(v, float) else Decimal(v))
         return Ok(r) if mode == "result" else r
     return Ok(v) if mode == "result" else v
 
