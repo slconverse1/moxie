@@ -36,5 +36,18 @@ println(show(Click(3)))
 println(Key("b"))
 ''', 0, "key a\nclick 3\nEvent.Key(\"b\")")
 chk("the prelude's own Key cases still work", 'k = Key.Enter\nprintln(k)\n', 0, "Key.Enter")
+chk("a bare case named Option is the program's own case", '''enum Mode deriving eq
+  Option
+  Plain
+x Mode = Option
+println(x == Mode.Option)
+println(x)
+when x
+  Option -> println("opt")
+  Plain -> println("plain")
+''', 0, "true\nMode.Option\nopt")
+chk("a mistyped prelude case is a compile error", 'e = Option.Som(3)\n', 2, "`Option` has no case `Som`")
+chk("a prelude case with the wrong number of values", 'q Option[Int] = Some()\n', 2, "`Some` has 1 field, but 0 values are given")
+chk("a prelude case with too many values", 'q Option[Int] = Option.Some(1, 2)\n', 2, "`Some` has 1 field, but 2 values are given")
 print(f"{len(fails)} failed")
 sys.exit(1 if fails else 0)

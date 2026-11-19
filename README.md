@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the no-GC dialec
 
 Newest first.
 
+**2026-11-18 (case names and prelude enums):** a program's own bare case that shares a name with a prelude type (`Option`) is now its own case, in values and in `when` arms. The checker now rejects a mistyped prelude case (`Option.Som(3)`) and a wrong number of values for a generic case (`Some()`, `Option.Some(1, 2)`) at compile time; before, these failed only when run (`tests/run_casename.py`).
+
 **2026-11-18 (pipe then operator):** `a |> f() == 2` and `xs |> sum() + 1` now parse, comparing or adding to the pipe's result; before, they were a syntax error. Put a second pipe on the right of `and`/`or` in parentheses (`tests/run_iterable.py`).
 
 **2026-11-18 (your own pipeline sources):** a tuple or enum with `fn to_stream(self) Stream[T]` is now a source for `|>` stages and `for`; the checker reads `T` from the method's return type (`tests/run_iterable.py`). An `Option` is a source of zero or one element too (`for x in opt`, `opt |> filter(...)`); `map` on it still gives an `Option`.

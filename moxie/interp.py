@@ -540,6 +540,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             return self._force_lazy(v)
         if v.__class__ is NeedV:
             return self._force_need(v)
+        if v.__class__ is TypeV and isinstance(v.info, EnumInfo) and v.info.et.prelude:       # the program's own case `Option` beats the prelude type
+            c = self.resolve_case(name, hint)
+            if c is not None and not c[0].prelude:
+                return Done(self.case_value(c[0], c[1]))
         return Done(v)
 
     def _force_need(self, nv):

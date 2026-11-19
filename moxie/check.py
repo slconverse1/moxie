@@ -2839,8 +2839,8 @@ class Checker(RefineMixin):
         if o.__class__ is Name and o.name in self.enums and sc.find(o.name) is None and o.name not in self.fns \
                 and o.name not in self.tuples and o.name not in self.aliases:
             ed = self.enums[o.name]
-            if not any(c.name == n.name for c in ed.cases) and not any(k[0] == ed.name for k in self.methods) \
-                    and not self.impls.get(ed.name) and n.name not in self.fns and n.name not in ("values", "value_of", "from_index"):
+            if not any(c.name == n.name for c in ed.cases) and not self.has_member(ed.name, n.name) \
+                    and n.name not in self.fns and n.name not in ("values", "value_of", "from_index"):
                 self.err(n.line, f"`{ed.name}` has no case `{n.name}`; its cases are " + ", ".join(f"`{c.name}`" for c in ed.cases))
             cs0 = next((c for c in ed.cases if c.name == n.name), None)
             if cs0 is not None and not (cs0.fields or []) and not getattr(ed, "tparams", None) and not getattr(ed, "fields", None) \
@@ -5721,6 +5721,16 @@ class Checker(RefineMixin):
                 if ex.__class__ is tuple and ex[0] == "fn" and all(x is not None and not self.has_unsettled(x) for x in ex[1]):
                     self.lam_hint[id(a.expr)] = ex
 
+    def has_member(self, tn, name):
+        """Does the type `tn` have a method `name` (its own, or from an impl)?  A type with impls we cannot list is given the benefit of the doubt."""
+        if (tn, name) in self.methods:
+            return True
+        if name in self.load_sigs():
+            return True                      # `Option.map`: a prelude function written through the type
+        if tn in ("Option", "Result", "Ordering"):           # prelude enums: their members are the cases and the listed functions
+            return False
+        return bool(self.impls.get(tn))
+
     def check_enum_call(self, f, n, sc):
         """`Shape.Tri(1)` when Shape has no such case, and a payload of the wrong type or the wrong count."""
         cs = ed = None
@@ -5729,7 +5739,7 @@ class Checker(RefineMixin):
             ed = self.enums[f.obj.name]
             cs = next((c for c in ed.cases if c.name == f.name), None)
             if cs is None:
-                if not any(k[0] == ed.name for k in self.methods) and not self.impls.get(ed.name) and f.name not in self.fns \
+                if not self.has_member(ed.name, f.name) and f.name not in self.fns \
                         and f.name not in ("values", "value_of", "from_index"):
                     self.err(n.line, f"`{ed.name}` has no case `{f.name}`; its cases are " + ", ".join(f"`{c.name}`" for c in ed.cases))
                 return
@@ -5739,6 +5749,11 @@ class Checker(RefineMixin):
             cs = next((c for c in ed.cases if c.name == f.name), None)
         if cs is not None and getattr(ed, "tparams", None) and (getattr(cs, "ret", None) is not None or self.case_vars(ed, cs)) and n.trailing is None:
             self.check_gadt_args(ed, cs, n, sc)
+            return
+        if cs is not None and getattr(ed, "tparams", None) and n.trailing is None and getattr(cs, "ret", None) is None:
+            nf, ng = len(cs.fields or []), len(n.args or [])          # a generic enum's payload types are not checked here, but its count is
+            if ng != nf and all(hasattr(a, "expr") and not a.label for a in (n.args or [])) and not any(getattr(a, "mod", None) for a in (n.args or [])):
+                self.err(n.line, f"`{cs.name}` has {nf} field{'s' if nf != 1 else ''}, but {ng} value{'s' if ng != 1 else ''} {'is' if ng == 1 else 'are'} given")
             return
         if cs is None or getattr(ed, "tparams", None) or n.trailing is not None:
             return
