@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the no-GC dialec
 
 Newest first.
 
+**2026-11-18 (a grammar):** `docs/grammar.ebnf` is an EBNF over the lexer's token stream (`NL`, `INDENT`, `DEDENT`, names, operators), and it is section 26 of both specs. `tools/ebnf.py` is a small dependency-free Earley recognizer that reads it, and `tests/run_grammar.py` runs the real lexer over every code block of both guides: the grammar recognizes 296 of the 333 blocks the parser accepts (89%; the test holds that floor) and rejects 16 of 16 malformed programs. The spec lists what it does not cover yet (SQL blocks, binary patterns, some `select` forms, path expressions). The parser stays hand-written; the grammar documents it and the test keeps the two from drifting.
+
 **2026-11-18 (library functions):** `ok_or(opt, error)` (Option to Result), `ok(result)` (Result to Option), the stage `drop_last(n)`, and the terminals `find_map(f)` and `position(pred)` join the prelude (`tests/run_libfns.py`). The `algo` package, the library of `mutable` algorithms, gains `merge_sort` (stable), `counting_sort`, `binary_search`, `prefix_sums`, `rotate`, `shuffle` (seeded, so still a pure function), `next_permutation` and `knapsack` (`tests/run_algo.py`).
 
 **2026-11-18 (type-safety stress tests):** `tests/run_typesafe.py` holds about 60 programs that must be rejected or accepted at compile time. They found and fixed: an unknown or missing argument label on a plain call (`f(a: 1, c: 2)`), mixed element types with `+` on a List or Set, a lambda whose parameter count disagrees with its annotated type, a literal of the wrong type inside a list or tuple pattern, and `break`/`continue` outside a loop.

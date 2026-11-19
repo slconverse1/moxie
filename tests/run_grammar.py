@@ -8,6 +8,15 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 from ebnf import Grammar                      # noqa: E402
 from moxie.lexer import tokenize              # noqa: E402
 
+def spec_has_grammar(path):
+    text = open(os.path.join(ROOT, "docs", path)).read()
+    return "```\n" + open(os.path.join(ROOT, "docs", "grammar.ebnf")).read().rstrip("\n") + "\n```" in text
+
+stale = [p for p in ("spec.md", os.path.join("gc", "spec.md")) if not spec_has_grammar(p)]
+for p in stale:
+    print(f"docs/{p} does not contain the current docs/grammar.ebnf in section 26")
+if stale:
+    sys.exit(1)
 verbose = "-v" in sys.argv
 G = Grammar(open(os.path.join(ROOT, "docs", "grammar.ebnf")).read())
 
@@ -53,5 +62,20 @@ if verbose:
         ctx = " ".join(str(v if v is not None else k) for k, v in t[max(0, at - 6):at + 3])
         print(f"--- [{tag}] stuck near token {at}: {ctx}")
         print("    " + src.strip().splitlines()[0][:100])
-need = float(os.environ.get("GRAMMAR_MIN", "0.80"))
+# a grammar that accepts everything proves nothing: these are rejected by the parser, and must be by the grammar
+BAD = ["x = = 1\n", "x = (1\n", "fn\n", "if\n", "x = 1 +\n", "when x\n", "for x in\n", "tuple\n", "enum\n", "x = )\n",
+       "fn f(a Int b Int) Int = a\n", "x = List(1,, 2)\n", "fn f() Int =\n", "import\n", "x |> \n", "1 = x\n"]
+wrong = []
+for src in BAD:
+    if parses(src):
+        continue
+    good, _at = G.recognize(toks(src))
+    if good:
+        wrong.append(src)
+print(f"grammar rejects {len(BAD) - len(wrong)} of {len(BAD)} malformed programs the parser rejects")
+for src in wrong:
+    print("  accepted by the grammar but not by the parser:", repr(src))
+if wrong:
+    sys.exit(1)
+need = float(os.environ.get("GRAMMAR_MIN", "0.88"))
 sys.exit(0 if total and ok / total >= need else 1)
