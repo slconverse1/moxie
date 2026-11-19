@@ -108,6 +108,10 @@ CASES = [
     ('method-forward-ok', 'A', 'tuple P\n  a Int\nimpl P\n  forward fn y(self) Int\n  fn x(self) Int = self.y() + 1\n  fn y(self) Int = 2\nprintln(P(a: 1).x())\n'),
     ('method-forward-never-defined', 'R', 'tuple P\n  a Int\nimpl P\n  forward fn y(self) Int\n  fn x(self) Int = self.y() + 1\nprintln(1)\n'),
     ('impl-order-ok', 'A', 'tuple P\n  a Int\nimpl P\n  fn y(self) Int = 2\n  fn x(self) Int = self.y() + 1\nfn f(p P) Int = p.x()\nprintln(f(P(a: 1)))\n'),
+    ('for-refutable-pattern', 'R', 'os = List(Some(1), None, Some(3))\nfor Some(x) in os\n  println(x)\n'),
+    ('for-literal-pattern', 'R', 'for 1 in List(1, 2)\n  println(1)\n'),
+    ('for-comprehension-filters-ok', 'A', 'os = List(Some(1), None, Some(3))\nr = for\n  Some(x) in os\n  yield x * 2\nprintln(r)\n'),
+    ('for-tuple-pattern-ok', 'A', 'tuple P\n  a Int\n  b Int\nfor P(a, b) in List(P(a: 1, b: 2))\n  println(a + b)\nfor (n, s) in List((1, "a"))\n  println("$n$s")\n'),
 ]
 
 fails = []

@@ -3933,6 +3933,10 @@ class Checker(RefineMixin):
                 self.err(n.line, f"this `for` takes each element apart into {len(n.pat.items)} names, but the elements are `{tshow(el)}`, not tuples")
             elif el.__class__ is tuple and el[0] == "tup" and len(el[1]) != len(n.pat.items):
                 self.err(n.line, f"this `for` takes each element apart into {len(n.pat.items)} names, but the elements are tuples of {len(el[1])}")
+        if self.refutable_pat(n.pat):
+            self.err(n.line, "this `for` pattern does not fit every element, so the loop would abort at the first one that doesn't match: "
+                             "bind the element and test it inside (`for o in os`, then `if o is Some(x)`), or use a `for:` comprehension, "
+                             "which skips the elements that don't match")
         self.bind_pat(n.pat, inner, el)
         dn = self.decl_node(n.iter, sc)
         if n.pat.__class__ is PBind and dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring", "Set") and dn.groups \
@@ -4226,6 +4230,23 @@ class Checker(RefineMixin):
                     if key in seen:
                         self.diags.append(Diag(line, f"this pattern repeats the one at line {seen[key]}, so it can never match", "warning"))
                     seen.setdefault(key, line)
+
+    def refutable_pat(self, p):
+        """A pattern that some value of its type does not match (a case of an enum with several cases, a literal, a range, a list shape)."""
+        c = p.__class__
+        if c is PAs:
+            return self.refutable_pat(p.pat)
+        if c is PTuple:
+            return any(self.refutable_pat(q) for _l, q in p.items or [])
+        if c is PCon:
+            nm = p.path[-1] if p.path else None
+            if nm in ("List", "Array") and nm not in self.tuples and nm not in self.enums:
+                return True
+            eds = [self.enums[e] for e in self.cases.get(nm, []) if e in self.enums]
+            if eds and any(len(ed.cases or []) > 1 for ed in eds):
+                return True
+            return any(self.refutable_pat(q) for _l, q in p.args or [])
+        return c in (PLit, PIn, PRel, PPin)
 
     def check_pat_fit(self, p, st, line):
         """A literal or `Ok`/`Err` pattern against a value of a plain scalar type it can never match; an `Ok`/`Err` pattern against an
