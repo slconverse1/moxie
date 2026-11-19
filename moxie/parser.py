@@ -9,11 +9,24 @@ MODS = {"unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber",
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
+class StmtList(list):
+    """The statements of a parsed file; `fwd` lists its `forward tuple` / `forward enum` signatures as (kind, name, tparam count, line, position)."""
+    fwd = ()
+
+
+class FwdType:
+    __slots__ = ("kind", "name", "ntp", "line")
+
+    def __init__(self, kind, name, ntp, line):
+        self.kind, self.name, self.ntp, self.line = kind, name, ntp, line
+
+
 class Parser(ExprParser):
 
     # ------------------------------------------------------------ module
     def parse_module(self):
         self.skip_nl()
+        self.fwd_types = []
         stmts = self.parse_stmts_until_dedent(top=True)
         if self.peek().kind != "EOF":
             self.err(f"unexpected {self.describe(self.peek())}")
@@ -22,6 +35,8 @@ class Parser(ExprParser):
         stmts = expand_dyn(stmts, self.file)
         from .withs import expand_withs
         stmts = expand_withs(group_fns(stmts), self.file)
+        stmts = StmtList(stmts)
+        stmts.fwd = tuple(self.fwd_types)
         return Block(stmts, line=1)
 
     def parse_stmts_until_dedent(self, top=False):
@@ -41,6 +56,11 @@ class Parser(ExprParser):
                     out.append(cd)
                     continue
             s = self.parse_stmt()
+            if s.__class__ is FwdType:
+                if not top:
+                    self.err(f"`forward {s.kind} {s.name}` belongs at the top level of the file")
+                self.fwd_types.append((s.kind, s.name, s.ntp, s.line, len(out)))
+                continue
             out.append(s)
             if getattr(self, "_chain_rest", None):
                 out.extend(self._chain_rest)         # x = y = z: the later bindings follow the first
@@ -568,6 +588,13 @@ class Parser(ExprParser):
             for _ in range(i):
                 self.next()
             return self.parse_fn_decl(mods)
+        if "forward" in mods and t.val in ("tuple", "enum"):
+            for _ in range(i):
+                self.next()
+            line = self.next().line
+            name = self.expect_ident(f"a {t.val} name").val
+            ntp = len(self.parse_tparams_v2()) if self.at_op("[") else 0
+            return FwdType(t.val, name, ntp, line)
         if t.val in ("tuple", "enum", "interface", "impl"):
             if t.val == "impl" and False:
                 return None

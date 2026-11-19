@@ -49,11 +49,16 @@ def parse_package(paths):
     """(source text, one program) for a package's files, joined in order."""
     from .parser import parse_program
     from .ast import Block
-    srcs, stmts = [], []
+    from .parser import StmtList
+    srcs, stmts, fwd = [], StmtList(), []
     for p in paths:
         src = open(p, encoding="utf-8").read()
         srcs.append(src)
-        stmts.extend(parse_program(src, p).stmts)
+        one = parse_program(src, p).stmts
+        for f in getattr(one, "fwd", ()):
+            fwd.append(f[:4] + (f[4] + len(stmts),))          # a `forward` signature's position moves by the files before it
+        stmts.extend(one)
     from .withs import expand_withs
     expand_withs(stmts, paths[0] if paths else "<package>")            # a `with` that names an enum of another file of the package
+    stmts.fwd = tuple(fwd)
     return "\n".join(srcs), Block(stmts, line=1)

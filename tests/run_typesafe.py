@@ -96,6 +96,12 @@ CASES = [
     ('fn-order-ok', 'A', 'fn g() Int = 1\nfn f() Int = g() + 1\nprintln(f())\n'),
     ('top-value-before-bind', 'R', 'println(w)\nw = 1\n'),
     ('top-value-order-ok', 'A', 'a = 1\nb = a + 1\nprintln(b)\n'),
+    ('type-used-before-decl', 'R', 'tuple A\n  b B\ntuple B\n  n Int\nprintln(A(b: B(n: 1)))\n'),
+    ('forward-type-mutual-ok', 'A', 'forward enum Tree\ntuple Node\n  kids List[Tree]\nenum Tree\n  Leaf\n  Branch(n Node)\nprintln(Node(kids: List(Leaf)))\n'),
+    ('forward-type-never-defined', 'R', 'forward tuple Q\nprintln(1)\n'),
+    ('forward-type-wrong-kind', 'R', 'forward tuple T\nenum T\n  A\nprintln(1)\n'),
+    ('forward-type-wrong-arity', 'R', 'forward enum T[X]\nenum T\n  A\nprintln(1)\n'),
+    ('type-order-ok', 'A', 'tuple B\n  n Int\ntuple A\n  b B\nprintln(A(b: B(n: 1)))\n'),
 ]
 
 fails = []

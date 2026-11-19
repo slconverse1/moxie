@@ -5,6 +5,8 @@
 //! (`d.field("name")`, `d.at(0)`, `d.as_int()`), so a missing key or a value of the wrong kind is an `Err`, never an abort.
 //! A map is a list of entries, not a `Dict`, because a `Dict` has a fixed capacity and a document's size is not known.
 
+forward enum Dyn
+
 export tuple Entry deriving eq, show
   key String
   value Dyn

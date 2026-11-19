@@ -8774,7 +8774,7 @@ def check_package_structure(prog, search_dir):
         # a library file may not bind a module-level name twice
         sub = load(st.pkg)
         if sub is not None:
-            for dg in toplevel_fn_order(sub.stmts, f"package '{key}': "):
+            for dg in toplevel_fn_order(sub.stmts, f"package '{key}': ") + toplevel_type_order(sub.stmts, f"package '{key}': "):
                 diags.append(Diag(st.line, dg.msg + f" (line {dg.line})"))
             first = {}
             for s2 in sub.stmts:
@@ -8834,7 +8834,7 @@ def toplevel_order_diags(prog):
         if st.__class__ is Assign:
             for t in targets(st):
                 top.setdefault(t.name, st.line)
-    out, bound, reads = toplevel_fn_order(stmts), {}, {}
+    out, bound, reads = toplevel_fn_order(stmts) + toplevel_type_order(stmts), {}, {}
     for st in stmts:
         fds = st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
         for fd in fds:
@@ -8885,6 +8885,42 @@ def toplevel_fn_order(stmts, who=""):
             if nm in decl and decl[nm][0] > i and nm not in fwd and (nm, ln) not in seen:
                 seen.add((nm, ln))
                 out.append(Diag(ln or 0, f"{who}`{nm}` is used before its declaration (line {decl[nm][1]}): move it up, or write `forward fn {nm}(...)` first"))
+    return out
+
+
+def toplevel_type_order(stmts, who=""):
+    """A type is declared before it is used, like a function: a `tuple`, `enum`, `interface` or `type alias` named above its declaration
+    is an error unless a `forward tuple X` / `forward enum X` signature came first (mutually recursive types). A `forward` must be
+    defined later, as the same kind with the same number of type parameters."""
+    fwd = {f[1]: f for f in getattr(stmts, "fwd", ())}
+    kinds = {"TupleDecl": "tuple", "EnumDecl": "enum", "IfaceDecl": "interface", "AliasDecl": "alias"}
+    decl = {}
+    for i, st in enumerate(stmts):
+        k = kinds.get(st.__class__.__name__)
+        if k:
+            decl.setdefault(st.name, (i, st.line, k, len(getattr(st, "tparams", None) or [])))
+    out = []
+    for nm, (kind, _n, ntp, line, pos) in ((f[1], f) for f in fwd.values()):
+        d = decl.get(nm)
+        if d is None or d[2] != kind:
+            out.append(Diag(line, f"{who}`forward {kind} {nm}` is never defined: write the {kind} with its fields or cases later in the file"))
+        elif d[3] != ntp:
+            out.append(Diag(line, f"{who}`forward {kind} {nm}` has {ntp} type parameter{'s' if ntp != 1 else ''}, but the declaration at line {d[1]} has {d[3]}"))
+    seen = set()
+    for i, st in enumerate(stmts):
+        nodes = []
+        _walk(st, nodes)
+        tps = {x.name for x in nodes if x.__class__.__name__ == "TParam"}
+        for x in nodes:
+            if x.__class__.__name__ != "TName":
+                continue
+            p = x.path
+            if not (isinstance(p, (list, tuple)) and len(p) == 1 and isinstance(p[0], str)):
+                continue
+            nm = p[0]
+            if nm in decl and nm not in tps and decl[nm][0] > i and not (nm in fwd and fwd[nm][4] <= i) and (nm, st.line) not in seen:
+                seen.add((nm, st.line))
+                out.append(Diag(getattr(x, "line", None) or st.line, f"{who}the type `{nm}` is used before its declaration (line {decl[nm][1]}): move it up, or write `forward {decl[nm][2]} {nm}` first"))
     return out
 
 

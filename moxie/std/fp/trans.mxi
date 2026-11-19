@@ -357,6 +357,8 @@ impl[M[_] Monad + MonadReader[Q], R, Q] MonadReader[ContT[M, R, _], Q]
 
 // ---------------------------------------------------------------- FreeT and MonadFree
 
+forward tuple FreeT[F[_], M[_], A]
+
 /// One step of a `FreeT`: a finished value, or an instruction of `F` that holds the rest.
 export enum FreeStep[F[_], M[_], A]
   FtDone(A)
