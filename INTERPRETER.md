@@ -796,3 +796,27 @@ An arm starts with its head directly. A leading `case` that is not followed by `
 ## `in` / `not in` when arms
 
 `pbase.parse_in_pattern` reads `in` and `not in` before a pattern. Literal bounds (with an optional `step`) become a `PRange`, so exhaustiveness still sees them. Anything else is a `PIn(expr, neg)`, matched in `patterns.py` with the same `contains` that the `in` operator uses and treated as non-covering by the checker. A bare range pattern is rejected in `_range_tail`.
+
+## Pipeline sources and stages (streams.make_iter, prelude stage(), tys.SOURCE_ELEM)
+
+`make_iter(I, v)` is the one place that turns a value into an iterator (`nxt()` returns the next element or `END`; Stream opener = a fresh iterator per terminal). It knows List, Array, Ring, MultiArray, Set, Dict (as `(k, v)`), Range, String (as Chars), channels, `Stream`, `Result` (zero or one element: the `Ok` payload) and `Option` (the `Some` payload). A tuple or enum with a method `to_stream` is read through `MethodIter`, which calls the method on the first pull and then reads the returned stream, so building the value is free. Every stage (`prelude.stage(name, where, fn)`) wraps its input with `src_of`, which calls `make_iter`, so every source works in every stage, in `for`, and in terminals; `to_stream()` is only needed to hand something to a `Stream[T]` parameter.
+
+`map` is the stage; `fmap` (the `Functor` method) keeps the container. `_map_dispatch` sends an `EnumV`/`TupleV` that has its own `fmap`/`map` (Option, Result, user types) to the method, and everything else to `MapIter`. `flat_map` on a collection is a stage; the List monad is the wrapper `ListM` (moxie/gc only). `filter_map(f)` is a stage for an `Option`-returning `f`.
+
+The checker mirrors this in `tys`: the `Seq[T]` parameter of a stage unifies with List, Array, Set, Ring, Stream, MultiArray (`SEQ_HEADS`), String (as `Char`), Dict (as a tuple), `Option[T]` (as `T`) and, through the hook `tys.SOURCE_ELEM` (set to `Checker.source_elem`), a user type whose `to_stream` is declared to return `Stream[T]`, `List[T]` or `Array[T]`. `sigs.py` lists `map` for `Option` before the general one so `opt |> map(f)` still has type `Option[U]`.
+
+## `for:` over Lists, `FOR_SKIP` (interp.for_m)
+
+`for:` over a List or Array is a native comprehension returning a `List`; a failed `if` line or a generator pattern that does not match returns the sentinel `FOR_SKIP`, which the loop drops (any other monad aborts with "an `if` line in `for:` can only skip items of a List"). In effect each List is wrapped in `ListM` and the result unwrapped.
+
+## Patterns outside `when` (pexpr, pbase, patterns)
+
+`x is P` and `x is not P` (`is not` parses to `Unary("not", IsOp(...))`, binds nothing), let-else `Pattern = expr else value` (`e_ElseLet`), and irrefutable destructuring share the `when` pattern matcher. A bare `...` is `PRest(None)`: it matches the rest and binds nothing. `strip_prefix`, `strip_suffix` and `split_once` (mxprelude SRC) are the string extractors; custom extraction is a function returning `Option`.
+
+## Operators after a pipe (pexpr.parse_bin)
+
+`|>` is the loosest operator. After each stage, if a binary operator follows (`a |> f() == 2`, `xs |> sum() + 1`), `_climb(T_OR, left)` continues with the whole pipe so far as the left operand, so the operator applies to the pipe's result. A second pipe to the right of `and`/`or` must be parenthesized, since a later `|>` pipes the whole comparison.
+
+## Compile-time catches that used to abort (check.py)
+
+`check_local_fn_arity` (a local function value called with the wrong number of arguments; a zero-argument call is skipped because a `() -> x` lambda's type counts a hidden parameter), `check_nullary_called` (`None()`), `e_Pipe` (a placeholder alone after `|>`), `has_member` (a mistyped member of an enum, now also for `Option`), and the argument-count check in `check_enum_call` for generic enums (`Some()`). The runtime resolution of a bare case name that equals a prelude type (`Option`) is in `interp.ev_Name` (calls.ev_Call for the call form): the program's own case wins.
