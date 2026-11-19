@@ -342,6 +342,7 @@ class Checker(RefineMixin):
         self.methods = {}
         self.local_methods = set()       # ids of the methods this file's own impls declare (the order rule applies to them)
         self.fwd_methods = {}            # (type, method) -> line of its `forward fn` signature
+        self.first_line = {}             # (type, method) -> line of its first definition (a later impl may define it again)
         self.order_lines = False         # lines of this file are comparable (a one-file program)
         self.arg_ty = {}                 # the type of each call argument as it was checked (by the id of its expression)
         self.top_using_names = set()     # the `using` bindings declared at the top level (their order against a function is not known)
@@ -759,6 +760,7 @@ class Checker(RefineMixin):
                     if m.__class__ is not FnDecl or m.body is None:
                         continue
                     self.local_methods.add(id(m))
+                    self.first_line[(tn, m.name)] = min(m.line, self.first_line.get((tn, m.name), m.line))
                     old = self.methods.get((tn, m.name))
                     if old is not None and old is not m and (("generated" in (old.flags or ())) or ("generated" in (m.flags or ()))):
                         mine = m if "generated" not in (m.flags or ()) else old
@@ -4250,9 +4252,9 @@ class Checker(RefineMixin):
         md = self.methods.get((t[1], nm))
         if md is None or id(md) not in self.local_methods or "generated" in (md.flags or ()) or not line or md.line <= line:
             return None
-        if self.fwd_methods.get((t[1], nm), 10 ** 9) <= line:
+        if self.fwd_methods.get((t[1], nm), 10 ** 9) <= line or self.first_line.get((t[1], nm), md.line) <= line:
             return None
-        return (f"`{t[1]}.{nm}` is declared below this use (line {md.line}): a method must be declared above the code that uses it "
+        return (f"`{t[1]}.{nm}` is declared below this use (line {self.first_line.get((t[1], nm), md.line)}): a method must be declared above the code that uses it "
                 f"(an operator, `println`, `for` and string interpolation use methods too), or announced with `forward fn {nm}(...)` in its `impl`")
 
     def refutable_pat(self, p):
@@ -6912,7 +6914,7 @@ class Checker(RefineMixin):
         if t is None and fn.obj.__class__ is Name and fn.obj.name == "self" and getattr(self, "impl_ty", None):
             md1 = self.methods.get((self.impl_ty, nm))       # `self.y()` inside an impl: the same order rule, for a sibling method
             if md1 is not None and self.order_lines and id(md1) in self.local_methods and "generated" not in (md1.flags or ()) \
-                    and md1.line > n.line and not (self.fwd_methods.get((self.impl_ty, nm), 10 ** 9) <= n.line):
+                    and self.first_line.get((self.impl_ty, nm), md1.line) > n.line and not (self.fwd_methods.get((self.impl_ty, nm), 10 ** 9) <= n.line):
                 self.err(n.line, f"`{self.impl_ty}.{nm}` is declared below this use (line {md1.line}): a method must be declared above the code that calls it, or announced with `forward fn {nm}(...)` in its `impl`")
         tn = None
         if t.__class__ is tuple and t[0] in ("named", "app") and t[1] in self.tuples:
@@ -6930,7 +6932,7 @@ class Checker(RefineMixin):
             return
         md0 = self.methods.get((tn, nm))
         if md0 is not None and self.order_lines and id(md0) in self.local_methods and "generated" not in (md0.flags or ()) \
-                and md0.line > n.line and not (((tn, nm) in self.fwd_methods) and self.fwd_methods[(tn, nm)] <= n.line):
+                and self.first_line.get((tn, nm), md0.line) > n.line and not (((tn, nm) in self.fwd_methods) and self.fwd_methods[(tn, nm)] <= n.line):
             self.err(n.line, f"`{tn}.{nm}` is declared below this use (line {md0.line}): a method must be declared above the code that calls it, or announced with `forward fn {nm}(...)` in its `impl`")
         if (tn, nm) in self.methods and "." not in tn and not getattr(decl, "tparams", None):
             self.check_method_args(n, self.methods[(tn, nm)], sc)
