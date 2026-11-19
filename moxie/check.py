@@ -2899,6 +2899,9 @@ class Checker(RefineMixin):
         if t.__class__ is tuple and t[0] == "tup" and str(n.name).isdigit() and id(n) not in self.callee_fields \
                 and not any(i.__class__ is tuple and i[0] == "spread" for i in t[1]) and int(n.name) >= len(t[1]):
             self.err(n.line, f"a tuple of {len(t[1])} has no item `.{n.name}` (items count from 0)")
+        if t.__class__ is tuple and t[0] == "app" and t[1] in ("Option", "Result") and t[1] not in self.tuples and t[2] \
+                and t[2][0] not in self.SCAL and not (t[2][0].__class__ is tuple and t[2][0][0] == "app" and t[2][0][1] in ("List", "Array", "Set", "Dict")):
+            return None, None                            # an Option or Result of a tuple forwards field access to the tuple
         if t.__class__ is tuple and t[0] == "app" and t[1] in ("List", "Array", "Set", "Dict", "Ring", "Stream", "Option", "Result") and t[1] not in self.tuples \
                 and id(n) not in self.callee_fields and isinstance(n.name, str) and not n.name.isdigit():
             hint = f"; it is a function, so call it: `.{n.name}()`" if (n.name in self.load_sigs() or n.name in self.fns) else ""
