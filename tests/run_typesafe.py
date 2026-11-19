@@ -94,6 +94,8 @@ CASES = [
     ('forward-mutual-ok', 'A', 'forward fn is_odd(n Int) Bool\nfn is_even(n Int) Bool = if n == 0 then true else is_odd(n - 1)\nfn is_odd(n Int) Bool = if n == 0 then false else is_even(n - 1)\nprintln(is_even(10))\n'),
     ('forward-never-defined', 'R', 'forward fn g(n Int) Int\nfn f(n Int) Int = g(n)\nprintln(f(1))\n'),
     ('fn-order-ok', 'A', 'fn g() Int = 1\nfn f() Int = g() + 1\nprintln(f())\n'),
+    ('top-value-before-bind', 'R', 'println(w)\nw = 1\n'),
+    ('top-value-order-ok', 'A', 'a = 1\nb = a + 1\nprintln(b)\n'),
 ]
 
 fails = []

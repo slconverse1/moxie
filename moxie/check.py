@@ -8844,6 +8844,10 @@ def toplevel_order_diags(prog):
                         out.append(Diag(fd.line, f"`{fd.name}` reads `{nm}`, which is bound below it (line {top[nm]}): a function sees only the names bound above it"))
                     else:
                         reads.setdefault(nm, fd)
+        if not fds:                                    # a top-level statement reads only names bound above it
+            for nm, ln in _free_names(st, set()).items():
+                if nm in top and nm not in bound and not (st.__class__ is Assign and nm in [t.name for t in targets(st)]):
+                    out.append(Diag(ln or getattr(st, "line", 0), f"`{nm}` is used before it is bound (line {top[nm]}): a name must be bound above where it is used"))
         if st.__class__ is Assign:
             for t in targets(st):
                 if t.name in bound:
