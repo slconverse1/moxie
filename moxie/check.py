@@ -2599,10 +2599,11 @@ class Checker(RefineMixin):
                         and un.name in self.fns and (v in self.SCAL or v.__class__ is tuple and v[0] in ("fn", "overloads")):
                     self.err(n.line, f"cannot apply `{op}` to a function: call it first")
                     return None, None
-                if u.__class__ is tuple and u[0] == "app" and u[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
-                        and u[1] not in self.tuples and u[1] not in self.enums and u[1] not in self.aliases:
+                if u.__class__ is tuple and u[0] == "app" and (u[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") and u[1] not in self.enums
+                                                               or u[1] == "Option" and not any(k[1] == op for k in self.methods if k[0] == "Option")) \
+                        and u[1] not in self.tuples and u[1] not in self.aliases:
                     self.err(n.line, f"cannot apply `{op}` to `{tshow(u)}`" + (" and a number" if v in ("Int", "Float", "Decimal") else "")
-                             + ("; take the value out first (`?`, `get_or`, `when`)" if u[1] == "Result" else ""))
+                             + ("; take the value out first (`?`, `get_or`, `when`)" if u[1] == "Result" else "; take the value out first (`get_or`, `when`)" if u[1] == "Option" else ""))
                     return None, None
             return None, None
         return None, None
@@ -2883,6 +2884,14 @@ class Checker(RefineMixin):
                     ft = self.ty_of_type(pd.type, 0, {tp.name for tp in td.tparams})
                     return tys.subst(ft, {tp.name: a for tp, a in zip(td.tparams, t[2])}), None
                 self.no_such_field(n, t[1], td)
+        if t.__class__ is tuple and t[0] == "app" and t[1] in ("List", "Array", "Set", "Dict", "Ring", "Stream") and t[1] not in self.tuples \
+                and id(n) not in self.callee_fields and isinstance(n.name, str) and not n.name.isdigit():
+            hint = f"; it is a function, so call it: `.{n.name}()`" if (n.name in self.load_sigs() or n.name in self.fns) else ""
+            self.err(n.line, f"a `{t[1]}` has no field `{n.name}`{hint}")
+        if (t in INTS or t in ("String", "Bool", "Float", "Char", "Decimal")) and id(n) not in self.callee_fields \
+                and isinstance(n.name, str) and not n.name.isdigit() and n.name not in self.fns and n.name not in self.globals \
+                and not any(k[1] == n.name for k in self.methods) and n.name not in self.load_sigs() and n.name not in ("len",):
+            self.err(n.line, f"a `{t}` has no field `{n.name}`")             # `x.foo` on a number or string
         return None, None
 
     def prop_in(self, td, name):
@@ -3886,6 +3895,11 @@ class Checker(RefineMixin):
             el = ("tup", (it[2][0], it[2][1]))               # a Dict gives (key, value) pairs
         elif it is not None and (it in INTS or it in ("Bool", "Float", "Decimal", "Char")):
             self.err(n.line, f"`for` needs a collection, a range, or a stream, found `{tshow(it)}`")
+        if n.pat.__class__ is PTuple and el is not None and not any(getattr(ip, "name", None) == "..." or ip.__class__ is PRest for _l, ip in n.pat.items):
+            if el in INTS or el in ("String", "Bool", "Float", "Decimal", "Char"):
+                self.err(n.line, f"this `for` takes each element apart into {len(n.pat.items)} names, but the elements are `{tshow(el)}`, not tuples")
+            elif el.__class__ is tuple and el[0] == "tup" and len(el[1]) != len(n.pat.items):
+                self.err(n.line, f"this `for` takes each element apart into {len(n.pat.items)} names, but the elements are tuples of {len(el[1])}")
         self.bind_pat(n.pat, inner, el)
         dn = self.decl_node(n.iter, sc)
         if n.pat.__class__ is PBind and dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring", "Set") and dn.groups \
@@ -7480,7 +7494,8 @@ class Checker(RefineMixin):
         pos = [f for f in td.fields or []]
         if not getattr(td, "spread", None) and not any(getattr(f, "name", None) in (None, "...") for f in pos) \
                 and not any(getattr(a, "mod", None) for a in args) and not any(x.__class__ in (PH, Slot) for x in (getattr(a, "expr", None) for a in args)) \
-                and not (len(args) == 1 and args[0].label is None):                    # one bare argument may be a tuple to unpack
+                and not (len(args) == 1 and args[0].label is None
+                         and not (ats and (ats[0][0] in INTS or ats[0][0] in ("String", "Bool", "Float", "Char", "Decimal")))):   # one bare argument may be a tuple to unpack, but a plain number or string cannot
             unlabeled = [a for a in args if a.label is None]
             covered = {a.label for a in args if a.label is not None} | {f.name for f in pos[:len(unlabeled)]}
             need = [f.name for f in pos if getattr(f, "default", None) is None and f.name not in covered]
