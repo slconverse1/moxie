@@ -832,8 +832,8 @@ program : { NL } { item } EOF ;
 item : decl | stmt ;
 
 # ---------------------------------------------------------------- statements
-stmt : simple NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound | 'in' ident { ',' ident } NL ;
-simple : ( 'requires' | 'ensures' | 'invariant' ) expr | base [ 'if' expr [ 'else' expr ] ] ;
+stmt : simple NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound ;
+simple : base [ 'if' expr [ 'else' expr ] ] ;
 base : 'break' 'daemon' | 'break' [ label ] '(' expr { ',' expr } ')' | 'export' ident [ type ] '=' expr | pattern [ type ] '=' expr 'else' expr | 'return' [ expr { ',' expr } ] | 'break' [ label ] [ '(' expr ')' ] | 'continue' [ label ] | binding | assign | incr | expr { ',' expr } ;
 blockend : [ target_list [ type ] '=' ] expr_b | 'return' expr_b ;
 expr_b : pipe_b | postfix_b | lambda_b | fnblock | gofn | dotblock | postfix '+%' fnblock | pipe '|>' 'seq' armsx | when_b ;
@@ -857,7 +857,11 @@ armsblock : ident NL INDENT arm+ DEDENT ;
 armsx : NL INDENT arm+ DEDENT ;
 withblock : 'with' ident { ',' ident } block ;
 dostmt : 'do' [ 'with' ident { ',' ident } ] block ;
-block : NL INDENT item+ DEDENT ;
+block : NL INDENT [ carry ] item+ DEDENT ;
+carry : 'in' carry_item { ',' carry_item } NL ;
+carry_item : ident [ '@' ( INT | ident ) ] ;
+contract : ( 'requires' | 'ensures' ) expr NL ;
+fnbody : NL INDENT { contract } [ carry ] item+ DEDENT ;
 block_stmt : ident [ ident ] block ;
 ifstmt : 'if' expr ( 'then' simple NL | 'then' block | block ) { 'elif' expr ( 'then' simple NL | block ) } [ 'else' ( simple NL | block ) ] ;
 whenstmt : 'when' [ expr ] NL INDENT arm+ DEDENT ;
@@ -910,8 +914,8 @@ type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | INT [ ( '..' | '..=' ) INT ] ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' } ( foreigndecl | fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl | importdecl | usingdecl | testdecl ) ;
-fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | block | NL ) ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | foreigndecl | importdecl | usingdecl | testdecl ;
+fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
 tparams : '[' tparam { ',' tparam } ']' ;
 tparam : ident [ '[' hk { ',' hk } ']' ] [ bound { '+' bound } ] [ 'where' expr ] ;
@@ -924,10 +928,10 @@ tmember : field | propdecl | 'invariant' expr ;
 propdecl : [ 'lazy' | 'static' | 'priv' ] 'property' ident type [ '=' expr ] ;
 derivs : 'deriving' ident { ',' ident } ;
 field : ident type [ 'delegate' [ '(' type { ',' type } ')' ] ] [ '=' expr ] ;
-enumdecl : 'enum' ident [ tparams ] [ '(' params ')' ] [ derivs ] NL [ INDENT { case { ',' case } [ ',' ] NL } DEDENT ] ;
+enumdecl : 'enum' ident [ tparams ] [ '(' params ')' ] [ derivs ] NL INDENT { case { ',' case } [ ',' ] NL } DEDENT ;
 case : ident [ '[' tparam { ',' tparam } ']' ] [ '(' [ case_item { ',' case_item } ] ')' ] [ '(' [ case_item { ',' case_item } ] ')' ] [ type ] ;
 case_item : [ ident ':' ] ( param ) ;
-ifacedecl : 'interface' ident [ tparams ] NL INDENT { member { ',' member } [ ',' ] NL [ INDENT { accessor | stmt } DEDENT ] | type { ',' type } NL } DEDENT ;
+ifacedecl : 'interface' ident [ tparams ] NL INDENT { member { ',' member } [ ',' ] NL [ INDENT { contract | accessor | stmt } DEDENT ] | type { ',' type } NL } DEDENT ;
 member : fnsig | 'type' ident | field | 'property' ident type | { 'static' | 'dynamic' } fnsig ;
 fnsig : 'fn' [ '(' [ 'ref' ] ident ')' ] [ fname ] [ tparams ] [ '(' [ params ] ')' ] [ type ] ;
 fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' | '|>>' | '<$>' | '~>' | '++' | '<<' | '>>' | '&' | '|' | '^' | '~=' ;

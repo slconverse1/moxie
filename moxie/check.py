@@ -2567,6 +2567,11 @@ class Checker(RefineMixin):
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`: convert one side on purpose (`cast[Decimal](x)` or `cast[Double](d)`)")
             if a in self.SCAL and b in self.SCAL and a != b and {a, b} - {"Int", "Float", "Decimal"}:
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`")
+            for x, y in ((a, b), (b, a)):               # `Some(1) == 1`: an Option is never equal to the value inside it
+                if x.__class__ is tuple and x[0] == "app" and x[1] in ("Option", "Result") and x[1] not in self.tuples \
+                        and y in self.SCAL and op in ("==", "!="):
+                    self.err(n.line, f"cannot compare `{tshow(x)}` and `{tshow(y)}`: an `{x[1]}` is not the value inside it; compare with `Some(..)`, or take the value out first")
+                    break
             return "Bool", None
         if op in ("+", "-", "*", "/", "%"):
             for u in (a, b):
@@ -2891,7 +2896,10 @@ class Checker(RefineMixin):
                     ft = self.ty_of_type(pd.type, 0, {tp.name for tp in td.tparams})
                     return tys.subst(ft, {tp.name: a for tp, a in zip(td.tparams, t[2])}), None
                 self.no_such_field(n, t[1], td)
-        if t.__class__ is tuple and t[0] == "app" and t[1] in ("List", "Array", "Set", "Dict", "Ring", "Stream") and t[1] not in self.tuples \
+        if t.__class__ is tuple and t[0] == "tup" and str(n.name).isdigit() and id(n) not in self.callee_fields \
+                and not any(i.__class__ is tuple and i[0] == "spread" for i in t[1]) and int(n.name) >= len(t[1]):
+            self.err(n.line, f"a tuple of {len(t[1])} has no item `.{n.name}` (items count from 0)")
+        if t.__class__ is tuple and t[0] == "app" and t[1] in ("List", "Array", "Set", "Dict", "Ring", "Stream", "Option", "Result") and t[1] not in self.tuples \
                 and id(n) not in self.callee_fields and isinstance(n.name, str) and not n.name.isdigit():
             hint = f"; it is a function, so call it: `.{n.name}()`" if (n.name in self.load_sigs() or n.name in self.fns) else ""
             self.err(n.line, f"a `{t[1]}` has no field `{n.name}`{hint}")
@@ -4027,6 +4035,10 @@ class Checker(RefineMixin):
                 self.err(n.line, f"a range runs over numbers, characters and other ordered types such as `String`, found `{tshow(t)}`")
             if t == "String" and n.step is not None:
                 self.err(n.line, "a range of strings has no `step`: it only tests `in`")
+        if n.lo is not None and n.hi is not None:
+            lt0, ht0 = self.ev(n.lo, sc)[0], self.ev(n.hi, sc)[0]
+            if lt0 in self.SCAL and ht0 in self.SCAL and lt0 != ht0 and ({lt0, ht0} & {"String", "Char"}):
+                self.err(n.line, f"a range's two ends must have the same type, found `{tshow(lt0)}` and `{tshow(ht0)}`")
         if n.step is not None:
             st = self.ev(n.step, sc)[0]
             if st is not None and not (st in INTS or (st.__class__ is tuple and st[0] in ("lit", "bounded", "param", "rigid"))):
@@ -5169,6 +5181,13 @@ class Checker(RefineMixin):
             return
         if args and len(args) != len(ft[1]):            # (`h()` of a lambda written `() -> 5` is left alone: its type counts a hidden parameter)
             self.err(n.line, f"`{n.fn.name}` takes {len(ft[1])} argument{'s' if len(ft[1]) != 1 else ''}, but {len(args)} given")
+            return
+        for i, a in enumerate(args):                    # `f = (a Int) -> a` then `f("x")`: a scalar argument of the wrong type
+            pt = ft[1][i] if i < len(ft[1]) else None
+            if pt in self.SCAL:
+                at = self.ev(a.expr, sc)[0]
+                if at in self.SCAL and at != pt and not ({at, pt} <= {"Int", "Float", "Decimal"} and at == "Int"):
+                    self.err(n.line, f"`{n.fn.name}` takes a `{tshow(pt)}` here, but `{tshow(at)}` given")
 
     def check_nullary_called(self, n, sc):
         """`None()`: a case without fields is written without parentheses."""
@@ -6249,6 +6268,10 @@ class Checker(RefineMixin):
         if fn.__class__ is Name:
             v = sc.find(fn.name)
             if v is None:
+                if fn.name in ("Int", "Float", "String", "Bool", "Char", "Decimal") and fn.name not in self.globals \
+                        and fn.name not in self.tuples and fn.name not in self.enums and fn.name not in self.aliases and not sc.open:
+                    self.err(n.line, f"`{fn.name}` is a type, not a function: convert with `cast[{fn.name}](x)` or a parsing function such as `parse_int`")
+                    return None, None
                 if fn.name not in self.globals and fn.name not in self.prelude and not sc.open:
                     self.err(n.line, f"undefined function `{fn.name}`")
                     return None, None

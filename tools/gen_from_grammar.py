@@ -22,7 +22,8 @@ def load_samples():
     for f in sorted(glob.glob(os.path.join(ROOT, "examples", "*.mxi"))) + glob.glob(os.path.join(ROOT, "moxie", "std", "*.mxi")):
         try:
             for t in tokenize(open(f).read(), f):
-                if t.kind in ("INT", "FLOAT", "STR", "CHAR", "DEC", "DUR", "BYTES", "SQL", "HASH", "BTICK"):
+                if t.kind in ("INT", "FLOAT", "STR", "CHAR", "DEC", "DUR", "BYTES", "SQL", "HASH", "BTICK") and (
+                        isinstance(t.val, str) or t.kind in ("INT", "FLOAT")):
                     seen.setdefault(t.kind, []).append(t)
         except Exception:
             pass
@@ -60,7 +61,7 @@ class Gen:
             if k == "nt":
                 self.derive(s[1], depth + 1, out)
             elif k == "lit":
-                out.append(Tok("NAME" if s[1][:1].isalpha() else "OP", s[1], 1, 0))
+                out.append(Tok("NAME" if (s[1][:1].isalpha() or s[1] == "_") else "OP", s[1], 1, 0))
             elif k == "ident":
                 out.append(Tok("NAME", self.rng.choice(NAMES), 1, 0))
             else:

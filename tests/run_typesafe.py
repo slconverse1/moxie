@@ -74,6 +74,16 @@ CASES = [
     ('continue-outside', 'R', 'continue\n'),
     ('labels-needed-value', 'R', 'fn f(a Int, b Int) Int = a + b\nprintln(f(a: 1))\n'),
     ('loops-with-break-ok', 'A', 'for i in 1..5\n  if i == 2 then continue\n  if i == 4 then break\n  println(i)\n'),
+    ('option-field', 'R', 'o Option[Int] = None\nprintln(o.value)\n'),
+    ('result-field', 'R', 'r Result[Int, String] = Ok(1)\nprintln(r.value)\n'),
+    ('option-eq-scalar', 'R', 'println(Some(1) == 1)\n'),
+    ('option-eq-option-ok', 'A', 'println(Some(1) == Some(1))\n'),
+    ('tuple-index-range', 'R', 'x = (1, 2)\nprintln(x.2)\n'),
+    ('tuple-index-ok', 'A', 'x = (1, 2)\nprintln(x.1)\n'),
+    ('range-mixed-ends', 'R', 'println(1 .. "a")\n'),
+    ('type-called-as-fn', 'R', 'println(Int("3") + 1)\n'),
+    ('local-lambda-arg-type', 'R', 'f = (a Int) -> a\nprintln(f("x"))\n'),
+    ('local-lambda-arg-ok', 'A', 'f = (a Int) -> a\nprintln(f(2))\n'),
 ]
 
 fails = []
