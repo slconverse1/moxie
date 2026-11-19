@@ -2078,7 +2078,7 @@ null
 ],
 [
 4306,
-"tuple State[S, A]\n  run (S) -> (A, S)\nfn map_state[S, A, B](m State[S, A], f (A) -> B, s S) (B, S)\n  (a, s2) = m.run(s)\n  (f(a), s2)\nfn bind_state[S, A, B](m State[S, A], f (A) -> State[S, B], s S) (B, S)\n  (a, s2) = m.run(s)\n  f(a).run(s2)\nimpl[S] Monad[State[S, _]]\n  fn fmap[A, B](self State[S, A], f (A) -> B) State[S, B]\n    State(run: (s) -> map_state(self, f, s))\n  static fn pure[A](a A) State[S, A]\n    State(run: (s) -> (a, s))\n  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]\n    self.flat_map((g) -> x.fmap(g))\n  fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]\n    State(run: (s) -> bind_state(self, f, s))\nnext_id = State(run: (c Int) -> (c + 1, c + 1))\ntwo = next_id.flat_map((a) -> next_id.map((b) -> (a, b)))\nr = two.run(0)\nprintln(\"${r(0)(0)} ${r(0)(1)} ${r(1)}\")\n",
+"tuple State[S, A]\n  run (S) -> (A, S)\nfn map_state[S, A, B](m State[S, A], f (A) -> B, s S) (B, S)\n  (a, s2) = m.run(s)\n  (f(a), s2)\nfn bind_state[S, A, B](m State[S, A], f (A) -> State[S, B], s S) (B, S)\n  (a, s2) = m.run(s)\n  f(a).run(s2)\nimpl[S] Monad[State[S, _]]\n  fn fmap[A, B](self State[S, A], f (A) -> B) State[S, B]\n    State(run: (s) -> map_state(self, f, s))\n  static fn pure[A](a A) State[S, A]\n    State(run: (s) -> (a, s))\n  fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]\n    State(run: (s) -> bind_state(self, f, s))\n  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]\n    self.flat_map((g) -> x.fmap(g))\nnext_id = State(run: (c Int) -> (c + 1, c + 1))\ntwo = next_id.flat_map((a) -> next_id.map((b) -> (a, b)))\nr = two.run(0)\nprintln(\"${r(0)(0)} ${r(0)(1)} ${r(1)}\")\n",
 [
 "1 2 2"
 ]

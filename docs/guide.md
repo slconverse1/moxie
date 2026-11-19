@@ -4316,10 +4316,10 @@ impl[S] Monad[State[S, _]]
     State(run: (s) -> map_state(self, f, s))
   static fn pure[A](a A) State[S, A]
     State(run: (s) -> (a, s))
-  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]
-    self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]
     State(run: (s) -> bind_state(self, f, s))
+  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]
+    self.flat_map((g) -> x.fmap(g))
 next_id = State(run: (c Int) -> (c + 1, c + 1))
 two = next_id.flat_map((a) -> next_id.map((b) -> (a, b)))
 r = two.run(0)
