@@ -15,6 +15,22 @@ def run(src, cmd):
 
 # (name, "R" = must be rejected / "A" = must be accepted and run without aborting, source)
 CASES = [
+    ('chan-for-elem-type', 'R', 'rx, tx = Chan[Int][1]()\nfor x in rx\n  println(x + "a")\n'),
+    ('chan-for-ok', 'A', 'rx, tx = Chan[Int][2]()\n_ = write(tx, 1)\nclose(tx)\nfor x in rx\n  println(x + 1)\n'),
+    ('chan-cap-negative', 'R', 'rx, tx = Chan[Int][-1]()\nprintln(1)\n'),
+    ('chan-cap-string', 'R', 'rx, tx = Chan[Int]["a"]()\nprintln(1)\n'),
+    ('chan-ctor-args', 'R', 'rx, tx = Chan[Int][1](5)\nprintln(1)\n'),
+    ('close-int', 'R', 'close(5)\n'),
+    ('any-field-access', 'R', 'interface S\n  fn a(self) Int\ntuple Q\n  v Int\nimpl S for Q\n  fn a(self) Int = 1\ns any S = Q(v: 1)\nprintln(s.v)\n'),
+    ('any-member-ok', 'A', 'interface S\n  fn a(self) Int\ntuple Q\n  v Int\nimpl S for Q\n  fn a(self) Int = 1\ns any S = Q(v: 1)\nprintln(s.a())\n'),
+    ('any-annot-nonimpl', 'R', 'interface S\n  fn a(self) Int\ntuple Q\n  v Int\nimpl S for Q\n  fn a(self) Int = 1\ns any S = 3\nprintln(1)\n'),
+    ('scalar-method-wrong-type', 'R', 'interface S\n  fn a(self) Int\nimpl S for Int\n  fn a(self) Int = self\nprintln("s".a())\n'),
+    ('scalar-method-right-type', 'A', 'interface S\n  fn a(self) Int\nimpl S for Int\n  fn a(self) Int = self\nprintln(3.a())\n'),
+    ('generic-box-float-for-int', 'R', 'tuple Box[T]\n  v T\nfn f(b Box[Int]) Int = b.v\nprintln(f(Box(v: 1.5)))\n'),
+    ('generic-fn-arity', 'R', 'fn f[T](x T) T = x\nprintln(f(1, 2))\n'),
+    ('generic-fn-lambda-clash', 'R', 'fn app[T](f (T) -> T, x T) T = f(x)\nprintln(app((a Int) -> a + 1, "s"))\n'),
+    ('generic-fn-lambda-ok', 'A', 'fn app[T](f (T) -> T, x T) T = f(x)\nprintln(app((a) -> a + "!", "s"))\n'),
+    ('impl-show-for-int', 'R', 'impl Show for Int\n  fn show(self) String = "x"\nprintln(1)\n'),
     ('lambda-untyped-misuse', 'R', 'f = (a) -> a + 1\nprintln(f("s"))\n'),
     ('lambda-untyped-ok', 'A', 'f = (a) -> a + 1\ng = (a, b) -> a + b\nprintln(f(2))\nprintln(g("x", "y"))\n'),
     ('option-order', 'R', 'println(Some(1) < Some(2))\n'),

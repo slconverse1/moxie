@@ -491,6 +491,8 @@ def show(v, interp=None):
         return "/" + v.tname + "".join("/" + str(s) for s in v.segs)
     if t is TypeV:
         return v.name
+    if t.__name__ in ("ChanR", "ChanW", "FutureR", "FutureW"):
+        return "<" + t.__name__ + ">"                   # an end of a channel or future: no Python repr
     return str(v)
 
 

@@ -120,6 +120,16 @@ def is_wild(t):
     return t is None or (t.__class__ is tuple and t[0] in ("param", "appv", "ctor", "overloads"))
 
 
+def _arg_compat(x, y):
+    """A type argument: a `Float` where an `Int` is wanted (`Box[Float]` for `Box[Int]`) is a mismatch, though a bare number is lenient."""
+    if isinstance(x, str) and isinstance(y, str) and x != y and x in NUMERIC and y in NUMERIC:
+        return x == "Float" and y == "Int" or x == "Decimal" and y == "Int" or x in INT_NAMES and y in INT_NAMES
+    return compatible(x, y)
+
+
+INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64"}
+
+
 def compatible(exp, act):
     """Could a value of type `act` be used where `exp` is expected?  Lenient on numbers (the checker's top-level rules own the
     strict integer checks) and on anything unknown."""
@@ -142,7 +152,7 @@ def compatible(exp, act):
     if et == "app" and at == "app":
         if len(exp) > 3 and len(act) > 3 and exp[3].__class__ is int and act[3].__class__ is int and exp[3] != act[3]:
             return False
-        return exp[1] == act[1] and len(exp[2]) == len(act[2]) and all(compatible(x, y) for x, y in zip(exp[2], act[2]))
+        return exp[1] == act[1] and len(exp[2]) == len(act[2]) and all(_arg_compat(x, y) for x, y in zip(exp[2], act[2]))
     if et == "fn" and at == "fn":
         if len(exp[1]) != len(act[1]):
             return True      # arities differ legitimately (callbacks, tuple unpacking)

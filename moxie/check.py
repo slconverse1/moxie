@@ -2898,6 +2898,14 @@ class Checker(RefineMixin):
             sp = self.prop_in(self.tuples[o.name], n.name)       # `Account.rate`: a static property, read through the type
             if sp is not None and sp.static:
                 return self.ty_of_type(sp.type), None
+        if o.__class__ is Name and self.any_vars:
+            av = self.any_vars.get(sc.find(o.name)) if sc.find(o.name) is not None else None
+            if av is not None:
+                mem = [self.iface_members(i) for i in av[1]]
+                if mem and all(m is not None for m in mem) and not any(n.name in m for m in mem) and n.name not in self.fns \
+                        and n.name not in self.load_sigs() and n.name not in self.prelude_method_names() \
+                        and not any(k[1] == n.name for k in self.methods):
+                    self.err(n.line, f"`{o.name}` is an `any {'`, `'.join(av[1])}`: it shows only what the interface declares, and `{n.name}` is not one of its members")
         t = self.t(n.obj, sc)
         if t.__class__ is tuple and t[0] == "rigid":
             self.check_tparam_member(n, t)
@@ -3561,6 +3569,17 @@ class Checker(RefineMixin):
         self.settle_mixed(n.value, ann)
         if n.ann is not None:
             self.check_type_arity(n.ann, n.line)
+        if n.ann.__class__ is TAny and n.op == "=" and t is not None:
+            bt = self.base(t)
+            names = [_tn(n.ann.iface)] + [_tn(x) for x in n.ann.also or []]
+            if bt.__class__ is tuple and bt[0] == "any":
+                missing = [i for i in names if i not in bt[1]]
+            elif all(i in self.iface_decls for i in names):
+                missing = [i for i in names if self.implements(bt, i) is False]
+            else:
+                missing = []
+            if missing:
+                self.err(n.line, f"`{tshow(bt)}` doesn't implement `{missing[0]}`, so it can't be stored as `any {' + '.join(names)}`")
         if n.ann is not None and n.op == "=":
             self.compat(ann, t, c, n.line)
             self.check_union_member(n.ann, t, n.line)
@@ -3952,7 +3971,7 @@ class Checker(RefineMixin):
         msg = self.late_method(it, "to_stream", n.line)
         if msg:
             self.err(n.line, msg)
-        if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream") and len(it[2]) == 1 \
+        if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream", "ChanR") and len(it[2]) == 1 \
                 and it[2][0] is not None and not self.has_unsettled(it[2][0]):
             el = it[2][0]                                   # the loop variable has the collection's element type
         elif it.__class__ is tuple and it[0] == "app" and it[1] == "Dict" and len(it[2]) == 2 and None not in it[2] \
@@ -5234,6 +5253,12 @@ class Checker(RefineMixin):
             self.check_concrete_method(n, sc)
         elif n.fn.__class__ is Name and len(self.fns.get(n.fn.name, ())) == 1:
             fdc = self.fns[n.fn.name][0]
+            fa = n.args or []
+            if fdc.__class__ is FnDecl and fdc.tparams and n.trailing is None and not getattr(n, "extra", None) \
+                    and all(hasattr(a, "expr") and not a.label and not getattr(a, "mod", None) and a.expr.__class__ not in (PH, Slot) for a in fa) \
+                    and not any(q.variadic or q.mod or q.default is not None or q.pat is not None for q in fdc.params or []) \
+                    and sc.find(n.fn.name) is None and len(fa) != len(fdc.params or []) and fa:
+                self.err(n.line, f"`{fdc.name}` takes {len(fdc.params or [])} argument{'s' if len(fdc.params or []) != 1 else ''}, but {len(fa)} given")
             for prm, a in zip([q for q in fdc.params or [] if getattr(q, "name", None) != "self"], n.args or []):
                 if hasattr(a, "expr") and prm.type is not None and self.union_name_of(prm.type) is not None:
                     self.has_expect(a.expr, prm.type)          # `show_arith(mul(lit(1), lit(2)))`: the union the argument builds into
@@ -6366,6 +6391,9 @@ class Checker(RefineMixin):
             self.check_hand_over(n, sc, fn.name, args)
             if fn.name in self.tuples:
                 self.check_stored(n, sc, fn.name, args)
+            if fn.name == "close" and "close" not in self.fns and len(args) == 1 and hasattr(args[0], "expr") \
+                    and self.base(self.ev(args[0].expr, sc)[0]) in self.SCAL:
+                self.err(n.line, f"cannot `close` a `{tshow(self.base(self.ev(args[0].expr, sc)[0]))}`: only a channel, file, socket or other resource is closed")
             if fn.name == "close" and args and args[0].__class__ is not None and hasattr(args[0], "expr") and args[0].expr.__class__ is Name:
                 self.mark_gone(n, sc, args[0].expr.name, "closed")
         if fn.__class__ is Field:
@@ -6440,6 +6468,9 @@ class Checker(RefineMixin):
             self.check_atom_valid(args, ats, n)
             return ("app", "Atom", (el,)), None
         ends = {"Chan": ("ChanR", "ChanW"), "Future": ("FutureR", "FutureW")}
+        if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name in ends and args and "Chan" not in self.fns \
+                and fn.base.name not in self.tuples and fn.base.name not in self.aliases:
+            self.err(n.line, f"`{fn.base.name}[..]()` takes no arguments: it makes both ends of a new {'channel' if fn.base.name == 'Chan' else 'future'}")
         if fn.__class__ is GenApp and fn.base.__class__ is Name and fn.base.name in ends and not args and n.trailing is None \
                 and not any(x in self.fns or x in self.tuples or x in self.aliases or x in self.enums for x in (fn.base.name,) + ends[fn.base.name]) \
                 and 1 <= len(fn.groups or []) <= 2 and len(fn.groups[0]) == 1:
@@ -7040,15 +7071,22 @@ class Checker(RefineMixin):
         if not builtin or not isinstance(nm, str):
             return
         if nm in self.fns or nm in self.prelude or nm in self.globals or nm in self.consumes or nm in self.load_sigs() or nm in self.pkg_calls \
-                or sc.find(nm) is not None or any(k[1] == nm for k in self.methods):
+                or sc.find(nm) is not None or any(k[1] == nm and not self.scalar_only_method(k[0], t) for k in self.methods):
             return
-        if any(getattr(x, "name", None) == nm for d in self.iface_decls.values() for x in d.members or []):
+        if any(getattr(x, "name", None) == nm and not (t.__class__ is str and t in self.SCAL and self.implements(t, iname) is False)
+               for iname, d in self.iface_decls.items() for x in d.members or []):
             return
         if any(getattr(f, "name", None) == nm for td in self.tuples.values() for f in td.fields or []):
             return
         if nm in self.prelude_method_names():
             return                                           # `ap`, `pure`, ... declared in the prelude's own source
         self.err(n.line, f"no method or function `{nm}` for a `{t[1] if t.__class__ is tuple and len(t) > 2 and not t[2] else tshow(t)}`")
+
+    def scalar_only_method(self, owner, t):
+        """True when method owner `owner` is a built-in scalar of another family than the receiver type `t` (a scalar): `impl S for Int`
+        gives `3.a()` but not `"s".a()`."""
+        fam = lambda x: "num" if x in ("Int", "Float", "Decimal", "BigInt") or (x in INTS) else x
+        return t.__class__ is str and t in self.SCAL and owner in self.SCAL and fam(owner) != fam(t)
 
     def check_method_args(self, n, md, sc):
         """`box.add("a")` where `fn add(k Int)` is an ordinary method of a declared type: the count and the types of the arguments.  Generic
@@ -7499,6 +7537,11 @@ class Checker(RefineMixin):
                 bound[tp.name] = t
         r = self.bare_tparam(fd, fd.ret)
         if r is not None and r.name in bound and not (bound[r.name] in ("Int", "Float", "Decimal")):
+            if any(q.type.__class__ is TFn for q in params):
+                nd = len(self.diags)
+                self.structured_call(fd, n, args, ats)          # a function parameter may fix the same `T` differently
+                if len(self.diags) > nd:
+                    return None
             return bound[r.name]
         return self.structured_call(fd, n, args, ats)
 
@@ -8427,6 +8470,10 @@ class Checker(RefineMixin):
         result type that is a plain type name must be the one the interface says."""
         if n.iface.__class__ is not TName or len(n.iface.path) != 1 or n.proxy is not None:
             return
+        if n.iface.path[0] in ("Show", "Equatable", "Ordered", "Addable", "Numeric") and n.iface.path[0] not in self.iface_decls \
+                and n.target.__class__ is TName and len(n.target.path) == 1 and n.target.path[0] in self.SCAL and not n.target.groups \
+                and self.implements(n.target.path[0], n.iface.path[0]) is True:
+            self.err(n.line, f"`{n.target.path[0]}` already implements `{n.iface.path[0]}`: a type has one `impl` of an interface, so the built-in one can't be replaced")
         d = self.iface_decls.get(n.iface.path[0])
         if d is None or d.embeds:
             return
@@ -8592,6 +8639,14 @@ class Checker(RefineMixin):
             cap = n.groups[1][0].path[0]
             if sc.find(cap) is not None and cap not in self.consts and cap not in self.tp_decl:
                 self.err(n.line, f"a channel's capacity must be a constant, and `{cap}` is a variable")
+        if n.base.__class__ is Name and n.base.name == "Chan" and "Chan" not in self.fns and "Chan" not in self.tuples \
+                and len(n.groups or []) == 2 and len(n.groups[1]) == 1 and n.groups[1][0].__class__ is TExpr:
+            ct, cc = self.ev(n.groups[1][0].expr, sc)
+            ct = self.base(ct)
+            if ct is not None and ct != "Int" and not (ct.__class__ is tuple and ct[0] == "bounded") and ct in self.SCAL:
+                self.err(n.line, f"a channel's capacity is an Int, not a `{tshow(ct)}`")
+            elif cc.__class__ is int and cc < 0:
+                self.err(n.line, f"a channel's capacity can't be negative (`{cc}`)")
         if n.base.__class__ is Name and n.base.name in ("Set", "Dict") and n.groups and n.groups[0] \
                 and not any(n.base.name in d for d in (self.fns, self.tuples, self.enums, self.aliases)):
             k = n.groups[0][0]                      # `Set[P]()`, `Dict[P, Int][8]()`: the element or key type must be Hashable
