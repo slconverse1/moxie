@@ -84,6 +84,11 @@ CASES = [
     ('type-called-as-fn', 'R', 'println(Int("3") + 1)\n'),
     ('local-lambda-arg-type', 'R', 'f = (a Int) -> a\nprintln(f("x"))\n'),
     ('local-lambda-arg-ok', 'A', 'f = (a Int) -> a\nprintln(f(2))\n'),
+    ('top-bound-below-fn', 'R', 'fn f() Int = z\nz = 5\nprintln(f())\n'),
+    ('top-rebound-after-fn-read', 'R', 'y = 1\nfn f() Int = y\ny = 2\nprintln(f())\n'),
+    ('top-rebind-unread-ok', 'A', 'x = 5\nx += 1\na, b = 1, 2\na, b = b, a\nprintln("$x $a $b")\n'),
+    ('top-fn-reads-above-ok', 'A', 'rate = 3\nfn price(n Int) Int = n * rate\nprintln(price(5))\n'),
+    ('top-fn-local-same-name-ok', 'A', 'fn f() Int\n  t = 1\n  t\nt = 5\nprintln(f() + t)\n'),
 ]
 
 fails = []

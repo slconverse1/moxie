@@ -259,6 +259,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         strict = (getattr(self, "manifest", None) or {}).get("program", {}).get("safety") == "strict"
         diags = check_program(prog, set(self.prelude.vars), self.search_dir,
                               parse_size(kw) if kw is not None else 64, type_fuel=tf, eval_fuel=ef, strict_safety=strict)
+        from .check import toplevel_order_diags
+        diags.extend(toplevel_order_diags(prog))
         from .values import GC
         if not GC[0]:
             from .tally import tally_problems

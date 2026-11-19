@@ -8785,6 +8785,70 @@ def check_package_structure(prog, search_dir):
     return diags
 
 
+def _walk(n, out):
+    """Every AST node under `n` (nodes, lists and tuples), in no particular order."""
+    if isinstance(n, (list, tuple)):
+        for x in n:
+            _walk(x, out)
+    elif hasattr(n, "_fields"):
+        out.append(n)
+        for f in n._fields:
+            _walk(getattr(n, f, None), out)
+
+
+def _fn_free_names(fd):
+    """Names a top-level function reads that it does not bind itself (parameters, locals, pattern variables, nested functions
+    all count as bound, so this can miss a read but never invents one)."""
+    nodes = []
+    _walk([fd.body, getattr(fd, "guard", None), getattr(fd, "contracts", None), getattr(fd, "clauses", None)], nodes)
+    bound = {p.name for p in fd.params or [] if getattr(p, "name", None)}
+    bound |= set(fd.locals or [])
+    for x in nodes:
+        c = x.__class__.__name__
+        if c in ("PBind", "Param", "PRest") and getattr(x, "name", None):
+            bound.add(x.name)
+        elif c in ("FnDecl", "Lambda") and getattr(x, "name", None):
+            bound.add(x.name)
+            bound |= {p.name for p in x.params or [] if getattr(p, "name", None)}
+        elif c == "Assign":
+            for t in x.targets if isinstance(x.targets, (list, tuple)) else [x.targets]:
+                if t.__class__ in (Name, PBind):
+                    bound.add(t.name)
+    return {x.name: x.line for x in nodes if x.__class__ is Name and x.name not in bound}
+
+
+def toplevel_order_diags(prog):
+    """The entry file's top level, read in order. A function sees only the names bound above it, and the name it saw stays
+    what it saw: a top-level name that is bound below a function that reads it, or rebound after one that reads it, is an error."""
+    stmts = getattr(prog, "stmts", None) or []
+    def targets(st):
+        return [t for t in (st.targets if isinstance(st.targets, (list, tuple)) else [st.targets]) if t.__class__ in (Name, PBind) and t.name != "_"]
+    top = {}
+    for st in stmts:
+        if st.__class__ is Assign:
+            for t in targets(st):
+                top.setdefault(t.name, st.line)
+    out, bound, reads = [], {}, {}
+    for st in stmts:
+        fds = st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
+        for fd in fds:
+            for nm, ln in _fn_free_names(fd).items():
+                if nm in top:
+                    if nm not in bound:
+                        out.append(Diag(fd.line, f"`{fd.name}` reads `{nm}`, which is bound below it (line {top[nm]}): a function sees only the names bound above it"))
+                    else:
+                        reads.setdefault(nm, fd)
+        if st.__class__ is Assign:
+            for t in targets(st):
+                if t.name in bound:
+                    fd = reads.get(t.name)
+                    if fd is not None:
+                        out.append(Diag(st.line, f"`{t.name}` is read by function `{fd.name}` (line {fd.line}), so this later binding would not be the one it sees: give it a new name"))
+                else:
+                    bound[t.name] = st.line
+    return out
+
+
 def check_package_access_diags(prog, search_dir):
     return check_package_access(prog, search_dir) if search_dir is not None else []
 
