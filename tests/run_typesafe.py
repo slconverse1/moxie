@@ -15,6 +15,10 @@ def run(src, cmd):
 
 # (name, "R" = must be rejected / "A" = must be accepted and run without aborting, source)
 CASES = [
+    ('tuple-dot-index-type', 'R', 'p = (1, "a")\nx Int = p.1\nprintln(x)\n'),
+    ('tuple-dot-index-generic', 'R', 'fn pair[A, B](a A, b B) (A, B) = (a, b)\nx Int = pair(1, "a").1\nprintln(x)\n'),
+    ('tuple-dot-index-ok', 'A', 'fn pair[A, B](a A, b B) (A, B) = (a, b)\nx String = pair(1, "a").1\nprintln(x + "!")\n'),
+    ('tuple-dot-index-range', 'R', 'p = (1, "a")\nprintln(p.2)\n'),
     ('chan-for-elem-type', 'R', 'rx, tx = Chan[Int][1]()\nfor x in rx\n  println(x + "a")\n'),
     ('chan-for-ok', 'A', 'rx, tx = Chan[Int][2]()\n_ = write(tx, 1)\nclose(tx)\nfor x in rx\n  println(x + 1)\n'),
     ('chan-cap-negative', 'R', 'rx, tx = Chan[Int][-1]()\nprintln(1)\n'),

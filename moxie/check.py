@@ -2907,6 +2907,12 @@ class Checker(RefineMixin):
                         and not any(k[1] == n.name for k in self.methods):
                     self.err(n.line, f"`{o.name}` is an `any {'`, `'.join(av[1])}`: it shows only what the interface declares, and `{n.name}` is not one of its members")
         t = self.t(n.obj, sc)
+        if t.__class__ is tuple and t[0] == "tup" and n.name.__class__ is int and not any(
+                x.__class__ is tuple and x and x[0] == "spread" for x in t[1]):
+            if n.name >= len(t[1]):
+                self.err(n.line, f"tuple index {n.name} is out of range: the tuple has {len(t[1])} fields")
+                return None, None
+            return t[1][n.name], None                    # `.1` of `(Int, String)` is the String
         if t.__class__ is tuple and t[0] == "rigid":
             self.check_tparam_member(n, t)
             return None, None
