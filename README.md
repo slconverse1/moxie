@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the no-GC dialec
 
 Newest first.
 
+**2026-11-18 (type-safety stress tests):** `tests/run_typesafe.py` holds about 60 programs that must be rejected or accepted at compile time. They found and fixed: an unknown or missing argument label on a plain call (`f(a: 1, c: 2)`), mixed element types with `+` on a List or Set, a lambda whose parameter count disagrees with its annotated type, a literal of the wrong type inside a list or tuple pattern, and `break`/`continue` outside a loop.
+
 **2026-11-18 (more run-time aborts become compile errors):** the checker now rejects a tuple built with one plain number or string and too few fields (`P(1)` for two fields), arithmetic on an `Option`, a field on a number or string (`x.foo`), a field on a collection (`xs.len` without parentheses), and a `for (a, b) in` over elements that are not pairs (`tests/run_casename.py`).
 
 **2026-11-18 (three run-time aborts become compile errors):** `x |> _ + 1` (a placeholder alone after a pipe), calling a local function value with the wrong number of arguments (`f = (x) -> x + 1` then `f(1, 2)`), and `None()` (a case without fields written with parentheses) are now reported by the checker; before, each aborted when run (`tests/run_casename.py`).

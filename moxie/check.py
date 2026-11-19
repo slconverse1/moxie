@@ -2593,6 +2593,13 @@ class Checker(RefineMixin):
                 if "Float" in (a, b):
                     return "Float", None
                 return (a if a == b else None), None
+            if op == "+" and a.__class__ is tuple and a[0] == "app" and a[1] in ("List", "Array", "Set", "Ring") and len(a[2]) == 1 \
+                    and a[1] not in self.tuples and a[1] not in self.enums and a[1] not in self.aliases:
+                el, num = a[2][0], {"Int", "Float", "Decimal"}
+                other = b[2][0] if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Array", "Set", "Ring", "Stream") and len(b[2]) == 1 else b
+                if el in self.SCAL and other in self.SCAL and el != other and not (el in num and other in num and "Decimal" not in (el, other)):
+                    self.err(n.line, f"cannot add a `{tshow(other)}` to a `{tshow(a)}`: its elements are `{tshow(el)}`")
+                    return None, None
             for u, v in ((a, b), (b, a)):
                 un = n.l if u is a else n.r
                 if u.__class__ is tuple and u[0] in ("fn", "overloads") and not sc.open and un.__class__ is Name and sc.find(un.name) is None \
@@ -3240,6 +3247,8 @@ class Checker(RefineMixin):
         return None, None
 
     def e_Break(self, n, sc):
+        if self.loop_depth == 0 and not getattr(n, "daemon", None) and n.label is None:
+            self.err(n.line, "`break` is only for use inside a loop")
         bt = self.ev(n.e, sc)[0]
         if n.e is not None and n.label is None and self.break_tys and bt is not None:
             self.break_tys[-1].append(bt)
@@ -3247,6 +3256,8 @@ class Checker(RefineMixin):
         return None, None
 
     def e_Continue(self, n, sc):
+        if self.loop_depth == 0 and n.label is None:
+            self.err(n.line, "`continue` is only for use inside a loop")
         self.check_label(n)
         return None, None
 
@@ -3495,6 +3506,10 @@ class Checker(RefineMixin):
                 self.err(n.line, f"`{nm}` is a mutable `{tshow(ov.ty)}` here and can't be assigned a `{tshow(t)}`: "
                                  f"a variable in a `mutable` block keeps its type")
         ann = self.ty_of_type(n.ann) if n.ann is not None else None
+        if n.ann.__class__ is TFn and n.value.__class__ is Lambda and n.value.params and ann.__class__ is tuple and ann[0] == "fn" \
+                and self.arity_known(ann) and self.arity_clash(ann, len(n.value.params)):
+            self.err(n.line, f"this function takes {len(n.value.params)} parameter{'s' if len(n.value.params) != 1 else ''}, "
+                     f"but its declared type has {len(ann[1])}")
         self.note_expected(n.value, ann)
         self.has_expect(n.value, n.ann)
         self.settle_mixed(n.value, ann)
@@ -4206,6 +4221,15 @@ class Checker(RefineMixin):
                 return
             if nm in mine and not user(nm) and p.args and len(p.args) == 1 and len(st[2]) > (1 if nm == "Err" else 0):
                 self.check_pat_fit(p.args[0][1], st[2][1 if nm == "Err" else 0], line)
+            return
+        if st.__class__ is tuple and st[0] == "app" and st[1] in ("List", "Array") and len(st[2]) == 1 and p.__class__ is PCon \
+                and p.path in (["List"], ["Array"]) and "List" not in self.tuples and "Array" not in self.tuples:
+            for _l, q in p.args or []:
+                self.check_pat_fit(q, st[2][0], line)             # `List("a", ...)` against a `List[Int]`
+            return
+        if st.__class__ is tuple and st[0] == "tup" and p.__class__ is PTuple and len(p.items or []) == len(st[1]):
+            for (_l, q), t in zip(p.items, st[1]):
+                self.check_pat_fit(q, t, line)
             return
         if st.__class__ is not str or st not in SCALARS_FOR_PAT:
             return
@@ -7569,6 +7593,15 @@ class Checker(RefineMixin):
             self.err(n.line, f"`{fd.name}` takes {len(params)} argument{'s' if len(params) != 1 else ''}, but {given} given")
             return self.ret_of(fd), None
         byname = {p.name: p for p in params}
+        for a in args:
+            if a.label and a.label not in byname and not any(q.name == "self" for q in params):
+                self.err(n.line, f"`{fd.name}` has no parameter named `{a.label}`" + (f" (its parameters are {', '.join('`'+q.name+'`' for q in params)})" if params else ""))
+        if any(a.label for a in args) and n.trailing is None:
+            npos = sum(1 for a in args if not a.label) + extra
+            covered = {a.label for a in args if a.label} | {q.name for q in params[:npos]}
+            miss = [q.name for q in params if q.default is None and q.name not in covered]
+            if miss and all(a.label in byname for a in args if a.label):
+                self.err(n.line, f"`{fd.name}` needs a value for " + ", ".join(f"`{x}`" for x in miss))
         seen_label = False
         refs = []
         for i, a in enumerate(args):
