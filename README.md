@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the no-GC dialec
 
 Newest first.
 
+**2026-11-19 (more type-safety):** `P(a: 1) + 1` and `(1, 2) + (3, 4)` are compile errors unless the type has its own `+` method (likewise `-`, `*`, `/`, `%`), and a builtin called with no arguments (`max()`, `len()`, `abs()`) is an arity error; both used to abort at run time (the second with a Python `IndexError`).
+
 **2026-11-19 (grammar at 100%):** the grammar now recognizes every program the parser accepts: all 333 guide blocks plus the example programs, the standard library (`moxie/std`, `fp/`) and the test battery (538 in all), and `tests/run_grammar.py` fails on any miss (`GRAMMAR_MIN` is 1.0). Gaps closed this round: nested `update` blocks, type-level `when` with `()`, `when` arms ending in a nested `when`, contracts (`requires`/`ensures`/`invariant`), `prints`, `static dynamic` members, higher-kinded type parameters, local functions in blocks, `x@3` reads.
 
 **2026-11-19 (method order for operators, `println`, `for`):** an `impl` that supplies `+`, `==`, `<`, `show` or `to_stream` must be above the code that uses them; `P(a: 1) + P(a: 2)` before `impl P` used to check and then abort (`cannot apply '+'`), and `println(p)` before `impl Show for P` silently printed the structural form. Both are now compile errors.
