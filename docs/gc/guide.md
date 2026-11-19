@@ -369,7 +369,7 @@ println(is_even(10))
 println(is_odd(7))
 ```
 
-Output: `true`, then `true`.  **Mistakes:** calling a function above its declaration, and a `forward fn` with no definition after it (both are compile errors).
+Output: `true`, then `true`.  Methods follow the same rule: a method is declared above the code that calls it, including a sibling method in the same `impl`, and mutually recursive methods put `forward fn name(self) T` first inside the `impl`. **Mistakes:** calling a function or method above its declaration, and a `forward fn` with no definition after it (both are compile errors).
 
 Types follow the same rule, and two types that refer to each other need `forward tuple` or `forward enum` (with the type parameters, if any) before the first one:
 

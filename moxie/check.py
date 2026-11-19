@@ -340,6 +340,9 @@ class Checker(RefineMixin):
         self.consumes = {}         # function name -> parameter positions it takes ownership of
         self.method_consumes = set()
         self.methods = {}
+        self.local_methods = set()       # ids of the methods this file's own impls declare (the order rule applies to them)
+        self.fwd_methods = {}            # (type, method) -> line of its `forward fn` signature
+        self.order_lines = False         # lines of this file are comparable (a one-file program)
         self.arg_ty = {}                 # the type of each call argument as it was checked (by the id of its expression)
         self.top_using_names = set()     # the `using` bindings declared at the top level (their order against a function is not known)
         self.res_tuples = set()
@@ -742,6 +745,7 @@ class Checker(RefineMixin):
                 for i, prm in enumerate(fd.params or []):
                     if prm.name and (self.is_res_type(prm.type) or self.is_endpoint_tname(prm.type)) and keeps(fd, prm.name):
                         self.consumes.setdefault(name, set()).add(i)
+        self.order_lines = not getattr(prog.stmts, "multi", False)
         for st in prog.stmts:
             if st.__class__ is ImplDecl and st.target.__class__ is TName and st.target.path:
                 tn = st.target.path[-1]
@@ -750,8 +754,11 @@ class Checker(RefineMixin):
                         and (st.target.groups[0][0].path[-1] in self.tuples or st.target.groups[0][0].path[-1] in self.enums):
                     tn = st.target.groups[0][0].path[-1]            # `impl Functor[Box]:` is an impl for the constructor `Box`
                 for m in st.members or []:
+                    if m.__class__ is FnDecl and m.body is None and "forward" in (m.flags or ()):
+                        self.fwd_methods.setdefault((tn, m.name), m.line)
                     if m.__class__ is not FnDecl or m.body is None:
                         continue
+                    self.local_methods.add(id(m))
                     old = self.methods.get((tn, m.name))
                     if old is not None and old is not m and (("generated" in (old.flags or ())) or ("generated" in (m.flags or ()))):
                         mine = m if "generated" not in (m.flags or ()) else old
@@ -6851,6 +6858,11 @@ class Checker(RefineMixin):
             t = self.t(fn.obj, sc)
         if t.__class__ is tuple and len(t) == 2 and t[0] in self.BUILTIN_VALUE_TYPES:
             t = t[0]                                         # a literal's type carries its value
+        if t is None and fn.obj.__class__ is Name and fn.obj.name == "self" and getattr(self, "impl_ty", None):
+            md1 = self.methods.get((self.impl_ty, nm))       # `self.y()` inside an impl: the same order rule, for a sibling method
+            if md1 is not None and self.order_lines and id(md1) in self.local_methods and "generated" not in (md1.flags or ()) \
+                    and md1.line > n.line and not (self.fwd_methods.get((self.impl_ty, nm), 10 ** 9) <= n.line):
+                self.err(n.line, f"`{self.impl_ty}.{nm}` is declared below this use (line {md1.line}): a method must be declared above the code that calls it, or announced with `forward fn {nm}(...)` in its `impl`")
         tn = None
         if t.__class__ is tuple and t[0] in ("named", "app") and t[1] in self.tuples:
             tn, decl = t[1], self.tuples[t[1]]
@@ -6865,6 +6877,10 @@ class Checker(RefineMixin):
         if tn in ("Option", "Result") and (tn, nm) not in self.methods:
             self.check_builtin_method(n, sc, ("app", tn, ()))
             return
+        md0 = self.methods.get((tn, nm))
+        if md0 is not None and self.order_lines and id(md0) in self.local_methods and "generated" not in (md0.flags or ()) \
+                and md0.line > n.line and not (((tn, nm) in self.fwd_methods) and self.fwd_methods[(tn, nm)] <= n.line):
+            self.err(n.line, f"`{tn}.{nm}` is declared below this use (line {md0.line}): a method must be declared above the code that calls it, or announced with `forward fn {nm}(...)` in its `impl`")
         if (tn, nm) in self.methods and "." not in tn and not getattr(decl, "tparams", None):
             self.check_method_args(n, self.methods[(tn, nm)], sc)
         if (tn, nm) in self.methods or (tn.split(".")[-1], nm) in self.methods or tn in ("Option", "Result") or "." in tn:
@@ -8823,7 +8839,7 @@ def _free_names(root, bound):
     return {x.name: x.line for x in nodes if x.__class__ is Name and x.name not in bound}
 
 
-def toplevel_order_diags(prog, known=()):
+def toplevel_order_diags(prog):
     """The entry file's top level, read in order. A function sees only the names bound above it, and the name it saw stays
     what it saw: a top-level name that is bound below a function that reads it, or rebound after one that reads it, is an error."""
     stmts = getattr(prog, "stmts", None) or []
@@ -8835,30 +8851,13 @@ def toplevel_order_diags(prog, known=()):
             for t in targets(st):
                 top.setdefault(t.name, st.line)
     out, bound, reads = toplevel_fn_order(stmts) + toplevel_type_order(stmts), {}, {}
-    # top-level code that runs before the `impl` that gives it a method: the method does not exist yet
-    meths = {}
-    for j, st in enumerate(stmts):
+    for st in stmts:                                   # a `forward fn` inside an impl is defined later in that impl
         if st.__class__.__name__ == "ImplDecl":
-            nodes = []
-            _walk(getattr(st, "members", None), nodes)
-            for x in nodes:
-                if x.__class__.__name__ == "FnDecl" and x.name:
-                    meths.setdefault(x.name, []).append((j, st.line))
-    if meths:
-        fnnames = {st.name for st in stmts if st.__class__.__name__ in ("FnDecl", "FnGroup")}
-        for i, st in enumerate(stmts):
-            if st.__class__.__name__.endswith("Decl") or st.__class__.__name__ == "FnGroup":
-                continue
-            nodes = []
-            _walk(st, nodes)
-            for x in nodes:
-                if x.__class__.__name__ == "Call" and x.fn.__class__ is Field and x.fn.name in meths:
-                    m = x.fn.name
-                    where = meths[m]
-                    if m in known or m in fnnames or any(j <= i for j, _l in where):
-                        continue
-                    out.append(Diag(getattr(x, "line", None) or st.line, f"`.{m}()` comes from an `impl` at line {where[0][1]}, below this use: an `impl` must be declared above the code that calls its methods"))
-                    break
+            ms = list(getattr(st, "members", None) or [])
+            for k, m in enumerate(ms):
+                if m.__class__.__name__ == "FnDecl" and m.body is None and "forward" in (m.flags or ()):
+                    if not any(x.__class__.__name__ == "FnDecl" and x.body is not None and x.name == m.name for x in ms[k + 1:]):
+                        out.append(Diag(m.line, f"`forward fn {m.name}` is never defined: write the method with its body later in the same `impl`"))
     for st in stmts:
         fds = st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
         for fd in fds:

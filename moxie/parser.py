@@ -1123,7 +1123,7 @@ class Parser(ExprParser):
                 members.append(AliasDecl("assoc", nm, [], ty, None, line=t.line))
                 self.end_line()
                 continue
-            if t.kind == "NAME" and t.val in ("fn", "static", "inline", "export", "internal", "fiber", "pure", "prints", "parks", "impure", "unsafe", "dynamic"):
+            if t.kind == "NAME" and t.val in ("fn", "static", "inline", "export", "internal", "fiber", "pure", "prints", "parks", "impure", "unsafe", "dynamic", "forward"):
                 d = self.try_decl()
                 if d is None:
                     self.err("expected a method declaration")

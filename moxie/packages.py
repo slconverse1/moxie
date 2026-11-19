@@ -61,4 +61,5 @@ def parse_package(paths):
     from .withs import expand_withs
     expand_withs(stmts, paths[0] if paths else "<package>")            # a `with` that names an enum of another file of the package
     stmts.fwd = tuple(fwd)
+    stmts.multi = len(paths) > 1                      # lines of different files are not comparable
     return "\n".join(srcs), Block(stmts, line=1)

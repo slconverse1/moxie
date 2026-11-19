@@ -103,8 +103,11 @@ CASES = [
     ('forward-type-wrong-arity', 'R', 'forward enum T[X]\nenum T\n  A\nprintln(1)\n'),
     ('type-order-ok', 'A', 'tuple B\n  n Int\ntuple A\n  b B\nprintln(A(b: B(n: 1)))\n'),
     ('impl-after-top-level-use', 'R', 'tuple P\n  a Int\nprintln(P(a: 1).x())\nimpl P\n  fn x(self) Int = 2\n'),
-    ('impl-before-use-ok', 'A', 'tuple P\n  a Int\nimpl P\n  fn x(self) Int = 2\nprintln(P(a: 1).x())\n'),
-    ('method-calls-later-method-ok', 'A', 'tuple P\n  a Int\nimpl P\n  fn x(self) Int = self.y() + 1\n  fn y(self) Int = 2\nprintln(P(a: 1).x())\n'),
+    ('fn-uses-later-impl', 'R', 'enum E\n  A\nfn f(e E) Int = e.v()\nimpl E\n  fn v(self) Int = 1\nprintln(f(E.A))\n'),
+    ('method-calls-later-method', 'R', 'tuple P\n  a Int\nimpl P\n  fn x(self) Int = self.y() + 1\n  fn y(self) Int = 2\nprintln(P(a: 1).x())\n'),
+    ('method-forward-ok', 'A', 'tuple P\n  a Int\nimpl P\n  forward fn y(self) Int\n  fn x(self) Int = self.y() + 1\n  fn y(self) Int = 2\nprintln(P(a: 1).x())\n'),
+    ('method-forward-never-defined', 'R', 'tuple P\n  a Int\nimpl P\n  forward fn y(self) Int\n  fn x(self) Int = self.y() + 1\nprintln(1)\n'),
+    ('impl-order-ok', 'A', 'tuple P\n  a Int\nimpl P\n  fn y(self) Int = 2\n  fn x(self) Int = self.y() + 1\nfn f(p P) Int = p.x()\nprintln(f(P(a: 1)))\n'),
 ]
 
 fails = []

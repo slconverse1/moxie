@@ -330,7 +330,7 @@ class DeclsMixin:
             self._add_embeds(tname, iface_name)
         elif isinstance(target, TName) and target.path[-1] in self.ifaces:
             pass
-        members = n.members or []
+        members = [m for m in n.members or [] if not (m.__class__ is FnDecl and m.body is None and "forward" in (m.flags or ()))]   # a `forward fn` is a signature for the checker only
         for m in members:
             if m.__class__ is AliasDecl:
                 continue

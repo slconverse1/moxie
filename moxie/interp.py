@@ -260,9 +260,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         diags = check_program(prog, set(self.prelude.vars), self.search_dir,
                               parse_size(kw) if kw is not None else 64, type_fuel=tf, eval_fuel=ef, strict_safety=strict)
         from .check import toplevel_order_diags
-        from .check import Checker
-        known = set(self.prelude.vars) | set(Checker(()).load_sigs())
-        diags.extend(toplevel_order_diags(prog, known))
+        diags.extend(toplevel_order_diags(prog))
         from .values import GC
         if not GC[0]:
             from .tally import tally_problems

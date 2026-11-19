@@ -112,7 +112,7 @@ ifacedecl : 'interface' ident [ tparams ] NL INDENT { member { ',' member } [ ',
 member : fnsig | 'type' ident | field | 'property' ident type | { 'static' | 'dynamic' } fnsig ;
 fnsig : 'fn' [ '(' [ 'ref' ] ident ')' ] [ fname ] [ tparams ] [ '(' [ params ] ')' ] [ type ] ;
 fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' | '|>>' | '<$>' | '~>' | '++' | '<<' | '>>' | '&' | '|' | '^' | '~=' ;
-impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [ INDENT { fndecl | 'type' ident '=' type NL | 'static' { 'dynamic' } fndecl } DEDENT ] ;
+impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [ INDENT { fndecl | 'type' ident '=' type NL | 'static' { 'dynamic' } fndecl | 'forward' fndecl } DEDENT ] ;
 aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;
 tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
 typeres : tres { ( '+' | '-' | '*' ) tres } ;
