@@ -5727,6 +5727,8 @@ class Checker(RefineMixin):
             return True
         if name in self.load_sigs():
             return True                      # `Option.map`: a prelude function written through the type
+        if name in ("pure", "ap", "fmap", "flat_map", "empty", "zero", "one") or any(k[1] == name for k in self.methods):
+            return True                      # interface members such as `Option.pure`
         if tn in ("Option", "Result", "Ordering"):           # prelude enums: their members are the cases and the listed functions
             return False
         return bool(self.impls.get(tn))
