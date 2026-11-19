@@ -15,6 +15,11 @@ def run(src, cmd):
 
 # (name, "R" = must be rejected / "A" = must be accepted and run without aborting, source)
 CASES = [
+    ('lambda-untyped-misuse', 'R', 'f = (a) -> a + 1\nprintln(f("s"))\n'),
+    ('lambda-untyped-ok', 'A', 'f = (a) -> a + 1\ng = (a, b) -> a + b\nprintln(f(2))\nprintln(g("x", "y"))\n'),
+    ('option-order', 'R', 'println(Some(1) < Some(2))\n'),
+    ('list-order', 'R', 'println(List(1) < List(2))\n'),
+    ('list-plus-elem-ok', 'A', 'println(List(1) + 2)\n'),
     ('tuple-plus-user-int', 'R', 'tuple P\n  a Int\nprintln(P(a: 1) + 1)\n'),
     ('tuple-plus-with-impl', 'A', 'tuple P\n  a Int\nimpl P\n  fn +(self, o P) P = P(a: self.a + o.a)\nprintln((P(a: 1) + P(a: 2)).a)\n'),
     ('anon-tuple-plus', 'R', 'println((1, 2) + (3, 4))\n'),

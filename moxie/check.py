@@ -358,6 +358,7 @@ class Checker(RefineMixin):
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
+        self.lam_node = {}               # Var -> the Lambda written in its binding, for the call-site recheck of unannotated parameters
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
         self.tail_eq = {}                # id of a tail expression -> the GADT type equations its `if` branch learned
@@ -2583,6 +2584,13 @@ class Checker(RefineMixin):
                 return "Bool", None
             if {a, b} == {"Float", "Decimal"}:
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`: convert one side on purpose (`cast[Decimal](x)` or `cast[Double](d)`)")
+            if op in ("<", ">", "<=", ">="):
+                for u in (a, b):
+                    if u.__class__ is tuple and u[0] == "app" and u[1] in ("Option", "Result", "List", "Array", "Set", "Dict", "Ring", "Stream") \
+                            and u[1] not in self.tuples and (u[1] in ("Option", "Result") or u[1] not in self.enums) and u[1] not in self.aliases \
+                            and not any(k[0] == u[1] and k[1] in ("<", "<=", ">", ">=") for k in self.methods):
+                        self.err(n.line, f"`{op}` on `{tshow(u)}`: a {u[1]} has no order; compare the values inside it (`when`, `get_or`, or `sort` the items)")
+                        return "Bool", None
             if a in self.SCAL and b in self.SCAL and a != b and {a, b} - {"Int", "Float", "Decimal"}:
                 self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`")
             for x, y in ((a, b), (b, a)):               # `Some(1) == 1`: an Option is never equal to the value inside it
@@ -3645,6 +3653,7 @@ class Checker(RefineMixin):
                     if dn is not None:
                         self.var_node[sc.vars[tgt.name]] = dn
                     elif n.value.__class__ is Lambda:
+                        self.lam_node[sc.vars[tgt.name]] = n.value
                         ln = self.body_node(n.value.body, sc, call_only=True)
                         if ln is not None:
                             self.lam_ret[sc.vars[tgt.name]] = ln
@@ -5260,6 +5269,47 @@ class Checker(RefineMixin):
                 at = self.ev(a.expr, sc)[0]
                 if at in self.SCAL and at != pt and not ({at, pt} <= {"Int", "Float", "Decimal"} and at == "Int"):
                     self.err(n.line, f"`{n.fn.name}` takes a `{tshow(pt)}` here, but `{tshow(at)}` given")
+        lam = self.lam_node.get(v)
+        if lam is not None and lam.params and len(lam.params) == len(args) and any(p.type is None and p.name for p in lam.params):
+            self.recheck_lambda(n, sc, lam, args)
+
+    def recheck_lambda(self, n, sc, lam, args):
+        """`f = (a) -> a + 1` then `f("s")`: the body is checked again with the unannotated parameters given the scalar types of this
+        call's arguments, and what it reports is reported at the call."""
+        inner = Sc(sc, open_=False)
+        inner.fnb = True
+        bound = False
+        for p, a in zip(lam.params, args):
+            if p.type is None and p.name:
+                at = self.base(self.ev(a.expr, sc)[0])
+                if at in self.SCAL:
+                    inner.vars[p.name] = Var(at, False, self.loop_depth)
+                    bound = True
+                    continue
+            if p.name:
+                inner.vars[p.name] = Var(self.ty_of_type(p.type) if p.type is not None else None, False, self.loop_depth)
+        if not bound:
+            return
+        body = lam.body
+        if body.__class__ is Block and len(body.stmts or []) == 1 and body.stmts[0].__class__ is ExprStmt:
+            body = body.stmts[0].e
+        elif body.__class__ is ExprStmt:
+            body = body.e
+        if body.__class__ is Block:
+            return
+        seen = list(self.diags)
+        saved = (self.fn_ret, self.loop_depth, self.exit_ctx, self.in_fiber)
+        self.fn_ret = None
+        try:
+            self.ev(body, inner)
+        finally:
+            self.fn_ret, self.loop_depth, self.exit_ctx, self.in_fiber = saved
+        new = self.diags[len(seen):]
+        del self.diags[len(seen):]
+        for d in new:
+            if not any(o.msg == d.msg for o in seen):
+                self.err(n.line, f"`{n.fn.name}` is called with an argument its body can't take: {d.msg}")
+                break
 
     def check_nullary_called(self, n, sc):
         """`None()`: a case without fields is written without parentheses."""
