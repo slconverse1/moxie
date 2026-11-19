@@ -185,6 +185,22 @@ fn strip_prefix(s String, prefix String) Option[String]
 fn strip_suffix(s String, suffix String) Option[String]
   if ends_with(s, suffix) then Option.Some(s(..<len(s) - len(suffix))) else Option.None
 
+fn ok_or[T](o Option[T], err Error) Result[T, Error]
+  when o
+    Some(v) -> Ok(v)
+    None -> Err(err)
+
+fn ok[T, E](r Result[T, E]) Option[T]
+  when r
+    Ok(v) -> Option.Some(v)
+    Err(_) -> Option.None
+
+fn find_map[T, U](f (T) -> Option[U], xs Seq[T]) Result[U, Error]
+  xs |> filter_map(f) |> first()
+
+fn position[T](f (T) -> Bool, xs Seq[T]) Result[Int, Error]
+  xs |> enumerate() |> filter((p) -> f(p(1))) |> map((p) -> p(0)) |> first()
+
 fn split_once(s String, sep String) Option[(String, String)]
   parts = split(s, sep)
   if sep == "" or len(parts) < 2 then Option.None else Option.Some((parts(0), s(len(parts(0)) + len(sep)..)))

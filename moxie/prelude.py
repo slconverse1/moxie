@@ -2150,6 +2150,7 @@ def _sort_by_fn(I, rest):
 
 buffered("sort_by", "last", _sort_by_fn)
 buffered("take_last", "last", lambda I, rest: (lambda buf: Done(buf[-rest[0]:] if rest[0] > 0 else [])))
+buffered("drop_last", "last", lambda I, rest: (lambda buf: Done(buf[:-rest[0]] if rest[0] > 0 else list(buf))))
 buffered("reverse", "first", lambda I, rest: (lambda buf: Done(list(reversed(buf)))))
 
 

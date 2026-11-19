@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the no-GC dialec
 
 Newest first.
 
+**2026-11-18 (library functions):** `ok_or(opt, error)` (Option to Result), `ok(result)` (Result to Option), the stage `drop_last(n)`, and the terminals `find_map(f)` and `position(pred)` join the prelude (`tests/run_libfns.py`). The `algo` package, the library of `mutable` algorithms, gains `merge_sort` (stable), `counting_sort`, `binary_search`, `prefix_sums`, `rotate`, `shuffle` (seeded, so still a pure function), `next_permutation` and `knapsack` (`tests/run_algo.py`).
+
 **2026-11-18 (type-safety stress tests):** `tests/run_typesafe.py` holds about 60 programs that must be rejected or accepted at compile time. They found and fixed: an unknown or missing argument label on a plain call (`f(a: 1, c: 2)`), mixed element types with `+` on a List or Set, a lambda whose parameter count disagrees with its annotated type, a literal of the wrong type inside a list or tuple pattern, and `break`/`continue` outside a loop.
 
 **2026-11-18 (more run-time aborts become compile errors):** the checker now rejects a tuple built with one plain number or string and too few fields (`P(1)` for two fields), arithmetic on an `Option`, a field on a number or string (`x.foo`), a field on a collection (`xs.len` without parentheses), and a `for (a, b) in` over elements that are not pairs (`tests/run_casename.py`).

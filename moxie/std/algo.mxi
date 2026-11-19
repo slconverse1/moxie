@@ -137,3 +137,202 @@ export fn components[N](parent Array[Int][N], edges List[(Int, Int)]) Array[Int]
         r = parent(r)
       parent(i) = r
     parent
+
+/// The values in ascending order, keeping equal values in their original order (a bottom-up merge sort that merges runs of
+/// 1, 2, 4, ... items between the array and one scratch copy).
+///
+/// > merge_sort((5, 2, 9, 1, 5, 6))
+/// Array(1, 2, 5, 5, 6, 9)
+export fn merge_sort[T Ordered, N](xs Array[T][N]) Array[T][N]
+  mutable
+    in xs
+    aux Array[T][N] = xs
+    n = len(xs)
+    width = 1
+    while width < n
+      lo = 0
+      while lo < n
+        mid = min(lo + width, n)
+        hi = min(lo + 2 * width, n)
+        i = lo
+        j = mid
+        k = lo
+        while i < mid and j < hi
+          if xs(j) < xs(i)
+            aux(k) = xs(j)
+            j += 1
+          else
+            aux(k) = xs(i)
+            i += 1
+          k += 1
+        while i < mid
+          aux(k) = xs(i)
+          i += 1
+          k += 1
+        while j < hi
+          aux(k) = xs(j)
+          j += 1
+          k += 1
+        lo += 2 * width
+      for t in 0..<n
+        xs(t) = aux(t)
+      width *= 2
+    xs
+
+/// The values in ascending order, for integers known to lie in `0..<limit`: count each value, then write them back (linear
+/// time). A value outside the range aborts.
+///
+/// > counting_sort((3, 1, 2, 3, 0), 4)
+/// Array(0, 1, 2, 3, 3)
+export fn counting_sort[N](xs Array[Int][N], limit Int) Array[Int][N]
+  mutable
+    in xs
+    counts List[Int] = List()
+    for v in 0..<limit
+      counts = counts + 0
+    for x in xs
+      counts(x) += 1
+    pos = 0
+    for v in 0..<limit
+      c = counts(v)
+      while c > 0
+        xs(pos) = v
+        pos += 1
+        c -= 1
+    xs
+
+/// The index of `key` in an array that is already in ascending order, or an error when it is not there.
+///
+/// > binary_search((1, 3, 5, 7), 5)
+/// Ok(2)
+export fn binary_search[T Ordered, N](xs Array[T][N], key T) Result[Int, Error]
+  mutable
+    lo = 0
+    hi = len(xs)
+    while lo < hi
+      mid = lo + (hi - lo) / 2
+      if xs(mid) < key
+        lo = mid + 1
+      else
+        hi = mid
+    if lo < len(xs) and not (key < xs(lo))
+      Ok(lo)
+    else
+      Err(Error(MISSING, "not found"))
+
+/// Running totals: item `i` of the result is the sum of items `0` to `i`.
+///
+/// > prefix_sums((1, 2, 3, 4))
+/// Array(1, 3, 6, 10)
+export fn prefix_sums[N](xs Array[Int][N]) Array[Int][N]
+  mutable
+    in xs
+    for i in 1..<len(xs)
+      xs(i) += xs(i - 1)
+    xs
+
+/// The items moved left by `k` places, the ones pushed off the front coming back at the end (`k` may be larger than the
+/// array, and negative to rotate the other way). Done by three reversals, in place.
+///
+/// > rotate((1, 2, 3, 4, 5), 2)
+/// Array(3, 4, 5, 1, 2)
+export fn rotate[T, N](xs Array[T][N], k Int) Array[T][N]
+  mutable
+    in xs
+    n = len(xs)
+    if n > 1
+      s = ((k % n) + n) % n
+      if s > 0
+        lo = 0
+        hi = s - 1
+        while lo < hi
+          tmp = xs(lo)
+          xs(lo) = xs(hi)
+          xs(hi) = tmp
+          lo += 1
+          hi -= 1
+        lo = s
+        hi = n - 1
+        while lo < hi
+          tmp = xs(lo)
+          xs(lo) = xs(hi)
+          xs(hi) = tmp
+          lo += 1
+          hi -= 1
+        lo = 0
+        hi = n - 1
+        while lo < hi
+          tmp = xs(lo)
+          xs(lo) = xs(hi)
+          xs(hi) = tmp
+          lo += 1
+          hi -= 1
+    xs
+
+/// A shuffle (Fisher-Yates) driven by a seed, so the same seed gives the same order: a function stays pure, and a different
+/// seed gives a different order.
+///
+/// > shuffle((1, 2, 3, 4, 5), 42)
+/// Array(1, 4, 3, 5, 2)
+export fn shuffle[T, N](xs Array[T][N], seed Int) Array[T][N]
+  mutable
+    in xs
+    s = seed % 2147483648
+    i = len(xs) - 1
+    while i > 0
+      s = (s * 1103515245 + 12345) % 2147483648
+      j = (s / 65536) % (i + 1)
+      tmp = xs(i)
+      xs(i) = xs(j)
+      xs(j) = tmp
+      i -= 1
+    xs
+
+/// The next arrangement in dictionary order, or an error when the array is already the last one (descending). Calling it
+/// again and again from the sorted array walks through every distinct permutation once.
+///
+/// > next_permutation((1, 2, 3))
+/// Ok(Array(1, 3, 2))
+export fn next_permutation[T Ordered, N](xs Array[T][N]) Result[Array[T][N], Error]
+  mutable
+    in xs
+    i = len(xs) - 2
+    while i >= 0 and not (xs(i) < xs(i + 1))
+      i -= 1
+    if i < 0
+      Err(Error(MISSING, "last permutation"))
+    else
+      j = len(xs) - 1
+      while not (xs(i) < xs(j))
+        j -= 1
+      tmp = xs(i)
+      xs(i) = xs(j)
+      xs(j) = tmp
+      lo = i + 1
+      hi = len(xs) - 1
+      while lo < hi
+        tmp = xs(lo)
+        xs(lo) = xs(hi)
+        xs(hi) = tmp
+        lo += 1
+        hi -= 1
+      Ok(xs)
+
+/// The 0/1 knapsack: the best total value of items (given by their weights and values) that fit in `capacity`, each item used
+/// at most once (a dynamic-programming table written in place).
+///
+/// > knapsack(List(1, 3, 4, 5), List(1, 4, 5, 7), 7)
+/// 9
+export fn knapsack(weights List[Int], values List[Int], capacity Int) Int
+  mutable
+    best List[Int] = List()
+    for c in 0..capacity
+      best = best + 0
+    for i in 0..<len(weights)
+      c = capacity
+      while c >= weights(i)
+        cand = best(c - weights(i)) + values(i)
+        if cand > best(c)
+          best(c) = cand
+        c -= 1
+    best(capacity)
