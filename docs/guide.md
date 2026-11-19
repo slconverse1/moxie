@@ -2730,7 +2730,7 @@ for n in c
 println("liftoff ${c |> sum()}")
 ```
 
-Output: `6 4 2`, then `3...`, `2...`, `1...`, then `liftoff 6`. The method runs when the first element is pulled, so making a `Countdown` costs nothing, and the checker reads `Int` from the declared `Stream[Int]`, so `c |> map((s) -> s + "x")` is a compile error. **Mistake:** giving the type its own `map` or `fmap` as well; those win for `map`, and the type then behaves as a container, not just a source.
+Output: `6 4 2`, then `3...`, `2...`, `1...`, then `liftoff 6`. The method runs when the first element is pulled, so making a `Countdown` costs nothing, and the checker reads `Int` from the declared `Stream[Int]`, so `c |> map((s) -> s + "x")` is a compile error. An `Option` is a source too, of zero or one element: `for x in maybe` runs once for a `Some` and not at all for a `None`, and `maybe |> filter(_ > 3) |> collect()` gives a one-element or empty `List`; only `map` keeps the `Option` (it is `fmap`). **Mistake:** giving the type its own `map` or `fmap` as well; those win for `map`, and the type then behaves as a container, not just a source.
 
 **Chapter 14: Caching is explicit**
 

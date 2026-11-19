@@ -360,6 +360,8 @@ def unify(pat, act, binds):
         return unify(pat[2][0], "Char", binds)
     if pat[0] == "app" and pat[1] == "Seq" and act[0] == "app" and act[1] == "Dict" and len(act[2]) == 2:
         return unify(pat[2][0], ("tup", (act[2][0], act[2][1])), binds)
+    if pat[0] == "app" and pat[1] == "Seq" and act.__class__ is tuple and act[0] == "app" and act[1] == "Option" and len(act[2]) == 1:
+        return unify(pat[2][0], act[2][0], binds)
     if pat[0] == "app" and pat[1] == "Seq" and act.__class__ is tuple and act[0] in ("named", "app") and act[1] not in SEQ_HEADS and SOURCE_ELEM is not None:
         el = SOURCE_ELEM(act)
         if el is not None:
@@ -414,6 +416,8 @@ def match(pat, act, binds, strict=False):
     if pt == "app" and pat[1] == "Seq" and act == "String":
         return match(pat[2][0], "Char", binds, strict)
     if pt == "app":
+        if at == "app" and pat[1] == "Seq" and act[1] == "Option" and len(act[2]) == 1:
+            return match(pat[2][0], act[2][0], binds, strict)
         if at == "named" and pat[1] == "Seq" and SOURCE_ELEM is not None and act[1] not in SEQ_HEADS:
             el = SOURCE_ELEM(act)
             return el is not None and match(pat[2][0], el, binds, strict)

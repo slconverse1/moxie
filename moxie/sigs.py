@@ -7,6 +7,7 @@ any source of T values: a List, an Array, a Set, a Ring, or a Stream.  The bodie
 SRC = '''
 fn map[T, U](f (T) -> U, xs Seq[T]) Stream[U] = 0
 fn map[T, U, E](f (T) -> U, r Result[T, E]) Result[U, E] = 0
+fn map[T, U](f (T) -> U, o Option[T]) Option[U] = 0
 fn fmap[T, U](f (T) -> U, xs List[T]) List[U] = 0
 fn fmap[T, U, N](f (T) -> U, xs Array[T][N]) Array[U][N] = 0
 fn fmap[T, U](f (T) -> U, o Option[T]) Option[U] = 0

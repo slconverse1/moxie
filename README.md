@@ -22,7 +22,7 @@ Dialect names. Internally, in notes, tests and commit messages, the no-GC dialec
 
 Newest first.
 
-**2026-11-18 (your own pipeline sources):** a tuple or enum with `fn to_stream(self) Stream[T]` is now a source for `|>` stages and `for`; the checker reads `T` from the method's return type (`tests/run_iterable.py`).
+**2026-11-18 (your own pipeline sources):** a tuple or enum with `fn to_stream(self) Stream[T]` is now a source for `|>` stages and `for`; the checker reads `T` from the method's return type (`tests/run_iterable.py`). An `Option` is a source of zero or one element too (`for x in opt`, `opt |> filter(...)`); `map` on it still gives an `Option`.
 
 **2026-11-17 (checker holes, `algo`, `fill`): more mistakes caught at compile time, and a `mutable` algorithm library.** The stress battery grew to 186 cases (`tests/battery/`), and its failures were fixed: `s("a")` (a `String` indexed by a non-`Int`), `p.x = "a"` (a field assigned a value of the wrong type), `Decimal + Float` (now an error that points to `cast`, and `cast[Double](d)` / `cast[Decimal](x)` work), `1 |> x` where `x` is not a function, `x IS = true` and a `when` arm `Bool ->` on `Int | String`, an unknown type in a `type union`, a top-level binding used before it is defined, a loop whose `break(value)` and `else` give different types, and `x Percent = try_cast[Percent](5)` (a `Result` bound to a plain type; `try_cast[T]` now has a static type). Known gap, not fixed: an existential case's hidden type (`Hide[A](v A, ...)`) is not tracked, so `v` escaping as an `Int` is not caught. New `import algo`: `quicksort`, `heapsort`, `sieve`, `components` (union-find), each a `mutable` block, tested against `sort` on pseudo-random arrays. `fill(value)` is implemented.
 

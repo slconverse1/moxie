@@ -45,6 +45,8 @@ def make_iter(I, v):
         return ChanIter(I, v)
     if isinstance(v, EnumV) and v.et is RESULT_T:
         return ListIter([v.vals[0]] if v.case == "Ok" else [])
+    if isinstance(v, EnumV) and v.et.name == "Option" and v.et.prelude:
+        return ListIter([v.vals[0]] if v.case == "Some" else [])
     if isinstance(v, (TupleV, EnumV)) and I.find_method_for(v, "to_stream") is not None:
         return MethodIter(I, v)
     raise Abort(f"cannot iterate over {type_name(v)}")
