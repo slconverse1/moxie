@@ -172,7 +172,7 @@ Bob: 83 B
 Cy: 71 C
 ```
 
-The `|>` pipe feeds the value on its left into the call on its right, so a calculation reads from left to right, top to bottom. `to_stream()` turns a collection into a stream of elements, `map` and `filter` reshape it, and `sum` and `collect()` end it.
+The `|>` pipe feeds the value on its left into the call on its right, so a calculation reads from left to right, top to bottom. A collection is already a source, so the pipe starts right at it; `map` and `filter` reshape its elements, and `sum` and `collect()` end the chain.
 
 Two moxie-specific details:
 

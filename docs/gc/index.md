@@ -1204,7 +1204,7 @@ No exceptions flying over your head, and no hidden control flow. Not bad! Your e
 
 ## 15. Iterators, generators, and comprehensions
 
-**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `3..1 step -1` counts 3, 2, 1), and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
+**Iterators.** Any collection is a loop source: `for x in numbers`. A Dict yields `(key, value)` tuples, a `Range` counts (with a step, and downward step: `3..1 step -1` counts 3, 2, 1), and `zip` pairs two sources. Your own tuple or enum is a source too, once it has `fn to_stream(self) Stream[T]`. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate`, `windows`, and their friends, are its stages.
 
 **Generators.** A generator is a function that returns an `unfold` stream. The step takes the current state and returns a value together with the next state, or an `Err` to stop:
 

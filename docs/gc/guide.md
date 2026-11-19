@@ -2725,6 +2725,25 @@ println("$last $final")
 
 Output: `7 21`. **Mistakes:** one stream feeding two terminals by accident, and building a growing list by rebinding in a loop (use `reduce`).
 
+**Your own types as sources.** A tuple or enum becomes a pipeline source when it has a method `to_stream(self)` that returns a `Stream[T]`. Nothing else is needed: its elements are `T` in every stage, and `for` walks it.
+
+```
+tuple Countdown
+  from Int
+
+impl Countdown
+  fn to_stream(self) Stream[Int] = (1..self.from) |> reverse()
+
+c = Countdown(3)
+doubled List[Int][3] = c |> map(_ * 2) |> collect()
+println("${doubled(0)} ${doubled(1)} ${doubled(2)}")
+for n in c
+  println("$n...")
+println("liftoff ${c |> sum()}")
+```
+
+Output: `6 4 2`, then `3...`, `2...`, `1...`, then `liftoff 6`. The method runs when the first element is pulled, so making a `Countdown` costs nothing, and the checker reads `Int` from the declared `Stream[Int]`, so `c |> map((s) -> s + "x")` is a compile error. **Mistake:** giving the type its own `map` or `fmap` as well; those win for `map`, and the type then behaves as a container, not just a source.
+
 **Chapter 14: Caching is explicit**
 
 Nothing is memoized for you, and nothing is cached behind your back. Caching is something you write on purpose, and moxie gives you these ways: `lazy` on a binding or a property (chapter 9b) computes one pure expression once, on its first read; a `lazy` parameter (section 6b, call by need) evaluates its argument once, only if the body reads it; the bottom-up `reduce` below carries only what the next step needs; a `Dict` threaded through a recursion as a `ref` parameter lets calls share work; and **[gc]** a memoizing wrapper over an `Atom` shares a table between calls and between fibers. For a function of a changing argument the usual recipe is the bottom-up `reduce`: start from the base case and carry only what the next step needs, which is the last two values for Fibonacci and the previous row for a table:
