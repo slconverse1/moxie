@@ -35,4 +35,8 @@ chk("option filter", OPT + "println(o |> filter(_ > 3) |> collect())\nprintln(o 
 chk("option for", OPT + "for x in o\n  println(x)\nfor y in n\n  println(y)\nprintln(\"end\")\n", 0, "4\nend")
 chk("option sum/count", OPT + "println(o |> sum())\nprintln(n |> count())\n", 0, "4", "0")
 chk("option element type", OPT + "bad = o |> filter((s) -> s + \"x\" == \"a\") |> collect()\n", 1, "cannot apply `+`", cmd="check")
+PIPE = "fn f(x Int) Int = x + 1\nfn g(x Int) Int = x * 2\na = 1\n"
+chk("pipe then ==", PIPE + "if a |> f() == 2 then println(\"yes\") else println(\"no\")\nprintln(a |> f() == 3)\n", 0, "yes", "false")
+chk("pipe then +", PIPE + "println(a |> f() + 1)\nprintln(a |> f() |> g() * 10)\n", 0, "3", "40")
+chk("pipe then and / is", PIPE + "println(a |> f() == 2 and (a |> g() == 2))\nprintln(List(1, 2) |> collect() is List(1, ...))\n", 0, "true\ntrue")
 sys.exit(1 if fails else 0)

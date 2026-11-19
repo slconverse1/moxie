@@ -114,6 +114,9 @@ class ExprParser(PBase):
                 self.skip_nl_soft()
                 stage = self.parse_pipe_stage()
                 left = Pipe(left, stage, line=line)
+                t = self.peek()
+                if self._tier_of(t) is not None and not (self.stop_bol and t.bol):
+                    left = self._climb(T_OR, left)       # `a |> f() == 2` compares the pipe's result: (a |> f()) == 2
             return left
         left = self.parse_unary() if minp > T_OTHER else None
         return self._bin_loop(minp)
@@ -210,8 +213,9 @@ class ExprParser(PBase):
         bind = Assign(PBind("$c0", line=line), first, None, "=", None, line=line)
         return DoE(Block([bind, ExprStmt(link(0, Name("$c0", line=line)), line=line)], line=line), None, line=line)
 
-    def _climb(self, minp):
-        left = self.parse_unary()
+    def _climb(self, minp, left=None):
+        if left is None:
+            left = self.parse_unary()
         chain = None
         while True:
             prev_chain, chain = chain, None
