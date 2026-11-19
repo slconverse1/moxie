@@ -2616,6 +2616,15 @@ class Checker(RefineMixin):
                 if "Float" in (a, b):
                     return "Float", None
                 return (a if a == b else None), None
+            for u, v in ((a, b), (b, a)):
+                if u is a and u.__class__ is tuple and u[0] == "tup":
+                    self.err(n.line, f"cannot apply `{op}` to a tuple: a tuple has no arithmetic; apply it to the parts, or declare a tuple type with an `impl` that has `fn {op}`")
+                    return None, None
+                if u.__class__ is tuple and u[0] == "named" and isinstance(u[1], str) and (u[1] in self.tuples or u[1] in self.enums) \
+                        and (u is a or a in self.SCAL) and (u[1], op) not in self.methods and u[1] not in self.aliases \
+                        and u[1] not in ("Duration",):
+                    self.err(n.line, f"cannot apply `{op}` to `{u[1]}`: it has no `{op}` method (write `impl` with `fn {op}(self, other {u[1]}) {u[1]}`)")
+                    return None, None
             if op == "+" and a.__class__ is tuple and a[0] == "app" and a[1] in ("List", "Array", "Set", "Ring") and len(a[2]) == 1 \
                     and a[1] not in self.tuples and a[1] not in self.enums and a[1] not in self.aliases:
                 el, num = a[2][0], {"Int", "Float", "Decimal"}
@@ -6227,7 +6236,7 @@ class Checker(RefineMixin):
         if ov is not None and not ov[0] and n.trailing is None and all(hasattr(a, "expr") for a in sargs):
             sg_all = self.load_sigs().get(fn.name) or []
             low = min((len(sg[1]) for sg in sg_all), default=0)
-            if 0 < len(sargs) + extra < low and fn.__class__ in (Name, Field) and fn.name not in ("min", "max"):
+            if 0 <= len(sargs) + extra < low and fn.__class__ in (Name, Field) and (fn.name not in ("min", "max") or len(sargs) + extra == 0):
                 self.err(n.line, f"`{fn.name}` takes at least {low} argument{'s' if low != 1 else ''}, but {len(sargs) + extra} given")
         if ov is not None and ov[0] and all(hasattr(a, "expr") for a in sargs):
             ats, sigres = self.sig_args(n, ov[0], ov[1], sargs, asc, sc, extra)

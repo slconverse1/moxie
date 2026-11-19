@@ -15,6 +15,11 @@ def run(src, cmd):
 
 # (name, "R" = must be rejected / "A" = must be accepted and run without aborting, source)
 CASES = [
+    ('tuple-plus-user-int', 'R', 'tuple P\n  a Int\nprintln(P(a: 1) + 1)\n'),
+    ('tuple-plus-with-impl', 'A', 'tuple P\n  a Int\nimpl P\n  fn +(self, o P) P = P(a: self.a + o.a)\nprintln((P(a: 1) + P(a: 2)).a)\n'),
+    ('anon-tuple-plus', 'R', 'println((1, 2) + (3, 4))\n'),
+    ('builtin-zero-args-max', 'R', 'println(max())\n'),
+    ('builtin-zero-args-len', 'R', 'println(len())\n'),
     ('iface-missing-method', 'R', 'interface Shape\n  fn area(self) Float\ntuple Sq\n  s Float\nimpl Shape for Sq\n  fn perimeter(self) Float = 4.0\n'),
     ('generic-wrong-bound', 'R', 'fn big[T Ordered](a T, b T) T = if a > b then a else b\ntuple P\n  x Int\nprintln(big(P(1), P(2)))\n'),
     ('generic-mixed', 'R', 'fn same[T](a T, b T) T = a\nprintln(same(1, "a"))\n'),
