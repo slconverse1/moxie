@@ -8823,7 +8823,7 @@ def _free_names(root, bound):
     return {x.name: x.line for x in nodes if x.__class__ is Name and x.name not in bound}
 
 
-def toplevel_order_diags(prog):
+def toplevel_order_diags(prog, known=()):
     """The entry file's top level, read in order. A function sees only the names bound above it, and the name it saw stays
     what it saw: a top-level name that is bound below a function that reads it, or rebound after one that reads it, is an error."""
     stmts = getattr(prog, "stmts", None) or []
@@ -8835,6 +8835,30 @@ def toplevel_order_diags(prog):
             for t in targets(st):
                 top.setdefault(t.name, st.line)
     out, bound, reads = toplevel_fn_order(stmts) + toplevel_type_order(stmts), {}, {}
+    # top-level code that runs before the `impl` that gives it a method: the method does not exist yet
+    meths = {}
+    for j, st in enumerate(stmts):
+        if st.__class__.__name__ == "ImplDecl":
+            nodes = []
+            _walk(getattr(st, "members", None), nodes)
+            for x in nodes:
+                if x.__class__.__name__ == "FnDecl" and x.name:
+                    meths.setdefault(x.name, []).append((j, st.line))
+    if meths:
+        fnnames = {st.name for st in stmts if st.__class__.__name__ in ("FnDecl", "FnGroup")}
+        for i, st in enumerate(stmts):
+            if st.__class__.__name__.endswith("Decl") or st.__class__.__name__ == "FnGroup":
+                continue
+            nodes = []
+            _walk(st, nodes)
+            for x in nodes:
+                if x.__class__.__name__ == "Call" and x.fn.__class__ is Field and x.fn.name in meths:
+                    m = x.fn.name
+                    where = meths[m]
+                    if m in known or m in fnnames or any(j <= i for j, _l in where):
+                        continue
+                    out.append(Diag(getattr(x, "line", None) or st.line, f"`.{m}()` comes from an `impl` at line {where[0][1]}, below this use: an `impl` must be declared above the code that calls its methods"))
+                    break
     for st in stmts:
         fds = st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
         for fd in fds:
