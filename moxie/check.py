@@ -5081,6 +5081,8 @@ class Checker(RefineMixin):
         sess_call = SESS["on"] and self.is_session_call(n, sc) and n.args and hasattr(n.args[0], "expr") and n.args[0].expr.__class__ is Name
         if sess_call:
             self.sess_first.add(id(n.args[0].expr))
+        self.check_local_fn_arity(n, sc)
+        self.check_nullary_called(n, sc)
         r = self._e_Call(n, sc, *a, **k)
         if SESS["on"] and not sess_call and n.fn.__class__ is Name and n.fn.name in self.consumes and sc.find(n.fn.name) is None:
             for i in self.consumes[n.fn.name]:               # a function that takes over an endpoint uses it up, with or without `move`
@@ -5115,6 +5117,30 @@ class Checker(RefineMixin):
             self.mark_gone(*item)          # the receiver is gone once the call has been checked
         del self.pending_gone[mark:]
         return r
+
+    def check_local_fn_arity(self, n, sc):
+        """`f = (x) -> x + 1` then `f(1, 2)`: a local function value is called with as many arguments as its type has parameters."""
+        if n.fn.__class__ is not Name or n.trailing is not None or getattr(n, "extra", None):
+            return
+        v = sc.find(n.fn.name)
+        ft = getattr(v, "ty", None) if v is not None else None
+        if ft.__class__ is not tuple or ft[0] != "fn" or not self.arity_known(ft):
+            return
+        args = n.args or []
+        if any(not hasattr(a, "expr") or a.label or getattr(a, "mod", None) or a.expr.__class__ in (PH, Slot) for a in args):
+            return
+        if args and len(args) != len(ft[1]):            # (`h()` of a lambda written `() -> 5` is left alone: its type counts a hidden parameter)
+            self.err(n.line, f"`{n.fn.name}` takes {len(ft[1])} argument{'s' if len(ft[1]) != 1 else ''}, but {len(args)} given")
+
+    def check_nullary_called(self, n, sc):
+        """`None()`: a case without fields is written without parentheses."""
+        f = n.fn
+        if f.__class__ is not Name or n.args or n.trailing is not None or sc.find(f.name) is not None \
+                or f.name in self.fns or f.name in self.tuples or f.name not in self.cases:
+            return
+        eds = [self.enums[e] for e in self.cases[f.name] if e in self.enums]
+        if eds and all(not (next((c for c in ed.cases if c.name == f.name), None) or type("X", (), {"fields": [1]})).fields for ed in eds):
+            self.err(n.line, f"`{f.name}` has no fields, so write `{f.name}`, not `{f.name}()`")
 
     def check_literal_closures(self, n, sc):
         """Capturing closures written inside a `Dict(...)`, `List(...)`, `Set(...)` or `Array(...)` literal (moxie only; in moxie/gc a closure
@@ -7597,6 +7623,11 @@ class Checker(RefineMixin):
                 if lt is not None and ft[1][0] is not None:
                     self.compat(ft[1][0], lt, None, n.line)
                 return ft[2], None
+        from .pexpr import contains_ph
+        if st.__class__ not in (Name, Lambda, Field) and contains_ph(st):
+            self.err(n.line, "`_` only builds a function inside a call's argument list, so it can't stand alone after `|>`: "
+                     "write the function out, `x |> ((v) -> v + 1)()`")
+            return None, None
         stt = self.ev(st, sc)[0]
         if stt is not None and (stt in INTS or stt in ("String", "Bool", "Float", "Char", "Decimal", "Unit")
                                 or (stt.__class__ is tuple and stt[0] in ("app", "tup", "bounded") and stt[0] != "fn")):
