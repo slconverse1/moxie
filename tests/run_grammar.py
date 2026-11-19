@@ -36,6 +36,29 @@ blocks = []
 for f in ("guide_corpus.json", "gc_guide_corpus.json"):
     for c in json.load(open(os.path.join(ROOT, "tests", f))):
         blocks.append((f[:2], c[1]))
+import glob
+def battery(path):
+    """Programs of a tests/battery file: '### name', a verdict line ('ok...' / 'reject...'), then the source."""
+    out, cur, first = [], None, False
+    for line in open(path).read().split("\n"):
+        if line.startswith("### "):
+            if cur is not None:
+                out.append("\n".join(cur) + "\n")
+            cur, first = [], True
+        elif cur is not None:
+            if first:
+                first = False
+                continue
+            cur.append(line)
+    if cur is not None:
+        out.append("\n".join(cur) + "\n")
+    return out
+for f in sorted(glob.glob(os.path.join(ROOT, "examples", "*.mxi")) + glob.glob(os.path.join(ROOT, "moxie", "std", "*.mxi"))
+                + glob.glob(os.path.join(ROOT, "moxie", "std", "*", "*.mxi"))):
+    blocks.append(("ex", open(f).read()))
+for f in sorted(glob.glob(os.path.join(ROOT, "tests", "battery", "*.txt"))):
+    for src in battery(f):
+        blocks.append(("ba", src))
 seen, uniq = set(), []
 for tag, src in blocks:
     if src not in seen:
@@ -56,7 +79,7 @@ for tag, src in uniq:
         bad += 1
         fails.append((tag, src, at, t))
 total = ok + bad
-print(f"grammar recognizes {ok} of {total} guide blocks the parser accepts ({skipped} fragments skipped)")
+print(f"grammar recognizes {ok} of {total} programs the parser accepts (guide blocks, examples, std library, battery) ({skipped} fragments skipped)")
 if verbose:
     for tag, src, at, t in fails:
         ctx = " ".join(str(v if v is not None else k) for k, v in t[max(0, at - 6):at + 3])
@@ -77,5 +100,5 @@ for src in wrong:
     print("  accepted by the grammar but not by the parser:", repr(src))
 if wrong:
     sys.exit(1)
-need = float(os.environ.get("GRAMMAR_MIN", "0.88"))
+need = float(os.environ.get("GRAMMAR_MIN", "1.0"))
 sys.exit(0 if total and ok / total >= need else 1)

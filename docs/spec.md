@@ -819,7 +819,7 @@ Everything else in this Spec is settled, including every call that earlier draft
 
 The grammar below is written over the token stream of the lexer, not over characters: by the time the parser runs, the lexer has joined continuation lines (a line that starts with `|>` or another binary operator, and everything inside brackets), turned indentation into `INDENT` and `DEDENT`, and ended each statement with `NL`. `NAME`, `INT`, `FLOAT`, `STR`, `CHAR`, `DEC`, `DUR`, `BYTES`, `SQL`, `HASH` and `BTICK` are token kinds; a quoted word is a token with that text (a keyword is a `NAME`). `ident` is a `NAME` that is not one of the reserved words in the `%reserved` line. The notation is EBNF: `|` chooses, `( )` groups, `[ ]` is optional, `{ }` repeats zero or more times, and `+` repeats one or more.
 
-The grammar is a recognizer, not the parser: it is looser than the language in places that the checker, not the parser, settles (which names exist, whether the types fit), and it does not yet cover every construct. It is checked by `tests/run_grammar.py`, which runs the real lexer over every code block of both Guides and asks the grammar to recognize each block that the real parser accepts (most of them; the test fixes the minimum share), and which also requires that sixteen malformed programs are rejected. The same file is `docs/grammar.ebnf`, and the text below must stay equal to it (the test compares them). **Not covered yet:** the SQL blocks (`sql(conn):` followed by a query), binary patterns (`Bin(...)`), operator sections with a named function (`(div_by 2)`), the type-level `when` with tuple patterns, `for` lines that join conditions with `and`, some forms of `select` arms, `modify`/path expressions (`/ User / firm /`), and free-monad style enums with a result type on each case.
+The grammar is a recognizer, not the parser: it is looser than the language in places that the checker, not the parser, settles (which names exist, whether the types fit), and it covers every construct the parser accepts. It is checked by `tests/run_grammar.py`, which runs the real lexer over every code block of both Guides, the example programs, the standard library and the test battery, and asks the grammar to recognize each program that the real parser accepts (all of them: the test fails on any miss), and which also requires that sixteen malformed programs are rejected. The same file is `docs/grammar.ebnf`, and the text below must stay equal to it (the test compares them).
 
 ```
 # The moxie grammar, over the token stream of moxie/lexer.py (the lexer has already joined continuation lines, so a statement
@@ -833,10 +833,17 @@ item : decl | stmt ;
 
 # ---------------------------------------------------------------- statements
 stmt : simple NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound | 'in' ident { ',' ident } NL ;
-simple : base [ 'if' expr [ 'else' expr ] ] ;
+simple : ( 'requires' | 'ensures' | 'invariant' ) expr | base [ 'if' expr [ 'else' expr ] ] ;
 base : 'break' 'daemon' | 'break' [ label ] '(' expr { ',' expr } ')' | 'export' ident [ type ] '=' expr | pattern [ type ] '=' expr 'else' expr | 'return' [ expr { ',' expr } ] | 'break' [ label ] [ '(' expr ')' ] | 'continue' [ label ] | binding | assign | incr | expr { ',' expr } ;
-blockend : target_list [ type ] '=' blocklambda ;
-blocklambda : '(' [ params ] ')' '->' block ;
+blockend : [ target_list [ type ] '=' ] expr_b | 'return' expr_b ;
+expr_b : pipe_b | postfix_b | lambda_b | fnblock | gofn | dotblock | postfix '+%' fnblock | pipe '|>' 'seq' armsx | when_b ;
+lambda_b : '(' [ params ] ')' '->' ( block | when_b | postfix '.' 'update' updblock ) ;
+dotblock : primary { '(' [ args ] ')' | '.' ident } ( '.' 'do' block | '.' 'update' updblock ) ;
+gofn : 'go' 'fn' '(' [ params ] ')' [ '(' [ params ] ')' ] block ;
+when_b : 'when' expr armsx ;
+pipe_b : pipe '|>' postfix_b | postfix_b ;
+postfix_b : primary { '(' [ args ] ')' | '.' ident | '?' } '(' [ params ] ')' '->' ( block | when_b | postfix '.' 'update' updblock ) ;
+fnblock : 'fn' [ tparams ] '(' [ params ] ')' [ type ] block ;
 label : HASH ;
 binding : target_list [ type ] '=' expr { ( ',' | '=' ) expr } ;
 target_list : target { ',' target } ;
@@ -850,11 +857,11 @@ armsblock : ident NL INDENT arm+ DEDENT ;
 armsx : NL INDENT arm+ DEDENT ;
 withblock : 'with' ident { ',' ident } block ;
 dostmt : 'do' [ 'with' ident { ',' ident } ] block ;
-block : NL INDENT stmt+ DEDENT ;
+block : NL INDENT item+ DEDENT ;
 block_stmt : ident [ ident ] block ;
-ifstmt : 'if' expr ( 'then' simple NL | block ) { 'elif' expr ( 'then' simple NL | block ) } [ 'else' ( simple NL | block ) ] ;
+ifstmt : 'if' expr ( 'then' simple NL | 'then' block | block ) { 'elif' expr ( 'then' simple NL | block ) } [ 'else' ( simple NL | block ) ] ;
 whenstmt : 'when' [ expr ] NL INDENT arm+ DEDENT ;
-arm : arm_head '->' ( expr NL | block ) | 'else' ( simple NL | block ) ;
+arm : arm_head '->' ( simple NL | block | when_b ) | 'else' ( simple NL | block ) ;
 arm_head : pattern_alts [ 'if' expr ] | ident '=' expr | expr | 'else' ;
 pattern_alts : pattern { ',' pattern } ;
 forstmt : 'for' pattern 'in' expr ( block | 'then' simple NL ) [ 'else' ( simple NL | block ) ] ;
@@ -878,10 +885,10 @@ add : mul { ( '+' | '-' | '+%' | '-%' ) mul } ;
 mul : unary { ( '*' | '/' | '%' ) unary } ;
 unary : ( 'not' | '-' | '~' ) unary | range ;
 range : postfix [ ( '..' | '..=' | '..<' ) [ postfix ] [ 'step' unary ] ] ;
-postfix : primary { '(' [ args ] ')' | '(' [ params ] ')' '->' ( expr | block ) | '.' ( 'do' | 'update' ) block | '.' ident | '.' INT | '?' | '[' type_args ']' } ;
+postfix : primary { '(' [ args ] ')' | '(' [ params ] ')' '->' ( expr | block ) | '.' 'do' block | '.' 'update' updblock | '.' ident | '.' INT | '?' | '[' type_args ']' | '@' INT } ;
 args : arg { ',' arg } [ ',' ] ;
-arg : '...' | '..' | '..=' | '$' ident | [ 'ref' | 'using' | 'move' ] [ ident ':' ] [ '...' ] expr [ '->' expr ] [ 'for' pattern 'in' expr [ 'if' expr ] ] | 'using' ;
-primary : 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | INT | FLOAT | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
+arg : '...' | '..' | '..=' | '$' ident | [ 'ref' | 'using' | 'move' ] [ ident ':' ] [ '...' ] expr [ ':' expr ] [ '->' expr ] [ 'for' pattern 'in' expr [ 'if' expr ] ] | 'using' ;
+primary : '(' 'in' expr ')' | '\\' ident [ '(' [ args ] ')' ] | '/' ident { '/' ident } | '{' expr { ',' expr } '}' | '(' BTICK expr ')' | '(' expr BTICK ')' | 'try_go' postfix | 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | INT | FLOAT | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
 tuplelit : '(' [ titem { ( ',' | ';' { ';' } ) titem } [ ',' ] ] ')' ;
 titem : '...' | [ ident ] ':' expr | [ ident ':' ] [ '...' ] expr ;
 
@@ -897,45 +904,50 @@ literal : INT | FLOAT | STR | CHAR | DEC | 'true' | 'false' ;
 
 # ---------------------------------------------------------------- types
 type : type_atom { '|' type_atom } ;
-type_item : type | ident type ;
-type_atom : ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'static' type ;
+type_item : type | ident type | '...' [ type ] | ident '...' ;
+type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'static' type ;
 type_args : type_arg { ',' type_arg } ;
-type_arg : type | INT [ ( '..' | '..=' ) INT ] ;
+type_arg : type | '_' | INT [ ( '..' | '..=' ) INT ] ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' } ( foreigndecl | fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl | importdecl | usingdecl | testdecl ) ;
-fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ 'if' expr ] ( '=' expr NL | block | NL ) ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' } ( foreigndecl | fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl | importdecl | usingdecl | testdecl ) ;
+fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | block | NL ) ;
+hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
 tparams : '[' tparam { ',' tparam } ']' ;
-tparam : ident [ '[' '_' { ',' '_' } ']' ] [ bound { '+' bound } ] [ 'where' expr ] ;
+tparam : ident [ '[' hk { ',' hk } ']' ] [ bound { '+' bound } ] [ 'where' expr ] ;
 bound : ident [ '[' type_args ']' ] ;
 params : param { ',' param } ;
-param : [ 'ref' | 'using' | 'move' | 'lazy' ] ( ident [ '...' ] [ type ] | literal | 'self' ) [ 'where' expr ] [ '=' expr ] ;
+param : '(' target_item { ',' target_item } ')' | [ 'ref' | 'using' | 'move' | 'lazy' ] ( ident [ '...' ] [ type ] | literal | 'self' ) [ 'where' expr ] [ '=' expr ] ;
 tupledecl : 'tuple' ident [ tparams ] [ '(' [ params ] ')' ] [ derivs ] [ 'where' expr ] NL [ INDENT { tmember { ',' tmember } [ ',' ] NL [ INDENT { accessor | stmt } DEDENT ] } DEDENT ] ;
 accessor : [ 'priv' ] ident [ '(' [ params ] ')' ] [ type ] ( block | NL ) ;
-tmember : field | propdecl ;
+tmember : field | propdecl | 'invariant' expr ;
 propdecl : [ 'lazy' | 'static' | 'priv' ] 'property' ident type [ '=' expr ] ;
 derivs : 'deriving' ident { ',' ident } ;
 field : ident type [ 'delegate' [ '(' type { ',' type } ')' ] ] [ '=' expr ] ;
 enumdecl : 'enum' ident [ tparams ] [ '(' params ')' ] [ derivs ] NL [ INDENT { case { ',' case } [ ',' ] NL } DEDENT ] ;
-case : ident [ '(' [ case_item { ',' case_item } ] ')' ] [ type ] ;
+case : ident [ '[' tparam { ',' tparam } ']' ] [ '(' [ case_item { ',' case_item } ] ')' ] [ '(' [ case_item { ',' case_item } ] ')' ] [ type ] ;
 case_item : [ ident ':' ] ( param ) ;
 ifacedecl : 'interface' ident [ tparams ] NL INDENT { member { ',' member } [ ',' ] NL [ INDENT { accessor | stmt } DEDENT ] | type { ',' type } NL } DEDENT ;
-member : fnsig | 'type' ident | field | 'property' ident type | 'static' fnsig ;
+member : fnsig | 'type' ident | field | 'property' ident type | { 'static' | 'dynamic' } fnsig ;
 fnsig : 'fn' [ '(' [ 'ref' ] ident ')' ] [ fname ] [ tparams ] [ '(' [ params ] ')' ] [ type ] ;
-fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' ;
-impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL INDENT { fndecl | 'type' ident '=' type NL | 'static' fndecl } DEDENT ;
+fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' | '|>>' | '<$>' | '~>' | '++' | '<<' | '>>' | '&' | '|' | '^' | '~=' ;
+impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [ INDENT { fndecl | 'type' ident '=' type NL | 'static' { 'dynamic' } fndecl } DEDENT ] ;
 aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;
-tarm : type { ',' type } [ 'if' expr ] '->' type NL | 'else' type NL ;
+tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
+typeres : tres { ( '+' | '-' | '*' ) tres } ;
+tres : type | INT | STR ;
 importdecl : 'import' ident { '.' ident } [ 'as' ident ] NL ;
 usingdecl : 'using' ident '=' expr NL ;
 testdecl : 'test' STR block ;
 
-ifexpr : 'if' expr 'then' expr { 'elif' expr 'then' expr } 'else' expr ;
+ifexpr : 'if' expr 'then' expr { 'elif' expr 'then' expr } [ 'else' expr ] ;
 lambda : '(' [ params ] ')' '->' ( expr | block ) ;
 
-formonad : 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr ) NL } 'yield' expr NL DEDENT ;
+formonad : 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT ;
 foreigndecl : 'foreign' STR NL INDENT { decl | 'handle' ident [ 'closes' ident ] NL } DEDENT ;
 forallstmt : 'forall' ident type { ',' ident type } block ;
+updblock : NL INDENT { updline } DEDENT ;
+updline : { ident ':' expr ',' } ( ident ':' expr [ ',' ] NL | ident ':' NL INDENT { updline } DEDENT ) ;
 ```
 
 **Decisions recorded on 2026-11-01**
