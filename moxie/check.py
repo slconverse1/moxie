@@ -8774,6 +8774,8 @@ def check_package_structure(prog, search_dir):
         # a library file may not bind a module-level name twice
         sub = load(st.pkg)
         if sub is not None:
+            for dg in toplevel_fn_order(sub.stmts, f"package '{key}': "):
+                diags.append(Diag(st.line, dg.msg + f" (line {dg.line})"))
             first = {}
             for s2 in sub.stmts:
                 if s2.__class__ is Assign:
@@ -8799,10 +8801,14 @@ def _walk(n, out):
 def _fn_free_names(fd):
     """Names a top-level function reads that it does not bind itself (parameters, locals, pattern variables, nested functions
     all count as bound, so this can miss a read but never invents one)."""
+    return _free_names([fd.body, getattr(fd, "guard", None), getattr(fd, "contracts", None), getattr(fd, "clauses", None)],
+                       {p.name for p in fd.params or [] if getattr(p, "name", None)} | set(fd.locals or []))
+
+
+def _free_names(root, bound):
     nodes = []
-    _walk([fd.body, getattr(fd, "guard", None), getattr(fd, "contracts", None), getattr(fd, "clauses", None)], nodes)
-    bound = {p.name for p in fd.params or [] if getattr(p, "name", None)}
-    bound |= set(fd.locals or [])
+    _walk(root, nodes)
+    bound = set(bound)
     for x in nodes:
         c = x.__class__.__name__
         if c in ("PBind", "Param", "PRest") and getattr(x, "name", None):
@@ -8828,7 +8834,7 @@ def toplevel_order_diags(prog):
         if st.__class__ is Assign:
             for t in targets(st):
                 top.setdefault(t.name, st.line)
-    out, bound, reads = [], {}, {}
+    out, bound, reads = toplevel_fn_order(stmts), {}, {}
     for st in stmts:
         fds = st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
         for fd in fds:
@@ -8846,6 +8852,35 @@ def toplevel_order_diags(prog):
                         out.append(Diag(st.line, f"`{t.name}` is read by function `{fd.name}` (line {fd.line}), so this later binding would not be the one it sees: give it a new name"))
                 else:
                     bound[t.name] = st.line
+    return out
+
+
+def toplevel_fn_order(stmts, who=""):
+    """A function is declared before it is used: a call (or mention) of a top-level function above its declaration is an error unless
+    a `forward fn` signature came first (spec section 4, Order)."""
+    def fns_of(st):
+        return st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
+    decl, fwd = {}, set()
+    for i, st in enumerate(stmts):
+        for fd in fns_of(st):
+            if fd.body is None or "forward" in (fd.flags or ()):
+                fwd.add(fd.name)
+            else:
+                decl.setdefault(fd.name, (i, fd.line))
+    out, seen = [], set()
+    for i, st in enumerate(stmts):
+        cl = fns_of(st)
+        reads = {}
+        for fd in cl:
+            for nm, ln in _fn_free_names(fd).items():
+                reads.setdefault(nm, fd.line)
+        if not cl:
+            for nm, ln in _free_names(st, set()).items():
+                reads.setdefault(nm, ln or getattr(st, "line", 0))
+        for nm, ln in reads.items():
+            if nm in decl and decl[nm][0] > i and nm not in fwd and (nm, ln) not in seen:
+                seen.add((nm, ln))
+                out.append(Diag(ln or 0, f"{who}`{nm}` is used before its declaration (line {decl[nm][1]}): move it up, or write `forward fn {nm}(...)` first"))
     return out
 
 

@@ -86,25 +86,21 @@ impl Dynable for String
   static dynamic fn from_dyn(d Dyn) Result[String, Error]
     d.as_text()
 
-impl[T Dynable] Dynable for List[T]
-  fn to_dyn(self) Dyn
-    DList(self |> map((x) -> x.to_dyn()) |> collect())
-  static dynamic fn from_dyn(d Dyn) Result[List[T], Error]
-    list_of(d, (x) -> T.from_dyn(x))
+dynamic fn list_of_from[T](items List[Dyn], i Int, acc List[T], f (Dyn) -> Result[T, Error]) Result[List[T], Error]
+  if i >= len(items) then return Ok(acc)
+  x = f(items(i))?
+  list_of_from(items, i + 1, acc + List(x), f)
 
 /// Read every element of a `Dyn` list with `f`: the list of results, or the first `Err`.
 export dynamic fn list_of[T](d Dyn, f (Dyn) -> Result[T, Error]) Result[List[T], Error]
   items = d.as_list()?
   list_of_from(items, 0, List(), f)
 
-dynamic fn list_of_from[T](items List[Dyn], i Int, acc List[T], f (Dyn) -> Result[T, Error]) Result[List[T], Error]
-  if i >= len(items) then return Ok(acc)
-  x = f(items(i))?
-  list_of_from(items, i + 1, acc + List(x), f)
-
-fn json_quote(s String) String
-  body = s |> chars() |> map((c) -> json_char(c)) |> join("")
-  "\"$body\""
+impl[T Dynable] Dynable for List[T]
+  fn to_dyn(self) Dyn
+    DList(self |> map((x) -> x.to_dyn()) |> collect())
+  static dynamic fn from_dyn(d Dyn) Result[List[T], Error]
+    list_of(d, (x) -> T.from_dyn(x))
 
 fn json_char(c Char) String
   when c
@@ -114,6 +110,10 @@ fn json_char(c Char) String
     '\t' -> "\\t"
     '\r' -> "\\r"
     _ -> "$c"
+
+fn json_quote(s String) String
+  body = s |> chars() |> map((c) -> json_char(c)) |> join("")
+  "\"$body\""
 
 impl Dyn
   fn to_json(self) String
@@ -206,6 +206,11 @@ fn read_number(cs List[Char], i Int) Result[Pr, Error]
     when read[Int](text)
       Ok(n) -> Ok(Pr(v: Dyn.DInt(n), i: j))
       Err(_) -> Err(jerr("bad number", i))
+
+forward fn read_array(cs List[Char], i0 Int) Result[Pr, Error]
+forward fn array_rest(cs List[Char], j Int, items List[Dyn]) Result[Pr, Error]
+forward fn read_object(cs List[Char], i0 Int) Result[Pr, Error]
+forward fn object_rest(cs List[Char], j Int, es List[Entry]) Result[Pr, Error]
 
 fn read_value(cs List[Char], i0 Int) Result[Pr, Error]
   i = skip_ws(cs, i0)

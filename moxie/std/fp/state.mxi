@@ -44,13 +44,14 @@ export fn eval[S, A](m State[S, A], s S) A
 export fn exec[S, A](m State[S, A], s S) S
   m.run(s)(1)
 
-/// Runs `f` on each element in order, threading the state through, and collects the results.
-export fn traverse[S, A, B](xs List[A], f (A) -> State[S, B]) State[S, List[B]]
-  State(run: (s S) -> traverse_from(xs, 0, List(), f, s))
-
 fn traverse_from[S, A, B](xs List[A], i Int, out List[B], f (A) -> State[S, B], s S) (List[B], S)
   if i == len(xs)
     (out, s)
   else
     (b, s2) = f(xs(i)).run(s)
     traverse_from(xs, i + 1, out + b, f, s2)
+
+
+/// Runs `f` on each element in order, threading the state through, and collects the results.
+export fn traverse[S, A, B](xs List[A], f (A) -> State[S, B]) State[S, List[B]]
+  State(run: (s S) -> traverse_from(xs, 0, List(), f, s))

@@ -358,6 +358,18 @@ println(tally(List(1, 2, 3)))
 
 Output: `15`, `this pass: 2`, `this pass: 4`, `this pass: 6`, then `12`. `price` reads the module-level `rate` with no ceremony. `tally` has two `total`s: the function's own, and a new one that each pass of the loop makes (twice the score, as the printout shows). `total@1` adds the pass's value into the function's `total`, which the function returns: `2 + 4 + 6`. Without the `@1`, the last line would add to the pass's own `total`, and the function would return `0`. **Mistakes:** `rate@1 = 4` inside `price` (a function can't rebind a module-level name; the error says no enclosing block binds it), and expecting a loop variable or a local to still exist after its function returns.
 
+**Declare before use.** A function can call only the functions declared above it (and itself). Two functions that call each other need a `forward` line first: the signature alone, with no body, so the first function can name the second. The real definition follows later with the same signature:
+
+```
+forward fn is_odd(n Int) Bool
+fn is_even(n Int) Bool = if n == 0 then true else is_odd(n - 1)
+fn is_odd(n Int) Bool = if n == 0 then false else is_even(n - 1)
+println(is_even(10))
+println(is_odd(7))
+```
+
+Output: `true`, then `true`. **Mistakes:** calling a function above its declaration, and a `forward` with no definition after it (both are compile errors).
+
 **1d. Comments**
 
 A `//` comment runs to the end of the line, and it is the one to use almost everywhere: on its own line above the code, or after it for a short note. Say why, not what: a comment that repeats the code is noise. `///` is for documentation; it sits directly above a declaration and `moxie doc` and the doctests read it (section on tooling). A `/* ... */` block comment nests, so it is the right tool for switching off a region of code that may already contain block comments:

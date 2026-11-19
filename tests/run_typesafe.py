@@ -89,6 +89,11 @@ CASES = [
     ('top-rebind-unread-ok', 'A', 'x = 5\nx += 1\na, b = 1, 2\na, b = b, a\nprintln("$x $a $b")\n'),
     ('top-fn-reads-above-ok', 'A', 'rate = 3\nfn price(n Int) Int = n * rate\nprintln(price(5))\n'),
     ('top-fn-local-same-name-ok', 'A', 'fn f() Int\n  t = 1\n  t\nt = 5\nprintln(f() + t)\n'),
+    ('fn-used-before-decl', 'R', 'fn f() Int = g()\nfn g() Int = 1\nprintln(f())\n'),
+    ('top-call-before-decl', 'R', 'println(h(1))\nfn h(n Int) Int = n\n'),
+    ('forward-mutual-ok', 'A', 'forward fn is_odd(n Int) Bool\nfn is_even(n Int) Bool = if n == 0 then true else is_odd(n - 1)\nfn is_odd(n Int) Bool = if n == 0 then false else is_even(n - 1)\nprintln(is_even(10))\n'),
+    ('forward-never-defined', 'R', 'forward fn g(n Int) Int\nfn f(n Int) Int = g(n)\nprintln(f(1))\n'),
+    ('fn-order-ok', 'A', 'fn g() Int = 1\nfn f() Int = g() + 1\nprintln(f())\n'),
 ]
 
 fails = []
