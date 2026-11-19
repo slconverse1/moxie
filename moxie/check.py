@@ -2005,6 +2005,9 @@ class Checker(RefineMixin):
 
     def e_Interp(self, n, sc):
         t = self.ev(n.expr, sc)[0]
+        msg = self.late_method(t, "show", n.line if getattr(n, "line", 0) else self.cur_line)
+        if msg:
+            self.err(n.line if getattr(n, "line", 0) else self.cur_line, msg)
         mt = re.search(r"([dxXobfeE%n])$", n.spec or "") if isinstance(n.spec, str) else None
         if mt and t in ("String", "Bool", "Char"):
             self.err(n.line if getattr(n, "line", 0) else self.cur_line, f"the format type `{mt.group(1)}` needs a number, but this is a `{t}`")
@@ -2561,6 +2564,12 @@ class Checker(RefineMixin):
             width = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(wt, 64 if wt in self.FIT else None)
             if width is not None and n.r.v >= width:
                 self.err(n.line, f"a shift by {n.r.v} is at or above the {width}-bit width of `{wt}`")
+        for ot in (a, b):
+            for mname in ({"!=": ["=="], ">": ["<"], "<=": ["<"], ">=": ["<"]}.get(op, [op])):
+                msg = self.late_method(ot, mname, n.line)
+                if msg:
+                    self.err(n.line, msg)
+                    break
         dur = ("named", "Duration")
         if (a == dur or b == dur) and "Duration" not in self.tuples and "Duration" not in self.aliases:
             r = self.duration_op(n, a, b, dur)
@@ -3920,6 +3929,9 @@ class Checker(RefineMixin):
                     break
         inner = Sc(sc)
         el = None
+        msg = self.late_method(it, "to_stream", n.line)
+        if msg:
+            self.err(n.line, msg)
         if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream") and len(it[2]) == 1 \
                 and it[2][0] is not None and not self.has_unsettled(it[2][0]):
             el = it[2][0]                                   # the loop variable has the collection's element type
@@ -4230,6 +4242,18 @@ class Checker(RefineMixin):
                     if key in seen:
                         self.diags.append(Diag(line, f"this pattern repeats the one at line {seen[key]}, so it can never match", "warning"))
                     seen.setdefault(key, line)
+
+    def late_method(self, t, nm, line):
+        """The error text when type `t` has its own method `nm`, declared in this file below `line` (the order rule), else None."""
+        if not self.order_lines or t.__class__ is not tuple or t[0] not in ("named", "app") or not isinstance(t[1], str):
+            return None
+        md = self.methods.get((t[1], nm))
+        if md is None or id(md) not in self.local_methods or "generated" in (md.flags or ()) or not line or md.line <= line:
+            return None
+        if self.fwd_methods.get((t[1], nm), 10 ** 9) <= line:
+            return None
+        return (f"`{t[1]}.{nm}` is declared below this use (line {md.line}): a method must be declared above the code that uses it "
+                f"(an operator, `println`, `for` and string interpolation use methods too), or announced with `forward fn {nm}(...)` in its `impl`")
 
     def refutable_pat(self, p):
         """A pattern that some value of its type does not match (a case of an enum with several cases, a literal, a range, a list shape)."""
@@ -5165,6 +5189,12 @@ class Checker(RefineMixin):
         self.check_local_fn_arity(n, sc)
         self.check_nullary_called(n, sc)
         r = self._e_Call(n, sc, *a, **k)
+        if n.fn.__class__ is Name and n.fn.name in ("println", "print", "dbg") and n.fn.name not in self.fns and sc.find(n.fn.name) is None:
+            for a_ in n.args or []:
+                msg = self.late_method(self.arg_ty.get(id(getattr(a_, "expr", None))), "show", n.line)
+                if msg:
+                    self.err(n.line, msg)
+                    break
         if SESS["on"] and not sess_call and n.fn.__class__ is Name and n.fn.name in self.consumes and sc.find(n.fn.name) is None:
             for i in self.consumes[n.fn.name]:               # a function that takes over an endpoint uses it up, with or without `move`
                 a_ = n.args[i] if i < len(n.args or []) else None

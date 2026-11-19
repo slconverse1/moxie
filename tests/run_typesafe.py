@@ -112,6 +112,12 @@ CASES = [
     ('for-literal-pattern', 'R', 'for 1 in List(1, 2)\n  println(1)\n'),
     ('for-comprehension-filters-ok', 'A', 'os = List(Some(1), None, Some(3))\nr = for\n  Some(x) in os\n  yield x * 2\nprintln(r)\n'),
     ('for-tuple-pattern-ok', 'A', 'tuple P\n  a Int\n  b Int\nfor P(a, b) in List(P(a: 1, b: 2))\n  println(a + b)\nfor (n, s) in List((1, "a"))\n  println("$n$s")\n'),
+    ('op-impl-after-use', 'R', 'tuple P\n  a Int\nprintln(P(a: 1) + P(a: 2))\nimpl P\n  fn +(self, o P) P = P(a: self.a + o.a)\n'),
+    ('eq-impl-after-use', 'R', 'tuple P\n  a Int\nprintln(P(a: 1) == P(a: 1))\nimpl P\n  fn ==(self, o P) Bool = self.a == o.a\n'),
+    ('show-impl-after-println', 'R', 'tuple P\n  a Int\nprintln(P(a: 1))\nimpl Show for P\n  fn show(self) String = "P!"\n'),
+    ('show-impl-after-interp', 'R', 'tuple P\n  a Int\np = P(a: 1)\nprintln("${p}")\nimpl Show for P\n  fn show(self) String = "P!"\n'),
+    ('op-impl-before-use-ok', 'A', 'tuple P\n  a Int\nimpl P\n  fn +(self, o P) P = P(a: self.a + o.a)\nprintln(P(a: 1) + P(a: 2))\n'),
+    ('show-impl-before-println-ok', 'A', 'tuple P\n  a Int\nimpl Show for P\n  fn show(self) String = "P!"\nprintln(P(a: 1))\n'),
 ]
 
 fails = []
