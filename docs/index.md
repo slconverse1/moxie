@@ -783,6 +783,25 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 
 **The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
 
+### Open tuples: row polymorphism, in the moxie way
+
+A parameter written with a bare `...` at the end, `(age Int, ...)`, accepts any tuple that has at least those named fields, a labeled tuple of any width or a declared tuple such as `Employee`. Type theorists call this **row polymorphism**: the `...` is the "rest of the row", the fields the function doesn't care about. And because `[T (age Int, ...)]` can bound a type parameter, a function can promise "whatever came in comes back out, other fields intact".
+
+```
+fn adult(r (age Int, ...)) Bool = r.age >= 18
+fn label(r (first String, last String, ...)) String = "${r.first} ${r.last}"
+fn birthday[T (age Int, ...)](u T) T = u.update
+  age: u.age + 1
+people = List((first: "Ada", last: "Lovelace", age: 36), (first: "Tim", last: "Kid", age: 9))
+older = people |> filter(adult) |> map(birthday) |> map((r) -> (...r, full: label(r))) |> collect()
+for p in older
+  println(p)
+```
+
+Output: `(first: "Ada", last: "Lovelace", age: 37, full: "Ada Lovelace")`. Each stage asks only for the fields it uses, so stages compose without anyone declaring a type for the intermediate shapes, and the rows of an SQL query (Mixer's Guide, Chapter 22) fit the same functions.
+
+**How this relates to full row polymorphism.** Languages with the whole feature (OCaml's objects and polymorphic variants, PureScript and Elm's extensible records, Ur/Web) let you name a row variable anywhere in a type: `{age Int | r} -> {age Int | r}`, results that add or remove a field, and rows for sum types. That is hard to build. It needs row unification in the type inference, a way to say a row *lacks* a field, and a runtime layout for a record whose fields aren't known (usually an indirection or a dictionary of offsets). Moxie takes the part that pays for itself and avoids the hard parts: open types appear only in parameters and as a bound, the compiler already knows the whole shape at every call and builds a copy of the function for it, as it does for generics, so there is no layout problem and no run-time cost, and signatures are always written, so there is no inference to extend. What you give up: an open type can't be a function's result (use the bound `T` to get the argument's own type back), a type can't add or remove fields (build the new tuple with `(...r, full: ...)` instead), and there are no open unions. For the tabular, pipeline-and-SQL style of program this is the case that matters, and it costs the mixer one `...`.
+
 ## 9. Properties
 
 A field is a name in a tuple that holds a value. A *property* looks exactly like one from the outside, `r.area` and `r.area = 12.0`, but it can run code when it is read or written. That lets you start with a plain field and add a rule later without touching a single caller.
