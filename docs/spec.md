@@ -151,7 +151,7 @@ How S-space and T-space behave:
 - Prefixes `0x`, `0o`, `0b`, with digits in either case.
 - Type suffixes: `42i8`, `7u32`, `3.5f` (`Float`). An unsuffixed fraction is a `Double`. An integer literal takes its type from context, or `Int`. The old `d` suffix for `Double` is dropped, because `d` now marks a `Decimal` literal (`19.99d`).
 - `1e3` is a `Double`, never an `Int`.
-- A literal that doesn't fit its type is a compile error (`300` as an `Int8`, or `256u8`).
+- A literal that doesn't fit its type is a compile error (`300` as an `Int8`, or `256u8`). So is arithmetic the compiler can see overflow: with `a Int8 = 100`, `a + a` is a compile error (it works from constants written outside a loop, and a later assignment to the name stops it); `wrapping_add` and its kin say wrapping is intended. A value that only exists at run time (a parameter, a read) still aborts on overflow.
 - Locale-specific forms (`1.234,5`) are never accepted in source; locales apply when formatting and parsing (below).
 
 **Overflow, division, and conversion**

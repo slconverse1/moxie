@@ -195,7 +195,7 @@ SCALARS_FOR_PAT = INTS | {"String", "Bool", "Char", "Float", "Double", "Decimal"
 
 
 class Var:
-    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore", "inttype")
+    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore", "inttype", "cv")
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
@@ -203,6 +203,7 @@ class Var:
             SESS["vars"].append(self)
         self.size = None                 # the element count of a fixed-size Array known from the text
         self.inttype = None              # the written integer type (`UInt8`) of an annotated binding or parameter: its width for shift checks
+        self.cv = None                   # the constant value of an annotated sized-integer binding written as a constant (`a Int8 = 100`), outside any loop
         self.fnstore = False             # a List, Array, or Dict whose elements are written functions (`Dict[String, (Int) -> Int][4]()`)
         self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
 
@@ -954,6 +955,10 @@ class Checker(RefineMixin):
     # ------------------------------------------------------------ types
     def const_int(self, e):
         c = e.__class__
+        if c is Name:
+            v = getattr(self, "_csc", None)
+            v = v.find(e.name) if v is not None else None
+            return v.cv if v is not None else None
         if c is IntLit and not e.suffix:
             return e.v
         if c is IntLit:
@@ -2773,6 +2778,17 @@ class Checker(RefineMixin):
                     self.err(n.line, f"`{op}` can't take `{xt[1]}`: a value of a union is one of its members, so test it first (`if x is T` or a `when`)")
                     return None, None
         self.check_op_bound(n, sc)
+        if op in ("+", "-", "*") and not (n.l.__class__ is IntLit and n.r.__class__ is IntLit):
+            self._csc = sc
+            lv, rv = self.const_int(n.l), self.const_int(n.r)
+            wts = {x.inttype for x in (sc.find(y.name) for y in (n.l, n.r) if y.__class__ is Name) if x is not None and x.inttype}
+            if lv is not None and rv is not None and len(wts) == 1:
+                wt = next(iter(wts))
+                r = lv + rv if op == "+" else lv - rv if op == "-" else lv * rv
+                lo, hi = self.FIT[wt]
+                if not lo <= r <= hi:
+                    self.err(n.line, f"this is {lv} {op} {rv} = {r}, which does not fit `{wt}` ({lo} to {hi}): use a wider type, "
+                                     f"or `wrapping_{'add' if op == '+' else 'sub' if op == '-' else 'mul'}` if wrapping is what you want")
         if n.op in ("==", "~=", "<", ">", "<=", ">=") and a is not None and a == b and a.__class__ is tuple and a[0] == "named" \
                 and (a[1] in self.tuples or a[1] in self.enums):
             ordering = n.op in ("<", ">", "<=", ">=")
@@ -3804,6 +3820,11 @@ class Checker(RefineMixin):
             s, d = s.parent, d + 1
 
     def e_Assign(self, n, sc):
+        for tg_ in (n.targets if isinstance(n.targets, list) else [n.targets]):
+            if tg_.__class__ is PBind:
+                ov_ = sc.find(tg_.name)
+                if ov_ is not None:
+                    ov_.cv = None
         self.rf_prev_stmt = n                              # the `Refine` the parser put after `x Pos = v` reads it
         if n.ann is not None and n.op == "=":
             if n.value.__class__ is Call:
@@ -3950,6 +3971,9 @@ class Checker(RefineMixin):
                 if n.ann.__class__ is TName and len(n.ann.path) == 1 and n.ann.path[0] in self.FIT and n.ann.path[0] not in self.tuples \
                         and n.ann.path[0] not in self.aliases:
                     sc.vars[tgt.name].inttype = n.ann.path[0]
+                    if not isinstance(n.targets, list) and self.loop_depth == 0:
+                        self._csc = sc
+                        sc.vars[tgt.name].cv = self.const_int(n.value)
                 if not isinstance(n.targets, list):
                     gv = n.value.fn if n.value.__class__ is Call else None
                     if gv.__class__ is GenApp and gv.base.__class__ is Name and gv.base.name in ("Dict", "List", "Array", "Ring") and gv.groups \
