@@ -148,6 +148,19 @@ CASES = [
     ('show-impl-after-interp', 'R', 'tuple P\n  a Int\np = P(a: 1)\nprintln("${p}")\nimpl Show for P\n  fn show(self) String = "P!"\n'),
     ('op-impl-before-use-ok', 'A', 'tuple P\n  a Int\nimpl P\n  fn +(self, o P) P = P(a: self.a + o.a)\nprintln(P(a: 1) + P(a: 2))\n'),
     ('show-impl-before-println-ok', 'A', 'tuple P\n  a Int\nimpl Show for P\n  fn show(self) String = "P!"\nprintln(P(a: 1))\n'),
+    ('int8-in-list', 'R', 'xs List[Int8] = List(1, 500)\nprintln(xs)\n'),
+    ('int8-in-array', 'R', 'xs Array[Int8][2] = Array(1, 500)\nprintln(xs)\n'),
+    ('int8-in-dict', 'R', 'd Dict[String, Int8] = Dict("a" -> 500)\nprintln(d)\n'),
+    ('int8-in-some', 'R', 'o Option[Int8] = Some(500)\nprintln(o)\n'),
+    ('int8-in-tuple', 'R', 't (Int8, Int8) = (1, 500)\nprintln(t)\n'),
+    ('int8-in-ctor', 'R', 'tuple P\n  x Int8\np = P(x: 500)\nprintln(p)\n'),
+    ('int8-in-return', 'R', 'fn f() List[Int8] = List(1, 500)\nprintln(f())\n'),
+    ('int8-in-arg', 'R', 'fn f(xs List[Int8]) Int = len(xs)\nprintln(f(List(1, 500)))\n'),
+    ('uint8-negative-in-list', 'R', 'xs List[UInt8] = List(1, -2)\nprintln(xs)\n'),
+    ('int8-in-list-ok', 'A', 'xs List[Int8] = List(1, 127, -128)\nprintln(xs)\n'),
+    ('lambda-tuple-field', 'R', 'f = (x) -> x.name\nprintln(f((age: 1)))\n'),
+    ('lambda-tuple-field-ok', 'A', 'f = (p) -> p.age + 1\nprintln(f((age: 1, name: "a")))\n'),
+    ('lambda-list-arg', 'R', 'f = (xs) -> xs.nope()\nprintln(f(List(1)))\n'),
 ]
 
 fails = []

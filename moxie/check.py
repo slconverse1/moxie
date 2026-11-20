@@ -3810,6 +3810,8 @@ class Checker(RefineMixin):
             w = {"Int8": 8, "UInt8": 8, "Int16": 16, "UInt16": 16, "Int32": 32, "UInt32": 32}.get(n.ann.path[-1], 64)
             if n.value.r.v >= w:
                 self.err(n.line, f"a shift by {n.value.r.v} is at or above the {w}-bit width of `{n.ann.path[-1]}`")
+        if n.ann is not None and n.ann.__class__ in (TName, TTuple) and n.value.__class__ in (Call, TupleE):
+            self.lit_fit(n.value, n.ann, n.line, False)
         if n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ is IntLit:
             self.check_fit(n.ann.path[-1], n.value.v, n.line)
         elif n.ann is not None and n.ann.__class__ is TName and n.ann.path[-1] in INTS and n.value.__class__ in (Binary, Unary):
@@ -3956,6 +3958,71 @@ class Checker(RefineMixin):
     FIT = {"Int8": (-128, 127), "Int16": (-32768, 32767), "Int32": (-2**31, 2**31 - 1),
            "Int64": (-2**63, 2**63 - 1), "Int": (-2**63, 2**63 - 1), "UInt8": (0, 255),
            "UInt16": (0, 65535), "UInt32": (0, 2**32 - 1), "UInt64": (0, 2**64 - 1)}
+
+    def lit_fit(self, e, tn, line, top=True):
+        """Integer constants written inside a collection, `Some`/`Ok`/`Err`, tuple or `Dict` literal must fit the sized integer type the
+        written type `tn` gives them: `xs List[Int8] = List(1, 500)` is a compile error, not a run-time abort."""
+        if e is None or tn is None:
+            return
+        if tn.__class__ is TName and tn.path[-1] in self.FIT and tn.path[-1] not in self.tuples and tn.path[-1] not in self.aliases and not tn.groups:
+            if top and e.__class__ in (IntLit, Binary, Unary):
+                cv = self.const_int(e)
+                r = self.FIT[tn.path[-1]]
+                if cv is not None and not (e.__class__ is IntLit and e.suffix) and not r[0] <= cv <= r[1]:
+                    self.err(getattr(e, "line", 0) or line, f"the constant {cv} does not fit `{tn.path[-1]}`")
+            return
+        if tn.__class__ is TName and tn.groups and tn.groups[0] and e.__class__ is Call and e.fn.__class__ is Name \
+                and tn.path[-1] not in self.tuples and tn.path[-1] not in self.aliases and e.fn.name not in self.fns:
+            g = tn.groups[0]
+            h, f = tn.path[-1], e.fn.name
+            if h == f and h in ("List", "Array", "Set", "Ring"):
+                for a in e.args or []:
+                    if a.expr is not None and not getattr(a, "mod", None) and not getattr(a, "label", None):
+                        self.lit_fit(a.expr, g[0], line)
+            elif h == "Dict" and f == "Dict" and len(g) == 2:
+                for a in e.args or []:
+                    if a.expr is not None and getattr(a, "label", None) and not getattr(a, "mod", None):
+                        self.lit_fit(a.expr, g[1], line)
+            elif h == "Option" and f == "Some" and len(e.args or []) == 1 and e.args[0].expr is not None:
+                self.lit_fit(e.args[0].expr, g[0], line)
+            elif h == "Result" and f in ("Ok", "Err") and len(e.args or []) == 1 and e.args[0].expr is not None:
+                self.lit_fit(e.args[0].expr, g[0 if f == "Ok" else 1] if len(g) > 1 or f == "Ok" else None, line)
+            return
+        if tn.__class__ is TTuple and e.__class__ is TupleE and len(tn.items) == len(e.items) and not any(sp for _l, _x, sp in e.items):
+            for (tl, tt), (el, x, _sp) in zip(tn.items, e.items):
+                if tt is not None:
+                    self.lit_fit(x, tt, line)
+
+    def check_lits_in_call(self, n, sc):
+        """Constants nested in an argument (`f(List(1, 500))`, `P(x: 500)`) against the written parameter or field type."""
+        f = n.fn
+        if f.__class__ is not Name or sc.find(f.name) is not None:
+            return
+        pairs = []
+        if f.name in self.tuples and f.name not in self.fns:
+            td = self.tuples[f.name]
+            if td.tparams or getattr(td, "spread", None):
+                return
+            fs = [x for x in td.fields or [] if getattr(x, "name", None) not in (None, "...")]
+            for i, a in enumerate(n.args or []):
+                if a.expr is None or getattr(a, "mod", None):
+                    continue
+                fld = next((x for x in fs if x.name == a.label), None) if getattr(a, "label", None) and isinstance(a.label, str) else (fs[i] if i < len(fs) else None)
+                if fld is not None and getattr(fld, "type", None) is not None:
+                    pairs.append((a.expr, fld.type, True))
+        elif len(self.fns.get(f.name, ())) == 1 and self.fns[f.name][0].__class__ is FnDecl:
+            fd = self.fns[f.name][0]
+            if fd.tparams:
+                return
+            ps = list(fd.params or [])
+            for i, a in enumerate(n.args or []):
+                if a.expr is None or getattr(a, "mod", None):
+                    continue
+                p = next((x for x in ps if x.name == a.label), None) if getattr(a, "label", None) and isinstance(a.label, str) else (ps[i] if i < len(ps) else None)
+                if p is not None and p.type is not None:
+                    pairs.append((a.expr, p.type, False))
+        for x, tn, top in pairs:
+            self.lit_fit(x, tn, n.line, top)
 
     def check_fit(self, tn, v, line):
         r = self.FIT.get(tn)
@@ -5446,6 +5513,7 @@ class Checker(RefineMixin):
         if sess_call:
             self.sess_first.add(id(n.args[0].expr))
         self.check_local_fn_arity(n, sc)
+        self.check_lits_in_call(n, sc)
         self.check_nullary_called(n, sc)
         r = self._e_Call(n, sc, *a, **k)
         if n.fn.__class__ is Name and n.fn.name in ("println", "print", "dbg") and n.fn.name not in self.fns and sc.find(n.fn.name) is None:
@@ -5527,7 +5595,7 @@ class Checker(RefineMixin):
         for p, a in zip(lam.params, args):
             if p.type is None and p.name:
                 at = self.base(self.ev(a.expr, sc)[0])
-                if at in self.SCAL:
+                if at in self.SCAL or (at.__class__ is tuple and at[0] in ("tup", "named", "app") and not self.has_unsettled(at)):
                     inner.vars[p.name] = Var(at, False, self.loop_depth)
                     bound = True
                     continue
@@ -8234,6 +8302,9 @@ class Checker(RefineMixin):
                 self.ev(n.guard, inner)
             self.tail_whens = self.when_tails(n.body)
             self.expect_union(n.body, n.ret)
+            for te in self.tails_all(n.body):
+                if n.ret is not None and te.__class__ in (Call, TupleE):
+                    self.lit_fit(te, n.ret, n.line, False)
             for te in self.value_tails(n.body):
                 self.note_expected(te, self.fn_ret)
                 self.has_expect(te, n.ret)
