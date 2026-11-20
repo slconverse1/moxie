@@ -117,7 +117,7 @@ aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type
 tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
 typeres : tres { ( '+' | '-' | '*' ) tres } ;
 tres : type | INT | STR ;
-importdecl : 'import' ident { '.' ident } [ 'as' ident ] NL ;
+importdecl : 'import' ident { '.' ident } [ 'as' ident ] [ '(' ident { ',' ident } ')' ] NL ;
 usingdecl : 'using' ident '=' expr NL ;
 testdecl : 'test' STR block ;
 

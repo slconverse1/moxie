@@ -1,0 +1,677 @@
+//! regex: regular expressions that run in time proportional to the text, with no backtracking.
+//!
+//! `compile(source)` reads a pattern into a `Regex`, or an `Err` that says where it went wrong. The matcher is a Pike VM: it
+//! walks the text once, keeping every possible position in the pattern at the same time, so no pattern can take exponential
+//! time. That rules out back-references (`\1`) and look-around, which need backtracking, and the compiler says so.
+//!
+//! Syntax: `abc` `.` `[a-z]` `[^a-z]` `\d \w \s \D \W \S` `\b \B` `^ $` `\A \z` `|` `( )` `(?: )` `(?<name> )` `(?<name:Int> )`,
+//! the repeats `* + ? {n} {n,} {n,m}` and their lazy forms `*? +? ?? {n,m}?`. `^` and `$` mean the start and end of the text.
+//! A group with a type (`Int`, `Float`, `Bool`, `String`) hands its text back already read, as a `Cap`.
+//!
+//! In a `when`, write the regex as a string literal and the compiler reads it: `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` tests
+//! the whole text, `Finds(...)` the first match anywhere, and the names are typed from the groups (`y` is an `Int`, `m` a `String`; a
+//! group that may not take part, such as `(\\d+)?`, gives an `Option`). A mistake in the regex, or a wrong number of names, is a compile
+//! error. For a regex built at run time, pin it: `Matches(^re, List(CInt(y), CText(m)))` gets each capture as a `Cap`.
+
+forward enum Node
+
+export tuple Rng
+  lo Char
+  hi Char
+
+enum Node
+  NEmpty
+  NChar(c Char)
+  NAny
+  NSet(neg Bool, items List[Rng])
+  NCat(parts List[Node])
+  NAlt(a Node, b Node)
+  NStar(n Node, greedy Bool)
+  NCap(idx Int, n Node)
+  NBol
+  NEol
+  NWordB(neg Bool)
+
+export tuple Group
+  name String
+  kind String
+
+tuple Ps
+  i Int
+  ncap Int
+  groups List[Group]
+
+tuple Pn
+  node Node
+  st Ps
+
+fn perr(msg String, i Int) Error
+  Error(code: 1, message: "regex: $msg at position $i")
+
+fn peek_is(cs List[Char], i Int, c Char) Bool
+  i < len(cs) and cs(i) == c
+
+fn at_end(cs List[Char], i Int) Bool
+  i >= len(cs)
+
+fn is_digit(c Char) Bool
+  c >= '0' and c <= '9'
+
+fn is_letter(c Char) Bool
+  (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z')
+
+fn digit_rngs() List[Rng]
+  List(Rng(lo: '0', hi: '9'))
+
+fn word_rngs() List[Rng]
+  List(Rng(lo: 'a', hi: 'z'), Rng(lo: 'A', hi: 'Z'), Rng(lo: '0', hi: '9'), Rng(lo: '_', hi: '_'))
+
+fn space_rngs() List[Rng]
+  List(Rng(lo: ' ', hi: ' '), Rng(lo: '\t', hi: '\n'), Rng(lo: '\u{b}', hi: '\r'))
+
+fn one(c Char) List[Rng]
+  List(Rng(lo: c, hi: c))
+
+fn text_of(cs List[Char], i Int, j Int) String
+  cs |> drop(i) |> take(j - i) |> map((c) -> "$c") |> join("")
+
+// ---------------------------------------------------------------- repeats
+
+fn copies(n Node, k Int) List[Node]
+  (0..<k) |> map((_) -> n) |> collect()
+
+fn opt_chain(n Node, k Int, g Bool) Node
+  if k == 0
+    NEmpty
+  else
+    inner = NCat(List(n, opt_chain(n, k - 1, g)))
+    if g
+      NAlt(inner, NEmpty)
+    else
+      NAlt(NEmpty, inner)
+
+fn expand(n Node, lo Int, hi Int, g Bool) Node
+  if hi < 0
+    NCat(copies(n, lo) + List(NStar(n, g)))
+  else
+    NCat(copies(n, lo) + List(opt_chain(n, hi - lo, g)))
+
+fn digits_end(cs List[Char], i Int) Int
+  for k in i..<len(cs)
+    if not is_digit(cs(k))
+      break(k)
+  else
+    len(cs)
+
+fn int_of(cs List[Char], i Int, j Int) Int
+  when read[Int](text_of(cs, i, j))
+    Ok(n) -> n
+    Err(_) -> 1000000
+
+tuple Cnt
+  lo Int
+  hi Int
+  next Int
+
+// `{n}`, `{n,}` or `{n,m}` starting at the `{`; an Err when it is not one of those.
+fn read_count(cs List[Char], i Int) Result[Cnt, Error]
+  a = digits_end(cs, i + 1)
+  if a == i + 1
+    return Err(perr("a repeat needs a number after `{`", i))
+  lo = int_of(cs, i + 1, a)
+  if peek_is(cs, a, '}')
+    return Ok(Cnt(lo: lo, hi: lo, next: a + 1))
+  if not peek_is(cs, a, ',')
+    return Err(perr("expected `,` or `}` in a repeat", a))
+  b = digits_end(cs, a + 1)
+  if peek_is(cs, b, '}')
+    if b == a + 1
+      Ok(Cnt(lo: lo, hi: -1, next: b + 1))
+    else
+      Ok(Cnt(lo: lo, hi: int_of(cs, a + 1, b), next: b + 1))
+  else
+    Err(perr("missing `}` in a repeat", b))
+
+fn finish_rep(cs List[Char], a Pn, lo Int, hi Int, j Int) Result[Pn, Error]
+  if hi >= 0 and hi < lo
+    return Err(perr("the repeat's top is below its bottom", j))
+  if lo > 255 or hi > 255
+    return Err(perr("a repeat count is at most 255", j))
+  lazy = peek_is(cs, j, '?')
+  k = if lazy then j + 1 else j
+  Ok(Pn(node: expand(a.node, lo, hi, not lazy), st: Ps(i: k, ncap: a.st.ncap, groups: a.st.groups)))
+
+fn parse_quant(cs List[Char], a Pn) Result[Pn, Error]
+  i = a.st.i
+  if at_end(cs, i)
+    return Ok(a)
+  c = cs(i)
+  if c == '*'
+    finish_rep(cs, a, 0, -1, i + 1)
+  elif c == '+'
+    finish_rep(cs, a, 1, -1, i + 1)
+  elif c == '?'
+    finish_rep(cs, a, 0, 1, i + 1)
+  elif c == '{'
+    cnt = read_count(cs, i)?
+    finish_rep(cs, a, cnt.lo, cnt.hi, cnt.next)
+  else
+    Ok(a)
+
+// ---------------------------------------------------------------- atoms
+
+forward fn parse_alt(cs List[Char], st Ps) Result[Pn, Error]
+
+fn bump(st Ps, i Int) Ps
+  Ps(i: i, ncap: st.ncap, groups: st.groups)
+
+tuple Sa
+  items List[Rng]
+  single Bool
+  next Int
+
+fn escape_char(c Char) Char
+  when c
+    'n' -> '\n'
+    't' -> '\t'
+    'r' -> '\r'
+    'f' -> '\u{c}'
+    'v' -> '\u{b}'
+    _ -> c
+
+fn is_class_escape(c Char) Bool
+  c == 'd' or c == 'w' or c == 's'
+
+// One thing inside `[...]`: a character, or `\d` `\w` `\s`. `i` is its first index.
+fn set_atom(cs List[Char], i Int) Result[Sa, Error]
+  c = cs(i)
+  if c ~= '\\'
+    return Ok(Sa(items: one(c), single: true, next: i + 1))
+  if at_end(cs, i + 1)
+    return Err(perr("the pattern ends with `\\`", i))
+  e = cs(i + 1)
+  if e == 'd'
+    Ok(Sa(items: digit_rngs(), single: false, next: i + 2))
+  elif e == 'w'
+    Ok(Sa(items: word_rngs(), single: false, next: i + 2))
+  elif e == 's'
+    Ok(Sa(items: space_rngs(), single: false, next: i + 2))
+  elif e == 'D' or e == 'W' or e == 'S'
+    Err(perr("`\\$e` is not allowed inside `[...]`; write `[^...]`", i))
+  elif is_letter(e) and not (e == 'n' or e == 't' or e == 'r' or e == 'f' or e == 'v')
+    Err(perr("unknown escape `\\$e`", i))
+  else
+    Ok(Sa(items: one(escape_char(e)), single: true, next: i + 2))
+
+fn set_items(cs List[Char], i Int, acc List[Rng]) Result[(List[Rng], Int), Error]
+  if at_end(cs, i)
+    return Err(perr("missing `]`", i))
+  if cs(i) == ']'
+    return Ok((acc, i + 1))
+  a = set_atom(cs, i)?
+  if a.single and peek_is(cs, a.next, '-') and not at_end(cs, a.next + 1) and cs(a.next + 1) ~= ']'
+    b = set_atom(cs, a.next + 1)?
+    if not b.single
+      return Err(perr("a range must end in a character", a.next))
+    ai = a.items
+    bi = b.items
+    lo = ai(0).lo
+    hi = bi(0).lo
+    if lo > hi
+      return Err(perr("the range `$lo-$hi` is backwards", i))
+    set_items(cs, b.next, acc + List(Rng(lo: lo, hi: hi)))
+  else
+    set_items(cs, a.next, acc + a.items)
+
+fn parse_set(cs List[Char], st Ps) Result[Pn, Error]
+  neg = peek_is(cs, st.i, '^')
+  start = if neg then st.i + 1 else st.i
+  if peek_is(cs, start, ']')
+    // a `]` first in the set is an ordinary character
+    (items, next) = set_items(cs, start + 1, one(']'))?
+    Ok(Pn(node: NSet(neg, items), st: bump(st, next)))
+  else
+    (items, next) = set_items(cs, start, List())?
+    Ok(Pn(node: NSet(neg, items), st: bump(st, next)))
+
+fn parse_escape(cs List[Char], st Ps) Result[Pn, Error]
+  if at_end(cs, st.i)
+    return Err(perr("the pattern ends with `\\`", st.i))
+  e = cs(st.i)
+  nx = bump(st, st.i + 1)
+  if e == 'd'
+    Ok(Pn(node: NSet(false, digit_rngs()), st: nx))
+  elif e == 'D'
+    Ok(Pn(node: NSet(true, digit_rngs()), st: nx))
+  elif e == 'w'
+    Ok(Pn(node: NSet(false, word_rngs()), st: nx))
+  elif e == 'W'
+    Ok(Pn(node: NSet(true, word_rngs()), st: nx))
+  elif e == 's'
+    Ok(Pn(node: NSet(false, space_rngs()), st: nx))
+  elif e == 'S'
+    Ok(Pn(node: NSet(true, space_rngs()), st: nx))
+  elif e == 'b'
+    Ok(Pn(node: NWordB(false), st: nx))
+  elif e == 'B'
+    Ok(Pn(node: NWordB(true), st: nx))
+  elif e == 'A'
+    Ok(Pn(node: NBol, st: nx))
+  elif e == 'z'
+    Ok(Pn(node: NEol, st: nx))
+  elif is_digit(e)
+    Err(perr("back-references are not supported: they need backtracking", st.i - 1))
+  elif is_letter(e) and not (e == 'n' or e == 't' or e == 'r' or e == 'f' or e == 'v')
+    Err(perr("unknown escape `\\$e`", st.i - 1))
+  else
+    Ok(Pn(node: NChar(escape_char(e)), st: nx))
+
+fn scan_to(cs List[Char], i Int, stops String) Int
+  for k in i..<len(cs)
+    if stops.contains("${cs(k)}")
+      break(k)
+  else
+    len(cs)
+
+fn valid_kind(k String) Bool
+  k == "String" or k == "Int" or k == "Float" or k == "Bool"
+
+fn valid_name(s String) Bool
+  len(s) > 0 and (s |> chars() |> all((c) -> is_letter(c) or is_digit(c) or c == '_'))
+
+tuple Hdr
+  group Group
+  capturing Bool
+  next Int
+
+// What follows `(`: `?:`, `?<name>`, `?<name:Type>` or nothing.
+fn read_header(cs List[Char], i Int) Result[Hdr, Error]
+  if not peek_is(cs, i, '?')
+    return Ok(Hdr(group: Group(name: "", kind: "String"), capturing: true, next: i))
+  if peek_is(cs, i + 1, ':')
+    return Ok(Hdr(group: Group(name: "", kind: "String"), capturing: false, next: i + 2))
+  if not peek_is(cs, i + 1, '<')
+    return Err(perr("look-around and flags are not supported", i))
+  if peek_is(cs, i + 2, '=') or peek_is(cs, i + 2, '!')
+    return Err(perr("look-behind is not supported", i))
+  j = scan_to(cs, i + 2, ">:")
+  if at_end(cs, j)
+    return Err(perr("a group name needs a closing `>`", i))
+  name = text_of(cs, i + 2, j)
+  if not valid_name(name)
+    return Err(perr("a group name is letters, digits and `_`", i + 2))
+  if cs(j) == '>'
+    return Ok(Hdr(group: Group(name: name, kind: "String"), capturing: true, next: j + 1))
+  k = scan_to(cs, j + 1, ">")
+  if at_end(cs, k)
+    return Err(perr("a group name needs a closing `>`", i))
+  kind = text_of(cs, j + 1, k)
+  if not valid_kind(kind)
+    return Err(perr("a group type is Int, Float, Bool or String, not `$kind`", j + 1))
+  Ok(Hdr(group: Group(name: name, kind: kind), capturing: true, next: k + 1))
+
+fn parse_group(cs List[Char], st Ps) Result[Pn, Error]
+  h = read_header(cs, st.i)?
+  idx = if h.capturing then st.ncap + 1 else st.ncap
+  gs = if h.capturing then st.groups + List(h.group) else st.groups
+  inner = parse_alt(cs, Ps(i: h.next, ncap: idx, groups: gs))?
+  if not peek_is(cs, inner.st.i, ')')
+    return Err(perr("missing `)`", inner.st.i))
+  after = bump(inner.st, inner.st.i + 1)
+  if h.capturing
+    Ok(Pn(node: NCap(idx, inner.node), st: after))
+  else
+    Ok(Pn(node: inner.node, st: after))
+
+fn parse_atom(cs List[Char], st Ps) Result[Pn, Error]
+  c = cs(st.i)
+  nx = bump(st, st.i + 1)
+  if c == '('
+    parse_group(cs, nx)
+  elif c == '['
+    parse_set(cs, nx)
+  elif c == '.'
+    Ok(Pn(node: NAny, st: nx))
+  elif c == '^'
+    Ok(Pn(node: NBol, st: nx))
+  elif c == '$'
+    Ok(Pn(node: NEol, st: nx))
+  elif c == '\\'
+    parse_escape(cs, nx)
+  elif c == '*' or c == '+' or c == '?'
+    Err(perr("nothing to repeat", st.i))
+  else
+    Ok(Pn(node: NChar(c), st: nx))
+
+fn parse_piece(cs List[Char], st Ps) Result[Pn, Error]
+  a = parse_atom(cs, st)?
+  parse_quant(cs, a)
+
+fn parse_cat(cs List[Char], st Ps, acc List[Node]) Result[Pn, Error]
+  if at_end(cs, st.i) or cs(st.i) == '|' or cs(st.i) == ')'
+    return Ok(Pn(node: NCat(acc), st: st))
+  p = parse_piece(cs, st)?
+  parse_cat(cs, p.st, acc + List(p.node))
+
+fn parse_alt(cs List[Char], st Ps) Result[Pn, Error]
+  p = parse_cat(cs, st, List())?
+  if peek_is(cs, p.st.i, '|')
+    q = parse_alt(cs, bump(p.st, p.st.i + 1))?
+    Ok(Pn(node: NAlt(p.node, q.node), st: q.st))
+  else
+    Ok(p)
+
+// ---------------------------------------------------------------- the program
+
+export enum Inst
+  IChar(c Char)
+  IAny
+  ISet(neg Bool, items List[Rng])
+  ISplit(a Int, b Int)
+  IJmp(a Int)
+  ISave(n Int)
+  IBol
+  IEol
+  IWordB(neg Bool)
+  IMatch
+
+forward fn emit(n Node, base Int) List[Inst]
+
+fn emit_all(parts List[Node], k Int, base Int, acc List[Inst]) List[Inst]
+  if k >= len(parts)
+    acc
+  else
+    emit_all(parts, k + 1, base, acc + emit(parts(k), base + len(acc)))
+
+fn emit(n Node, base Int) List[Inst]
+  when n
+    NEmpty -> List()
+    NChar(c) -> List(IChar(c))
+    NAny -> List(IAny)
+    NSet(neg, items) -> List(ISet(neg, items))
+    NCat(parts) -> emit_all(parts, 0, base, List())
+    NAlt(a, b) ->
+      ea = emit(a, base + 1)
+      eb = emit(b, base + 2 + len(ea))
+      end = base + 2 + len(ea) + len(eb)
+      List(ISplit(base + 1, base + 2 + len(ea))) + ea + List(IJmp(end)) + eb
+    NStar(m, g) ->
+      body = emit(m, base + 1)
+      end = base + 2 + len(body)
+      split = if g then ISplit(base + 1, end) else ISplit(end, base + 1)
+      List(split) + body + List(IJmp(base))
+    NCap(idx, m) -> List(ISave(2 * idx)) + emit(m, base + 1) + List(ISave(2 * idx + 1))
+    NBol -> List(IBol)
+    NEol -> List(IEol)
+    NWordB(neg) -> List(IWordB(neg))
+
+export tuple Regex
+  prog List[Inst]
+  whole List[Inst]
+  groups List[Group]
+  source String
+
+/// Read a pattern. The `Err` says what is wrong and where.
+///
+/// > compile("a(b+)c").map((r) -> len(r.groups))
+/// Ok(1)
+export fn compile(source String) Result[Regex, Error]
+  cs = source |> chars() |> collect()
+  p = parse_alt(cs, Ps(i: 0, ncap: 0, groups: List()))?
+  if p.st.i < len(cs)
+    return Err(perr("unmatched `)`", p.st.i))
+  body = emit(p.node, 1)
+  if len(body) > 20000
+    return Err(perr("the pattern is too large", 0))
+  Ok(Regex(prog: List(ISave(0)) + body + List(ISave(1), IMatch), whole: List(ISave(0)) + body + List(IEol, ISave(1), IMatch), groups: p.st.groups, source: source))
+
+/// A pattern known to be right: stops the program when it is not.
+export fn must(source String) Regex
+  when compile(source)
+    Ok(r) -> r
+    Err(e) -> fail(e.message)
+
+// ---------------------------------------------------------------- the matcher
+
+tuple Th
+  pc Int
+  caps List[Int]
+
+tuple Ad
+  seen List[Int]
+  out List[Th]
+
+fn is_word(c Char) Bool
+  is_letter(c) or is_digit(c) or c == '_'
+
+fn word_at(cs List[Char], i Int) Bool
+  i >= 0 and i < len(cs) and is_word(cs(i))
+
+fn in_set(neg Bool, items List[Rng], c Char) Bool
+  hit = items |> any((r) -> c >= r.lo and c <= r.hi)
+  hit ~= neg
+
+// Add the thread at `pc`, and everything reachable from it without reading a character, in priority order.
+fn add(prog List[Inst], cs List[Char], pc Int, i Int, caps List[Int], ad Ad) Ad
+  if ad.seen.contains(pc)
+    return ad
+  ad1 = Ad(seen: ad.seen + List(pc), out: ad.out)
+  when prog(pc)
+    IJmp(a) -> add(prog, cs, a, i, caps, ad1)
+    ISplit(a, b) -> add(prog, cs, b, i, caps, add(prog, cs, a, i, caps, ad1))
+    ISave(n) -> add(prog, cs, pc + 1, i, caps.set(n, i), ad1)
+    IBol -> if i == 0 then add(prog, cs, pc + 1, i, caps, ad1) else ad1
+    IEol -> if i == len(cs) then add(prog, cs, pc + 1, i, caps, ad1) else ad1
+    IWordB(neg) ->
+      edge = word_at(cs, i - 1) ~= word_at(cs, i)
+      if edge ~= neg then add(prog, cs, pc + 1, i, caps, ad1) else ad1
+    _ -> Ad(seen: ad1.seen, out: ad1.out + List(Th(pc: pc, caps: caps)))
+
+tuple Stp
+  k Int
+  nxt Ad
+  matched List[Int]
+  stop Bool
+
+// Does the instruction at `pc` accept the character at `i`?
+fn accepts(prog List[Inst], pc Int, cs List[Char], i Int) Bool
+  if i >= len(cs)
+    return false
+  c = cs(i)
+  when prog(pc)
+    IChar(x) -> c == x
+    IAny -> c ~= '\n'
+    ISet(neg, items) -> in_set(neg, items, c)
+    _ -> false
+
+fn step_one(prog List[Inst], cs List[Char], i Int, ths List[Th], s Stp) Stp
+  t = ths(s.k)
+  when prog(t.pc)
+    IMatch -> Stp(k: s.k + 1, nxt: s.nxt, matched: t.caps, stop: true)
+    _ ->
+      if accepts(prog, t.pc, cs, i)
+        Stp(k: s.k + 1, nxt: add(prog, cs, t.pc + 1, i + 1, t.caps, s.nxt), matched: s.matched, stop: false)
+      else
+        Stp(k: s.k + 1, nxt: s.nxt, matched: s.matched, stop: false)
+
+tuple Vm
+  i Int
+  ad Ad
+  matched List[Int]
+  done Bool
+
+fn blank(n Int) List[Int]
+  (0..<n) |> map((_) -> -1) |> collect()
+
+fn vm_step(prog List[Inst], ncaps Int, cs List[Char], v Vm, from Int, anchored Bool) Vm
+  seed = len(v.matched) == 0 and (v.i == from or not anchored)
+  ad1 = if seed then add(prog, cs, 0, v.i, blank(ncaps), v.ad) else v.ad
+  if len(ad1.out) == 0
+    if len(v.matched) > 0 or anchored or v.i >= len(cs)
+      return Vm(i: v.i, ad: ad1, matched: v.matched, done: true)
+    return Vm(i: v.i + 1, ad: Ad(seen: List(), out: List()), matched: v.matched, done: false)
+  s0 = Stp(k: 0, nxt: Ad(seen: List(), out: List()), matched: v.matched, stop: false)
+  s = while not s0.stop and s0.k < len(ad1.out)
+    s0 = step_one(prog, cs, v.i, ad1.out, s0)
+  else
+    s0
+  if v.i >= len(cs)
+    Vm(i: v.i, ad: s.nxt, matched: s.matched, done: true)
+  else
+    Vm(i: v.i + 1, ad: s.nxt, matched: s.matched, done: false)
+
+// The capture positions of the best match that starts at or after `from` (only at `from` when `anchored`), or an empty list.
+fn run(prog List[Inst], ncaps Int, cs List[Char], from Int, anchored Bool) List[Int]
+  v0 = Vm(i: from, ad: Ad(seen: List(), out: List()), matched: List(), done: false)
+  r = while not v0.done
+    v0 = vm_step(prog, ncaps, cs, v0, from, anchored)
+  else
+    v0
+  r.matched
+
+// ---------------------------------------------------------------- results
+
+/// What one group captured. A group with a type (`(?<n:Int>\d+)`) arrives read; a plain group is `CText`; a group that did
+/// not take part in the match (the `b` in `a|(b)`) is `CNone`.
+export enum Cap deriving eq, show
+  CText(s String)
+  CInt(n Int)
+  CFloat(x Float)
+  CBool(b Bool)
+  CNone
+
+export tuple Match deriving eq, show
+  start Int
+  end Int
+  text String
+  groups List[Cap]
+  names List[String]
+
+fn read_cap(kind String, text String) Result[Cap, Error]
+  if kind == "Int"
+    when read[Int](text)
+      Ok(n) -> Ok(CInt(n))
+      Err(_) -> Err(Error(code: 2, message: "`$text` is not an Int"))
+  elif kind == "Float"
+    when read[Float](text)
+      Ok(x) -> Ok(CFloat(x))
+      Err(_) -> Err(Error(code: 2, message: "`$text` is not a Float"))
+  elif kind == "Bool"
+    if text == "true"
+      Ok(CBool(true))
+    elif text == "false"
+      Ok(CBool(false))
+    else
+      Err(Error(code: 2, message: "`$text` is not a Bool"))
+  else
+    Ok(CText(text))
+
+fn cap_at(re Regex, cs List[Char], caps List[Int], k Int) Result[Cap, Error]
+  s = caps(2 * k)
+  e = caps(2 * k + 1)
+  if s < 0 or e < 0
+    Ok(CNone)
+  else
+    gs = re.groups
+    read_cap(gs(k - 1).kind, text_of(cs, s, e))
+
+fn match_of(re Regex, cs List[Char], caps List[Int]) Option[Match]
+  if len(caps) == 0
+    return None
+  got = (1..len(re.groups)) |> map((k) -> cap_at(re, cs, caps, k)) |> collect()
+  when sequence(got)
+    Ok(gs) -> Some(Match(start: caps(0), end: caps(1), text: text_of(cs, caps(0), caps(1)), groups: gs, names: re.groups |> map((g) -> g.name) |> collect()))
+    Err(_) -> None
+
+fn ncaps(re Regex) Int
+  2 * (len(re.groups) + 1)
+
+/// The first match that starts at or after character `from`.
+export fn find_from(re Regex, s String, from Int) Option[Match]
+  cs = s |> chars() |> collect()
+  match_of(re, cs, run(re.prog, ncaps(re), cs, from, false))
+
+/// The first match anywhere in the text.
+///
+/// > find(must("\\d+"), "ab 42 cd").map((m) -> m.text)
+/// Some("42")
+export fn find(re Regex, s String) Option[Match]
+  find_from(re, s, 0)
+
+/// The match when the pattern covers the whole text, and `None` otherwise.
+///
+/// > full(must("\\d+"), "42").map((m) -> m.text)
+/// Some("42")
+export fn full(re Regex, s String) Option[Match]
+  cs = s |> chars() |> collect()
+  match_of(re, cs, run(re.whole, ncaps(re), cs, 0, true))
+
+/// Does the pattern match anywhere in the text?
+export fn is_match(re Regex, s String) Bool
+  find(re, s) is Some(_)
+
+tuple Fa
+  from Int
+  found List[Match]
+  done Bool
+
+/// Every match, left to right, with none overlapping. An empty match counts, and the search moves one character past it.
+///
+/// > find_all(must("\\d+"), "1 and 22 and 333").map((m) -> m.text)
+/// List("1", "22", "333")
+export fn find_all(re Regex, s String) List[Match]
+  n = len(s)
+  f0 = Fa(from: 0, found: List(), done: false)
+  f = while not f0.done
+    f0 = when find_from(re, s, f0.from)
+      Some(m) ->
+        nxt = if m.end > m.start then m.end else m.end + 1
+        Fa(from: nxt, found: f0.found + List(m), done: nxt > n)
+      None -> Fa(from: f0.from, found: f0.found, done: true)
+  else
+    f0
+  f.found
+
+tuple Rp
+  out String
+  prev Int
+
+/// Replace every match with what `f` makes of it.
+///
+/// > replace_all(must("\\d+"), "a1b22", (m) -> "<${m.text}>")
+/// "a<1>b<22>"
+export fn replace_all(re Regex, s String, f (Match) -> String) String
+  cs = s |> chars() |> collect()
+  r = find_all(re, s) |> reduce(Rp(out: "", prev: 0), (acc, m) -> Rp(out: acc.out + text_of(cs, acc.prev, m.start) + f(m), prev: m.end))
+  r.out + text_of(cs, r.prev, len(cs))
+
+tuple Sp
+  parts List[String]
+  prev Int
+
+/// The text between the matches.
+///
+/// > split(must(",\\s*"), "a, b,c")
+/// List("a", "b", "c")
+export fn split(re Regex, s String) List[String]
+  cs = s |> chars() |> collect()
+  r = find_all(re, s) |> reduce(Sp(parts: List(), prev: 0), (acc, m) -> Sp(parts: acc.parts + List(text_of(cs, acc.prev, m.start)), prev: m.end))
+  r.parts + List(text_of(cs, r.prev, len(cs)))
+
+impl Match
+  /// The capture of a named group, or `None` when no group has that name.
+  fn named(self, name String) Option[Cap]
+    k = self.names |> position((n) -> n == name)
+    when k
+      Ok(i) ->
+        gs = self.groups
+        Some(gs(i))
+      Err(_) -> None
+
+/// In a `when`: the whole text matches, and the pattern after it matches the list of captures.
+export pattern fn Matches(re Regex, s String) Option[List[Cap]]
+  full(re, s).map((m) -> m.groups)
+
+/// In a `when`: the first match anywhere in the text, with its captures.
+export pattern fn Finds(re Regex, s String) Option[List[Cap]]
+  find(re, s).map((m) -> m.groups)

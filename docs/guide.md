@@ -5368,3 +5368,56 @@ Console(prefix: "app").info("started")
 
 Output: `app: started`.
 
+
+**Chapter 29: Regular expressions (the `regex` package)**
+
+A regular expression describes the shape of some text. The `regex` package is written in moxie (`moxie/std/regex.mxi`), and it runs in time proportional to the text: it never backtracks, so no pattern can hang the program. The cost is that it leaves out the two features that need backtracking, back-references (`\1`) and look-around, and says so when you write one.
+
+The syntax is the usual one: `abc`, `.`, `[a-z]`, `[^a-z]`, `\d \w \s` (and `\D \W \S`), `\b`, `^` and `$` (the start and end of the text), `|`, groups `( )`, `(?: )` that only group, `(?<name> )` that name a capture, the repeats `* + ? {n} {n,} {n,m}`, and the lazy forms `*?` and `+?`. Write each backslash twice inside a string, because a string has its own escapes: `"\\d+"`.
+
+The most useful place for a regex is a `when`. Write the regex as a string literal and the names after it, and the compiler reads the regex and gives each name the type its group declares. A group is `(...)` for a `String`, or `(?<n:Int>...)`, `(?<x:Float>...)`, `(?<ok:Bool>...)` to have the text read for you; a group that may not take part (`(...)?`, or one side of a `|`) gives an `Option`. `Matches` tests the whole text and `Finds` looks for the first match anywhere.
+
+```
+import regex(Matches, Finds)
+
+fn describe(line String) String
+  when line
+    Matches("(?<y:Int>\\d{4})-(?<m:Int>\\d\\d)-(?<d:Int>\\d\\d)", (y, m, d)) -> "date ${y + 1}/${m}/${d}"
+    Finds("(\\w+)@(\\w+)\\.com", (user, host)) -> "mail ${user} at ${host}"
+    Matches("v(?<n:Int>\\d+)(?<tag>-[a-z]+)?", (n, tag)) -> "version ${n} ${tag}"
+    _ -> "something else"
+println(describe("2026-11-20"))
+println(describe("write bob@example.com today"))
+println(describe("v12-beta"))
+println(describe("v7"))
+println(describe("2026-11-20 and more"))
+```
+
+Output: `date 2027/11/20`, `mail bob at example`, `version 12 Some("-beta")`, `version 7 None`, then `something else`. In the first arm `y + 1` is plain arithmetic, because `y` is an `Int`, not text. It is a compile error to write the wrong number of names, to use a name as the wrong type (`y.len()` on an `Int`), or to write a regex that does not parse (`"(ab"`), so a mistake does not wait for a bad input to show itself. One name stands for one group's value, and a regex with no groups takes no names: `Matches("ab+") -> ...`. This is the typed-capture idea of Swift's regex literals; the regex has to be a string literal so the compiler can read it. A `pattern fn` is imported by its bare name (`import regex(Matches, Finds)`), and a `when` that uses one needs a `_` arm.
+
+For a regex you build while the program runs, compile it once and pin it with `^`. The captures then arrive as a `List` of `Cap` cases (`CText`, `CInt`, `CFloat`, `CBool`, and `CNone` for a group that did not take part), because the compiler cannot read a string it does not have. The package's other functions take a `Regex` from `compile(source)`, which gives a `Result` whose `Err` says where the pattern went wrong, or from `must(source)`, which stops the program on a bad pattern.
+
+```
+import regex
+import regex(Matches, CInt, CText, must)
+
+unit = "kg"
+weight = must("(?<n:Int>\\d+)${unit}")
+fn grams(s String) Int
+  when s
+    Matches(^weight, List(CInt(n))) -> n * 1000
+    _ -> 0
+println(grams("12kg"))
+println(grams("12lb"))
+words = regex.must("\\w+")
+println(regex.find_all(words, "to be or not to be").map((m) -> m.text) |> collect())
+println(regex.replace_all(regex.must("\\d+"), "a1b22", (m) -> "<${m.text}>"))
+println(regex.split(regex.must(",\\s*"), "a, b,c"))
+println(regex.is_match(regex.must("^[a-z]+$"), "hello"))
+println(regex.compile("a{3,1}"))
+println(regex.compile("(\\d)\\1"))
+text = (0..<300) |> map((_) -> "a") |> join("")
+println(regex.is_match(regex.must("(a+)+b"), text))
+```
+
+Output: `12000`, `0`, `List("to", "be", "or", "not", "to", "be")`, `a<1>b<22>`, `List("a", "b", "c")`, `true`, `Err(Error(code: 1, message: "regex: the repeat's top is below its bottom at position 6"))`, `Err(Error(code: 1, message: "regex: back-references are not supported: they need backtracking at position 4"))`, then `false`. The last line is the pattern `(a+)+b` on 300 letters `a`, which an engine that backtracks can take exponential time on; here it answers at once. `find(re, text)` gives the first `Match` (with `start`, `end`, `text`, `groups`, and `named("tag")`), `full(re, text)` requires the whole text to match, and `find_all`, `replace_all` and `split` work left to right with no overlap. Text positions count characters, not bytes. **Mistakes:** forgetting to double a backslash in the string (`"\d"` is a bad escape), a `(?<n:Char>...)` group (the types are `Int`, `Float`, `Bool` and `String`), expecting a back-reference, and passing a regex that is not a string literal to the form that types its names. The one place this engine differs from Perl and Python: a group repeated by `*` whose last repetition is empty reports no value rather than an empty string.

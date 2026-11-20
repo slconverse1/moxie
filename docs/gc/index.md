@@ -627,6 +627,8 @@ Moxie is a general language, but four kinds of application come with the languag
 
 **HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the Mixer's Guide, Chapter 28. Sockets and their permissions are in superpower 23.
 
+**Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See the Mixer's Guide, Chapter 30.
+
 **JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the Mixer's Guide, Chapter 29. An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
 
 ## 4. Everything is an expression

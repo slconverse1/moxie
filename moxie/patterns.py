@@ -325,9 +325,16 @@ class PatternsMixin:
                 vals.append(self.run_sync(self.ev(q.expr, env)))
             else:
                 raise Abort(f"the first {lead} argument(s) of the pattern `{name}` are values (a literal or `^name`)")
+        src = vals[0] if vals and vals[0].__class__ is str and name in ("Matches", "Finds") and getattr(f, "env", None) is not None else None
+        if src is not None:
+            vals = [self.run_sync(self.apply(f.env.lookup("must", self), [src]))] + vals[1:]
         r = self.run_sync(self.apply(f, vals + [v]))
         if not (r.__class__ is EnumV and r.case == "Some"):
             return False
+        if src is not None:
+            r = self.rx_typed(src, r, env)
+            if r is None:
+                return False
         rest = items[lead:]
         if not rest:
             return True
@@ -337,6 +344,27 @@ class PatternsMixin:
         if payload.__class__ is not TupleV or len(payload.vals) != len(rest):
             return False
         return all(self.pmatch(q, x, b, env) for q, x in zip(rest, payload.vals))
+
+    def rx_typed(self, src, r, env):
+        """The regex package's literal form: the `Some(List[Cap])` it gave, as the typed payload the checker promised (see `rxtype`):
+        one value for one group, a tuple for several, `Some`/`None` for a group that may not take part."""
+        from . import rxtype
+        gs = rxtype.groups(src)
+        caps = r.vals[0].items
+        out = []
+        for (name, _kind, optional), c in zip(gs, caps):
+            if c.case == "CNone":
+                if not optional:
+                    return None
+                out.append(EnumV(r.et, "None", [], []))
+            else:
+                x = c.vals[0]
+                out.append(EnumV(r.et, "Some", [x], r.names) if optional else x)
+        if not out:
+            return r
+        names = [g[0] for g in gs]
+        payload = out[0] if len(out) == 1 else TupleV(out, names if all(names) else None)
+        return EnumV(r.et, "Some", [payload], r.names)
 
     def match_con(self, p, v, b, env):
         name = p.path[-1]

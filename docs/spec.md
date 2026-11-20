@@ -779,6 +779,13 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Checks.** A step uses up the endpoint it is given, without `move`: using the name afterwards is an error. Every endpoint must end its scope used up, handed on (passed to a function with `move`, sent, returned, or given to `go`), or finished; one that is dropped with steps left, or that reaches `End` and is never `finish`ed, is an error. A step on an endpoint of the wrong state, or with a value of the wrong type, is a compile error where the endpoint's type is known. `Peer[X]` is worked out by the checker wherever `X` is written out; a part that is not known stays unknown.
 - **Runtime.** An endpoint holds one channel for each direction (capacity one), so the protocol types cost nothing at run time. If the other end is gone, a step returns `Err` (CLOSED). A program that does not import `session` pays nothing. Two parties only; no timeouts or labels beyond the two branches of `Pick` and `Offer`.
 
+**23f. Regular expressions (the `regex` package)** (a built-in package written in moxie, `moxie/std/regex.mxi`; `import regex`)
+- **Engine.** `compile(source)` gives `Result[Regex, Error]` (`must(source)` stops on `Err`). Matching is a Pike VM: one pass over the text with every thread of the pattern alive at once, so time is proportional to the text and no pattern backtracks. Back-references and look-around are refused with an error. Leftmost match, first branch wins, `*?`-style lazy repeats; `^`/`$` (and `\A`/`\z`) are the ends of the text; positions count characters.
+- **Syntax.** Literals, `.` (not a newline), `[a-z]`, `[^a-z]`, `\d \w \s \D \W \S`, `\b \B`, `|`, `( )`, `(?: )`, `(?<name> )`, `(?<name:Int> )` (types `Int`, `Float`, `Bool`, `String`), `* + ? {n} {n,} {n,m}` and the lazy `?` forms (counts at most 255).
+- **Functions.** `find`, `find_from`, `full` (the whole text), `is_match`, `find_all`, `replace_all(re, text, f)`, `split`; a `Match` has `start`, `end`, `text`, `groups List[Cap]`, `names`, and `named(name)`. `Cap` is `CText`, `CInt`, `CFloat`, `CBool` or `CNone` (a group that did not take part). A typed group whose text does not read makes the match fail.
+- **Patterns.** `Matches(re, ...)` (whole text) and `Finds(re, ...)` (first match) are `pattern fn`s, imported by bare name. With a pinned regex, `Matches(^re, List(CInt(n)))`, the payload is the `List[Cap]`. With a string literal, `Matches("(?<y:Int>\\d+)-(\\w+)", (y, w))`, the checker reads the regex (`moxie/rxtype.py`) and types the names: `Int`/`Float`/`Bool`/`String` by group, `Option` of that for a group under `?`, `*` or `{0,n}` or in one side of a `|`; one group is the value itself, several are a tuple, none take no names. A regex that does not parse, a wrong number of names, or a misused type is a compile error.
+- **Not done.** A regex built at run time cannot have typed names (its payload is the `Cap` list). A group repeated by `*` whose last repetition is empty reports no value (Perl and Python give an empty string).
+
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.
 - **Numbers:** `abs`, `min`, `max`, `pow`, `sqrt`, `cast[T]`, `try_cast[T]`, `wrap_to[T]`, `checked_add/sub/mul/div`, `wrapping_*`, `saturating_*`, `is_nan`, `is_inf`, `is_finite`, `finite(x)`, `round_to[n](x, mode)`, `div(a, b, scale, mode)` (Decimal), `parse_number`.
@@ -945,7 +952,7 @@ aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type
 tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
 typeres : tres { ( '+' | '-' | '*' ) tres } ;
 tres : type | INT | STR ;
-importdecl : 'import' ident { '.' ident } [ 'as' ident ] NL ;
+importdecl : 'import' ident { '.' ident } [ 'as' ident ] [ '(' ident { ',' ident } ')' ] NL ;
 usingdecl : 'using' ident '=' expr NL ;
 testdecl : 'test' STR block ;
 

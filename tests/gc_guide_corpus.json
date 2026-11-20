@@ -2499,5 +2499,31 @@ null
 [
 "app: started"
 ]
+],
+[
+5568,
+"import regex(Matches, Finds)\n\nfn describe(line String) String\n  when line\n    Matches(\"(?<y:Int>\\\\d{4})-(?<m:Int>\\\\d\\\\d)-(?<d:Int>\\\\d\\\\d)\", (y, m, d)) -> \"date ${y + 1}/${m}/${d}\"\n    Finds(\"(\\\\w+)@(\\\\w+)\\\\.com\", (user, host)) -> \"mail ${user} at ${host}\"\n    Matches(\"v(?<n:Int>\\\\d+)(?<tag>-[a-z]+)?\", (n, tag)) -> \"version ${n} ${tag}\"\n    _ -> \"something else\"\nprintln(describe(\"2026-11-20\"))\nprintln(describe(\"write bob@example.com today\"))\nprintln(describe(\"v12-beta\"))\nprintln(describe(\"v7\"))\nprintln(describe(\"2026-11-20 and more\"))\n",
+[
+"date 2027/11/20",
+"mail bob at example",
+"version 12 Some(\"-beta\")",
+"version 7 None",
+"something else"
+]
+],
+[
+5588,
+"import regex\nimport regex(Matches, CInt, CText, must)\n\nunit = \"kg\"\nweight = must(\"(?<n:Int>\\\\d+)${unit}\")\nfn grams(s String) Int\n  when s\n    Matches(^weight, List(CInt(n))) -> n * 1000\n    _ -> 0\nprintln(grams(\"12kg\"))\nprintln(grams(\"12lb\"))\nwords = regex.must(\"\\\\w+\")\nprintln(regex.find_all(words, \"to be or not to be\").map((m) -> m.text) |> collect())\nprintln(regex.replace_all(regex.must(\"\\\\d+\"), \"a1b22\", (m) -> \"<${m.text}>\"))\nprintln(regex.split(regex.must(\",\\\\s*\"), \"a, b,c\"))\nprintln(regex.is_match(regex.must(\"^[a-z]+$\"), \"hello\"))\nprintln(regex.compile(\"a{3,1}\"))\nprintln(regex.compile(\"(\\\\d)\\\\1\"))\ntext = (0..<300) |> map((_) -> \"a\") |> join(\"\")\nprintln(regex.is_match(regex.must(\"(a+)+b\"), text))\n",
+[
+"12000",
+"0",
+"List(\"to\", \"be\", \"or\", \"not\", \"to\", \"be\")",
+"a<1>b<22>",
+"List(\"a\", \"b\", \"c\")",
+"true",
+"Err(Error(code: 1, message: \"regex: the repeat's top is below its bottom at position 6\"))",
+"Err(Error(code: 1, message: \"regex: back-references are not supported: they need backtracking at position 4\"))",
+"false"
+]
 ]
 ]

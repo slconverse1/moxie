@@ -10,6 +10,7 @@ from .ast import *   # noqa
 from .pexpr import MUT_RE
 from .values import UTAGS
 from . import tys
+from . import rxtype
 
 BASIC_TYPE_NAMES = {"Int", "Float", "Double", "Decimal", "Bool", "String", "Char", "Unit", "List", "Array", "Dict", "Set", "Option", "Result", "Duration"}
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
@@ -359,6 +360,7 @@ class Checker(RefineMixin):
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
+        self.rx_names = set()           # the regex package's `Matches` / `Finds`, once imported by name
         self.recs = {}                   # `pattern fn` name -> its FnDecl
         self.lam_node = {}               # Var -> the Lambda written in its binding, for the call-site recheck of unannotated parameters
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
@@ -495,6 +497,11 @@ class Checker(RefineMixin):
             self.fns[key] = [c]
             self.globals.add(key)
             self.pkg_calls.add(key)
+            if "pattern" in (fd.flags or ()) and key == fd.name:        # `import pkg(Name)`: its pattern fn is used like a local one
+                c.line = 0
+                if st.pkg == ["regex"] and fd.name in ("Matches", "Finds"):
+                    self.rx_names.add(key)
+                self.recs[key] = c
 
     def pkg_redirect(self, n, sc):
         """A call `pkg.f(...)` into an imported package is checked as a call of the function `pkg.f` known from its signature."""
@@ -1994,6 +2001,33 @@ class Checker(RefineMixin):
             return any(self.has_rec(q) for _l, q in p.items or [])
         return False
 
+    def rx_payload(self, fd, ps, items, line):
+        """The regex package's `Matches("(?<y:Int>\\d+)-(\\w+)", (y, w))`: a regex written as a string literal is read here, so the patterns after it
+        get the types its groups declare (`Int`, `Float`, `Bool`, else `String`; `Option` of that for a group that may not take part).
+        Gives `(payload type, group count)`, or None when this call is not that form."""
+        if fd.name not in self.rx_names:
+            return None
+        q = items[0] if items else None
+        if q.__class__ is not PLit or q.expr.__class__ is not StrLit or any(not isinstance(x, str) for x in q.expr.parts):
+            return None
+        try:
+            gs = rxtype.groups("".join(q.expr.parts))
+        except rxtype.RxError as e:
+            self.err(line, str(e))
+            return (None, -1)
+        ts = []
+        for _name, kind, optional in gs:
+            t = kind
+            ts.append(("app", "Option", [t]) if optional else t)
+        names = [g[0] for g in gs]
+        if not ts:
+            return (None, 0)
+        if len(ts) == 1:
+            return (ts[0], 1)
+        if all(names):
+            return (("tup", ts, names), len(ts))
+        return (("tup", ts), len(ts))
+
     def type_rec(self, p, sc, ty, res):
         """`Num(n)` where `Num` is a `pattern fn`: its leading arguments are values, the matched value has the type of its last parameter,
         and the patterns after the arguments match the payload of the `Option` it returns."""
@@ -2028,6 +2062,16 @@ class Checker(RefineMixin):
         rt = self.ty_of_type(fd.ret) if fd.ret is not None and not fd.tparams else None
         if rt.__class__ is tuple and rt[0] == "app" and rt[1] == "Option" and len(rt[2]) == 1:
             payload = rt[2][0]
+        rx = self.rx_payload(fd, ps, items, line)
+        if rx is not None:
+            payload, ngroups = rx
+            if ngroups == 0 and len(items) > lead:
+                self.err(line, f"the regex in `{fd.name}` has no groups, so there is nothing to match: write `{fd.name}(\"...\")` with no pattern after it")
+                return
+            r0 = items[lead] if len(items) == lead + 1 else None
+            if ngroups >= 2 and r0.__class__ is PTuple and len(r0.items or []) != ngroups and not any(q.__class__ is PRest for _l, q in r0.items or []):
+                self.err(line, f"the regex in `{fd.name}` has {ngroups} groups, but the pattern after it has {len(r0.items or [])} names")
+                return
         rest = items[lead:]
         if not rest:
             return
