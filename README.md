@@ -22,7 +22,7 @@ Dialect names. Internally, in notes, tests and commit messages, the GC-free dial
 
 Newest first.
 
-**2026-11-20 (open tuples as a superpower):** both intros gain "Open tuples: row polymorphism, in the moxie way" under superpower 8: the pipeline example, how `(age Int, ...)` and the bound `[T (age Int, ...)]` correspond to row polymorphism, and what moxie leaves out of the full feature (open results, adding or removing fields in types, open unions) and why that avoids the hard parts (parameters only, one specialized copy per shape, written signatures).
+**2026-11-20 (open tuples as a superpower):** both intros gain "Open tuples, row polymorphism the moxie way" under superpower 8: the pipeline example, how `(age Int, ...)` and the bound `[T (age Int, ...)]` correspond to row polymorphism, and what moxie leaves out of the full feature (open results, adding or removing fields in types, open unions) and why that avoids the hard parts (parameters only, one specialized copy per shape, written signatures).
 
 **2026-11-20 (open types in pipelines and SQL, two checks):** a function with an open parameter can be passed by name to a pipeline stage (`people |> filter(adult)`); every element is checked against the fields it needs, and a tuple that lacks one is a compile error. A new tuple literal returned where a bounded type parameter is the result (`fn f[T (age Int, ...)](u T) T = (age: 1)`) is now refused like the block form, with the hint to build it from the argument. Both mixer's guides gain a pipeline example and an SQL example for open types. `;` is now only for the start of a line: a `;` after a one-line lambda body is a syntax error, and the assignment scan stops at `;`. Tests in `tests/run_rowtuple.py` and `tests/run_semicolon.py`.
 
