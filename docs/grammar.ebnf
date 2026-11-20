@@ -67,7 +67,7 @@ unary : ( 'not' | '-' | '~' ) unary | range ;
 range : postfix [ ( '..' | '..=' | '..<' ) [ postfix ] [ 'step' unary ] ] ;
 postfix : primary { '(' [ args ] ')' | '(' [ params ] ')' '->' ( expr | block ) | '.' 'do' block | '.' 'update' updblock | '.' ident | '.' INT | '?' | '[' type_args ']' | '@' INT } ;
 args : arg { ',' arg } [ ',' ] ;
-arg : '...' | '..' | '..=' | '$' ident | [ 'ref' | 'using' | 'move' ] [ ident ':' ] [ '...' ] expr [ ':' expr ] [ '->' expr ] [ 'for' pattern 'in' expr [ 'if' expr ] ] | 'using' ;
+arg : '...' | '..' | '..=' | '$' ident [ '->' expr ] | [ 'ref' | 'using' | 'move' ] [ ident ':' ] [ '...' ] expr [ ':' expr ] [ '->' expr ] [ 'for' pattern 'in' expr [ 'if' expr ] ] | 'using' ;
 primary : '(' 'in' expr ')' | '\\' ident [ '(' [ args ] ')' ] | '/' ident { '/' ident } | '{' expr { ',' expr } '}' | '(' BTICK expr ')' | '(' expr BTICK ')' | 'try_go' postfix | 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | INT | FLOAT | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
 tuplelit : '(' [ titem { ( ',' | ';' { ';' } ) titem } [ ',' ] ] ')' ;
 titem : '...' | [ ident ] ':' expr | [ ident ':' ] [ '...' ] expr ;

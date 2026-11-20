@@ -7825,6 +7825,16 @@ class Checker(RefineMixin):
         return out
 
     def need_hash(self, name, line, what):
+        al = self.aliases.get(name)
+        if al is not None and getattr(al, "kind", None) == "union" and al.type.__class__ is TUnion:
+            # a `type union` is hashable when every member is: there is nothing to derive on it
+            for m in al.type.members:
+                mn = m.path[0] if m.__class__ is TName and len(m.path) == 1 else None
+                if mn in ("Double", "Float", "LongDouble"):
+                    self.err(line, f"`{name}` is used as {what}, but its member `{mn}` is not hashable (a floating-point number is never a key)")
+                elif mn is not None and (mn in self.tuples or mn in self.enums) and mn != name:
+                    self.need_hash(mn, line, what)
+            return
         if self.implements(("named", name), "Hashable") is False:
             self.err(line, f"`{name}` is used as {what}, so it needs `deriving eq, hash`")
 

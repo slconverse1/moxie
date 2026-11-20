@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the GC-free dial
 
 Newest first.
 
+**2026-11-20 (Dict keys):** in a `Dict(...)` literal, an expression followed by `->` is now a key: `abs(-3) -> 1`, `Color.Red -> 1`, `Key.ById(7) -> 1`, `$k -> 1`. Before, a call followed by `->` was read as a call with a trailing lambda, so `Dict(abs(-3) -> 1)` silently made an empty Dict and `Key.ById(7) -> 1` aborted. A capitalized bare name (`Red -> 1`) is a value, not a string, so enum keys work (also in `{Blue, Red} -> (3, 9)`); lowercase bare names stay strings. A `type union` is a key-eligible type when each member is (it could not be before: it demanded `deriving`, which a union cannot take). `tests/run_dictkeys.py`, guides, specs.
+
 **2026-11-20 (probe round 5):** probing the new regex typing and `Int8` checks found and fixed: a checker crash for an optional group (type arguments must be tuples), one group with a tuple of names accepted, a literal of the wrong type against a typed group (also for any `pattern fn` payload: `rec_lit_check`), a regex with a repeated group name (now an `Err`), and `a + 20 + 20` on an `Int8` variable (the written width now follows nested `+ - *`). Left as is, a design question: variables of different integer widths mix freely (`a Int8 + b Int16` is `12`). `tests/run_regex.py`, `tests/run_typesafe.py`.
 
 **2026-11-20 (Int8 arithmetic):** `a Int8 = 100` then `a + a` is now a compile error, not a run-time abort: the checker keeps the constant value of an annotated sized-integer binding written as a constant (outside loops; any later assignment drops it) and checks `+ - *` on two known values against the type's range. Values that only exist at run time still abort. `tests/run_typesafe.py`, specs.

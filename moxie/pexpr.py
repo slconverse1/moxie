@@ -539,7 +539,7 @@ class ExprParser(PBase):
         while not self.at_op("}"):
             t = self.peek()
             nt = self.peek(1)
-            if t.kind in ("NAME", "INT") and nt.kind == "OP" and nt.val in (",", "}"):
+            if t.kind in ("NAME", "INT") and nt.kind == "OP" and nt.val in (",", "}") and not (t.kind == "NAME" and t.val[:1].isupper()):
                 self.next()
                 keys.append((t.val, None))
             elif t.kind == "STR" and nt.kind == "OP" and nt.val in (",", "}"):
@@ -649,7 +649,7 @@ class ExprParser(PBase):
             self.expect_op("->")
             val = self.parse_expr()
             return Arg(None, TupleE([(None, key, False), (None, val, False)], line=line), None, line=line)
-        if t.kind in ("NAME", "INT") and self.at_op("->", 1):
+        if t.kind in ("NAME", "INT") and self.at_op("->", 1) and not (t.kind == "NAME" and t.val[:1].isupper() and getattr(self, "dict_call", False)):
             label = t.val
             self.next()
             self.next()
@@ -686,6 +686,20 @@ class ExprParser(PBase):
                 return Arg(label, None, "spread", line=line)
             e = self.parse_expr()
             return Arg(label, e, "spread", line=line)
+        if label is None and getattr(self, "dict_call", False):
+            # inside `Dict(...)` an expression followed by `->` is a computed key: `abs(-3) -> 1`, `Color.Red -> 1`, `Key.ById(7) -> 1`
+            # (read as a call with a trailing lambda it would lose the entry)
+            save_nt = self.no_trailing
+            self.no_trailing = True
+            try:
+                e = self.parse_expr()
+            finally:
+                self.no_trailing = save_nt
+            if self.at_op("->"):
+                self.next()
+                val = self.parse_expr()
+                return Arg(None, TupleE([(None, e, False), (None, val, False)], line=line), None, line=line)
+            return Arg(label, e, None, line=line)
         e = self.parse_expr()
         return Arg(label, e, None, line=line)
 

@@ -1001,6 +1001,26 @@ for (name, age) in older
 
 Output: `alice is 31`, `bob is 26`, `carol is 41`, `dave is 7`. Braces mark a list of keys, so a tuple on the left of a plain `->` is still a single key: `Dict((0, 0) -> "start")` has the key `(0, 0)`. A count that doesn't match, as in `{a, b, c} -> (1, 2)`, is a compile error. Only a Dict can be spread into a `Dict(...)`; spreading a `List` there is a compile error. In the other direction, `List(...ages)` gives the `(key, value)` pairs.
 
+**Computed keys, enum keys, and union keys.** A bare lowercase name in a `Dict(...)` is the string (`alice -> 30` is `"alice" -> 30`). Anything else is a value: a call, arithmetic, a qualified name (`Color.Red -> 1`), a `$name` for the value of a variable, or a parenthesized expression. A capitalized bare name is a value too, so with an enum key type `Dict(Red -> 3, Green -> 5)` uses the cases `Red` and `Green`. A key must be hashable, so an enum used as a key derives `eq, hash`, a floating-point number is never a key, and a `type union` is a key when each of its members is, so a table can be keyed by `Int | String` without a wrapper.
+
+```
+enum Color deriving eq, hash, show
+  Red
+  Green
+  Blue
+hours Dict[Color, Int] = Dict(Red -> 3, Green -> 5)
+who = Color.Blue
+more Dict[Color, Int] = Dict(...hours, $who -> 8)
+println(more)
+sizes = Dict(abs(-2) -> "two", len("abc") -> "three", (1 + 1 + 1 + 1) -> "four")
+println(sizes)
+type union Id = Int | String
+seen Dict[Id, Bool] = Dict(7 -> true, "x" -> false)
+println(seen.get("x"))
+```
+
+Output: `Dict(Color.Red -> 3, Color.Green -> 5, Color.Blue -> 8)`, `Dict(2 -> "two", 3 -> "three", 4 -> "four")`, then `Ok(false)`. The keys of one `Dict` have one type and so do its values; to mix them, name a union or an enum. **Mistakes:** a capitalized name that is not a case (`Dict(Alice -> 1)` is an undefined name; write `"Alice"`), and a `Double` as a key.
+
 **Combining collections.** **[gc]** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Nothing can be full, so each returns the plain collection, as `put` does, and a program meant to run in both dialects handles the `Result` that GC-free moxie returns.
 
 ```
