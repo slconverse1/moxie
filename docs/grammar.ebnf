@@ -96,7 +96,7 @@ fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')'
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
 tparams : '[' tparam { ',' tparam } ']' ;
 tparam : ident [ '[' hk { ',' hk } ']' ] [ bound { '+' bound } ] [ 'where' expr ] ;
-bound : ident [ '[' type_args ']' ] ;
+bound : ident [ '[' type_args ']' ] | '(' type_item { ',' type_item } [ ',' ] ')' ;
 params : param { ',' param } ;
 param : '(' target_item { ',' target_item } ')' | [ 'ref' | 'using' | 'move' | 'lazy' ] ( ident [ '...' ] [ type ] | literal | 'self' ) [ 'where' expr ] [ '=' expr ] ;
 tupledecl : 'tuple' ident [ tparams ] [ '(' [ params ] ')' ] [ derivs ] [ 'where' expr ] NL [ INDENT { tmember { ',' tmember } [ ',' ] NL [ INDENT { accessor | stmt } DEDENT ] } DEDENT ] ;
