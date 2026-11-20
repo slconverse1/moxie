@@ -375,6 +375,16 @@ export enum Inst
   IWordB(neg Bool)
   IMatch
 
+fn nullable(n Node) Bool
+  when n
+    NChar(_) -> false
+    NAny -> false
+    NSet(_, _) -> false
+    NCat(parts) -> parts |> all((p) -> nullable(p))
+    NAlt(a, b) -> nullable(a) or nullable(b)
+    NCap(_, m) -> nullable(m)
+    _ -> true
+
 forward fn emit(n Node, base Int) List[Inst]
 
 fn emit_all(parts List[Node], k Int, base Int, acc List[Inst]) List[Inst]
@@ -397,9 +407,16 @@ fn emit(n Node, base Int) List[Inst]
       List(ISplit(base + 1, base + 2 + len(ea))) + ea + List(IJmp(end)) + eb
     NStar(m, g) ->
       body = emit(m, base + 1)
-      end = base + 2 + len(body)
-      split = if g then ISplit(base + 1, end) else ISplit(end, base + 1)
-      List(split) + body + List(IJmp(base))
+      if nullable(m)
+        // `(x+)?`: one empty pass is allowed, as in Perl and Python, so a group repeated until it is empty keeps its empty text
+        end = base + 2 + len(body)
+        enter = if g then ISplit(base + 1, end) else ISplit(end, base + 1)
+        again = if g then ISplit(base + 1, end) else ISplit(end, base + 1)
+        List(enter) + body + List(again)
+      else
+        end = base + 2 + len(body)
+        split = if g then ISplit(base + 1, end) else ISplit(end, base + 1)
+        List(split) + body + List(IJmp(base))
     NCap(idx, m) -> List(ISave(2 * idx)) + emit(m, base + 1) + List(ISave(2 * idx + 1))
     NBol -> List(IBol)
     NEol -> List(IEol)

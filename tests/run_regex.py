@@ -38,6 +38,7 @@ CASES = [
  ("split", HEAD + 'println(split(must(",\\\\s*"), "a, b,c"))\n', 'List("a", "b", "c")'),
  ("is_match", HEAD + 'println(is_match(must("o+"), "foo"))\nprintln(is_match(must("z"), "foo"))\n', "true\nfalse"),
  ("characters, not bytes", show("é+", "caféé!"), 'Some("éé")'),
+ ("a repeated group that can match empty ends on an empty repetition", HEAD + 'println(find(must("(a*)+"), "aaa").map((m) -> m.groups))\n', 'Some(List(Cap.CText("")))'),
  ("repeat of a group", HEAD + 'println(find(must("(ab){2}"), "ababab").map((m) -> m.text))\n', 'Some("abab")'),
  ("optional and counted forms", show("colou?r{1,2}", "colorr"), 'Some("colorr")'),
  ("a pattern that backtracking engines hang on", HEAD + 'text = (0..<300) |> map((_) -> "a") |> join("")\nprintln(is_match(must("(a+)+b"), text))\nprintln(is_match(must("(a+)+b"), text + "b"))\n', "false\ntrue"),
