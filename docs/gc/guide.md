@@ -2485,6 +2485,7 @@ Output: `User: alex, Domain: example.com`, then `None`, then `hello`.
 | One kind of item, drop the rest | a `for:` block with a pattern, or `filter_map` |
 | Every kind of item gets its own result | `map` with a lambda that is a `when` |
 | A function you already have that returns an `Option` | `filter_map` |
+| The first item that fits, with its result | `find_map` |
 
 ```
 enum Event
@@ -2506,6 +2507,20 @@ println(labels |> collect())
 ```
 
 Output: `List(1, 5)`, then `List(2, 6)`, then `List("click 1,2", "key a", "quit", "click 5,6")`. The first two drop what they don't match, and the third must cover every case, as a `when` always does.
+
+**The first item that fits.** `find_map(f)` is the search that goes with `filter_map`: it applies `f` to each item and stops at the first `Some`, giving `Ok` of the payload, or an `Err` when no item gives one (it is F#'s `tryPick`, and `filter_map` is F#'s `choose`). It stops early, so it works on an endless range too. `position(pred)` gives the index of the first item that satisfies `pred`. On a `Dict` the function takes the key and the value.
+
+```
+inputs = List("apple", "42", "100", "banana")
+fn num(s String) Option[Int] = parse_number(s).ok()
+println(inputs |> find_map(num))
+println(inputs |> filter_map(num) |> collect())
+println(inputs.find_map(num).get_or(0))
+println(List("apple", "banana").find_map(num).get_or(-1))
+println(inputs.position((s) -> s == "100"))
+```
+
+Output: `Ok(42)`, then `List(42, 100)`, then `42`, then `-1`, then `Ok(2)`.
 
 **12a. Binary patterns**
 

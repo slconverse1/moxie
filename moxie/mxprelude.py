@@ -195,12 +195,6 @@ fn ok[T, E](r Result[T, E]) Option[T]
     Ok(v) -> Option.Some(v)
     Err(_) -> Option.None
 
-fn find_map[T, U](f (T) -> Option[U], xs Seq[T]) Result[U, Error]
-  xs |> filter_map(f) |> first()
-
-fn position[T](f (T) -> Bool, xs Seq[T]) Result[Int, Error]
-  xs |> enumerate() |> filter((p) -> f(p(1))) |> map((p) -> p(0)) |> first()
-
 fn split_once(s String, sep String) Option[(String, String)]
   parts = split(s, sep)
   if sep == "" or len(parts) < 2 then Option.None else Option.Some((parts(0), s(len(parts(0)) + len(sep)..)))

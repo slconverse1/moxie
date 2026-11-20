@@ -2325,6 +2325,33 @@ def b_find(I, a, kw, ta):
             return Ok(x)
 
 
+@bi("find_map", "last", True)
+def b_find_map(I, a, kw, ta):
+    """The first `Some` payload `f` gives, stopping there (F#'s `tryPick`): `Ok(payload)`, or `Err(MISSING)` when no item gives one."""
+    it = make_iter(I, a[1])
+    while True:
+        x = yield from it.nxt()
+        if x is END:
+            return err_reserved("MISSING", "not found")
+        r = yield from I.apply(a[0], [x])
+        if isinstance(r, EnumV) and r.case == "Some":
+            return Ok(r.vals[0])
+
+
+@bi("position", "last", True)
+def b_position(I, a, kw, ta):
+    """The index of the first item `f` accepts: `Ok(index)`, or `Err(MISSING)`."""
+    it = make_iter(I, a[1])
+    i = 0
+    while True:
+        x = yield from it.nxt()
+        if x is END:
+            return err_reserved("MISSING", "not found")
+        if (yield from I.apply(a[0], [x])):
+            return Ok(i)
+        i += 1
+
+
 @bi("first", "first", True)
 def b_first(I, a, kw, ta):
     it = make_iter(I, a[0])

@@ -829,6 +829,10 @@ The checker mirrors this in `tys`: the `Seq[T]` parameter of a stage unifies wit
 
 `recheck_lambda` (called from `check_local_fn_arity`, via `lam_node`) rechecks an unannotated lambda's body with the call's scalar argument types and reports new errors at the call. `e_Binary` rejects ordering on Option/Result/containers. `e_Field` rejects non-member reads on an `any` variable (`any_vars`); `e_Assign` checks `any I` annotations. `scalar_only_method` lets `check_builtin_method` reject a scalar receiver whose type has no such method. `tys._arg_compat` makes `Box[Float]` for `Box[Int]` a mismatch. `e_GenApp` and the `Chan` branch of `e_Call` check capacity and constructor arguments. `core.show` prints channel and future ends as `<ChanR>` and so on.
 
+## `find_map` and `position` (prelude.py, sigs.py)
+
+Builtins registered with the collection last (`@bi(..., "last", True)`), like `find`; a prelude function written in moxie takes the receiver first, so the method form of those two aborted. Signatures are in sigs.py so the checker sees them.
+
 ## Blank lines (lexer.py)
 
 At the start of a line the lexer treats spaces followed by tabs, `\r`, form feeds and then a newline as a blank line; a tab before real text is still an error. Triple-quoted strings are single tokens, so their blank lines are untouched.

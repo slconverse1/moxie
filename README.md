@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the GC-free dial
 
 Newest first.
 
+**2026-11-19 (`find_map`, F#'s `tryPick`):** `find_map(f)` (first `Some` payload, stops there, `Err(MISSING)` when none) and `position(pred)` were prelude functions written in moxie, so the pipe form worked but `xs.find_map(f)` aborted ("parameter `f` is ... but the argument is a `List`"). They are now builtins with signatures, so the method form checks and runs, and the guides document them (the "Which pattern tool fits" table gains a row, with an example: `find_map` is `tryPick`, `filter_map` is `choose`; on a Dict the function takes the key and the value). `find_map` with no match now reports "not found" like `find`. `tests/run_findmap.py`.
+
 **2026-11-19 (blank lines, and Python's debt):** a line of only white space is blank, tabs included (before, a tab on an otherwise empty line was a syntax error); blank lines are accepted between arms, members, statements, arguments, list and Dict items, and after a block header, and are kept inside triple-quoted strings (`tests/run_blank.py`, 38 programs). The Python entry in "Our debts" (both intros) now also lists collection operators such as `+` to join two lists.
 
 **2026-11-19 (wording and layout):** the default dialect is now called **GC-free moxie** (was "no-GC moxie") in the guides, specs and intros. The `select` examples in the guides and intros have a blank line between arms, which shows where one case ends and the next begins and why no `case` keyword is needed. Also: `.N` on a tuple has the type of field N and is range-checked (`x Int = pair(1, "a").1` is an error).
