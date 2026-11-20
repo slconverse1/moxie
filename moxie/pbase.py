@@ -36,6 +36,7 @@ class PBase:
         self.file = file
         self.no_trailing = False
         self.nl_stop = False
+        self.units = set()          # unit names declared so far in this file (`unit m`): a number then a unit is a quantity
 
     # ---------------------------------------------------------------- tokens
     def peek(self, k=0):
@@ -281,7 +282,76 @@ class PBase:
         self.no_trailing, self.nl_stop = save_nt, save_ns
         return args
 
+    def unit_power_group(self):
+        """A unit with a power in a type argument (`m/s^2`, `(m/s)^2`): `^` binds to the unit before it, and parentheses distribute,
+        so the tree comes out as products and quotients of `unit^n` (the expression parser would read `^` as the lowest-precedence xor)."""
+        i, depth, has_pow = 0, 0, False
+        while True:
+            t = self.peek(i)
+            if t.kind == "OP" and t.val == "(":
+                depth += 1
+            elif t.kind == "OP" and t.val == ")":
+                depth -= 1
+            elif depth == 0 and t.kind == "OP" and t.val in (",", "]"):
+                break
+            elif t.kind == "OP" and t.val == "^":
+                has_pow = True
+            elif not (t.kind in ("NAME", "INT") or t.kind == "OP" and t.val in ("*", "/")):
+                return None
+            if t.kind == "EOF" or depth < 0:
+                return None
+            i += 1
+        if not has_pow:
+            return None
+        save = self.p
+
+        def expr():
+            fs = term()
+            while self.peek().kind == "OP" and self.peek().val in ("*", "/"):
+                sign = 1 if self.next().val == "*" else -1
+                fs += [(n, sign * e) for n, e in term()]
+            return fs
+
+        def term():
+            t = self.next()
+            if t.kind == "NAME":
+                fs = [(t.val, 1)]
+            elif t.kind == "INT" and t.val == 1:
+                fs = []
+            elif t.kind == "OP" and t.val == "(":
+                fs = expr()
+                self.expect_op(")")
+            else:
+                raise MoxieSyntaxError("a unit is a name, `1`, or a parenthesised unit expression", t.line)
+            if self.peek().kind == "OP" and self.peek().val == "^":
+                self.next()
+                k = self.next()
+                if k.kind != "INT":
+                    raise MoxieSyntaxError("a unit power is a whole number: `s^2`", k.line)
+                fs = [(n, e * k.val) for n, e in fs]
+            return fs
+        try:
+            fs = expr()
+        except MoxieSyntaxError:
+            self.p = save
+            return None
+        if not (self.at_op(",") or self.at_op("]")):
+            self.p = save
+            return None
+        line = self.peek().line
+        e = None
+        for n, x in fs:
+            node = Name(n, line=line) if abs(x) == 1 else Binary("^", Name(n, line=line), IntLit(abs(x), None, line=line), line=line)
+            if e is None:
+                e = node if x > 0 else Binary("/", IntLit(1, None, line=line), node, line=line)
+            else:
+                e = Binary("*" if x > 0 else "/", e, node, line=line)
+        return TExpr(e, line=line) if e is not None else None
+
     def parse_targ(self):
+        u = self.unit_power_group()
+        if u is not None:
+            return u
         save = self.p
         try:
             t = self.parse_type()

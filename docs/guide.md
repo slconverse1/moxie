@@ -5441,3 +5441,34 @@ println(regex.is_match(regex.must("(a+)+b"), text))
 ```
 
 Output: `12000`, `0`, `List("to", "be", "or", "not", "to", "be")`, `a<1>b<22>`, `List("a", "b", "c")`, `true`, `Err(Error(code: 1, message: "regex: the repeat's top is below its bottom at position 6"))`, `Err(Error(code: 1, message: "regex: back-references are not supported: they need backtracking at position 4"))`, then `false`. The last line is the pattern `(a+)+b` on 300 letters `a`, which an engine that backtracks can take exponential time on; here it answers at once. `find(re, text)` gives the first `Match` (with `start`, `end`, `text`, `groups`, and `named("tag")`), `full(re, text)` requires the whole text to match, and `find_all`, `replace_all` and `split` work left to right with no overlap. Text positions count characters, not bytes. **Mistakes:** forgetting to double a backslash in the string (`"\d"` is a bad escape), a `(?<n:Char>...)` group (the types are `Int`, `Float`, `Bool` and `String`), expecting a back-reference, and passing a regex that is not a string literal to the form that types its names. The one place this engine can differ from Perl and Python: when the repeated part of a group may match nothing (`(a*)*`, `(a?)*b`), a final empty repetition is not recorded, so the group keeps the text of its last non-empty repetition where they give an empty string. The match itself is the same.
+
+**Chapter 30: Units of measure**
+
+A number that means meters should not be addable to a number that means seconds. `unit m` declares a unit, and a number followed by a space and a unit, `5.0 m`, is a quantity. The checker keeps the unit in the type, `Double[m]`, and works it out through arithmetic: it is only a compile-time check, so at run time a quantity is just the number. A derived unit is defined from others, `unit N = kg * m / s^2`, and `Double[N]` and `Double[kg*m/s^2]` are the same type.
+
+```
+unit m
+unit s
+unit kg
+unit N = kg * m / s^2
+
+fn speed(d Double[m], t Double[s]) Double[m/s] = d / t
+fn force(mass Double[kg], a Double[m/s^2]) Double[N] = mass * a
+fn area(w Int[m], h Int[m]) Int[m^2] = w * h
+
+println(speed(100.0 m, 9.58 s))
+println(force(2.0 kg, 9.8 m/s^2))
+println(area(3 m, 4 m))
+d = 3.0 m + 4.0 m
+println(d * 2.0)
+println(d / 2.0 m)
+println(sqrt(4.0 m^2))
+println(sum(List(1.0 m, 2.0 m, 3.0 m)))
+println(magnitude(d))
+```
+
+Output: `10.438413361169102`, `19.6`, `12`, `14.0`, `3.5`, `2.0`, `6.0`, `7.0`.
+
+`+`, `-` and comparisons need the same unit on both sides, and a plain number is not a quantity (`1.0 m + 2.0` is an error; write `2.0 m`). `*` and `/` combine the units, so `Double[m] / Double[s]` is `Double[m/s]`, and `m / m` is a plain number. Multiplying by a plain number keeps the unit. `abs`, `min`, `max`, `sum`, `floor`, `ceil` and `round` keep it; `sqrt` halves it (every power must be even); `pow(x, 2)` multiplies it (the exponent must be a constant); `product` of quantities is refused, because the unit would depend on how many there are. `magnitude(q)` is the bare number, and `x * 1.0 m` attaches a unit to one. A literal takes a unit only if the unit was declared above it, so `5 s` is five seconds only if you declared `unit s`; `5s` with no space is still a `Duration`. Write a power with `^`: `m/s^2`, or `(m/s)^2` in a type.
+
+Not here yet: scaled units (`km` against `m`) and functions that work for any unit. A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable, like a `Double`.

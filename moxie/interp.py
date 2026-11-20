@@ -189,7 +189,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return 0
 
     DECL_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "ImplDecl", "AliasDecl",
-                  "ImportDecl", "UsingDecl", "TestDecl", "Assign", "ForeignDecl")
+                  "ImportDecl", "UsingDecl", "TestDecl", "Assign", "ForeignDecl", "UnitDecl")
 
     EFFECTS = {"println", "print", "dbg", "sql", "read", "write", "sleep", "go", "transaction"}
 
@@ -471,6 +471,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             if s == "f":
                 return Done(F32.of(float(v)))
         return Done(v)
+
+    def ev_QtyLit(self, n, env):
+        return getattr(self, "ev_" + n.num.__class__.__name__)(n.num, env)       # units are erased: `5.0 m` is 5.0
+
+    def ev_UnitDecl(self, n, env):
+        return Done(UNIT)
 
     def ev_FloatLit(self, n, env):
         if n.suffix == "f":

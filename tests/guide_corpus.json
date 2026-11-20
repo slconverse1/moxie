@@ -2445,5 +2445,19 @@ null
 "Err(Error(code: 1, message: \"regex: back-references are not supported: they need backtracking at position 4\"))",
 "false"
 ]
+],
+[
+5450,
+"unit m\nunit s\nunit kg\nunit N = kg * m / s^2\n\nfn speed(d Double[m], t Double[s]) Double[m/s] = d / t\nfn force(mass Double[kg], a Double[m/s^2]) Double[N] = mass * a\nfn area(w Int[m], h Int[m]) Int[m^2] = w * h\n\nprintln(speed(100.0 m, 9.58 s))\nprintln(force(2.0 kg, 9.8 m/s^2))\nprintln(area(3 m, 4 m))\nd = 3.0 m + 4.0 m\nprintln(d * 2.0)\nprintln(d / 2.0 m)\nprintln(sqrt(4.0 m^2))\nprintln(sum(List(1.0 m, 2.0 m, 3.0 m)))\nprintln(magnitude(d))\n",
+[
+"10.438413361169102",
+"19.6",
+"12",
+"14.0",
+"3.5",
+"2.0",
+"6.0",
+"7.0"
+]
 ]
 ]

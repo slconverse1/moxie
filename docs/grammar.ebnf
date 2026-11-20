@@ -68,7 +68,7 @@ range : postfix [ ( '..' | '..=' | '..<' ) [ postfix ] [ 'step' unary ] ] ;
 postfix : primary { '(' [ args ] ')' | '(' [ params ] ')' '->' ( expr | block ) | '.' 'do' block | '.' 'update' updblock | '.' ident | '.' INT | '?' | '[' type_args ']' | '@' INT } ;
 args : arg { ',' arg } [ ',' ] ;
 arg : '...' | '..' | '..=' | '$' ident [ '->' expr ] | [ 'ref' | 'using' | 'move' ] [ ident ':' ] [ '...' ] expr [ ':' expr ] [ '->' expr ] [ 'for' pattern 'in' expr [ 'if' expr ] ] | 'using' ;
-primary : '(' 'in' expr ')' | '\\' ident [ '(' [ args ] ')' ] | '/' ident { '/' ident } | '{' expr { ',' expr } '}' | '(' BTICK expr ')' | '(' expr BTICK ')' | 'try_go' postfix | 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | INT | FLOAT | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
+primary : '(' 'in' expr ')' | '\\' ident [ '(' [ args ] ')' ] | '/' ident { '/' ident } | '{' expr { ',' expr } '}' | '(' BTICK expr ')' | '(' expr BTICK ')' | 'try_go' postfix | 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | ( INT | FLOAT ) [ unitexpr ] | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
 tuplelit : '(' [ titem { ( ',' | ';' { ';' } ) titem } [ ',' ] ] ')' ;
 titem : '...' | [ ident ] ':' expr | [ ident ':' ] [ '...' ] expr ;
 
@@ -87,10 +87,10 @@ type : type_atom { '|' type_atom } ;
 type_item : type | ident type | '...' [ type ] | ident '...' ;
 type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'static' type ;
 type_args : type_arg { ',' type_arg } ;
-type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] ;
+type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | foreigndecl | importdecl | usingdecl | testdecl ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
 fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
@@ -113,6 +113,9 @@ member : fnsig | 'type' ident | field | 'property' ident type | { 'static' | 'dy
 fnsig : 'fn' [ '(' [ 'ref' ] ident ')' ] [ fname ] [ tparams ] [ '(' [ params ] ')' ] [ type ] ;
 fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' | '|>>' | '<$>' | '~>' | '++' | '<<' | '>>' | '&' | '|' | '^' | '~=' ;
 impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [ INDENT { fndecl | 'type' ident '=' type NL | 'static' { 'dynamic' } fndecl | 'forward' fndecl } DEDENT ] ;
+unitdecl : 'unit' ident [ '=' unitexpr ] NL ;
+unitexpr : unitfactor { ( '*' | '/' ) unitfactor } ;
+unitfactor : ident [ '^' INT ] ;
 aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;
 tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
 typeres : tres { ( '+' | '-' | '*' ) tres } ;

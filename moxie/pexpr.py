@@ -640,6 +640,23 @@ class ExprParser(PBase):
             self._arrow_args[id(a)] = a          # the node is kept, so its id is not reused by a later one
         return a
 
+    def unit_suffix(self, lit, line):
+        """`5.0 m`, `9.8 m/s^2`: a number, a space, then a declared unit (with `*`, `/`, `^n` and more declared units)."""
+        t = self.peek()
+        if not (t.kind == "NAME" and t.sp and t.line == line and t.val in self.units):
+            return lit
+        text = self.next().val
+        while True:
+            t = self.peek()
+            if t.kind == "OP" and t.val == "^" and self.peek(1).kind == "INT" and not t.sp:
+                self.next()
+                text += "^" + str(self.next().val)
+            elif t.kind == "OP" and t.val in ("*", "/") and self.peek(1).kind == "NAME" and self.peek(1).val in self.units:
+                text += self.next().val + self.next().val
+            else:
+                break
+        return QtyLit(lit, text, line=line)
+
     def parse_arg0(self):
         t = self.peek()
         line = t.line
@@ -819,10 +836,10 @@ class ExprParser(PBase):
             return e
         if k == "INT":
             self.next()
-            return IntLit(t.val, t.extra, line=line)
+            return self.unit_suffix(IntLit(t.val, t.extra, line=line), line)
         if k == "FLOAT":
             self.next()
-            return FloatLit(t.val, t.extra, line=line)
+            return self.unit_suffix(FloatLit(t.val, t.extra, line=line), line)
         if k == "DEC":
             self.next()
             return DecLit(t.val, line=line)

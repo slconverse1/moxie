@@ -10,7 +10,7 @@ from .ast import *   # noqa
 from .pexpr import MUT_RE
 from .values import UTAGS
 from . import tys
-from . import rxtype
+from . import rxtype, units
 
 BASIC_TYPE_NAMES = {"Int", "Float", "Double", "Decimal", "Bool", "String", "Char", "Unit", "List", "Array", "Dict", "Set", "Option", "Result", "Duration"}
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
@@ -400,6 +400,7 @@ class Checker(RefineMixin):
         USER_NAMES[0] = self.fns
         self.rx_names = set()           # the regex package's `Matches` / `Finds`, once imported by name
         self.recs = {}                   # `pattern fn` name -> its FnDecl
+        self.unit_dims = {}              # unit name -> its dimension (a sorted tuple of (base unit, exponent))
         self.lam_node = {}               # Var -> the Lambda written in its binding, for the call-site recheck of unannotated parameters
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
@@ -940,6 +941,8 @@ class Checker(RefineMixin):
         elif c is AliasDecl:
             self.aliases[st.name] = st
             self.globals.add(st.name)
+        elif c is UnitDecl:
+            self.declare_unit(st)
         elif c is IfaceDecl:
             self.globals.add(st.name)
             self.ifaces.add(st.name)
@@ -1095,6 +1098,10 @@ class Checker(RefineMixin):
         app = self.app_type(t, n, depth, keep)
         if app is not None:
             return app
+        if n in INTS or n in ("Double", "Float"):
+            q = self.qty_from_groups(t, n)
+            if q is not None:
+                return q
         if n in INTS:
             g = t.groups
             if g and g[0] and n != "BigInt":
@@ -1125,6 +1132,27 @@ class Checker(RefineMixin):
         if n in self.enums and not self.enums[n].tparams:
             return ("named", n)
         return None
+
+    def qty_from_groups(self, t, n):
+        """`Double[m/s]` or `Int[m]`: a number with a unit, when the argument spells declared units."""
+        g = t.groups
+        if not (g and g[0]) or n == "BigInt" or (not self.unit_dims and n not in ("Double", "Float")):
+            return None
+        x = g[0][0] if isinstance(g[0], list) else g[0]
+        if x.__class__ is TName and len(x.path) == 1 and not x.groups:
+            pairs = [(x.path[0], 1)]
+        elif x.__class__ is not TExpr or x.expr.__class__ is RangeE:
+            return None
+        else:
+            pairs = units.from_expr(x.expr)
+        if not pairs:
+            return None
+        if not all(nm in self.unit_dims for nm, _e in pairs):
+            if n in ("Double", "Float") and not self.sig_mode:
+                bad = next(nm for nm, _e in pairs if nm not in self.unit_dims)
+                self.err(getattr(t, "line", 0) or self.cur_line, f"`{bad}` is not a unit: declare it with `unit {bad}` before writing `{n}[{bad}]`")
+            return None
+        return self.qty_type("Float" if n in ("Double", "Float") else "Int", self.dims_of(pairs, 0))
 
     def any_names(self, t):
         """The interfaces of an `any A + B` as a tuple of names, when every one is declared in this program; else None."""
@@ -2316,6 +2344,84 @@ class Checker(RefineMixin):
     def e_UnitLit(self, n, sc):
         return "Unit", None
 
+    # ------------------------------------------------------------ units of measure
+    def declare_unit(self, st):
+        if st.name in self.unit_dims:
+            self.err(st.line, f"the unit `{st.name}` is declared twice")
+            return
+        if st.text is None:
+            self.unit_dims[st.name] = ((st.name, 1),)
+            return
+        pairs = units.parse_text(st.text)
+        d = self.dims_of(pairs, st.line) if pairs else None
+        if d is None:
+            if not pairs:
+                self.err(st.line, f"`unit {st.name} = {st.text}` is not a unit expression: write units joined by `*` and `/`, with `^2` for a power (`kg * m / s^2`)")
+            return
+        self.unit_dims[st.name] = d
+
+    def dims_of(self, pairs, line):
+        """The dimension of [(unit, exp)] written in a program, or None (with an error) when a unit is not declared."""
+        d = ()
+        for nm, e in pairs:
+            if nm not in self.unit_dims:
+                self.err(line, f"`{nm}` is not a unit: declare it first with `unit {nm}`")
+                return None
+            d = units.mul(d, units.power(self.unit_dims[nm], e))
+        return d
+
+    def qty_type(self, base, dims):
+        return (base if not dims else ("qty", base, dims))
+
+    def e_QtyLit(self, n, sc):
+        t = self.ev(n.num, sc)[0]
+        pairs = units.parse_text(n.text)
+        d = self.dims_of(pairs, n.line) if pairs else None
+        if d is None or t is None:
+            return None, None
+        return self.qty_type(t, d), None
+
+    def qty_parts(self, t):
+        """(base, dims) of a type that is a quantity, a plain number (dims ()), or None for anything else."""
+        t = self.base(t)
+        if t.__class__ is tuple and t and t[0] == "qty":
+            return t[1], t[2]
+        if t in ("Int", "Float"):
+            return t, ()
+        return None
+
+    def unit_op(self, n, a, b):
+        """Arithmetic and comparison where a side is a quantity.  NOANY when neither side is."""
+        qa = a.__class__ is tuple and a[0] == "qty"
+        qb = b.__class__ is tuple and b[0] == "qty"
+        if not (qa or qb):
+            return NOANY
+        op = n.op
+        pa, pb = self.qty_parts(a), self.qty_parts(b)
+        if pa is None or pb is None:
+            self.err(n.line, f"cannot apply `{op}` to `{tshow(a)}` and `{tshow(b)}`")
+            return None, None
+        (ba, da), (bb, db) = pa, pb
+        base = "Float" if "Float" in (ba, bb) else "Int"
+        sd = lambda d: tys.show_dims(d) if d else "no unit"
+        if op in ("==", "!=", "<", ">", "<=", ">="):
+            if da != db:
+                self.err(n.line, f"cannot compare `{tshow(a)}` and `{tshow(b)}`: one is in {sd(da)} and the other in {sd(db)}")
+            return "Bool", None
+        if op in ("+", "-", "%"):
+            if da != db:
+                word = {"+": "add", "-": "subtract", "%": "take the remainder of"}[op]
+                self.err(n.line, f"cannot {word} `{tshow(a)}` and `{tshow(b)}`: the units differ ({sd(da)} and {sd(db)})"
+                         + ("; give a plain number its unit first, such as `2.0 m`" if not da or not db else ""))
+                return None, None
+            return self.qty_type(base, da), None
+        if op == "*":
+            return self.qty_type(base, units.mul(da, db)), None
+        if op == "/":
+            return self.qty_type(base, units.div(da, db)), None
+        self.err(n.line, f"cannot apply `{op}` to `{tshow(a)}` and `{tshow(b)}`")
+        return None, None
+
     def e_KwLit(self, n, sc):
         return None, None
 
@@ -2443,10 +2549,12 @@ class Checker(RefineMixin):
             self.err(n.line, f"`-` can't take `{t[1]}`: test which member it is first (`if x is T` or a `when`)")
             return None, None
         if n.op == "-" and t is not None and t not in INTS and t not in ("Float", "Decimal") \
-                and not (t.__class__ is tuple and t[0] in ("bounded", "lit", "param", "rigid", "named", "pvar", "bound", "app", "tup")) \
+                and not (t.__class__ is tuple and t[0] in ("bounded", "lit", "param", "rigid", "named", "pvar", "bound", "app", "tup", "qty")) \
                 and t.__class__ is str:
             self.err(n.line, f"`-` needs a number, found `{tshow(t)}`")
             return None, None
+        if n.op == "-" and t.__class__ is tuple and t[0] == "qty":
+            return t, None
         if n.op == "-" and c is not None and isinstance(c, (int, float)) and not isinstance(c, bool):
             return t, -c
         if n.op == "not" or n.op == "!":
@@ -2871,6 +2979,10 @@ class Checker(RefineMixin):
                 if msg:
                     self.err(n.line, msg)
                     break
+        if self.unit_dims:
+            r = self.unit_op(n, a, b)
+            if r is not NOANY:
+                return r
         dur = ("named", "Duration")
         if (a == dur or b == dur) and "Duration" not in self.tuples and "Duration" not in self.aliases:
             r = self.duration_op(n, a, b, dur)
@@ -5650,7 +5762,52 @@ class Checker(RefineMixin):
         if f.name == "random_int" and na == 2:
             self.err(n.line, "`random_int` takes a range: write `random_int(lo..hi)` (for example `random_int(1..6)`)")
 
+    UNIT_FNS = ("abs", "sqrt", "pow", "floor", "ceil", "round", "product", "magnitude")
+
+    def unit_call(self, n, sc):
+        """A built-in math function applied to a quantity: `abs` keeps the unit, `sqrt` halves it, `pow(x, 2)` multiplies it, `floor`
+        `ceil` `round` keep it on an Int, `magnitude` drops it, and `product` is refused (the unit would depend on the length).
+        NOANY when no argument is a quantity."""
+        name = n.fn.name
+        args = [a.expr for a in (n.args or []) if getattr(a, "expr", None) is not None]
+        if not args:
+            return NOANY
+        ts = [self.ev(x, sc)[0] for x in args]
+        q = ts[0]
+        if name == "product":
+            el = q[2][0] if q.__class__ is tuple and q[0] == "app" and len(q[2]) == 1 else None
+            if el.__class__ is tuple and el[0] == "qty":
+                self.err(n.line, f"`product` of `{tshow(el)}` values has no single unit (it depends on how many there are): multiply them one by one, or take `magnitude` of each first")
+                return None, None
+            return NOANY
+        if not (q.__class__ is tuple and q[0] == "qty"):
+            return NOANY
+        base, dims = q[1], q[2]
+        if name == "abs":
+            return q, None
+        if name == "magnitude":
+            return base, None
+        if name in ("floor", "ceil", "round"):
+            return self.qty_type("Int", dims), None
+        if name == "sqrt":
+            if any(e % 2 for _n, e in dims):
+                self.err(n.line, f"`sqrt` of `{tshow(q)}` has no whole unit: every unit power must be even (`sqrt` of `Double[m^2]` is `Double[m]`)")
+                return None, None
+            return self.qty_type("Float", tuple((nm, e // 2) for nm, e in dims)), None
+        if name == "pow":
+            k = self.const_int(args[1]) if len(args) > 1 else None
+            if k is None or ts[1] != "Int" and not (ts[1].__class__ is tuple and ts[1][0] == "bounded"):
+                self.err(n.line, f"the exponent of `pow` on `{tshow(q)}` must be a constant whole number (`pow(x, 2)`), so the unit of the result is known")
+                return None, None
+            return self.qty_type(base, units.power(dims, k)), None
+        return NOANY
+
     def e_Call(self, n, sc, *a, **k):
+        if self.unit_dims and n.fn.__class__ is Name and n.fn.name in self.UNIT_FNS and n.fn.name not in self.fns \
+                and sc.find(n.fn.name) is None:
+            r = self.unit_call(n, sc)
+            if r is not NOANY:
+                return r
         r = self.e_Call_main(n, sc, *a, **k)
         if n.fn.__class__ is Name and n.fn.name in FOLD and sc.find(n.fn.name) is None and r.__class__ is tuple and len(r) == 2 and r[1] is None \
                 and r[0] in ("Int", "Float"):

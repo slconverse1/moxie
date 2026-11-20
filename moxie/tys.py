@@ -34,6 +34,14 @@ parameters are wildcards in `compatible`, so a type the checker cannot work out 
 NUMERIC = {"Int", "Float", "Decimal"}
 
 
+def show_dims(dims):
+    """A dimension as a program writes it: `m/s^2`, `kg*m/s^2`, `1/s`."""
+    num = [f"{n}" + (f"^{e}" if e != 1 else "") for n, e in dims if e > 0]
+    den = [f"{n}" + (f"^{-e}" if e != -1 else "") for n, e in dims if e < 0]
+    top = "*".join(num) if num else "1"
+    return top if not den else top + "/" + ("*".join(den) if len(den) == 1 else "(" + "*".join(den) + ")")
+
+
 def show(t):
     if t is None:
         return "?"
@@ -42,6 +50,8 @@ def show(t):
     tag = t[0]
     if tag == "named":
         return t[1]
+    if tag == "qty":
+        return f"{'Double' if t[1] == 'Float' else 'Int'}[{show_dims(t[2])}]"
     if tag == "bounded":
         return f"Int[{t[1]}..{t[2]}]"
     if tag == "secret":

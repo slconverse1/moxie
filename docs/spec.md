@@ -786,6 +786,13 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Patterns.** `Matches(re, ...)` (whole text) and `Finds(re, ...)` (first match) are `pattern fn`s, imported by bare name. With a pinned regex, `Matches(^re, List(CInt(n)))`, the payload is the `List[Cap]`. With a string literal, `Matches("(?<y:Int>\\d+)-(\\w+)", (y, w))`, the checker reads the regex (`moxie/rxtype.py`) and types the names: `Int`/`Float`/`Bool`/`String` by group, `Option` of that for a group under `?`, `*` or `{0,n}` or in one side of a `|`; one group is the value itself, several are a tuple, none take no names. A regex that does not parse, a wrong number of names, or a misused type is a compile error.
 - **Not done.** A regex built at run time cannot have typed names (its payload is the `Cap` list). When the repeated part of a group may match nothing (`(a*)*`), the final empty repetition is not recorded: the group keeps the text of its last non-empty repetition where Perl and Python give an empty string. The match itself is the same.
 
+**23g. Units of measure** (checker only; units are erased at run time)
+- **Declarations.** `unit m` declares a base unit; `unit N = kg * m / s^2` a unit derived from earlier ones. Each unit has a dimension, a set of base units with whole exponents; a derived unit is the same type as its definition. A unit declared twice, or defined from an undeclared unit, is an error.
+- **Quantities.** `5.0 m` and `3 m` (a number, a space, a declared unit; `*`, `/` and `^n` may follow: `9.8 m/s^2`). Types are `Double[m]`, `Int[m/s]`, `Double[(m/s)^2]`; `Double[meter]` with an undeclared name is an error. A unit with no space (`5s`) is still a Duration literal.
+- **Arithmetic.** `+`, `-`, `%` and the comparisons need equal dimensions (a plain number has none, so `1.0 m + 2.0` is an error). `*` and `/` add and subtract exponents; an empty dimension is a plain number. A quantity times or divided by a plain number keeps its unit.
+- **Built-ins.** `abs`, `min`, `max`, `sum`, `clamp` keep the unit; `floor`, `ceil`, `round` give an `Int` of it; `sqrt` halves every exponent (an odd one is an error); `pow(x, k)` multiplies them (`k` a constant `Int`); `product` of quantities is an error; `magnitude(q)` is the bare number.
+- **Not yet.** Scaled units (`km`), unit-polymorphic functions, and units across packages.
+
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.
 - **Numbers:** `abs`, `min`, `max`, `pow`, `sqrt`, `cast[T]`, `try_cast[T]`, `wrap_to[T]`, `checked_add/sub/mul/div`, `wrapping_*`, `saturating_*`, `is_nan`, `is_inf`, `is_finite`, `finite(x)`, `round_to[n](x, mode)`, `div(a, b, scale, mode)` (Decimal), `parse_number`.
@@ -903,7 +910,7 @@ range : postfix [ ( '..' | '..=' | '..<' ) [ postfix ] [ 'step' unary ] ] ;
 postfix : primary { '(' [ args ] ')' | '(' [ params ] ')' '->' ( expr | block ) | '.' 'do' block | '.' 'update' updblock | '.' ident | '.' INT | '?' | '[' type_args ']' | '@' INT } ;
 args : arg { ',' arg } [ ',' ] ;
 arg : '...' | '..' | '..=' | '$' ident [ '->' expr ] | [ 'ref' | 'using' | 'move' ] [ ident ':' ] [ '...' ] expr [ ':' expr ] [ '->' expr ] [ 'for' pattern 'in' expr [ 'if' expr ] ] | 'using' ;
-primary : '(' 'in' expr ')' | '\\' ident [ '(' [ args ] ')' ] | '/' ident { '/' ident } | '{' expr { ',' expr } '}' | '(' BTICK expr ')' | '(' expr BTICK ')' | 'try_go' postfix | 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | INT | FLOAT | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
+primary : '(' 'in' expr ')' | '\\' ident [ '(' [ args ] ')' ] | '/' ident { '/' ident } | '{' expr { ',' expr } '}' | '(' BTICK expr ')' | '(' expr BTICK ')' | 'try_go' postfix | 'ref' postfix | 'when' expr armsx | 'sql' '(' expr ')' ':' SQL | 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT | '(' binop ')' | '(' binop expr ')' | '(' expr binop ')' | 'go' [ 'fn' ] ( expr | lambda ) | '&' | '\\' ident '(' [ args ] ')' | '@' postfix | 'fn' [ tparams ] '(' [ params ] ')' [ type ] ( '=' expr | block ) | 'seq' armsx | 'todo' [ expr ] | HASH | ifexpr | lambda | tuplelit | ( INT | FLOAT ) [ unitexpr ] | STR | CHAR | DEC | DUR | BYTES | 'true' | 'false' | ident | '_' ;
 tuplelit : '(' [ titem { ( ',' | ';' { ';' } ) titem } [ ',' ] ] ')' ;
 titem : '...' | [ ident ] ':' expr | [ ident ':' ] [ '...' ] expr ;
 
@@ -922,10 +929,10 @@ type : type_atom { '|' type_atom } ;
 type_item : type | ident type | '...' [ type ] | ident '...' ;
 type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'static' type ;
 type_args : type_arg { ',' type_arg } ;
-type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] ;
+type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | foreigndecl | importdecl | usingdecl | testdecl ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
 fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
@@ -948,6 +955,9 @@ member : fnsig | 'type' ident | field | 'property' ident type | { 'static' | 'dy
 fnsig : 'fn' [ '(' [ 'ref' ] ident ')' ] [ fname ] [ tparams ] [ '(' [ params ] ')' ] [ type ] ;
 fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' | '|>>' | '<$>' | '~>' | '++' | '<<' | '>>' | '&' | '|' | '^' | '~=' ;
 impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [ INDENT { fndecl | 'type' ident '=' type NL | 'static' { 'dynamic' } fndecl | 'forward' fndecl } DEDENT ] ;
+unitdecl : 'unit' ident [ '=' unitexpr ] NL ;
+unitexpr : unitfactor { ( '*' | '/' ) unitfactor } ;
+unitfactor : ident [ '^' INT ] ;
 aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;
 tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
 typeres : tres { ( '+' | '-' | '*' ) tres } ;

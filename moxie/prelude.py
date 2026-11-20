@@ -871,6 +871,11 @@ def b_abs(I, a, kw, ta):
     return abs(x) if not isinstance(x, Dec) else Dec(abs(x.v), x.scale)
 
 
+@bi("magnitude")
+def b_magnitude(I, a, kw, ta):
+    return a[0]              # units exist only in the checker: the number of a quantity is the quantity
+
+
 @bi("min")
 def b_min(I, a, kw, ta):
     if len(a) == 1:

@@ -100,7 +100,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond` and lock-free state through Atoms and `swap`.
 - **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections, and QuickCheck-style property tests (`forall`).
-- **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), and anonymous records, the tuples whose named-field types are never declared, with the open form `(name String, ...)`.
+- **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), units of measure,, and anonymous records, the tuples whose named-field types are never declared, with the open form `(name String, ...)`.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code.
 - **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, the idea that a function parameter has a name for the body and a label for the call, and regex literals with typed captures, `(?<y:Int>\\d{4})`, whose names get the types the groups declare (the `regex` package's `Matches("...", (y, m))`).
@@ -573,6 +573,8 @@ Moxie is a general language, but four kinds of application come with the languag
 **HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the Mixer's Guide, Chapter 27. Sockets and their permissions are in superpower 23.
 
 **Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See the Mixer's Guide, Chapter 29.
+
+**Units of measure.** `unit m` declares a unit and `5.0 m` is a quantity of it; the checker keeps the unit in the type (`Double[m/s]`, `Int[m^2]`) and works it through `+ - * /`, comparisons, `abs`, `sum`, `sqrt` and `pow`, so adding meters to seconds is a compile error. Units are erased at run time, and `Duration` stays separate. Scaled units (`km`) and unit-polymorphic functions are not done yet. See the Mixer's Guide, Chapter 30.
 
 **JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the Mixer's Guide, Chapter 28. An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
 

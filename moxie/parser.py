@@ -208,6 +208,8 @@ class Parser(ExprParser):
                 return self.parse_import()
             if v == "type" and self.peek(1).kind == "NAME" and self.peek(1).val in ("alias", "opaque", "union"):
                 return self.parse_type_decl([])
+            if v == "unit" and self.peek(1).kind == "NAME" and self.is_unit_decl():
+                return self.parse_unit_decl([])
             if v == "test" and self.peek(1).kind == "STR":
                 return self.parse_test()
             if v == "init" and self.nl_indent_at(1):
@@ -492,6 +494,36 @@ class Parser(ExprParser):
         name = "".join(p for p in self.next().val if isinstance(p, str))
         self.expect_nl_indent_block()
         return TestDecl(name, self.parse_block(), line=line)
+
+    def is_unit_decl(self):
+        """`unit m`, or `unit N = kg * m / s^2` (only names, `*`, `/`, `^` and whole numbers after the `=`), so a variable that is
+        itself called `unit` (`unit Shape = Circle(radius: 1.0)`) still parses as a variable."""
+        if self.peek(2).kind in ("NL", "EOF"):
+            return True
+        if not (self.peek(2).kind == "OP" and self.peek(2).val == "="):
+            return False
+        i = 3
+        while self.peek(i).kind not in ("NL", "EOF"):
+            t = self.peek(i)
+            if not (t.kind in ("NAME", "INT") or t.kind == "OP" and t.val in ("*", "/", "^")):
+                return False
+            i += 1
+        return i > 3
+
+    def parse_unit_decl(self, mods):
+        """`unit m` declares a base unit; `unit N = kg * m / s^2` a unit derived from others."""
+        line = self.next().line
+        name = self.expect_ident("a unit name").val
+        text = None
+        if self.at_op("="):
+            self.next()
+            text = ""
+            while self.peek().kind not in ("NL", "EOF"):
+                text += str(self.next().val)
+            if not text:
+                self.err("a unit needs its definition after `=`, such as `unit N = kg * m / s^2`")
+        self.units.add(name)
+        return UnitDecl(name, text, mods[0] if mods else None, line=line)
 
     def parse_type_decl(self, mods):
         line = self.next().line  # type
