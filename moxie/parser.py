@@ -108,6 +108,13 @@ class Parser(ExprParser):
             s = self.parse_guard_else(s.stmt, s.cond, s.line)
         elif s.__class__ in (ExprStmt, Return, Break, Continue) and self.wrapped_if_ahead():
             s = self.parse_wrapped_if(s)
+        if self.at_op(";"):                               # `a = 1; b = 2`: several statements on one line, in order
+            rest = list(getattr(self, "_chain_rest", None) or [])
+            while self.eat_op(";"):
+                if self.peek().kind in ("NL", "DEDENT", "EOF"):
+                    break                                 # a trailing `;` is allowed
+                rest.append(self.parse_stmt_core(allow_decl=True))
+            self._chain_rest = rest
         self.end_line()
         return s
 

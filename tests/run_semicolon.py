@@ -1,4 +1,5 @@
-"""`;` joins statements in a one-line lambda body or a `when`/`select` arm body.  Not after `then`, `do` or `else` of an `if`.
+"""`;` separates statements on a line: at the start of a line, and in one-line bodies (lambda, `when`/`select` arm, `then`, `do`, `else`).
+A body takes every statement to the end of the line.
 Run: python3 tests/run_semicolon.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -10,8 +11,11 @@ CASES = [
     ("select arm", 'rx, tx = Chan[Int][1]()\n_ = write(tx, 4)\nselect\n  x = read(rx) -> println(x); println(x + 1)\n\n  else println("none")\n', 0, "4\n5"),
     ("trailing semicolon", 'f = (x) -> y = x + 1; y;\nprintln(f(1))\n', 0, "2"),
     ("multi-array still works", 'm = (1, 2; 3, 4)\nprintln(m)\n', 0, "MultiArray(1, 2, 3, 4)"),
-    ("not after then", 'x = 2\nif x > 1 then println("a"); println("b")\n', 1, "unexpected ';'"),
-    ("not after do", 'while false do println("a"); println("b")\n', 1, "unexpected ';'"),
+    ("two bindings on a line", 'a = 1; b = 2\nprintln(a + b)\n', 0, "3"),
+    ("in a function body", 'fn f(v Int) Int\n  w = v * 2; w + 1\nprintln(f(4))\n', 0, "9"),
+    ("after then, the body takes the rest", 'x = 2\nif x > 1 then println("a"); println("b")\nprintln("c")\n', 0, "a\nb\nc"),
+    ("then is not run when false", 'x = 0\nif x > 1 then println("a"); println("b")\nprintln("c")\n', 0, "c"),
+    ("after do", 'n = 0\nwhile n < 2 do n += 1; println(n)\n', 0, "1\n2"),
 ]
 bad = 0
 for name, src, want_rc, want in CASES:

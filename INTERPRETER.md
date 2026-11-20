@@ -835,7 +835,7 @@ The parser reads a bare `...` before `)` or `,` in a tuple type as the item `(".
 
 ## Open types as bounds, and `;` bodies
 
-A `TTuple` bound in `[T (age Int, ...)]` already parses (`parse_type_prim`). In the checker the rigid-`T` branch of `e_Field` looks for such bounds in `tp_decl` and returns the promised field's type or reports the name; `check_bounds` runs `row_fit` on each argument for the parameter. `parse_inline_seq` (parser.py) turns `stmt ; stmt` into a `Block`; `parse_block_or_inline(seq=True)` is used by `when`/`select` arms and `parse_lambda_body` uses it, so `then`/`do`/loop `else` bodies still refuse `;`.
+A `TTuple` bound in `[T (age Int, ...)]` already parses (`parse_type_prim`). In the checker the rigid-`T` branch of `e_Field` looks for such bounds in `tp_decl` and returns the promised field's type or reports the name; `check_bounds` runs `row_fit` on each argument for the parameter. `parse_inline_seq` (parser.py) turns `stmt ; stmt` into a `Block`; `parse_block_or_inline` takes `seq=True` by default, so every one-line body (arms, `then`, `do`, `else`) and `parse_lambda_body` accept `;`; `parse_stmt` handles `a; b` at the start of a line by pushing the later statements onto `_chain_rest` (the list `x = y = z` already uses).
 
 ## Pattern functions (parser.py, patterns.py, check.py)
 
