@@ -676,6 +676,25 @@ upload("logs.zip", UploadOptions(...prod, port: 8080))
 
 Output: `payload.bin -> production.server:4000 retries 5`, then `backup.tar -> localhost:4000 retries 3`, then `logs.zip -> production.server:8080 retries 5`. An enum has several named cases, methods live in an `impl` block, and a `when` must cover every case:
 
+**Tuples with no declaration.** A tuple does not have to be declared. `(name: "Alice", age: 30)` is a tuple whose fields are named, and its type, `(name String, age Int)`, is made from what is written (F# calls these anonymous records). Two such tuples with the same field names and types are the same type, and `(...user, role: "Admin")` makes a new one with an added field. A parameter that is written with a bare `...` at the end, `(name String, ...)`, accepts **any** tuple that has at least those named fields with those types: a labeled tuple of any width, or a declared tuple such as `Employee`. Inside the function only the named fields can be used. The compiler makes one copy of the function for each shape it is called with, as it does for generics, so there is no run-time cost. A type written without `...` is exact: `(name String, age Int)` takes those two fields and no others.
+
+```
+user = (name: "Alice", age: 30)
+admin = (...user, role: "Admin")
+tuple Employee
+  name String
+  age Int
+  salary Int
+fn greet(u (name String, ...)) String = "hi ${u.name}"
+fn tag(u (name String, age Int, ...)) String = "${u.name} is ${u.age + 1} next year"
+println(admin)
+println(greet(user))
+println(greet(Employee(name: "Bo", age: 40, salary: 9)))
+println(tag(admin))
+```
+
+Output: `(name: "Alice", age: 30, role: "Admin")`, `hi Alice`, `hi Bo`, then `Alice is 31 next year`. **Mistakes:** passing a tuple with an extra field to an exact tuple type (the message suggests the `...` form), a tuple that lacks a field or has one of the wrong type, using a field the open type does not name (`u.age` when only `name` is promised), an open type in a result or with an unnamed field (`(String, ...)`), and `...` anywhere but the end.
+
 ```
 enum Shape
   Circle(radius Double),

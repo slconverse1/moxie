@@ -32,6 +32,8 @@ def layout(t, decls, depth=0):
         return None
     c = t.__class__
     if c is TTuple:
+        if any(ft is None for _, ft in t.items):
+            return None                                   # an open tuple type has no size of its own
         return _fields([ft for _, ft in t.items], decls, depth)
     if c is not TName or len(t.path) != 1:
         return None

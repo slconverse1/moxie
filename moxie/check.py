@@ -1006,6 +1006,12 @@ class Checker(RefineMixin):
             if t.caps is not None:           # `(Int) -> Int with (Int)`: a closure type, by the types it captures
                 ft += (tuple(sorted(tys.show(self.ty_of_type(x, depth + 1, keep, False)) for x in t.caps)),)
             return ft
+        if c is TTuple and any(lab == "..." and ft is None for lab, ft in t.items):
+            fields = [(lab, ft) for lab, ft in t.items if not (lab == "..." and ft is None)]
+            if any(lab is None or lab == "..." for lab, _ft in fields):
+                return None                       # `(String, ...)`: an open tuple type names its fields; reported where it is declared
+            return ("rowtup", tuple(self.ty_of_type(ft, depth + 1, keep, False) for _l, ft in fields),
+                    tuple(self.tuple_label(lab, keep) for lab, _ft in fields))
         if c is TTuple:
             items = tuple(("spread", self.ty_of_type(ft, depth + 1, keep, False)) if lab == "..." else
                           self.ty_of_type(ft, depth + 1, keep, False) for lab, ft in t.items)
@@ -1833,10 +1839,57 @@ class Checker(RefineMixin):
                 and (act[1] in self.tuples or act[1] in self.enums) and any(_tn(b) == "Has" for b in getattr(self.tp_decl.get(exp[1]), "bounds", None) or []):
             self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`: `{exp[1]}` is only known to hold what its `Has` bounds name, so add `Has[{tshow(act)}]`")
             return
+        if exp.__class__ is tuple and act.__class__ is tuple and exp[0] == act[0] == "tup" and len(exp) > 2 and len(act) > 2 \
+                and all(l is not None for l in exp[2]) and all(l is not None for l in act[2]) and set(exp[2]) != set(act[2]) \
+                and not any(x.__class__ is tuple and x and x[0] == "spread" for x in exp[1] + act[1]):
+            extra, lack = [l for l in act[2] if l not in exp[2]], [l for l in exp[2] if l not in act[2]]
+            self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`" + (f": it has the extra field{'s' if len(extra) > 1 else ''} "
+                     f"`{'`, `'.join(extra)}`" if extra else "") + (f" and no `{'`, `'.join(lack)}`" if lack and extra else f": it has no `{'`, `'.join(lack)}`" if lack else "")
+                     + ("; to accept any tuple with these fields, write the parameter as `(" + ", ".join(f"{l} {tshow(t)}" for l, t in zip(exp[2], exp[1])) + ", ...)`" if extra and not lack else ""))
+            return
+        if exp.__class__ is tuple and exp[0] == "rowtup":
+            msg = self.row_fit(exp, act)
+            if msg is None:
+                return
+            self.err(line, msg)
+            return
         if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param", "rigid") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param", "rigid"):
             if tys.compatible(exp, act):
                 return
         self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`" + self.layout_hint(exp, act))
+
+    def row_fields(self, t):
+        """{name: type} of a tuple type that names its fields: a labeled tuple type, an open one, or a declared (non-generic) tuple; else None."""
+        if t.__class__ is not tuple:
+            return None
+        if t[0] in ("tup", "rowtup") and len(t) > 2 and t[2] and all(l is not None for l in t[2]) and not any(
+                x.__class__ is tuple and x and x[0] == "spread" for x in t[1]):
+            return dict(zip(t[2], t[1]))
+        if t[0] == "named" and t[1] in self.tuples and not self.tuples[t[1]].tparams:
+            fs = [f for f in self.tuples[t[1]].fields or [] if getattr(f, "name", None) not in (None, "...")]
+            if len(fs) == len(self.tuples[t[1]].fields or []):
+                return {f.name: self.ty_of_type(f.type) for f in fs}
+        return None
+
+    def row_fit(self, exp, act):
+        """The error text when `act` has no place where the open tuple type `exp` (`(name String, ...)`) is expected, else None: the value
+        must be a tuple (declared or not) that has every named field, with a type that fits."""
+        if act is None or (act.__class__ is tuple and act[0] in ("param", "rigid", "unionv", "hid")):
+            return None
+        have = self.row_fields(act)
+        if have is None:
+            if act.__class__ is str or (act.__class__ is tuple and act[0] in ("app", "fn")):
+                return f"mismatched types: expected a tuple with the fields `{self.row_show(exp)}`, found `{tshow(act)}`"
+            return None
+        for lab, ft in zip(exp[2], exp[1]):
+            if lab not in have:
+                return f"`{tshow(act)}` has no field `{lab}`, which `{self.row_show(exp)}` needs"
+            if ft is not None and have[lab] is not None and not tys.compatible(ft, have[lab]):
+                return f"the field `{lab}` is a `{tshow(have[lab])}`, but `{self.row_show(exp)}` needs a `{tshow(ft)}`"
+        return None
+
+    def row_show(self, t):
+        return "(" + ", ".join(f"{l} {tshow(x)}" for l, x in zip(t[2], t[1])) + ", ...)"
 
     def layout_hint(self, exp, act):
         """Why two function types that print alike differ: one is written with a capture layout."""
@@ -2983,6 +3036,12 @@ class Checker(RefineMixin):
                         and not any(k[1] == n.name for k in self.methods):
                     self.err(n.line, f"`{o.name}` is an `any {'`, `'.join(av[1])}`: it shows only what the interface declares, and `{n.name}` is not one of its members")
         t = self.t(n.obj, sc)
+        if t.__class__ is tuple and t[0] == "rowtup" and n.name.__class__ is str:
+            if n.name in t[2]:
+                return t[1][t[2].index(n.name)], None
+            self.err(n.line, f"`{n.name}` is not one of the fields this parameter promises (`{self.row_show(t)}`): only those can be used; "
+                             f"add `{n.name}` to the type, or take a declared tuple type")
+            return None, None
         if t.__class__ is tuple and t[0] == "tup" and n.name.__class__ is int and not any(
                 x.__class__ is tuple and x and x[0] == "spread" for x in t[1]):
             if n.name >= len(t[1]):
@@ -7967,6 +8026,23 @@ class Checker(RefineMixin):
         return None, None
 
     # ------------------------------------------------------------ declarations
+    def has_open_tuple(self, t):
+        if t.__class__ is TTuple:
+            return any(lab == "..." and ft is None for lab, ft in t.items) or any(ft is not None and self.has_open_tuple(ft) for _l, ft in t.items)
+        if t.__class__ is TName:
+            return any(self.has_open_tuple(x) for g in t.groups or [] for x in (g if isinstance(g, (list, tuple)) else [g]))
+        return False
+
+    def check_open_tuple(self, t, line, what):
+        """`(name String, ...)` as a parameter: every field is named, and the `...` is last."""
+        if t.__class__ is not TTuple or not self.has_open_tuple(t):
+            return
+        fields = [(lab, ft) for lab, ft in t.items if not (lab == "..." and ft is None)]
+        if any(lab is None for lab, _ft in fields) or not t.items or not (t.items[-1][0] == "..." and t.items[-1][1] is None):
+            self.err(line, "an open tuple type names its fields and ends with `...`: `(name String, age Int, ...)`")
+        if not fields:
+            self.err(line, "an open tuple type needs at least one field: `(name String, ...)`")
+
     def check_pattern_fn(self, n):
         """`pattern fn Name(.., value T) Option[U]`: a capitalized name that is not a type or a case, at least one parameter (the value
         matched is the last), and an `Option` result: `Some(payload)` is a match, `None` is not."""
@@ -7988,6 +8064,10 @@ class Checker(RefineMixin):
             self.err(n.line, f"`forward fn {n.name}` is never defined: write the function with its body later in the file")
         if "pattern" in (n.flags or ()):
             self.check_pattern_fn(n)
+        for q_ in n.params or []:
+            self.check_open_tuple(q_.type, n.line, "parameter")
+        if n.ret is not None and self.has_open_tuple(n.ret):
+            self.err(n.line, "an open tuple type (`(name String, ...)`) can only be the type of a parameter: a result has to say exactly which fields it has")
         inner = Sc(sc)
         inner.fnb = True
         sess_start = len(SESS["vars"])
@@ -8820,9 +8900,26 @@ class Checker(RefineMixin):
                 labs.append(it[0])
             else:
                 labs.append(None)
-            if not (isinstance(it, tuple) and len(it) > 1 and not (len(it) > 2 and it[2])):
+            if isinstance(it, tuple) and len(it) > 2 and it[2]:        # `(...user, role: "Admin")`: the fields of a tuple that names them
+                fields = self.row_fields(types[-1])
+                if fields is None:
+                    plain = False
+                    types.pop()
+                    labs.pop()
+                else:
+                    types.pop()
+                    labs.pop()
+                    for k, v in fields.items():
+                        if k in labs:
+                            types[labs.index(k)] = v
+                        else:
+                            types.append(v)
+                            labs.append(k)
+                    spread_fields = True
+                continue
+            if not (isinstance(it, tuple) and len(it) > 1):
                 plain = False
-        if plain and len(types) >= 2:
+        if plain and (len(types) >= 2 or (types and all(labs))):
             return (("tup", tuple(types), tuple(labs)) if any(labs) else ("tup", tuple(types))), None
         return None, None
 

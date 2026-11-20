@@ -195,6 +195,8 @@ class PatternsMixin:
             return False
         if any(l is not None for l, _ in items):
             for l, q in items:
+                if q.__class__ is PRest:
+                    continue                    # `(name: n, ...)`: the other fields are not looked at
                 if l is None:
                     return False
                 if not v.names or l not in v.names:

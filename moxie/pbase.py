@@ -191,6 +191,11 @@ class PBase:
                 label = None
                 if self.at_op("..."):                       # (H, ...Rest): the rest of a tuple type, in a type function
                     self.next()
+                    if self.at_op(")") or self.at_op(","):  # (name String, ...): any tuple that has at least these fields
+                        items.append(("...", None))
+                        if not self.eat_op(","):
+                            break
+                        continue
                     items.append(("...", self.parse_type()))
                     if not self.eat_op(","):
                         break

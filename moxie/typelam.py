@@ -32,7 +32,7 @@ def subst(t, binds):
                 if r.__class__ is TName and len(t.groups) > 1 else r
         return TName(t.path, [[subst(x, binds) for x in g] for g in t.groups], line=t.line) if t.groups else t
     if c is TTuple:
-        return TTuple([(lab, subst(ft, binds)) for lab, ft in t.items], line=t.line)
+        return TTuple([(lab, subst(ft, binds) if ft is not None else None) for lab, ft in t.items], line=t.line)
     if c is TFn:
         return TFn([(lab, subst(pt, binds)) for lab, pt in t.params], subst(t.ret, binds), subst(t.recv, binds), [subst(x, binds) for x in t.caps] if t.caps is not None else None, line=t.line)
     if c is TUnion:

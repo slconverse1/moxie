@@ -1134,7 +1134,7 @@ class CallsMixin:
         if c is TApp:
             return TApp(self.close_type(t.fn, env, bound), [[self.close_type(x, env, bound) for x in g] for g in t.groups], line=t.line)
         if c is TTuple:
-            return TTuple([(lab, self.close_type(x, env, bound)) for lab, x in t.items], line=t.line)
+            return TTuple([(lab, self.close_type(x, env, bound) if x is not None else None) for lab, x in t.items], line=t.line)
         if c is TFn:
             return TFn([(lab, self.close_type(x, env, bound)) for lab, x in t.params], self.close_type(t.ret, env, bound), t.recv, [self.close_type(x, env, bound) for x in t.caps] if t.caps is not None else None, line=t.line)
         return t

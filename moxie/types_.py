@@ -100,6 +100,8 @@ class TypesMixin:
         if c is TName:
             return self.coerce_name(v, t, env)
         if c is TTuple:
+            if self.open_tuple(t):
+                return v
             if isinstance(v, TupleV) and len(v.vals) == len(t.items):
                 vals = [self.coerce(x, ft, env) for x, (_, ft) in zip(v.vals, t.items)]
                 names = v.names
@@ -304,7 +306,7 @@ class TypesMixin:
         if isinstance(t, TUnit):
             return "()"
         if isinstance(t, TTuple):
-            return "(" + ", ".join(self.show_type(x) for _, x in t.items) + ")"
+            return "(" + ", ".join(("..." if x is None else (f"{l} " if l else "") + self.show_type(x)) for l, x in t.items) + ")"
         if isinstance(t, TFn):
             return "(" + ", ".join(self.show_type(x) for _, x in t.params) + ") -> " + self.show_type(t.ret)
         if isinstance(t, TUnion):
@@ -339,6 +341,11 @@ class TypesMixin:
         if c is TUnit:
             return isinstance(v, UnitT)
         if c is TTuple:
+            if self.open_tuple(t):                  # `(name String, ...)`: a tuple with at least these named fields, of these types
+                if not isinstance(v, TupleV) or not v.names:
+                    return False
+                at = dict(zip(v.names, v.vals))
+                return all(lab in at and self.type_matches(at[lab], ft, env, tp) for lab, ft in t.items if lab != "...")
             return isinstance(v, TupleV) and len(v.vals) == len(t.items)
         if c is TFn:
             return isinstance(v, (Closure, Builtin, PartialV, ComposeV, PathV))
@@ -460,7 +467,13 @@ class TypesMixin:
                     pass
         elif c is TTuple and isinstance(v, TupleV):
             for (_, ft), x in zip(t.items, v.vals):
-                self.match_tparam(ft, x, names, out)
+                if ft is not None:
+                    self.match_tparam(ft, x, names, out)
+
+    @staticmethod
+    def open_tuple(t):
+        """True for a tuple type written with a bare `...` at the end: `(name String, ...)`."""
+        return any(lab == "..." and ft is None for lab, ft in t.items)
 
     def value_targs(self, v):
         """The type arguments a generic tuple value remembers, as the groups of a type value (a hole where unknown)."""
