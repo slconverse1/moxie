@@ -1835,6 +1835,11 @@ class Checker(RefineMixin):
                 return
             self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`")
             return
+        if exp.__class__ is tuple and len(exp) == 2 and exp[0] == "rigid" and act.__class__ is tuple and act[0] == "tup" \
+                and not self.has_unsettled(act):
+            self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`: a `{exp[1]}` is whatever type the caller passes, "
+                           f"so a new tuple is not one (build it from the argument: `u.update ...` or `(...u, field: v)`)")
+            return
         if exp.__class__ is tuple and len(exp) == 2 and exp[0] == "rigid" and act.__class__ is tuple and act[0] in ("app", "named") \
                 and (act[1] in self.tuples or act[1] in self.enums) and any(_tn(b) == "Has" for b in getattr(self.tp_decl.get(exp[1]), "bounds", None) or []):
             self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`: `{exp[1]}` is only known to hold what its `Has` bounds name, so add `Has[{tshow(act)}]`")
@@ -3049,6 +3054,17 @@ class Checker(RefineMixin):
                 return None, None
             return t[1][n.name], None                    # `.1` of `(Int, String)` is the String
         if t.__class__ is tuple and t[0] == "rigid":
+            tpd = self.tp_decl.get(t[1])
+            rbs = [self.ty_of_type(b) for b in (tpd.bounds if tpd is not None else []) if b.__class__ is TTuple]
+            rbs = [b for b in rbs if b.__class__ is tuple and b[0] == "rowtup"]
+            if rbs and n.name.__class__ is str and id(n) not in self.callee_fields:
+                for rb in rbs:
+                    if n.name in rb[2]:
+                        return rb[1][rb[2].index(n.name)], None           # a field the bound promises
+                if n.name not in self.fns and n.name not in self.load_sigs() and n.name not in ("update", "replace", "modify"):
+                    self.err(n.line, f"`{n.name}` is not one of the fields the bound of `{t[1]}` promises (`{self.row_show(rbs[0])}`): "
+                                     f"add `{n.name}` to the bound")
+                return None, None
             self.check_tparam_member(n, t)
             return None, None
         if t.__class__ is tuple and t[0] == "named" and t[1] in self.tuples:
@@ -7356,6 +7372,12 @@ class Checker(RefineMixin):
                 self.tparam_types(pt, self.base(t), tp.name, found)     # `T` itself, or the T inside `List[T]`, `Seq[T]`, `Dict[K, T]`
                 for t in found:
                     for b in tp.bounds:
+                        if b.__class__ is TTuple:
+                            rb = self.ty_of_type(b)
+                            msg = self.row_fit(rb, t) if rb.__class__ is tuple and rb[0] == "rowtup" else None
+                            if msg:
+                                self.err(n.line, f"`{fd.name}` needs `{tp.name}` to be a tuple with the fields `{self.row_show(rb)}`: " + msg)
+                            continue
                         iface = _tn(b)
                         if self.implements(t, iface) is False:
                             lack = self.union_lacking(t, iface)

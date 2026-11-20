@@ -41,7 +41,7 @@ fnbody : NL INDENT { contract } [ carry ] item+ DEDENT ;
 block_stmt : ident [ ident ] block ;
 ifstmt : 'if' expr ( 'then' simple NL | 'then' block | block ) { 'elif' expr ( 'then' simple NL | block ) } [ 'else' ( simple NL | block ) ] ;
 whenstmt : 'when' [ expr ] NL INDENT arm+ DEDENT ;
-arm : arm_head '->' ( simple NL | block | when_b ) | 'else' ( simple NL | block ) ;
+arm : arm_head '->' ( simple { ';' simple } NL | block | when_b ) | 'else' ( simple { ';' simple } NL | block ) ;
 arm_head : pattern_alts [ 'if' expr ] | ident '=' expr | expr | 'else' ;
 pattern_alts : pattern { ',' pattern } ;
 forstmt : 'for' pattern 'in' expr ( block | 'then' simple NL ) [ 'else' ( simple NL | block ) ] ;
@@ -122,7 +122,7 @@ usingdecl : 'using' ident '=' expr NL ;
 testdecl : 'test' STR block ;
 
 ifexpr : 'if' expr 'then' expr { 'elif' expr 'then' expr } [ 'else' expr ] ;
-lambda : '(' [ params ] ')' '->' ( expr | block ) ;
+lambda : '(' [ params ] ')' '->' ( expr | simple ';' simple { ';' simple } | block ) ;
 
 formonad : 'for' NL INDENT { ( pattern 'in' expr | pattern '=' expr | 'if' expr | 'and' pattern 'in' expr | pattern '=' expr 'else' expr ) NL } 'yield' expr NL DEDENT ;
 foreigndecl : 'foreign' STR NL INDENT { decl | 'handle' ident [ 'closes' ident ] NL } DEDENT ;

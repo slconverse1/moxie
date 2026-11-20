@@ -20,6 +20,13 @@ CASES = [
     ("exact type refuses extras", HEAD + 'fn exact(u (name String, age Int)) String = u.name\nprintln(exact(admin))\n', 1, "extra field `role`"),
     ("exact type refuses missing", HEAD + 'fn exact(u (name String, age Int)) String = u.name\nprintln(exact((name: "x")))\n', 1, "no `age`"),
     ("exact type still fits", HEAD + 'fn exact(u (name String, age Int)) String = u.name\nprintln(exact(user))\n', 0, "Alice"),
+    ("bound: keeps the type", HEAD + 'fn birthday[T (age Int, ...)](u T) T = u.update\n  age: u.age + 1\nprintln(birthday(user))\nprintln(birthday(Employee(name: "Bo", age: 40, salary: 9)))\n', 0, '(name: "Alice", age: 31)\nEmployee(name: "Bo", age: 40, salary: 9)'.replace("age: 40", "age: 41")),
+    ("bound: result is the argument's type", HEAD + 'fn birthday[T (age Int, ...)](u T) T = u.update\n  age: u.age + 1\nx String = birthday(user)\nprintln(x)\n', 1, "mismatched types"),
+    ("bound: missing field", HEAD + 'fn birthday[T (age Int, ...)](u T) T = u.update\n  age: u.age + 1\nprintln(birthday((name: "A")))\n', 1, "has no field `age`"),
+    ("bound: wrong field type", HEAD + 'fn birthday[T (age Int, ...)](u T) T = u.update\n  age: u.age + 1\nprintln(birthday((age: "x")))\n', 1, "needs a `Int`"),
+    ("bound: body sees only the promised fields", 'fn f[T (age Int, ...)](u T) String = u.name\nprintln(1)\n', 1, "is not one of the fields the bound of `T` promises"),
+    ("bound: field has its type", 'fn f[T (age Int, ...)](u T) Int = u.age + "x"\nprintln(1)\n', 1, "cannot apply `+`"),
+    ("bound: pipeline adds fields", HEAD + 'fn full[T (name String, ...)](u T) String = u.name\nrows = List((name: "A", age: 1), (name: "B", age: 2))\nprintln(rows.map((r) -> (...r, shout: full(r) + "!")) |> map((r) -> r.shout) |> collect())\n', 0, 'List("A!", "B!")'),
     ("fields must be named", 'fn bad(u (String, ...)) Int = 1\nprintln(1)\n', 1, "names its fields and ends with `...`"),
     ("not a result type", 'fn mk() (name String, ...) = (name: "x")\nprintln(1)\n', 1, "only be the type of a parameter"),
 ]

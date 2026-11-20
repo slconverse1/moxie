@@ -157,6 +157,19 @@ class Parser(ExprParser):
         t = self.peek(k)
         return t.kind == "NAME" and t.val in words
 
+    def parse_inline_seq(self):
+        """A one-line body that may hold several statements joined by `;` (`(x) -> y = x + 1; y * 2`, `1 -> log(1); done`): a Block of
+        them, or the single statement when there is no `;`."""
+        first = self.parse_stmt_inline()
+        if not self.at_op(";"):
+            return first
+        stmts = [first]
+        while self.eat_op(";"):
+            if self.peek().kind in ("NL", "DEDENT", "EOF") or self.at_op(")"):
+                break                                   # a trailing `;` is allowed
+            stmts.append(self.parse_stmt_inline())
+        return Block(stmts, line=getattr(first, "line", 0))
+
     def parse_stmt_inline(self):
         s = self.parse_stmt_core(allow_decl=False)
         if getattr(self, "_chain_rest", None):

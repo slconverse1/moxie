@@ -485,7 +485,7 @@ class ExprParser(PBase):
         self.stop_bol += 1
         save_nt = self.no_trailing
         self.no_trailing = False
-        e = self.parse_stmt_inline()
+        e = self.parse_inline_seq()
         self.no_trailing = save_nt
         self.stop_bol = save
         return e
@@ -1464,13 +1464,13 @@ class ExprParser(PBase):
         if not self.at_block():
             self.err("expected an indented block")
 
-    def parse_block_or_inline(self):
-        """The body after a header: an indented block, or a one-line statement."""
+    def parse_block_or_inline(self, seq=False):
+        """The body after a header: an indented block, or a one-line statement (a `when` arm may have several, joined by `;`)."""
         if self.at_block():
             return self.parse_block()
         save = (self.no_trailing,)
         self.no_trailing = False
-        e = self.parse_stmt_inline()
+        e = self.parse_inline_seq() if seq else self.parse_stmt_inline()
         self.no_trailing = save[0]
         return e
 
@@ -1555,7 +1555,7 @@ class ExprParser(PBase):
             if self.at_name("else"):                                   # `else body` is `_ -> body`
                 self.next()
                 self.no_block_colon()
-                body = self.parse_block_or_inline()
+                body = self.parse_block_or_inline(seq=True)
                 if scrut is None:
                     arms.append(Arm(None, PH(1, line=aline), body, line=aline))
                 else:
@@ -1569,7 +1569,7 @@ class ExprParser(PBase):
                 cond = self.parse_expr()
                 self.no_trailing = save
                 self.expect_op("->")
-                body = self.parse_block_or_inline()
+                body = self.parse_block_or_inline(seq=True)
                 arms.append(Arm(None, cond, body, line=aline))
                 self.end_line()
                 continue
@@ -1584,7 +1584,7 @@ class ExprParser(PBase):
                 guard = self.parse_expr()
                 self.no_trailing = save
             self.expect_op("->")
-            body = self.parse_block_or_inline()
+            body = self.parse_block_or_inline(seq=True)
             arms.append(Arm(pats, guard, body, line=aline))
             self.end_line()
         self.expect_dedent()
@@ -1704,7 +1704,7 @@ class ExprParser(PBase):
                 self.expect_op("->")
             else:
                 self.no_block_colon()
-            body = self.parse_block_or_inline()
+            body = self.parse_block_or_inline(seq=True)
             arms.append(SelArm(kind, bind, ex, body, line=aline))
             self.end_line()
             if used_else:

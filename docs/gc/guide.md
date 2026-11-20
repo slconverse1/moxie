@@ -692,9 +692,13 @@ println(admin)
 println(greet(user))
 println(greet(Employee(name: "Bo", age: 40, salary: 9)))
 println(tag(admin))
+fn birthday[T (age Int, ...)](u T) T = u.update
+  age: u.age + 1
+println(birthday(user))
+println(birthday(Employee(name: "Bo", age: 40, salary: 9)))
 ```
 
-Output: `(name: "Alice", age: 30, role: "Admin")`, `hi Alice`, `hi Bo`, then `Alice is 31 next year`. **Mistakes:** passing a tuple with an extra field to an exact tuple type (the message suggests the `...` form), a tuple that lacks a field or has one of the wrong type, using a field the open type does not name (`u.age` when only `name` is promised), an open type in a result or with an unnamed field (`(String, ...)`), and `...` anywhere but the end.
+Output: `(name: "Alice", age: 30, role: "Admin")`, `hi Alice`, `hi Bo`, `Alice is 31 next year`, `(name: "Alice", age: 31)`, then `Employee(name: "Bo", age: 41, salary: 9)`. The open type can also **bound a type parameter**, as in `birthday`: `[T (age Int, ...)]` says `T` is whatever tuple the caller passes, as long as it has `age Int`, and the result is that same `T`, so a labeled tuple comes back as a labeled tuple and an `Employee` as an `Employee`, with the other fields untouched. The body sees only the promised fields, and the call is refused when the argument lacks one. **Mistakes:** passing a tuple with an extra field to an exact tuple type (the message suggests the `...` form), a tuple that lacks a field or has one of the wrong type, using a field the open type does not name (`u.age` when only `name` is promised), an open type in a result or with an unnamed field (`(String, ...)`), and `...` anywhere but the end.
 
 ```
 enum Shape
@@ -2578,6 +2582,23 @@ println(inputs.position((s) -> s == "100"))
 ```
 
 Output: `Ok(42)`, then `List(42, 100)`, then `42`, then `-1`, then `Ok(2)`.
+
+
+**Several statements on one line.** A one-line lambda body or `when` / `select` arm body may hold several statements joined by `;`: `(x) -> y = x + 1; y * 2`, and `2 -> println("two"); "dos"`. The last one is the value, as in a block. It is not available after `then`, `do` or a loop's `else`, where a block is the way to write more than one statement, and a trailing `;` is allowed.
+
+```
+f = (x) -> y = x + 1; y * 2
+fn word(n Int) String
+  when n
+    1 -> println("one"); "uno"
+    2 -> println("two"); println("dos"); "dos"
+    _ -> "other"
+println(f(3))
+println(word(1))
+println(word(2))
+```
+
+Output: `8`, `one`, `uno`, `two`, `dos`, then `dos`.
 
 **12a. Binary patterns**
 
