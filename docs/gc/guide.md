@@ -3993,9 +3993,11 @@ fn greet(r (name String, ...)) String = "hi ${r.name}"
 inline fn staff(conn Connection, dept String) Result[Stream[(name String, age Int)], Error]
   sql(conn):
     SELECT name, age FROM staff WHERE dept = $dept ORDER BY id
-rows = staff(conn, "eng")?
-for p in rows |> filter(adult)
-  println(greet(p))
+fn report(conn Connection) Result[Unit, Error]
+  rows = staff(conn, "eng")?
+  for p in rows |> filter(adult)
+    println(greet(p))
+  Ok(())
 ```
 
 The same `greet` works on a query that selects `name, dept`, or on a tuple built in the program, so a report function can be written once and fed from SQL, a file or a test.
