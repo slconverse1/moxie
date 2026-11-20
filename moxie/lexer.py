@@ -104,8 +104,15 @@ class Lexer:
                 j = self.i
                 while j < n and src[j] == " ":
                     j += 1
-                if j < n and src[j] == "\t":
-                    self.err("tabs are not allowed in indentation")
+                if j < n and src[j] in "\t\r\f\v":
+                    k = j
+                    while k < n and src[k] in " \t\r\f\v":
+                        k += 1
+                    if k >= n or src[k] == "\n":           # a line of only white space is a blank line, tabs and all
+                        self.i = k
+                        j = k
+                    elif src[j] == "\t":
+                        self.err("tabs are not allowed in indentation")
                 indent = j - self.i
                 self.i = j
                 at_bol = False

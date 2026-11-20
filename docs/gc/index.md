@@ -92,7 +92,7 @@ Assume this code lives in its own file. Notice the two-space moxie indentation. 
 The elegance of moxie rests on an enormous architectural debt owed to the pioneering languages that came before it, whose innovations we have shamelessly "borrowed." Here's the list, as best we can reconstruct it:
 
 - **Go:** interfaces, goroutines, channels, and `select`, and the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt`.
-- **Python:** clean, human-readable visual spacing, `and`/`or`/`not`, `x in s`, slicing with ranges, and doctests, examples in doc comments that run as tests.
+- **Python:** clean, human-readable visual spacing, `and`/`or`/`not`, `x in s`, collection operators such as `+` to join two lists, slicing with ranges, and doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks, field delegates, Domain-Specific Languages, labeled `break` and `continue`, and the `step` syntax for ranges, as in `1..<9 step 2`.
 - **Scala:** opaque types, contextual parameters, expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, and type-level programming: matching on types, recursion, and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
