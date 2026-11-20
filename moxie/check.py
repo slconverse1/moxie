@@ -1450,6 +1450,10 @@ class Checker(RefineMixin):
             first = self.tf_trail[0] if self.tf_trail else (name, args)
             top = f"{first[0]}[{', '.join(tys.show(a) for a in first[1])}]"
             here = f"{name}[{', '.join(tys.show(a) for a in args)}]"
+            if name == "Without" and len(args) == 2 and args[1].__class__ is tuple and args[1][0] == "slit":
+                self.err(self.cur_line, f"`Without[..., \"{args[1][1]}\"]`: the tuple has no field `{args[1][1]}` to leave out"
+                         + (f" (while working out `{top}`)" if top != here else ""))
+                return None
             self.err(self.cur_line, f"no arm of `{name}` matches `{tys.show(sc)}`" + (f" (while working out `{top}`)" if top != here else ""))
             return None
         finally:
@@ -1887,6 +1891,14 @@ class Checker(RefineMixin):
                 return None
             return ("tapp", "Without", (t, ("slit", key)))
         have = self.row_fields(t)
+        if have is None and t.__class__ is tuple and t[0] == "app" and t[1] in self.tuples and self.tuples[t[1]].tparams \
+                and len(t[2]) == len(self.tuples[t[1]].tparams):
+            td = self.tuples[t[1]]
+            keep = {tp.name for tp in td.tparams}
+            binds = {tp.name: a for tp, a in zip(td.tparams, t[2])}
+            fs = [f for f in td.fields or [] if getattr(f, "name", None) not in (None, "...")]
+            if len(fs) == len(td.fields or []):
+                have = {f.name: tys.subst(self.ty_of_type(f.type, 0, keep), binds) for f in fs}      # a generic tuple, with its type arguments put in
         if have is None:
             if t.__class__ is str or (t.__class__ is tuple and t[0] in ("app", "fn")):
                 self.err(n.line, f"`without` takes a tuple with named fields, found `{tshow(t)}`")
@@ -1910,7 +1922,7 @@ class Checker(RefineMixin):
         for lab, ft in zip(exp[2], exp[1]):
             if lab not in have:
                 return f"`{tshow(act)}` has no field `{lab}`, which `{self.row_show(exp)}` needs"
-            if ft is not None and have[lab] is not None and not tys.compatible(ft, have[lab]):
+            if ft is not None and have[lab] is not None and not tys._arg_compat(ft, have[lab]):
                 return f"the field `{lab}` is a `{tshow(have[lab])}`, but `{self.row_show(exp)}` needs a `{tshow(ft)}`"
         return None
 
@@ -3303,9 +3315,23 @@ class Checker(RefineMixin):
         binds = {}
         if td is not None and t[0] == "app" and len(t[2]) == len(td.tparams or []):
             binds = {tp.name: a for tp, a in zip(td.tparams, t[2])}
+        have = self.row_fields(t) if td is None and t.__class__ is tuple and t[0] in ("tup", "rowtup") else None
+        if have is None and td is None and t.__class__ is tuple and t[0] == "rigid":
+            tpd = self.tp_decl.get(t[1])
+            rbs = [self.ty_of_type(b) for b in (tpd.bounds if tpd is not None else []) if b.__class__ is TTuple]
+            rbs = [b for b in rbs if b.__class__ is tuple and b[0] == "rowtup"]
+            if rbs:
+                have = {}
+                for rb in rbs:
+                    have.update(self.row_fields(rb) or {})
         for ln in lines or []:
             ft = None
             union_heads = None
+            if have is not None:                      # a labeled or open tuple type: the fields it names
+                if ln.name in have:
+                    ft = have[ln.name]
+                elif ln.name not in self.fns:
+                    self.err(ln.line, f"`{tshow(t)}` has no field `{ln.name}` to update (it has {', '.join('`' + str(k) + '`' for k in have)})")
             if known:
                 f = next((f for f in td.fields or [] if f.name == ln.name), None)
                 if f is not None:
@@ -4163,6 +4189,9 @@ class Checker(RefineMixin):
         elif it.__class__ is tuple and it[0] == "app" and it[1] == "Dict" and len(it[2]) == 2 and None not in it[2] \
                 and not any(self.has_unsettled(x) for x in it[2]):
             el = ("tup", (it[2][0], it[2][1]))               # a Dict gives (key, value) pairs
+        elif it.__class__ is tuple and it[0] in ("tup", "rowtup") and not any(x.__class__ is tuple and x and x[0] == "spread" for x in it[1]):
+            self.err(n.line, f"`for` needs a collection, a range, or a stream, found the tuple `{tshow(it)}`: a tuple holds a fixed set of fields, not a sequence "
+                             f"(put the items in a `List` or an `Array` to loop over them)")
         elif it is not None and (it in INTS or it in ("Bool", "Float", "Decimal", "Char")):
             self.err(n.line, f"`for` needs a collection, a range, or a stream, found `{tshow(it)}`")
         if n.pat.__class__ is PTuple and el is not None and not any(getattr(ip, "name", None) == "..." or ip.__class__ is PRest for _l, ip in n.pat.items):
@@ -6610,6 +6639,10 @@ class Checker(RefineMixin):
                 and all(hasattr(a, "expr") and not getattr(a, "label", None) for a in args) and args[1].expr.__class__ is StrLit \
                 and all(isinstance(x, str) for x in args[1].expr.parts):
             return self.type_without(n, ats[0][0], "".join(args[1].expr.parts)), None
+        if fn.__class__ is Name and fn.name == "without" and "without" not in self.fns and sc.find("without") is None and len(args) == 2 \
+                and all(hasattr(a, "expr") and not getattr(a, "label", None) for a in args):
+            self.err(n.line, "`without` needs the field name as a string literal (`without(user, \"password\")`), so the compiler can work out which field the result lacks")
+            return None, None
         if fn.__class__ is Name:
             v = sc.find(fn.name)
             if v is None:
@@ -8513,6 +8546,9 @@ class Checker(RefineMixin):
                 given[lab] = x
             if given is None:
                 continue
+            for lab in given:
+                if lab not in want[2]:
+                    self.err(e.line, f"the result is `{tshow(fr)}`, which does not promise `{lab}`: add it to the second type of `Extend`, or leave it out")
             for lab, ft in zip(want[2], want[1]):
                 if lab not in given:
                     self.err(e.line, f"the result is `{tshow(fr)}`, so the new tuple must set `{lab}`")
@@ -8529,6 +8565,11 @@ class Checker(RefineMixin):
         if e.__class__ is Block:
             s = e.stmts or []
             return self.tails_all(s[-1]) if s else []
+        if e.__class__ is IfE and e.else_ is not None:
+            out = []
+            for _c, b in e.branches:
+                out += self.tails_all(b)
+            return out + self.tails_all(e.else_)
         return [e]
 
     def tails(self, e):

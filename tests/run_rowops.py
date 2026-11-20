@@ -21,6 +21,21 @@ CASES = [
     ("without: generic needs the field", STRIP + 'println(strip((name: "A")))\n', 1, "has no field `password`"),
     ("field of a labeled tuple", 'u = (a: 1)\nprintln(u.b)\n', 1, "has no field `b`"),
     ("field of a spread tuple", 'u = (a: 1, c: 2)\nv = (...u, d: 3)\nprintln(v.b)\n', 1, "has no field `b`"),
+    ("without: the key must be a literal", 'k = "id"\nu = (id: 1, n: 2)\nprintln(without(u, k))\n', 1, "string literal"),
+    ("without: a generic declared tuple", 'tuple Box[T]\n  v T\n  id Int\nb = Box(v: "x", id: 1)\nw = without(b, "id")\nprintln(w)\nprintln(w.v)\n', 0, '(v: "x")\nx'),
+    ("extend: no extra fields", 'fn f[R (a Int, ...)](r R) Extend[R, (b Int)] = (...r, b: 1, c: 2)\nprintln(1)\n', 1, "does not promise `c`"),
+    ("update: unknown field of a labeled tuple", 'u = (a: 1)\nprintln(u.update\n  b: 5)\n', 1, "has no field `b` to update"),
+    ("update: wrong type for a labeled tuple", 'u = (a: 1)\nprintln(u.update\n  a: "x")\n', 1, "expected `Int`, found `String`"),
+    ("update: after without", 'u = (a: 1, b: 2)\nv = without(u, "a")\nprintln(v.update\n  a: 5)\n', 1, "has no field `a` to update"),
+    ("update: still fine", 'u = (a: 1, b: 2)\nprintln(u.update\n  a: u.a + 1)\n', 0, "(a: 2, b: 2)"),
+    ("open type: a field of the wrong number type", 'fn f(r (a Int, ...)) Int = r.a\nprintln(f((a: 1.5)))\n', 1, "needs a `Int`"),
+    ("open type in a List parameter", 'fn f(xs List[(a Int, ...)]) Int = len(xs)\nprintln(f(List((a: 1, b: 2))))\n', 0, "1"),
+    ("open type in a List parameter: missing field", 'fn f(xs List[(a Int, ...)]) Int = len(xs)\nprintln(f(List((b: 2))))\n', 1, "mismatched types"),
+    ("bound: update with the wrong type", 'fn f[R (a Int, ...)](r R) R = r.update\n  a: "no"\nprintln(1)\n', 1, "expected `Int`, found `String`"),
+    ("bound: update of a field not promised", 'fn f[R (a Int, ...)](r R) R = r.update\n  z: 1\nprintln(1)\n', 1, "has no field `z` to update"),
+    ("without: the field is not there (generic result)", 'fn f[R (a Int, ...)](r R) Without[R, "b"] = without(r, "b")\nprintln(f((a: 1)))\n', 1, "no field `b` to leave out"),
+    ("extend: every branch is checked", 'fn f[R (a Int, ...)](r R) Extend[R, (b Int)]\n  if r.a > 0 then (...r, b: 1) else (...r, b: "no")\nprintln(f((a: 1)))\n', 1, "expected `Int`, found `String`"),
+    ("a tuple is not a sequence", 'u = (a: 1, b: 2)\nfor k in u\n  println(k)\n', 1, "found the tuple"),
 ]
 bad = 0
 for name, src, want_rc, want in CASES:

@@ -6,7 +6,6 @@ type alias Extend[R, X] = when R
   (F T, ...Rest) -> (F T, ...Extend[Rest, X])
 
 type alias Without[R, K] = when R
-  () -> ()
   (K T, ...Rest) -> Rest
   (F T, ...Rest) -> (F T, ...Without[Rest, K])
 

@@ -155,6 +155,10 @@ def compatible(exp, act):
         if len(exp) > 3 and len(act) > 3 and exp[3].__class__ is int and act[3].__class__ is int and exp[3] != act[3]:
             return False
         return exp[1] == act[1] and len(exp[2]) == len(act[2]) and all(_arg_compat(x, y) for x, y in zip(exp[2], act[2]))
+    if et == "rowtup" and ROW_FIT is not None and at in ("tup", "named", "app"):
+        return ROW_FIT(exp, act) is None            # an open tuple type takes any tuple that has its fields
+    if at == "rowtup" and ROW_FIT is not None and et in ("tup", "named", "app"):
+        return ROW_FIT(act, exp) is None
     if et == "fn" and at == "fn":
         if len(exp[1]) != len(act[1]):
             return True      # arities differ legitimately (callbacks, tuple unpacking)
