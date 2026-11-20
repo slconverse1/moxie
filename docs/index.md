@@ -2,7 +2,7 @@
 layout: default
 title: "Moxie"
 ---
-> This is **moxie**, the no-GC language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Guide, and Spec. The two are kept apart on purpose, because they make different promises.
+> This is **moxie**, the GC-free language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Guide, and Spec. The two are kept apart on purpose, because they make different promises.
 
 # Hello, mixers!
 
@@ -49,7 +49,7 @@ python3 -m moxie run hello.mxi
 
 with `hello.mxi` saved next to the `moxie` folder. To run moxie from any folder, add `export PYTHONPATH="$HOME/moxie-work:$PYTHONPATH"` and `alias moxie='python3 -m moxie'` to `~/.zshrc`, run `source ~/.zshrc`, and then `moxie run main.mxi` works anywhere. The interpreter reaches native libraries through `ctypes`, which the browser version cannot do.
 
-Everything above runs moxie, the no-GC dialect. To run [moxie/gc](gc/) instead, add `--gc` on the command line: `python3 -m moxie --gc run hello.mxi`.
+Everything above runs moxie, the GC-free dialect. To run [moxie/gc](gc/) instead, add `--gc` on the command line: `python3 -m moxie --gc run hello.mxi`.
 
 The [Tutorial](tutorial.html) builds one program step by step and assumes you have it running.
 
@@ -57,9 +57,9 @@ The [Tutorial](tutorial.html) builds one program step by step and assumes you ha
 
 Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer lives on paper alone. It's a software project undertaken by me, Steve Converse (feature selection and documentation), in collaboration with Google's generative AI (feature analysis) and Anthropic's Claude (feature selection, analysis, implementation, and documentation), without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
 
-The interpreter runs moxie programs, including the examples in the Mixer's Guide, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the no-GC memory model and the speed in FCFX, are still promises, not demonstrations.
+The interpreter runs moxie programs, including the examples in the Mixer's Guide, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the GC-free memory model and the speed in FCFX, are still promises, not demonstrations.
 
-Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But moxie is still worth a look or two (the no-GC, 1-pass compiler constraint on moxie’s design is especially informative), and its promises should be kept in a real programming language.
+Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But moxie is still worth a look or two (the GC-free, 1-pass compiler constraint on moxie’s design is especially informative), and its promises should be kept in a real programming language.
 
 ASAP!
 
@@ -136,7 +136,7 @@ The Moxie Runtime is the small piece of machinery that starts your program, sche
 **Fibers and OS threads.** Fibers are what other languages call green threads: the Runtime schedules them itself instead of asking the operating system to. All fibers run on a single OS thread, taking turns. A fiber runs until it parks (waits) at a `read`, `write`, `sleep`, `select`, or database query, and then the Runtime picks the next ready fiber. Nothing preempts a running fiber, so two fibers never run at the same instant. That's why they can share Atoms without locks, and also why a fiber stuck in a long computation holds up the rest. (Multi-core scheduling is an open question.)
 
 **What other languages call them.** If you know one of these, you already know the idea:
-- **Go:** a goroutine, and moxie's `go f()` is the same statement under the same name, in Go's honor. It starts `f` as a concurrent fiber, arguments evaluated at the call, and the two talk over channels. Four things differ. Go spreads goroutines across many OS threads and can preempt them, while moxie's fibers take turns and switch only where they park. `go` waits when a fiber function has all its slots in use, because the number of slots is fixed (that is what lets no-GC moxie size memory before the program starts), and Go has no such limit; `try_go` is the version that returns `Err(NO_SLOT)` at once. A resource argument moves to the new fiber. And a function must be declared `fiber fn` to be started.
+- **Go:** a goroutine, and moxie's `go f()` is the same statement under the same name, in Go's honor. It starts `f` as a concurrent fiber, arguments evaluated at the call, and the two talk over channels. Four things differ. Go spreads goroutines across many OS threads and can preempt them, while moxie's fibers take turns and switch only where they park. `go` waits when a fiber function has all its slots in use, because the number of slots is fixed (that is what lets GC-free moxie size memory before the program starts), and Go has no such limit; `try_go` is the version that returns `Err(NO_SLOT)` at once. A resource argument moves to the new fiber. And a function must be declared `fiber fn` to be started.
 - **Kotlin:** a coroutine, started with `launch`.
 - **Erlang and Elixir:** a process, started with `spawn`. Processes also talk by messages, but they're preemptively scheduled and each has its own heap, which moxie fibers don't need.
 - **Python:** an `asyncio` task, which is also cooperative and single-threaded.
@@ -417,7 +417,7 @@ s.error("disk full")
 
 This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
 
-One thing the no-GC dialect does not do is store a closure that captures values inside a tuple field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an interface and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
+One thing the GC-free dialect does not do is store a closure that captures values inside a tuple field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an interface and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
 
 ## Encapsulating state without objects
 
@@ -1608,9 +1608,11 @@ daemon
     msg = read(inbox) ->
       println("got: $msg")
       break daemon
+
     read(timeout) ->
       println("timed out")
       break daemon
+
     else
       sleep(100ms)
       counter + 1

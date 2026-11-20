@@ -18,9 +18,11 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
-Dialect names. Internally, in notes, tests and commit messages, the no-GC dialect is **moxie/nc** ("no collector") and the collected one is **moxie/gc**; the site pages and the specs keep saying "moxie" for the default dialect and "no-GC moxie" where the contrast matters.
+Dialect names. Internally, in notes, tests and commit messages, the GC-free dialect is **moxie/nc** ("no collector") and the collected one is **moxie/gc**; the site pages and the specs keep saying "moxie" for the default dialect and "GC-free moxie" where the contrast matters.
 
 Newest first.
+
+**2026-11-19 (wording and layout):** the default dialect is now called **GC-free moxie** (was "no-GC moxie") in the guides, specs and intros. The `select` examples in the guides and intros have a blank line between arms, which shows where one case ends and the next begins and why no `case` keyword is needed. Also: `.N` on a tuple has the type of field N and is range-checked (`x Int = pair(1, "a").1` is an error).
 
 **2026-11-19 (type-safety, rounds 2 and 3):** more programs that used to abort at run time are compile errors: an unannotated lambda called with an argument its body can't take (`f = (a) -> a + 1; f("s")`, the body is rechecked at each call); `<`, `>`, `<=`, `>=` on an `Option`, `Result`, `List` or other container; a field read on an `any S` that `S` doesn't declare; `s any S = 3` when `Int` has no `S`; a method called on a scalar of the wrong type (`"s".a()` when only `Int` has `a`); `impl Show for Int` (a built-in impl can't be replaced); too many arguments to a generic function; a generic function whose function argument and plain argument fix `T` differently; `Box[Float]` for `Box[Int]`; `for x in rx` over a channel (x now has the channel's element type); a channel capacity that is negative or not an Int; `Chan[Int][1](5)`; `close(5)`. Printing a channel end shows `<ChanR>` or `<ChanW>`, not a Python repr. `List(1) + 2` stays `List(1, 2)`, and a function still prints as `<function>`.
 

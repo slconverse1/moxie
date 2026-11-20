@@ -1,6 +1,6 @@
 """Packages that ship with the interpreter, written in moxie (moxie/std/).  A program's own files win over these.
 
-`fp.state` is moxie/gc only: it needs closures that have one type per signature, which no-GC moxie does not give.
+`fp.state` is moxie/gc only: it needs closures that have one type per signature, which GC-free moxie does not give.
 """
 import os
 

@@ -5,7 +5,7 @@ title: "moxie/gc Mixer's Guide"
 ---
 # MOXIE/GC MIXER'S GUIDE
 
-These are compact examples, not a tutorial: for one program built step by step, see the [Tutorial](tutorial.html). This is the Guide for moxie/gc, the garbage-collected dialect of moxie; no-GC moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from no-GC moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements no-GC moxie, so their outputs were worked out by hand. Every output was checked by running the example on the reference interpreter. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Unless a snippet says otherwise, it is assumed to run in the entry file, whose top level behaves like the body of `main`: a name can be rebound there (`x = 5`, then `x += 1`) until a function has read it, and a function sees only the names bound above it (see "Module scope and function scope" below). Indentation is shown with blank braille characters (two per level) so it survives copying.
+These are compact examples, not a tutorial: for one program built step by step, see the [Tutorial](tutorial.html). This is the Guide for moxie/gc, the garbage-collected dialect of moxie; GC-free moxie is the other dialect and has its own Guide. It is a full copy of the Mixer's Guide in which every passage that differs from GC-free moxie is marked **[gc]**; unmarked text is the same in both languages. The Moxie/gc Spec has the table of differences. Examples that need the collector can't be run by the reference interpreter, which implements GC-free moxie, so their outputs were worked out by hand. Every output was checked by running the example on the reference interpreter. Snippets continue from earlier ones: a name such as `add`, `half`, `Box`, `Point`, or `User` that isn't defined in a snippet comes from the nearest earlier chapter that defines it, and a snippet that follows another in the same section reuses its bindings. Unless a snippet says otherwise, it is assumed to run in the entry file, whose top level behaves like the body of `main`: a name can be rebound there (`x = 5`, then `x += 1`) until a function has read it, and a function sees only the names bound above it (see "Module scope and function scope" below). Indentation is shown with blank braille characters (two per level) so it survives copying.
 
 **Chapter 1: Bindings, blocks, `if`, loops**
 
@@ -192,6 +192,7 @@ Output: `1`, `3`, `4`. Inside a `select`, a bare `break` leaves the select, so l
       if n < 0
         break #serve
       println("got $n")
+
     read(timeout) ->
       break #serve
 ```
@@ -947,7 +948,7 @@ for (name, age) in older
 
 Output: `alice is 31`, `bob is 26`, `carol is 41`, `dave is 7`. Braces mark a list of keys, so a tuple on the left of a plain `->` is still a single key: `Dict((0, 0) -> "start")` has the key `(0, 0)`. A count that doesn't match, as in `{a, b, c} -> (1, 2)`, is a compile error. Only a Dict can be spread into a `Dict(...)`; spreading a `List` there is a compile error. In the other direction, `List(...ages)` gives the `(key, value)` pairs.
 
-**Combining collections.** **[gc]** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Nothing can be full, so each returns the plain collection, as `put` does, and a program meant to run in both dialects handles the `Result` that no-GC moxie returns.
+**Combining collections.** **[gc]** `union(a, b)` gives the elements of both sets, `merge(a, b)` gives the entries of both dicts (`b`'s value for a key in both), and `merge_with(f, a, b)` gives `f(a's value, b's value)` for such a key. Nothing can be full, so each returns the plain collection, as `put` does, and a program meant to run in both dialects handles the `Result` that GC-free moxie returns.
 
 ```
 a = Set[Int][8](1, 2)
@@ -1422,7 +1423,7 @@ run_op(ops, "minus", 10, 4)
 run_op(ops, "times", 2, 8)
 ```
 
-Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14). **[gc]** Because a closure can go anywhere, the next example, which no-GC moxie rejects, is fine:
+Output: `times: 42`, `unknown operation`, `plus: 10`, `minus: 6`, `times: 16`. **Mistakes:** `fn warn = log(prefix, _)` with a runtime `prefix` (use the binding form), `log("ERROR")` with no placeholder, `curry(+)` (operators aren't values), and expecting a function to cache its results for you (chapter 14). **[gc]** Because a closure can go anywhere, the next example, which GC-free moxie rejects, is fine:
 
 **Operator sections.** An operator with one side missing is a function of the other side, as in Haskell: `(+ 1)` adds one, `(10 -)` subtracts from ten, `(* 2)` doubles, `(> 2)` asks whether something is above two, and ``(`div_by` 2)`` does the same for a backtick function. The words `and`, `or` and `in` make sections too: `(in allowed)` asks whether something is in `allowed`, and `(and ok)` joins it to `ok`. They are the same as the placeholder forms (`_ + 1`) and work wherever those do, and they are checked like the lambda they stand for: `(+ 1)` on a list of `String` is a compile error, as `(x) -> x + 1` would be. Subtraction needs one rule. `(-4)` and `(-x)` are negation, and a space after the minus makes the section, `(- 4)`, so moxie needs no `subtract`.
 
@@ -2962,9 +2963,11 @@ daemon
       text = "got: $msg"
       println(text)
       break daemon
+
     read(timeout) ->
       println("timed out")
       break daemon
+
     else
       sleep(100ms)
       counter + 1
@@ -3030,6 +3033,7 @@ fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
       cancelled(stop) ->
         \write(out, "worker ${id} stopping")
         return
+
       else
         sleep(10ms)
 rx, tx = Chan[String][4]()
@@ -3470,6 +3474,7 @@ fn polite(c Cancel) Result[Int, Error]
     select
       cancelled(c) ->
         return Err(Error(CLOSED, "cancelled"))
+
       else
         sleep(5ms)
   Ok(0)
@@ -3704,6 +3709,7 @@ done_r, done_w = Chan[Int][1]()
 go work(done_w)
 select
   read(rx) -> exit(130)
+
   read(done_r) -> println("finished")
 ```
 
@@ -4342,7 +4348,7 @@ r = two.run(0)
 println("${r(0)(0)} ${r(0)(1)} ${r(1)}")
 ```
 
-Output: `1 2 2`. **[gc]** None of no-GC moxie's closure limits apply: a closure has one type per signature, branches may return different closures, loops and recursion over runtime-length data work, and a State value can go in a Dict, an Atom, or a channel. `ref` threading remains the simpler way, but if you want the monad ready-made, `import fp.state` gives you this `State` type with its `Monad` impl, plus `get()`, `put(s)`, `modify(f)`, `gets(f)`, `eval(m, s)` (the result), `exec(m, s)` (the final state), and `traverse(xs, f)` (runs `f` on each element in order, threading the state, and collects the results). The package is moxie/gc only, and no-GC moxie refuses the import:
+Output: `1 2 2`. **[gc]** None of GC-free moxie's closure limits apply: a closure has one type per signature, branches may return different closures, loops and recursion over runtime-length data work, and a State value can go in a Dict, an Atom, or a channel. `ref` threading remains the simpler way, but if you want the monad ready-made, `import fp.state` gives you this `State` type with its `Monad` impl, plus `get()`, `put(s)`, `modify(f)`, `gets(f)`, `eval(m, s)` (the result), `exec(m, s)` (the final state), and `traverse(xs, f)` (runs `f` on each element in order, threading the state, and collects the results). The package is moxie/gc only, and GC-free moxie refuses the import:
 
 ```
 import fp.state
@@ -4375,7 +4381,7 @@ r = for
 println(r)
 ```
 
-Output: `List(11, 21, 12, 22)`. When generic code written for any monad `F[_] Monad` needs the "try every branch" behavior, wrap the list in **`ListM`**: `ListM(xs)` is a monad whose `flat_map` returns a `ListM`, `ListM.pure(x)` is `ListM(List(x))`, and `.list()` unwraps it. The wrapping is explicit on purpose, so a pipeline stage and a monad step never share the name by accident. Four packages ship with moxie/gc, each one `import` away (they need closures with one type per signature, so no-GC moxie does not have them). `fp.reader` is a **Reader** monad, `fp.writer` is a **Writer** whose log is a `List`, `fp.cont` is a **continuation** monad with `call_cc`, and `fp.free` is the **free monad** over any functor:
+Output: `List(11, 21, 12, 22)`. When generic code written for any monad `F[_] Monad` needs the "try every branch" behavior, wrap the list in **`ListM`**: `ListM(xs)` is a monad whose `flat_map` returns a `ListM`, `ListM.pure(x)` is `ListM(List(x))`, and `.list()` unwraps it. The wrapping is explicit on purpose, so a pipeline stage and a monad step never share the name by accident. Four packages ship with moxie/gc, each one `import` away (they need closures with one type per signature, so GC-free moxie does not have them). `fp.reader` is a **Reader** monad, `fp.writer` is a **Writer** whose log is a `List`, `fp.cont` is a **continuation** monad with `call_cc`, and `fp.free` is the **free monad** over any functor:
 
 ```
 import fp.reader

@@ -191,6 +191,7 @@ Output: `1`, `3`, `4`. Inside a `select`, a bare `break` leaves the select, so l
       if n < 0
         break #serve
       println("got $n")
+
     read(timeout) ->
       break #serve
 ```
@@ -1875,7 +1876,7 @@ Output: `Hello, ada / Good day, Chief`. The default is specialized for each impl
 - Superclasses are embedded interfaces; constraints are bounds like `[T Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
-- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and monad transformers (in no-GC moxie; moxie/gc has them as the library `fp.trans`).
+- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families, and monad transformers (in GC-free moxie; moxie/gc has them as the library `fp.trans`).
 
 **Mistakes:** an `impl` of someone else's interface for someone else's type, calling `empty()` with no type to say which one, combining two `any Monoid` values (`Self` in a parameter), comparing `any` values with `==` when the interface doesn't list `Equatable` (list `Equatable`, `Ordered`, or `Hashable` inside it and `==`, `<`, `Set`, and `Dict` keys all work), and a bound written twice on one parameter (embed the interfaces instead).
 
@@ -2911,9 +2912,11 @@ daemon
       text = "got: $msg"
       println(text)
       break daemon
+
     read(timeout) ->
       println("timed out")
       break daemon
+
     else
       sleep(100ms)
       counter + 1
@@ -2979,6 +2982,7 @@ fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
       cancelled(stop) ->
         \write(out, "worker ${id} stopping")
         return
+
       else
         sleep(10ms)
 rx, tx = Chan[String][4]()
@@ -3451,6 +3455,7 @@ fn polite(c Cancel) Result[Int, Error]
     select
       cancelled(c) ->
         return Err(Error(CLOSED, "cancelled"))
+
       else
         sleep(5ms)
   Ok(0)
@@ -3685,6 +3690,7 @@ done_r, done_w = Chan[Int][1]()
 go work(done_w)
 select
   read(rx) -> exit(130)
+
   read(done_r) -> println("finished")
 ```
 
