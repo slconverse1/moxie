@@ -58,6 +58,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.statics = {}      # type name -> {name -> [Closure]}
         self.alias_tps = {}    # generic alias name -> its TParam list
         self.froms = {}        # error type -> [(source type name, Closure)]
+        self.recognizers = {}  # `pattern fn` name -> number of leading parameters (those before the matched value)
         self.cases = {}        # bare case name -> [EnumType]
         self.packages = {}
         self.tests = []

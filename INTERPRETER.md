@@ -829,6 +829,10 @@ The checker mirrors this in `tys`: the `Seq[T]` parameter of a stage unifies wit
 
 `recheck_lambda` (called from `check_local_fn_arity`, via `lam_node`) rechecks an unannotated lambda's body with the call's scalar argument types and reports new errors at the call. `e_Binary` rejects ordering on Option/Result/containers. `e_Field` rejects non-member reads on an `any` variable (`any_vars`); `e_Assign` checks `any I` annotations. `scalar_only_method` lets `check_builtin_method` reject a scalar receiver whose type has no such method. `tys._arg_compat` makes `Box[Float]` for `Box[Int]` a mismatch. `e_GenApp` and the `Chan` branch of `e_Call` check capacity and constructor arguments. `core.show` prints channel and future ends as `<ChanR>` and so on.
 
+## Pattern functions (parser.py, patterns.py, check.py)
+
+`pattern` is a soft modifier (`EFFMODS`/`MODS` in the parser) and adds `pure` to the flags. `ev_FnDecl` records `recognizers[name] = leading parameter count`; `match_con` calls `match_recognizer` first for such a name: it takes the leading arguments (literals or pins), runs the function with `run_sync` (a pure function cannot park), and on `Some` matches the payload with the remaining patterns (one pattern: the whole payload; several: a tuple payload by position). In the checker `recs` holds the declarations, `rec_decl` resolves a constructor pattern (a case or type of the same name wins), `type_rec` (called first in `type_pat`) checks arguments, value type, payload count and order and gives the names their types, `has_rec` makes a `when` demand a `_` arm, `refutable_pat` treats it as refutable, and `check_pattern_fn` validates the declaration.
+
 ## `find_map` and `position` (prelude.py, sigs.py)
 
 Builtins registered with the collection last (`@bi(..., "last", True)`), like `find`; a prelude function written in moxie takes the receiver first, so the method form of those two aborted. Signatures are in sigs.py so the checker sees them.

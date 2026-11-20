@@ -11,6 +11,7 @@ from .pexpr import MUT_RE
 from .values import UTAGS
 from . import tys
 
+BASIC_TYPE_NAMES = {"Int", "Float", "Double", "Decimal", "Bool", "String", "Char", "Unit", "List", "Array", "Dict", "Set", "Option", "Result", "Duration"}
 INTS = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64", "BigInt"}
 RES_TYPES = {"ChanR", "ChanW", "Timer", "Connection", "Io", "Listener", "Udp", "Child", "Terminal", "Wire"}
 RES_MAKERS = {"Chan", "Timer", "clone", "open_file", "connect", "listen", "accept", "connect_tls", "listen_tls", "bind_udp", "signals", "spawn", "raw_terminal", "watch", "connect_unix", "listen_unix"}
@@ -358,6 +359,7 @@ class Checker(RefineMixin):
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
+        self.recs = {}                   # `pattern fn` name -> its FnDecl
         self.lam_node = {}               # Var -> the Lambda written in its binding, for the call-site recheck of unannotated parameters
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
         self.var_node = {}               # Var -> the written type of a parameter, annotated local or loop variable over one
@@ -873,6 +875,8 @@ class Checker(RefineMixin):
         elif c is FnDecl:
             self.fns[st.name] = [st]
             self.globals.add(st.name)
+            if "pattern" in (st.flags or ()):
+                self.recs[st.name] = st
         elif c is FnGroup:
             self.fns[st.name] = list(st.clauses or [])
             self.globals.add(st.name)
@@ -1877,8 +1881,80 @@ class Checker(RefineMixin):
         # in a value whose shape is known
         self.type_pat(p, sc, ty, res)
 
+    def rec_decl(self, p):
+        """The `pattern fn` a constructor pattern names, else None (a case or type of the same name wins)."""
+        if p.__class__ is not PCon or len(p.path) != 1 or p.path[0] not in self.recs:
+            return None
+        nm = p.path[0]
+        if nm in self.cases or nm in self.tuples or nm in self.enums or nm in self.aliases:
+            return None
+        return self.recs[nm]
+
+    def has_rec(self, p):
+        """True when the pattern calls a `pattern fn` anywhere: such a pattern can fail for any value, so it never covers a case."""
+        c = p.__class__
+        if c is PCon:
+            return self.rec_decl(p) is not None or any(self.has_rec(q) for _l, q in p.args or [])
+        if c is PAs or c is PTyped:
+            return self.has_rec(p.pat)
+        if c is PTuple:
+            return any(self.has_rec(q) for _l, q in p.items or [])
+        return False
+
+    def type_rec(self, p, sc, ty, res):
+        """`Num(n)` where `Num` is a `pattern fn`: its leading arguments are values, the matched value has the type of its last parameter,
+        and the patterns after the arguments match the payload of the `Option` it returns."""
+        fd = self.rec_decl(p)
+        ps = list(fd.params or [])
+        lead = len(ps) - 1
+        line = getattr(p, "line", 0) or self.cur_line
+        items = [q for _l, q in (p.args or [])]
+        first = min((c_.line for c_ in self.fns.get(fd.name, [fd]) if getattr(c_, "line", 0)), default=fd.line)
+        if self.order_lines and line and first > line:
+            self.err(line, f"the pattern `{fd.name}` is declared below this use (line {first}): a `pattern fn` must be declared above the code that uses it, "
+                           f"like any function")
+        if len(items) < lead:
+            self.err(line, f"the pattern `{fd.name}` takes {lead} argument{'s' if lead != 1 else ''} before the patterns for what it finds "
+                           f"(`{', '.join(q.name for q in ps[:lead])}`), but {len(items)} {'is' if len(items) == 1 else 'are'} written")
+            return
+        lit_ty = {IntLit: "Int", FloatLit: "Float", StrLit: "String", BoolLit: "Bool", CharLit: "Char"}
+        for prm, q in zip(ps[:lead], items):
+            if q.__class__ is PPin:
+                continue
+            if q.__class__ is not PLit:
+                self.err(line, f"an argument of the pattern `{fd.name}` is a value: write a literal or `^name`, not a pattern for `{prm.name}`")
+                continue
+            want, got = self.ty_of_type(prm.type) if prm.type is not None else None, lit_ty.get(q.expr.__class__)
+            if want in self.SCAL and got in self.SCAL and want != got and not (want in ("Float", "Decimal") and got == "Int"):
+                self.err(line, f"the pattern `{fd.name}` takes a `{tshow(want)}` for `{prm.name}`, but `{tshow(got)}` is written")
+        subject = self.ty_of_type(ps[-1].type) if ps[-1].type is not None and not fd.tparams else None
+        have = self.base(ty) if ty is not None else None
+        if subject in self.SCAL and have in self.SCAL and subject != have and not (subject in ("Float", "Decimal") and have == "Int"):
+            self.err(line, f"the pattern `{fd.name}` matches a `{tshow(subject)}`, but the value here is a `{tshow(have)}`")
+        payload = None
+        rt = self.ty_of_type(fd.ret) if fd.ret is not None and not fd.tparams else None
+        if rt.__class__ is tuple and rt[0] == "app" and rt[1] == "Option" and len(rt[2]) == 1:
+            payload = rt[2][0]
+        rest = items[lead:]
+        if not rest:
+            return
+        if len(rest) == 1:
+            self.type_pat(rest[0], sc, payload, res)
+            return
+        if payload.__class__ is tuple and payload[0] == "tup":
+            if len(payload[1]) != len(rest):
+                self.err(line, f"the pattern `{fd.name}` finds {len(payload[1])} values, but {len(rest)} patterns are written for them")
+                return
+            for q, t in zip(rest, payload[1]):
+                self.type_pat(q, sc, t, res)
+        elif payload in self.SCAL or (payload.__class__ is tuple and payload[0] == "app"):
+            self.err(line, f"the pattern `{fd.name}` finds one value (`{tshow(payload)}`), but {len(rest)} patterns are written for it")
+
     def type_pat(self, p, sc, ty, res=False):
         c = p.__class__
+        if c is PCon and self.rec_decl(p) is not None:
+            self.type_rec(p, sc, ty, res)
+            return
         if ty is None or self.has_unsettled(ty) and not (ty.__class__ is tuple and ty[0] in ("app", "tup", "named")) and not self.mentions_case_rigid(ty):
             return
         if c is PBind:
@@ -4309,6 +4385,8 @@ class Checker(RefineMixin):
             return any(self.refutable_pat(q) for _l, q in p.items or [])
         if c is PCon:
             nm = p.path[-1] if p.path else None
+            if self.rec_decl(p) is not None:
+                return True                                    # a pattern function can fail
             if nm in ("List", "Array") and nm not in self.tuples and nm not in self.enums:
                 return True
             eds = [self.enums[e] for e in self.cases.get(nm, []) if e in self.enums]
@@ -4797,6 +4875,9 @@ class Checker(RefineMixin):
                 return
         if enum is None and pats and all(q.__class__ is PBin for _, q in pats):
             self.bin_cover(n, pats)
+            return
+        if enum is None and pats and any(self.has_rec(q) for _, q in pats) and not any(a.guard is None and self.catch_all(q, names) for a, q in pats):
+            self.err(n.line, "`when` with a pattern function needs a `_` arm: a pattern function can fail for any value")
             return
         if enum is None:
             if st in ("Int", "String", "Char", "Bool") and pats:
@@ -7886,10 +7967,27 @@ class Checker(RefineMixin):
         return None, None
 
     # ------------------------------------------------------------ declarations
+    def check_pattern_fn(self, n):
+        """`pattern fn Name(.., value T) Option[U]`: a capitalized name that is not a type or a case, at least one parameter (the value
+        matched is the last), and an `Option` result: `Some(payload)` is a match, `None` is not."""
+        nm = n.name
+        if not nm[:1].isupper():
+            self.err(n.line, f"a `pattern fn` is written like a constructor in a pattern, so its name starts with a capital letter: `{nm[:1].upper() + nm[1:]}`")
+        elif nm in self.cases or nm in self.tuples or nm in self.enums or nm in self.aliases or nm in BASIC_TYPE_NAMES:
+            self.err(n.line, f"`{nm}` is already the name of a type or a case, so a pattern could not tell them apart: pick another name for the `pattern fn`")
+        if not n.params:
+            self.err(n.line, f"`pattern fn {nm}` needs a parameter: the value being matched (the last one)")
+        if n.ret is None or not (n.ret.__class__ is TName and n.ret.path == ["Option"] and n.ret.groups and len(n.ret.groups[0]) == 1):
+            self.err(n.line, f"`pattern fn {nm}` must return an `Option`: `Some(payload)` when the value fits, `None` when it does not")
+        if any(q.variadic or q.mod for q in n.params or []):
+            self.err(n.line, f"the parameters of `pattern fn {nm}` are plain values (no `ref`, `move` or `...`)")
+
     def e_FnDecl(self, n, sc):
         later, self._later = self._later, False         # a later clause of a function takes the first clause's return type
         if n.body is None and "forward" in (n.flags or ()) and self.fns.get(n.name) and self.fns[n.name][0] is n:
             self.err(n.line, f"`forward fn {n.name}` is never defined: write the function with its body later in the file")
+        if "pattern" in (n.flags or ()):
+            self.check_pattern_fn(n)
         inner = Sc(sc)
         inner.fnb = True
         sess_start = len(SESS["vars"])

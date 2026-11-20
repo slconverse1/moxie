@@ -252,11 +252,41 @@ class PatternsMixin:
         """`session.Left(e)`: the qualifier is an imported package, so the case is one the package exports."""
         return env.lookup(nm, self).__class__ is PkgV
 
+    def match_recognizer(self, p, v, b, env):
+        """`Name(a1, .., p1, ..)` where `Name` is a `pattern fn`: the first arguments (a literal or a `^pin`) are the function's leading
+        parameters, the matched value is its last, and what is left are patterns for the payload of the `Some` it must give."""
+        name = p.path[-1]
+        f = env.lookup(name, self)
+        lead = self.recognizers[name]
+        items = [q for _l, q in (p.args or [])]
+        vals = []
+        for q in items[:lead]:
+            if q.__class__ is PLit:
+                vals.append(self.lit_value(q.expr))
+            elif q.__class__ is PPin:
+                vals.append(self.run_sync(self.ev(q.expr, env)))
+            else:
+                raise Abort(f"the first {lead} argument(s) of the pattern `{name}` are values (a literal or `^name`)")
+        r = self.run_sync(self.apply(f, vals + [v]))
+        if not (r.__class__ is EnumV and r.case == "Some"):
+            return False
+        rest = items[lead:]
+        if not rest:
+            return True
+        payload = r.vals[0]
+        if len(rest) == 1:
+            return self.pmatch(rest[0], payload, b, env)
+        if payload.__class__ is not TupleV or len(payload.vals) != len(rest):
+            return False
+        return all(self.pmatch(q, x, b, env) for q, x in zip(rest, payload.vals))
+
     def match_con(self, p, v, b, env):
         name = p.path[-1]
         qual = p.path[:-1]
         args = p.args
         k = v.__class__
+        if not qual and name in self.recognizers:
+            return self.match_recognizer(p, v, b, env)
         if k is EnumV:
             if v.case == name and (not qual or qual[-1] == v.et.name or self.is_pkg_name(qual[-1], env)):
                 if args is None:

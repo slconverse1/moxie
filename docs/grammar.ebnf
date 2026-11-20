@@ -90,7 +90,7 @@ type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | INT [ ( '..' | '..=' ) INT ] ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | foreigndecl | importdecl | usingdecl | testdecl ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
 fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;

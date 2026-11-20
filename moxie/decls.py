@@ -26,6 +26,8 @@ class DeclsMixin:
         if n.body is None:
             return UNIT      # forward declaration
         env.vars[n.name] = self.make_closure(n, env, n.name)
+        if "pattern" in (n.flags or ()):
+            self.recognizers[n.name] = len(n.params or []) - 1
         for f in n.flags or ():
             if f in ("export", "internal"):
                 self.note_export(env, n.name, f)

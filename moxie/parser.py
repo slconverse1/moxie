@@ -4,8 +4,8 @@ from .pbase import HARD, ASSIGN_OPS, PBase
 from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
 
-EFFMODS = ("pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic")        # soft: only modifiers when a declaration follows
-MODS = {"unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure"}
+EFFMODS = ("pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic", "pattern")        # soft: only modifiers when a declaration follows
+MODS = {"unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure", "pattern"}
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
@@ -617,6 +617,8 @@ class Parser(ExprParser):
     def parse_fn_decl(self, mods):
         line = self.next().line   # fn
         flags = set(mods)
+        if "pattern" in flags:
+            flags.add("pure")                 # a recognizer runs inside a match, so it may not have effects
         # receiver spec
         if self.at_op("("):
             self.next()

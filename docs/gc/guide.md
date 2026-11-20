@@ -2522,6 +2522,43 @@ println(inputs.position((s) -> s == "100"))
 
 Output: `Ok(42)`, then `List(42, 100)`, then `42`, then `-1`, then `Ok(2)`.
 
+**Pattern functions.** Some values have no cases to match on: a `String` that might be a number, a command-line word that might be a flag. A `pattern fn` is a function that can stand in a pattern. It is written like any function, but its last parameter is the value being matched and it returns an `Option`: `Some(payload)` when the value fits, `None` when it does not. In a pattern it is used like a constructor, `Num(n)`, and the patterns inside the parentheses match the payload. Arguments for the other parameters come first and are values: a literal, or `^name` to use a variable (the pin, as in `when`). Because it is an ordinary function, it is declared above where it is used, it is `pure` automatically (a match may not have effects), and it works anywhere a pattern does: `when`, `is`, a binding with `else`, a `for:` comprehension, inside a tuple or `Some`. One thing is different from a case: the compiler can't tell what a pattern function will accept, so a `when` that uses one needs a `_` arm.
+
+```
+pattern fn Num(s String) Option[Int] = parse_number(s).ok()
+pattern fn Prefix(p String, s String) Option[String] = if starts_with(s, p) then Some(s(len(p)..)) else None
+pattern fn DivisibleBy(d Int, n Int) Option[Unit] = if n % d == 0 then Some(()) else None
+
+fn option(arg String) String
+  when arg
+    Prefix("--port=", Num(p)) -> "port ${p}"
+
+    Prefix("--", name) -> "flag ${name}"
+
+    Num(n) -> "number ${n}"
+
+    _ -> "word ${arg}"
+
+fn fizz(n Int) String
+  when n
+    n if n % 15 == 0 -> "FizzBuzz"
+    DivisibleBy(3) -> "Fizz"
+    DivisibleBy(5) -> "Buzz"
+    _ -> "${n}"
+println(option("--port=8080"))
+println(option("--verbose"))
+println(option("42"))
+println(option("hello"))
+fn port(arg String) Option[Int]
+  when arg
+    Prefix("--port=", Num(p)) -> Some(p)
+    _ -> None
+println(List("--a", "--port=80", "--port=81") |> find_map(port))
+println(List(1, 3, 5, 15).map(fizz) |> collect())
+```
+
+Output: `port 8080`, `flag verbose`, `number 42`, `word hello`, `Ok(80)`, then `List("1", "Fizz", "Buzz", "FizzBuzz")`. The first arm of `option` has two pattern functions inside each other: `Prefix` strips `--port=`, and `Num` then reads what is left. A name must start with a capital letter and can't be the name of a type or a case, so a pattern can never be taken for something else. **Mistakes:** a `when` with pattern functions and no `_` arm, a pattern function that does not return an `Option`, a payload pattern that does not fit what the function finds (two names for one value), a value of the wrong type (`Num(n)` against an `Int`), and using it above its declaration.
+
 **12a. Binary patterns**
 
 A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:

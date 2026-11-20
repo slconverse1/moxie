@@ -100,7 +100,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond` and lock-free state through Atoms and `swap`.
 - **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections, and QuickCheck-style property tests (`forall`).
-- **F#:** the `|>` pipeline, its startup execution model, and its computation expressions.
+- **F#:** the `|>` pipeline, its startup execution model, its computation expressions, and active patterns, as `pattern fn`.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code.
 - **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, and the idea that a function parameter has a name for the body and a label for the call.
