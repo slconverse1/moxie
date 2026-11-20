@@ -13,6 +13,14 @@ CASES = [
     ("bindings", 'fn s(a Int, b Int) Int\n  when a, b\n    0, y -> y\n    x, 0 -> x\n    x, y -> x + y\nprintln(s(0, 5))\nprintln(s(4, 0))\nprintln(s(2, 3))\n', 0, "5\n4\n5"),
     ("alternatives must bind the same names", 'fn s(a Option[Int]) Int\n  when a\n    Some(x) | None -> 1\n    else 0\nprintln(1)\n', 1, "same names"),
     ("Option pair", 'fn s(a Option[Int], b Option[Int]) Int\n  when a, b\n    Some(x), Some(y) -> x + y\n    (Some(x), None) | (None, Some(x)) -> x\n    None, None -> 0\nprintln(s(Some(1), Some(2)))\nprintln(s(None, Some(7)))\nprintln(s(None, None))\n', 0, "3\n7\n0"),
+    ("is with alternatives", 'enum R\n  A,\n  B,\n  C\nr = C\nprintln(r is A | C)\nprintln(r is not A | B)\nif r is B | C then println("ok")\n', 0, "true\ntrue\nok"),
+    ("is alternatives cannot bind", 'o = Some(1)\nprintln(o is Some(x) | None)\n', 1, "cannot bind names"),
+    ("nested alternatives in a constructor", 'fn f(o Option[Int]) String\n  when o\n    Some(1 | 2) -> "low"\n    Some(x) -> "other"\n    None -> "none"\nprintln(f(Some(2)))\nprintln(f(Some(9)))\n', 0, "low\nother"),
+    ("nested alternatives in a tuple pattern", 'fn g(a Int, b Int) String\n  when a, b\n    (0 | 1, 0 | 1) -> "bits"\n    _ -> "no"\nprintln(g(1, 0))\nprintln(g(2, 0))\n', 0, "bits\nno"),
+    ("nested alternatives are checked for coverage", 'fn f(o Option[Int]) Int\n  when o\n    Some(1 | 2) -> 1\n    None -> 0\nprintln(f(None))\n', 1, "does not cover"),
+    ("nested alternatives with binding", 'fn f(r Result[Int, Int]) Int\n  when r\n    Ok(n) | Err(n) -> n\nprintln(f(Err(4)))\n', 0, "4"),
+    ("alternatives only in arms and is", 'x = Some(1)\nSome(1 | 2) = x\n', 1, "only for a `when` arm and an `is` test"),
+    ("too many combinations", 'fn f(a Int) Int\n  when a, a, a, a, a, a, a\n    ' + ", ".join("0 | 1 | 2 | 3 | 4 | 5" for _ in range(7)) + ' -> 1\n    _ -> 0\nprintln(f(3))\n', 1, "split it into separate arms"),
 ]
 bad = 0
 for name, src, want_rc, want in CASES:

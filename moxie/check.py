@@ -5094,8 +5094,9 @@ class Checker(RefineMixin):
                         return
                     miss = "true" if True not in lits else "false"
                     self.err(n.line, f"`when` does not cover `{miss}`")
-                elif all(p.__class__ in (PLit, PRange, PRel, PIn) for _, p in pats):
-                    self.err(n.line, f"`when` on `{tshow(st)}` needs a `_` arm")
+                elif all(p.__class__ in (PLit, PRange, PRel, PIn, PBind, PWild, PAs) for _, p in pats):
+                    guarded = any(a.guard is not None and p.__class__ in (PBind, PWild, PAs) for a, p in pats)
+                    self.err(n.line, f"`when` on `{tshow(st)}` needs a `_` arm" + (" (an arm with an `if` guard does not count: the compiler can't tell that the guards cover every value)" if guarded else ""))
             elif st.__class__ is tuple and st[0] == "bounded":
                 self.bounded_cover(n, st, pats)
             return

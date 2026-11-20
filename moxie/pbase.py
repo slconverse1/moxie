@@ -372,7 +372,73 @@ class PBase:
 
     # -------------------------------------------------------------- patterns
     def parse_pattern(self):
-        return self.parse_pattern_primary()
+        """One pattern.  Alternatives nested in it (`Some(1 | 2)`) are only for a `when` arm or an `is` test, which call
+        `parse_pattern_alts`; anywhere else they are an error."""
+        alts = self.parse_pattern_alts(top=False)
+        if len(alts) > 1:
+            self.err("alternatives (`|`) are only for a `when` arm and an `is` test")
+        return alts[0]
+
+    def parse_pattern_alts(self, top=True):
+        """The patterns of `A | B` (joined at the top), with alternatives nested inside a pattern expanded: `Some(1 | 2)` is
+        `Some(1)` and `Some(2)`, and `(1 | 2, x | y)` is four tuples."""
+        out = self.expand_or(self.parse_pattern_primary())
+        while top and self.eat_op("|"):
+            out += self.expand_or(self.parse_pattern_primary())
+        return out
+
+    def parse_pattern_nested(self):
+        p = self.parse_pattern_primary()
+        if self.at_op("|"):
+            alts = [p]
+            while self.eat_op("|"):
+                alts.append(self.parse_pattern_primary())
+            return POrN(alts, line=getattr(p, "line", 0))
+        return p
+
+    MAX_ALTS = 512
+
+    def expand_or(self, p):
+        """The list of patterns a pattern with nested alternatives stands for (a copy for each combination)."""
+        import copy
+        c = p.__class__
+        if c is POrN:
+            return [q for a in p.alts for q in self.expand_or(a)]
+        if c in (PTuple, PCon):
+            field = "items" if c is PTuple else "args"
+            kids = getattr(p, field) or []
+            if not any(self._has_or(q) for _l, q in kids):
+                return [p]
+            combos = [[]]
+            for lab, q in kids:
+                exp = self.expand_or(q)
+                if len(combos) * len(exp) > self.MAX_ALTS:
+                    self.err(f"this pattern's alternatives multiply into more than {self.MAX_ALTS} combinations: split it into separate arms")
+                combos = [cb + [(lab, a)] for cb in combos for a in exp]
+            out = []
+            for cb in combos:
+                n = copy.copy(p)
+                setattr(n, field, cb)
+                out.append(n)
+            return out
+        if c in (PAs, PTyped) and self._has_or(p.pat):
+            out = []
+            for a in self.expand_or(p.pat):
+                n = copy.copy(p)
+                n.pat = a
+                out.append(n)
+            return out
+        return [p]
+
+    def _has_or(self, p):
+        c = p.__class__
+        if c is POrN:
+            return True
+        if c in (PTuple, PCon):
+            return any(self._has_or(q) for _l, q in (p.items if c is PTuple else p.args) or [])
+        if c in (PAs, PTyped):
+            return self._has_or(p.pat)
+        return False
 
     BIN_KINDS = {f"{sg}{w}{en}" for sg in "ui" for w in (16, 32, 64) for en in ("be", "le")} | {"u8", "i8"}
 
@@ -545,7 +611,7 @@ class PBase:
                         nm = None if self.at_op(",") or self.at_op(")") else self.next().val      # a bare `...` skips the rest
                         items.append((label, PRest(nm, line=line)))
                     else:
-                        items.append((label, self.parse_pattern()))
+                        items.append((label, self.parse_pattern_nested()))
                     if not self.eat_op(","):
                         break
                 self.expect_op(")")
@@ -629,7 +695,7 @@ class PBase:
                     t = self.next()
                     label = t.val if t.kind == "NAME" else "".join(p for p in t.val if isinstance(p, str))
                     self.next()
-                args.append((label, self.parse_pattern()))
+                args.append((label, self.parse_pattern_nested()))
             if not self.eat_op(","):
                 break
         self.no_trailing = save_nt

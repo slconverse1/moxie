@@ -161,6 +161,8 @@ CASES = [
     ('lambda-tuple-field', 'R', 'f = (x) -> x.name\nprintln(f((age: 1)))\n'),
     ('lambda-tuple-field-ok', 'A', 'f = (p) -> p.age + 1\nprintln(f((age: 1, name: "a")))\n'),
     ('lambda-list-arg', 'R', 'f = (xs) -> xs.nope()\nprintln(f(List(1)))\n'),
+    ('when-int-guards-only', 'R', 'fn f(x Int) String\n  when x\n    n if n < 0 -> "neg"\n    n if n >= 0 -> "nonneg"\nprintln(f(1))\n'),
+    ('when-int-guards-with-else', 'A', 'fn f(x Int) String\n  when x\n    n if n < 0 -> "neg"\n    else "nonneg"\nprintln(f(1))\n'),
 ]
 
 fails = []

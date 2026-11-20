@@ -237,8 +237,19 @@ class ExprParser(PBase):
                 if self.peek().kind == "NAME" and self.peek().val == "not":
                     self.next()
                     neg = True
-                pat = self.parse_pattern()
-                left = IsOp(left, pat, line=line)
+                alts = self.parse_pattern_alts()
+                pat = alts[0]
+                if len(alts) > 1:                                    # `x is A | B`: true when any alternative matches
+                    if any(self._pat_binds(a) for a in alts):
+                        self.err("the alternatives of an `is` test cannot bind names: use `when` for alternatives that do", t)
+                    if left.__class__ not in (Name, Field, IntLit, StrLit, CharLit):
+                        self.err("`is` with alternatives needs a name to test: bind the value to a name first", t)
+                    test = IsOp(left, alts[0], line=line)
+                    for a in alts[1:]:
+                        test = OrE(test, IsOp(left, a, line=line), line=line)
+                    left = test
+                else:
+                    left = IsOp(left, pat, line=line)
                 if neg:
                     left = Unary("not", left, line=line)
             elif t.kind == "NAME" and (t.val == "in" or t.val == "not"):
@@ -1598,6 +1609,8 @@ class ExprParser(PBase):
             else:                                                       # `A | B, true` is the alternatives (A, true) and (B, true)
                 combos = [[]]
                 for alts in slots:
+                    if len(combos) * len(alts) > self.MAX_ALTS:
+                        self.err(f"this arm's alternatives multiply into more than {self.MAX_ALTS} combinations: split it into separate arms")
                     combos = [c + [a] for c in combos for a in alts]
                 pats = [PTuple([(None, a) for a in c], line=aline) for c in combos]
             guard = None
@@ -1614,12 +1627,26 @@ class ExprParser(PBase):
         self.expect_dedent()
         return WhenE(scrut, arms, line=line)
 
+    def _pat_binds(self, p):
+        """True when the pattern binds a name (a lowercase name, an `@`, a rest with a name)."""
+        c = p.__class__
+        if c is PBind:
+            return p.name[:1].islower()
+        if c is PAs:
+            return True
+        if c is PRest:
+            return bool(p.name)
+        if c is PTuple:
+            return any(self._pat_binds(q) for _, q in p.items or [])
+        if c is PCon:
+            return any(self._pat_binds(q) for _, q in p.args or [])
+        if c is PTyped:
+            return self._pat_binds(p.pat)
+        return False
+
     def parse_alts(self):
         """One pattern, or several joined by `|` (alternatives that bind the same names)."""
-        alts = [self.parse_pattern()]
-        while self.eat_op("|"):
-            alts.append(self.parse_pattern())
-        return alts
+        return self.parse_pattern_alts()
 
     def parse_for(self):
         line = self.next().line

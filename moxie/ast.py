@@ -143,6 +143,7 @@ def _defs():
         "PRest": "name",
         "PPlace": "expr",
         "PTyped": "pat type",
+        "POrN": "alts",                # `Some(1 | 2)`: alternatives nested in a pattern; expanded into whole-pattern alternatives by the parser
         "PBin": "elems",               # binary pattern: [("lit", [byte, ...]) | ("field", name|None, kind, arg)]
         # types
         "TName": "path groups",

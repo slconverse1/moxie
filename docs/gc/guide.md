@@ -2656,7 +2656,7 @@ fn size(n Int) String
 println(size(2))
 ```
 
-Output: `ann has full access.`, `bob has standard access.`, `cy is inactive.`, then `small`. Leaving out the `Member | Guest, true` arm is a compile error that names the uncovered combination. Since `|` binds tighter than the comma, `Member | Guest, true` means (Member or Guest) and true; for alternatives that are whole combinations, write them as tuples: `(Some(x), None) | (None, Some(x)) -> x`. **Mistakes:** a comma between alternatives (`1, 2 ->`; write `1 | 2 ->`), an arm with a different number of patterns than the `when` has values, and alternatives that bind different names.
+Output: `ann has full access.`, `bob has standard access.`, `cy is inactive.`, then `small`. Leaving out the `Member | Guest, true` arm is a compile error that names the uncovered combination. Since `|` binds tighter than the comma, `Member | Guest, true` means (Member or Guest) and true; for alternatives that are whole combinations, write them as tuples: `(Some(x), None) | (None, Some(x)) -> x`. Alternatives may sit inside a pattern (`Some(1 | 2) ->`, `(0 | 1, 0 | 1) ->`), and an `is` test takes them too when they bind no names (`if role is Member | Guest then`, `x is not A | B`). An arm with an `if` guard never counts toward coverage, so a `when` on an `Int` or `String` always ends with an unguarded `_` or `else`. **Mistakes:** a comma between alternatives (`1, 2 ->`; write `1 | 2 ->`), an arm with a different number of patterns than the `when` has values, and alternatives that bind different names.
 
 
 **12a. Binary patterns**
