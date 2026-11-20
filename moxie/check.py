@@ -581,7 +581,7 @@ class Checker(RefineMixin):
             from .parser import parse_program
             from . import mxprelude as M
             prog = parse_program(M.SRC + (M.GC_SRC if GC[0] else ""), "<prelude>")
-            Checker._prelude_types[GC[0]] = [st for st in prog.stmts if st.__class__ in (TupleDecl, EnumDecl, IfaceDecl, ImplDecl)]
+            Checker._prelude_types[GC[0]] = [st for st in prog.stmts if st.__class__ in (TupleDecl, EnumDecl, IfaceDecl, ImplDecl, AliasDecl)]
         mark = len(self.diags)
         for st in Checker._prelude_types[GC[0]]:
             if st.__class__ in (TupleDecl, EnumDecl):
@@ -1877,6 +1877,26 @@ class Checker(RefineMixin):
                 return {f.name: self.ty_of_type(f.type) for f in fs}
         return None
 
+    def type_without(self, n, t, key):
+        """`without(r, "field")`: the tuple type of `r` with that field left out (`Without[R, "field"]` while `R` is a type parameter)."""
+        if t is None:
+            return None
+        if t.__class__ is tuple and t[0] in ("rigid", "param", "rowtup"):
+            if t[0] == "rowtup" and key not in t[2]:
+                self.err(n.line, f"`without`: the tuple has no field `{key}`")
+                return None
+            return ("tapp", "Without", (t, ("slit", key)))
+        have = self.row_fields(t)
+        if have is None:
+            if t.__class__ is str or (t.__class__ is tuple and t[0] in ("app", "fn")):
+                self.err(n.line, f"`without` takes a tuple with named fields, found `{tshow(t)}`")
+            return None
+        if key not in have:
+            self.err(n.line, f"`without`: `{tshow(t)}` has no field `{key}` (it has {', '.join('`' + k + '`' for k in have)})")
+            return None
+        labs = [k for k in have if k != key]
+        return ("tup", tuple(have[k] for k in labs), tuple(labs))
+
     def row_fit(self, exp, act):
         """The error text when `act` has no place where the open tuple type `exp` (`(name String, ...)`) is expected, else None: the value
         must be a tuple (declared or not) that has every named field, with a type that fits."""
@@ -3054,6 +3074,14 @@ class Checker(RefineMixin):
                 self.err(n.line, f"tuple index {n.name} is out of range: the tuple has {len(t[1])} fields")
                 return None, None
             return t[1][n.name], None                    # `.1` of `(Int, String)` is the String
+        if t.__class__ is tuple and t[0] == "tup" and n.name.__class__ is str and id(n) not in self.callee_fields and len(t) > 2 and t[2] \
+                and all(l is not None for l in t[2]) and not any(x.__class__ is tuple and x and x[0] == "spread" for x in t[1]):
+            if n.name in t[2]:
+                return t[1][t[2].index(n.name)], None
+            if n.name not in self.fns and n.name not in self.load_sigs() and n.name not in self.prelude_method_names() \
+                    and not any(k[1] == n.name for k in self.methods):
+                self.err(n.line, f"`{tshow(t)}` has no field `{n.name}` (it has {', '.join('`' + str(l) + '`' for l in t[2])})")
+            return None, None
         if t.__class__ is tuple and t[0] == "rigid":
             tpd = self.tp_decl.get(t[1])
             rbs = [self.ty_of_type(b) for b in (tpd.bounds if tpd is not None else []) if b.__class__ is TTuple]
@@ -6578,6 +6606,10 @@ class Checker(RefineMixin):
                     hv = sc.find(x.name)
                     if hv is not None:
                         self.moved[hv] = n.line
+        if fn.__class__ is Name and fn.name == "without" and "without" not in self.fns and sc.find("without") is None and len(args) == 2 \
+                and all(hasattr(a, "expr") and not getattr(a, "label", None) for a in args) and args[1].expr.__class__ is StrLit \
+                and all(isinstance(x, str) for x in args[1].expr.parts):
+            return self.type_without(n, ats[0][0], "".join(args[1].expr.parts)), None
         if fn.__class__ is Name:
             v = sc.find(fn.name)
             if v is None:
@@ -8451,6 +8483,7 @@ class Checker(RefineMixin):
                 and not (self.fn_ret.__class__ is tuple and self.fn_ret[0] in ("param", "rigid", "pvar", "appv", "tapp", "ctor", "overloads")):
             self.err(getattr(last.e, "line", 0) or last.line, f"this `if` has no `else`, so the function can reach its end without a value of type `{tshow(self.fn_ret)}`: "
                                                                "add an `else`, or end the function with the value")
+        self.check_extend_tail(body, sc)
         for e in self.tails(body):
             esc, epaths = self.tail_ctx.get(id(e), (sc, {}))
             t, c = self.eval_with_paths(epaths, lambda: self.quiet(e, esc))
@@ -8460,6 +8493,43 @@ class Checker(RefineMixin):
                 self.tp_eq = {**old_eq, **self.tail_eq[id(e)]}
             self.compat(self.fn_ret, t, c, e.line)
             self.tp_eq = old_eq
+
+    def check_extend_tail(self, body, sc):
+        """The result is `Extend[R, (f T, ...)]` and the body ends in `(...r, f: v)`: each new field must be there with its type."""
+        fr = self.fn_ret
+        if not (fr.__class__ is tuple and fr[0] == "tapp" and fr[1] == "Extend" and len(fr[2]) == 2):
+            return
+        for e in self.tails_all(body):
+            if e.__class__ is not TupleE or not e.items or not e.items[0][2] or e.items[0][1].__class__ is not Name:
+                continue
+            want = fr[2][1]
+            if want.__class__ is not tuple or want[0] != "tup" or not want[2] or any(l is None for l in want[2]):
+                continue
+            given = {}
+            for lab, x, sp in e.items[1:]:
+                if sp or lab is None:
+                    given = None
+                    break
+                given[lab] = x
+            if given is None:
+                continue
+            for lab, ft in zip(want[2], want[1]):
+                if lab not in given:
+                    self.err(e.line, f"the result is `{tshow(fr)}`, so the new tuple must set `{lab}`")
+                    continue
+                n0 = len(self.diags)
+                gt, gc = self.ev(given[lab], sc)
+                del self.diags[n0:]                        # its own errors were reported when the body was checked
+                self.compat(ft, gt, gc, e.line)
+
+    def tails_all(self, e):
+        """The last expression of the body, looking through a block's final statement."""
+        if e.__class__ is ExprStmt:
+            return self.tails_all(e.e)
+        if e.__class__ is Block:
+            s = e.stmts or []
+            return self.tails_all(s[-1]) if s else []
+        return [e]
 
     def tails(self, e):
         c = e.__class__

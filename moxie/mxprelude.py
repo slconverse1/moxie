@@ -1,6 +1,15 @@
 """Parts of the prelude that are written in moxie itself (no compiler support needed)."""
 
 SRC = '''
+type alias Extend[R, X] = when R
+  () -> X
+  (F T, ...Rest) -> (F T, ...Extend[Rest, X])
+
+type alias Without[R, K] = when R
+  () -> ()
+  (K T, ...Rest) -> Rest
+  (F T, ...Rest) -> (F T, ...Without[Rest, K])
+
 enum FileMode
   ReadOnly
   Create

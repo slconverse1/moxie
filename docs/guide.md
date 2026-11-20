@@ -714,6 +714,21 @@ for p in older
 
 Output: `(first: "Ada", last: "Lovelace", age: 37, full: "Ada Lovelace")`. Each stage gets the whole tuple, so `map` can add a field (`full`) and the next stage can ask for it. A result can't be an open type, so a stage that adds fields is written as a lambda, as `map` is above, or its result is written out in full. Passing `filter(adult)` a list of tuples with no `age` is a compile error that names the missing field.
 
+**Adding and removing fields.** An open type can't be a result, but the bound `T` brings the argument's own type back, and two small tools change it on the way out. `Extend[R, (full String)]` is `R` with the fields of the second type added, and `without(r, "password")` is a tuple with one field left out, typed `Without[R, "password"]`. Both work on a function's own type parameter, so the compiler works out the exact tuple at each call:
+
+```
+fn label(r (first String, last String, ...)) String = "${r.first} ${r.last}"
+fn add_full[R (first String, last String, ...)](r R) Extend[R, (full String)]
+  (...r, full: label(r))
+fn strip[R (password String, ...)](r R) Without[R, "password"] = without(r, "password")
+user = (first: "Ada", last: "Lovelace", age: 36, password: "pw")
+x = add_full(strip(user))
+println(x)
+println(x.full)
+```
+
+Output: `(first: "Ada", last: "Lovelace", age: 36, full: "Ada Lovelace")`, then `Ada Lovelace`. After `strip`, `.password` is a compile error, and `add_full` called on a tuple without `last` is a compile error that names the field. The body of `add_full` has to build what its result promises: `(...r, full: 5)` is an error because `full` is a `String`, and returning `r` itself is an error because it lacks `full`. **Mistakes:** `without(u, "nope")` on a tuple with no such field, a key that is not a string literal, and reading a field of a labeled tuple that its type does not have (this is a compile error for any labeled tuple).
+
 ```
 enum Shape
   Circle(radius Double),

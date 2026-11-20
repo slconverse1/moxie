@@ -2338,6 +2338,16 @@ def b_find_map(I, a, kw, ta):
             return Ok(r.vals[0])
 
 
+@bi("without")
+def b_without(I, a, kw, ta):
+    """A copy of a tuple with one field left out (`without(user, "password")`); the checker types the result as `Without[R, K]`."""
+    r, key = a[0], a[1]
+    if not isinstance(r, TupleV) or r.names is None or key not in r.names:
+        raise Abort(f"without: the tuple has no field `{key}`")
+    keep = [i for i, n in enumerate(r.names) if n != key]
+    return TupleV([r.vals[i] for i in keep], [r.names[i] for i in keep], None)
+
+
 @bi("position", "last", True)
 def b_position(I, a, kw, ta):
     """The index of the first item `f` accepts: `Ok(index)`, or `Err(MISSING)`."""
