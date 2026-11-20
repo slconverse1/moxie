@@ -115,6 +115,36 @@ def show_const(v):
     return ("\"%s\"" % v) if isinstance(v, str) else (("true" if v else "false") if isinstance(v, bool) else str(v))
 
 
+FOLD = {"abs", "min", "max", "clamp", "pow", "len", "floor", "ceil", "sqrt"}
+USER_NAMES = [None]    # the program's own functions (Checker.fns): a name the program defines is never folded as the built-in
+
+
+def _num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def fold_builtin(name, vals):
+    """The value of a pure built-in on constant arguments, only where the answer is certain (same number kind, no overflow); else NOCONST."""
+    import math
+    n = len(vals)
+    if name == "abs" and n == 1 and _num(vals[0]):
+        return abs(vals[0])
+    if name in ("min", "max") and n == 2 and all(_num(v) for v in vals) and type(vals[0]) is type(vals[1]):
+        return (min if name == "min" else max)(vals)
+    if name == "clamp" and n == 3 and all(_num(v) for v in vals) and len({type(v) for v in vals}) == 1 and vals[1] <= vals[2]:
+        return max(vals[1], min(vals[0], vals[2]))
+    if name == "pow" and n == 2 and all(isinstance(v, int) and not isinstance(v, bool) for v in vals) and 0 <= vals[1] <= 64:
+        r = vals[0] ** vals[1]
+        return r if -2**63 <= r < 2**63 else NOCONST
+    if name == "len" and n == 1 and isinstance(vals[0], str):
+        return len(vals[0])
+    if name in ("floor", "ceil") and n == 1 and isinstance(vals[0], float) and math.isfinite(vals[0]):
+        return int(math.floor(vals[0]) if name == "floor" else math.ceil(vals[0]))
+    if name == "sqrt" and n == 1 and _num(vals[0]) and vals[0] >= 0:
+        return math.sqrt(vals[0]) if isinstance(vals[0], float) else NOCONST
+    return NOCONST
+
+
 def const_eval(e, env):
     """The value of a constant expression (numbers, text, booleans, + - * / %, comparisons, and, or, not), else NOCONST."""
     c = e.__class__
@@ -128,6 +158,12 @@ def const_eval(e, env):
         return "".join(e.parts) if all(isinstance(x, str) for x in e.parts) else NOCONST
     if c is Name:
         return env.get(e.name, NOCONST)
+    if c is Call and e.fn.__class__ is Name and e.fn.name in FOLD and e.fn.name not in env and USER_NAMES[0] is not None \
+            and e.fn.name not in USER_NAMES[0] and not (CT[0] is not None and CT[0].key_of(e.fn) is not None):
+        if any(a.expr is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []) or e.trailing is not None:
+            return NOCONST
+        vals = [const_eval(a.expr, env) for a in e.args or []]
+        return NOCONST if any(v is NOCONST for v in vals) else fold_builtin(e.fn.name, vals)
     if c is Call and CT[0] is not None and CT[0].key_of(e.fn) is not None:
         args = [a.expr for a in e.args or []]
         if any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
@@ -361,6 +397,7 @@ class Checker(RefineMixin):
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
         self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
+        USER_NAMES[0] = self.fns
         self.rx_names = set()           # the regex package's `Matches` / `Finds`, once imported by name
         self.recs = {}                   # `pattern fn` name -> its FnDecl
         self.lam_node = {}               # Var -> the Lambda written in its binding, for the call-site recheck of unannotated parameters
@@ -5614,10 +5651,20 @@ class Checker(RefineMixin):
             self.err(n.line, "`random_int` takes a range: write `random_int(lo..hi)` (for example `random_int(1..6)`)")
 
     def e_Call(self, n, sc, *a, **k):
+        r = self.e_Call_main(n, sc, *a, **k)
+        if n.fn.__class__ is Name and n.fn.name in FOLD and sc.find(n.fn.name) is None and r.__class__ is tuple and len(r) == 2 and r[1] is None \
+                and r[0] in ("Int", "Float"):
+            v = const_eval(n, {})
+            if v is not NOCONST and isinstance(v, int) == (r[0] == "Int"):
+                return r[0], v          # `6 / abs(0)` is a division by a constant zero
+        return r
+
+    def e_Call_main(self, n, sc, *a, **k):
         self.check_range_calls(n, sc)
         self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
         self.rf_check_call(n, sc, k.get("extra", a[0] if a else 0))
         self.check_dict_spread(n, sc)
+        self.check_dict_dupes(n, sc)
         self.check_literal_closures(n, sc)
         mark = len(self.pending_gone)
         self.gadt_lambda_hints(n, sc)
@@ -5811,6 +5858,31 @@ class Checker(RefineMixin):
                 want = lay
             elif lay != want:
                 self.err(line, f"this closure captures {self.layout_text(lay)[5:]}, but an earlier one captures {self.layout_text(want)[5:]}: closures stored together have to capture the same kinds of values (or none of them may capture)")
+
+    def check_dict_dupes(self, n, sc):
+        """`Dict(1 -> a, 2 - 1 -> b)`: two entries whose constant keys are equal, with no `...spread` between them, so the later one silently
+        replaces the earlier one.  A warning, since the program still runs."""
+        base = n.fn.base if n.fn.__class__ is GenApp else n.fn
+        if base.__class__ is not Name or base.name != "Dict" or "Dict" in self.tuples or "Dict" in self.enums or "Dict" in self.fns:
+            return
+        seen = {}
+        for a in n.args or []:
+            if a.mod == "spread":
+                seen = {}                  # an entry after a spread may mean to replace one the spread brought in
+                continue
+            key = NOCONST
+            if a.label is not None:
+                key = ("String", a.label[1]) if a.label.__class__ is tuple else (("Int", int(a.label)) if str(a.label).isdigit() else ("String", a.label))
+            elif a.expr.__class__ is TupleE and len(a.expr.items) == 2:
+                v = const_eval(a.expr.items[0][1], {})
+                if v is not NOCONST and not isinstance(v, bool):
+                    key = ("Int" if isinstance(v, int) else "Float" if isinstance(v, float) else "String", v)
+            if key is NOCONST:
+                continue
+            if key in seen:
+                self.diags.append(Diag(getattr(a, "line", 0) or n.line, f"this key ({show_const(key[1])}) is the same as an earlier key in this `Dict(...)`, so it replaces that entry: "
+                                       f"the earlier value is never used", "warning"))
+            seen[key] = True
 
     def check_dict_spread(self, n, sc):
         """`Dict(...x)`: only a Dict can be spread into a Dict literal; anything else used to be dropped without a word."""

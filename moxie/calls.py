@@ -324,6 +324,8 @@ class CallsMixin:
         refspec = {}
         spreads = []
         trailing = n.trailing
+        fb = n.fn.base if n.fn.__class__ is GenApp else n.fn
+        dict_lit = fb.__class__ is Name and fb.name == "Dict" and params is None      # `Dict(a -> 1, (k) -> 2)`: every entry is a pair, in the order written
         for i, a in enumerate(n.args):
             mod = a.mod
             if mod == "using" and a.expr is None:
@@ -379,6 +381,8 @@ class CallsMixin:
                         v.tag = tg[1]               # a list going into a union: remember which member it is
             if lab is None:
                 pos.append(v)
+            elif dict_lit and mod is None:
+                pos.append(TupleV([lab, v], None))
             else:
                 named[lab] = v
         if trailing is not None:
