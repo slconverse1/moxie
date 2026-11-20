@@ -108,6 +108,8 @@ class Parser(ExprParser):
             s = self.parse_guard_else(s.stmt, s.cond, s.line)
         elif s.__class__ in (ExprStmt, Return, Break, Continue) and self.wrapped_if_ahead():
             s = self.parse_wrapped_if(s)
+        if self.at_op(";") and s.__class__ is ExprStmt and s.e.__class__.__name__ in ("IfE", "WhileE", "ForE"):
+            self.err("unexpected ';': not accepted after a `then`, `do` or `else` body; write a block")
         if self.at_op(";"):                               # `a = 1; b = 2`: several statements on one line, in order
             rest = list(getattr(self, "_chain_rest", None) or [])
             while self.eat_op(";"):
@@ -165,17 +167,8 @@ class Parser(ExprParser):
         return t.kind == "NAME" and t.val in words
 
     def parse_inline_seq(self):
-        """A one-line body that may hold several statements joined by `;` (`(x) -> y = x + 1; y * 2`, `1 -> log(1); done`): a Block of
-        them, or the single statement when there is no `;`."""
-        first = self.parse_stmt_inline()
-        if not self.at_op(";"):
-            return first
-        stmts = [first]
-        while self.eat_op(";"):
-            if self.peek().kind in ("NL", "DEDENT", "EOF") or self.at_op(")"):
-                break                                   # a trailing `;` is allowed
-            stmts.append(self.parse_stmt_inline())
-        return Block(stmts, line=getattr(first, "line", 0))
+        """A one-line body: a single statement (`;` joins statements only at the start of a line)."""
+        return self.parse_stmt_inline()
 
     def parse_stmt_inline(self):
         s = self.parse_stmt_core(allow_decl=False)

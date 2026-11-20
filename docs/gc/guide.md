@@ -2584,21 +2584,21 @@ println(inputs.position((s) -> s == "100"))
 Output: `Ok(42)`, then `List(42, 100)`, then `42`, then `-1`, then `Ok(2)`.
 
 
-**Several statements on one line.** Statements may be joined by `;`, in a one-line lambda body, a `when` or `select` arm body, or on a line of their own: `(x) -> y = x + 1; y * 2`, and `2 -> println("two"); "dos"`. The last one is the value, as in a block. The same works after `then`, `do` and `else`, where the body takes every statement to the end of the line, and on a line of its own: `a = 1; b = 2`. `moxie fmt` leaves a `;` line as you wrote it and never adds one. A trailing `;` is allowed.
+**Several statements on one line.** Statements may be joined by `;` at the start of a line: `a = 1; b = 2`. That is the only place: a lambda, a `when` or `select` arm, and the bodies after `then`, `do` and `else` take one statement, or an indented block for more. `moxie fmt` leaves a `;` line as you wrote it and never adds one. A trailing `;` is allowed.
 
 ```
-f = (x) -> y = x + 1; y * 2
+a = 1; b = 2
+println(a + b)
 fn word(n Int) String
   when n
-    1 -> println("one"); "uno"
-    2 -> println("two"); println("dos"); "dos"
+    1 ->
+      println("one")
+      "uno"
     _ -> "other"
-println(f(3))
 println(word(1))
-println(word(2))
 ```
 
-Output: `8`, `one`, `uno`, `two`, `dos`, then `dos`.
+Output: `3`, `one`, then `uno`. An arm that needs several statements takes an indented block under the `->`, as above.
 
 **12a. Binary patterns**
 

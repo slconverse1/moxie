@@ -1464,7 +1464,7 @@ class ExprParser(PBase):
         if not self.at_block():
             self.err("expected an indented block")
 
-    def parse_block_or_inline(self, seq=True):
+    def parse_block_or_inline(self, seq=False):
         """The body after a header: an indented block, or a one-line statement (a `when` arm may have several, joined by `;`)."""
         if self.at_block():
             return self.parse_block()

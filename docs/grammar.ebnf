@@ -8,9 +8,8 @@ program : { NL } { item } EOF ;
 item : decl | stmt ;
 
 # ---------------------------------------------------------------- statements
-stmt : simple NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound ;
-simple : sone { ';' sone } ;
-sone : base [ 'if' expr [ 'else' expr ] ] ;
+stmt : simple { ';' simple } [ ';' ] NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound ;
+simple : base [ 'if' expr [ 'else' expr ] ] ;
 base : 'break' 'daemon' | 'break' [ label ] '(' expr { ',' expr } ')' | 'export' ident [ type ] '=' expr | pattern [ type ] '=' expr 'else' expr | 'return' [ expr { ',' expr } ] | 'break' [ label ] [ '(' expr ')' ] | 'continue' [ label ] | binding | assign | incr | expr { ',' expr } ;
 blockend : [ target_list [ type ] '=' ] expr_b | 'return' expr_b ;
 expr_b : pipe_b | postfix_b | lambda_b | fnblock | gofn | dotblock | postfix '+%' fnblock | pipe '|>' 'seq' armsx | when_b ;

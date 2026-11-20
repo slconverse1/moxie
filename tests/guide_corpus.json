@@ -1295,14 +1295,11 @@ null
 ],
 [
 2578,
-"f = (x) -> y = x + 1; y * 2\nfn word(n Int) String\n  when n\n    1 -> println(\"one\"); \"uno\"\n    2 -> println(\"two\"); println(\"dos\"); \"dos\"\n    _ -> \"other\"\nprintln(f(3))\nprintln(word(1))\nprintln(word(2))\n",
+"a = 1; b = 2\nprintln(a + b)\nfn word(n Int) String\n  when n\n    1 ->\n      println(\"one\")\n      \"uno\"\n    _ -> \"other\"\nprintln(word(1))\n",
 [
-"8",
+"3",
 "one",
-"uno",
-"two",
-"dos",
-"dos"
+"uno"
 ]
 ],
 [
