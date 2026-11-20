@@ -1544,8 +1544,15 @@ class ExprParser(PBase):
     def parse_when(self):
         line = self.next().line
         scrut = None
+        nscr = 1
         if self.peek().kind != "NL":
             scrut = self.parse_header_expr()
+            if self.at_op(","):                                          # `when a, b, c`: several values matched at once, as one tuple
+                items = [(None, scrut, False)]
+                while self.eat_op(","):
+                    items.append((None, self.parse_header_expr(), False))
+                nscr = len(items)
+                scrut = TupleE(items, line=line)
         self.no_block_colon()
         self.expect_nl_indent()
         arms = []
@@ -1575,9 +1582,24 @@ class ExprParser(PBase):
                 arms.append(Arm(None, cond, body, line=aline))
                 self.end_line()
                 continue
-            pats = [self.parse_pattern()]
-            while self.eat_op(","):
-                pats.append(self.parse_pattern())
+            slots = [self.parse_alts()]
+            if nscr == 1 and self.at_op(","):
+                self.err("a comma does not separate alternatives: write `A | B` (a comma separates the values only in `when a, b`)")
+            while nscr > 1 and self.eat_op(","):
+                slots.append(self.parse_alts())
+            whole = len(slots) == 1 and nscr > 1 and all(a.__class__ in (PWild, PTuple) for a in slots[0])      # `_`, or `(a, b) | (c, d)`: the whole tuple
+            if whole and all(a.__class__ is PWild for a in slots[0]):
+                slots = [slots[0]] * nscr                                 # a lone `_` takes whatever the values are
+                whole = False
+            if len(slots) != nscr and not whole:
+                self.err(f"this arm has {len(slots)} pattern{'s' if len(slots) != 1 else ''}, but the `when` matches {nscr} values: write one pattern for each, separated by commas")
+            if nscr == 1 or whole:
+                pats = slots[0]
+            else:                                                       # `A | B, true` is the alternatives (A, true) and (B, true)
+                combos = [[]]
+                for alts in slots:
+                    combos = [c + [a] for c in combos for a in alts]
+                pats = [PTuple([(None, a) for a in c], line=aline) for c in combos]
             guard = None
             if self.at_name("if"):
                 self.next()
@@ -1591,6 +1613,13 @@ class ExprParser(PBase):
             self.end_line()
         self.expect_dedent()
         return WhenE(scrut, arms, line=line)
+
+    def parse_alts(self):
+        """One pattern, or several joined by `|` (alternatives that bind the same names)."""
+        alts = [self.parse_pattern()]
+        while self.eat_op("|"):
+            alts.append(self.parse_pattern())
+        return alts
 
     def parse_for(self):
         line = self.next().line

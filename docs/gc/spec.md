@@ -291,7 +291,7 @@ How the heap behaves:
 - **Passing by `ref`.** Collections can be passed by `ref` (section 9). Copy-in and copy-out pass references, so there is no size warning.
 
 **8. Patterns and `when`**
-- **`when value`** matches arms top to bottom. Patterns can be literals, constants, names (which bind), `_`, tuples, named tuples, declared tuples, enum cases, union members, list patterns, array patterns, Dict patterns, and pattern functions (`Num(n)` for a `pattern fn`, described below), nested to any depth. Alternatives separate with commas and must bind the same names. Every `when` must cover every case, and `else` is the fallback. Statements may be joined by `;` at the start of a line (`a = 1; b = 2`), and only there: lambdas, arms and `then`/`do`/`else` bodies take one statement or an indented block. `moxie fmt` keeps a `;` line as written and never adds one. Patterns that cover the whole range of a bounded integer need no `_`.
+- **`when value`** matches arms top to bottom. Patterns can be literals, constants, names (which bind), `_`, tuples, named tuples, declared tuples, enum cases, union members, list patterns, array patterns, Dict patterns, and pattern functions (`Num(n)` for a `pattern fn`, described below), nested to any depth. Alternatives are joined with `|` (`1 | 2 -> ...`, `Red | Blue -> ...`) and must bind the same names; a comma is never an alternative. `when a, b, c` matches several values at once: each arm gives one pattern for each value, separated by commas, and each of them may have `|` alternatives (`Member | Guest, true -> ...`, where `|` binds tighter than the comma), so no tuple parentheses are needed (whole combinations as alternatives are written as tuples: `(Some(x), None) | (None, Some(x)) -> ...`); a lone `_` or `else` takes any combination, and the checker's exhaustiveness check works on the combination. Every `when` must cover every case, and `else` is the fallback. Statements may be joined by `;` at the start of a line (`a = 1; b = 2`), and only there: lambdas, arms and `then`/`do`/`else` bodies take one statement or an indented block. `moxie fmt` keeps a `;` line as written and never adds one. Patterns that cover the whole range of a bounded integer need no `_`.
 - **List and array patterns.** `List(head, ...tail)` needs the exact count unless it ends in `...rest`, and `rest` is an ordinary slice **[gc]**. Array patterns work the same way: `Array(a, b, c)` and `Array(first, ...rest)`. Dict patterns match a subset of entries in any order, keys are literals, and only values bind. Set and MultiArray patterns are not supported.
 - **`else` arm.** `else body` may stand for `_ -> body` as the last arm of a `when`, with or without a scrutinee, and, in a `select`, `else body` for `_ -> body`. It is the same arm in each. In a `seq` stage list, whose arms each run when their test passes, `else stage` is a final stage that runs only when no earlier arm applied. An `else` arm followed by another arm is a syntax error.
 - **Binding and pins.** `p@Product(name, price)` binds the whole value to `p` as well as the fields. `^name` pins an existing variable, and `^(expr)` pins any parenthesized expression, compared with equality. A range arm is written with a leading `in`: `in 90..100 ->`, `in 1..9 step 2 ->`, `not in 0..<10 ->`. After `in` the bounds may be variables (`in lo..hi ->`) and the arm may name any range or collection (`in xs ->`), so no guard is needed; a bare `90..100` arm is an error. With literal bounds the compiler still adds the arm into coverage. A relational pattern (`>= 500`, `> 0.5`, `<= ^limit`, `< 40`) matches an open-ended range of any ordered type; its operand is a literal, a constant, or a pin (`^name`, `^(expr)`), because a bare variable would bind. On a type the compiler can't enumerate, relational arms do not prove coverage, so the `when` needs a `_` arm; on a bounded integer, relational and range arms are added up, so `>= 50` with `< 50` covers `Int[0..100]`.
@@ -864,7 +864,7 @@ expr_b : pipe_b | postfix_b | lambda_b | fnblock | gofn | dotblock | postfix '+%
 lambda_b : '(' [ params ] ')' '->' ( block | when_b | postfix '.' 'update' updblock ) ;
 dotblock : primary { '(' [ args ] ')' | '.' ident } ( '.' 'do' block | '.' 'update' updblock ) ;
 gofn : 'go' 'fn' '(' [ params ] ')' [ '(' [ params ] ')' ] block ;
-when_b : 'when' expr armsx ;
+when_b : 'when' expr { ',' expr } armsx ;
 pipe_b : pipe '|>' postfix_b | postfix_b ;
 postfix_b : primary { '(' [ args ] ')' | '.' ident | '?' } '(' [ params ] ')' '->' ( block | when_b | postfix '.' 'update' updblock ) ;
 fnblock : 'fn' [ tparams ] '(' [ params ] ')' [ type ] block ;
@@ -888,10 +888,10 @@ contract : ( 'requires' | 'ensures' ) expr NL ;
 fnbody : NL INDENT { contract } [ carry ] item+ DEDENT ;
 block_stmt : ident [ ident ] block ;
 ifstmt : 'if' expr ( 'then' simple NL | 'then' block | block ) { 'elif' expr ( 'then' simple NL | block ) } [ 'else' ( simple NL | block ) ] ;
-whenstmt : 'when' [ expr ] NL INDENT arm+ DEDENT ;
+whenstmt : 'when' [ expr { ',' expr } ] NL INDENT arm+ DEDENT ;
 arm : arm_head '->' ( simple NL | block | when_b ) | 'else' ( simple NL | block ) ;
-arm_head : pattern_alts [ 'if' expr ] | ident '=' expr | expr | 'else' ;
-pattern_alts : pattern { ',' pattern } ;
+arm_head : pattern_alts { ',' pattern_alts } [ 'if' expr ] | ident '=' expr | expr | 'else' ;
+pattern_alts : pattern { '|' pattern } ;
 forstmt : 'for' pattern 'in' expr ( block | 'then' simple NL ) [ 'else' ( simple NL | block ) ] ;
 whilestmt : 'while' [ expr ] block [ 'else' ( simple NL | block ) ] ;
 mutable_block : 'mutable' block ;

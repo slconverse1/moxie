@@ -2618,6 +2618,35 @@ println(word(1))
 
 Output: `3`, `one`, then `uno`. An arm that needs several statements takes an indented block under the `->`, as above.
 
+**Alternatives and several values.** Patterns that should share an arm are joined with `|`, and they must bind the same names. `when a, b` matches two or more values at once, with one pattern for each, separated by commas, so no tuple parentheses are needed. A lone `_` or `else` takes any combination, and the compiler checks that every combination of cases is covered:
+
+```
+enum Role
+  Admin,
+  Member,
+  Guest
+tuple User
+  username String
+  role Role
+  active Bool
+fn describe(u User) String
+  when u.role, u.active
+    _, false -> "${u.username} is inactive."
+    Admin, true -> "${u.username} has full access."
+    Member | Guest, true -> "${u.username} has standard access."
+println(describe(User(username: "ann", role: Admin, active: true)))
+println(describe(User(username: "bob", role: Guest, active: true)))
+println(describe(User(username: "cy", role: Guest, active: false)))
+fn size(n Int) String
+  when n
+    1 | 2 | 3 -> "small"
+    else "big"
+println(size(2))
+```
+
+Output: `ann has full access.`, `bob has standard access.`, `cy is inactive.`, then `small`. Leaving out the `Member | Guest, true` arm is a compile error that names the uncovered combination. Since `|` binds tighter than the comma, `Member | Guest, true` means (Member or Guest) and true; for alternatives that are whole combinations, write them as tuples: `(Some(x), None) | (None, Some(x)) -> x`. **Mistakes:** a comma between alternatives (`1, 2 ->`; write `1 | 2 ->`), an arm with a different number of patterns than the `when` has values, and alternatives that bind different names.
+
+
 **12a. Binary patterns**
 
 A byte layout is matched with `Bin(...)` on an `Array[Byte]`. Each element is `name: kind`, read left to right: `u8`, `i8`, and the sized kinds `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the byte order is always written), `bits(n)` for an unsigned field of `n` bits packed from the high bit (bit fields must add up to whole bytes), and `bytes(n)` for a run of bytes, where `n` is a number or an earlier field. A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a field, and `rest: bytes` at the end takes whatever is left:

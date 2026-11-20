@@ -1022,7 +1022,8 @@ Output: `Standard square at origin`, then `Unknown`.
 - `^limit` pins an existing variable, so the arm compares against its value instead of binding a new name.
 - `List(head, ...tail)` and `Array(a, b, c)` take sequences apart, and a Dict pattern matches a subset of entries.
 - A bare `...` skips the rest (`User(name, ...)`, `List(first, ...)`), and `is not` negates an `is` test.
-- Alternatives are separated by commas, and they must bind the same names.
+- Alternatives are joined with `|` (`Member | Guest -> ...`), and they must bind the same names.
+- `when a, b, c` matches several values at once, one pattern for each, so `Admin, true -> ...` needs no tuple parentheses; the compiler checks that every combination is covered.
 - Patterns work outside `when` too: `value is Pattern` is a `Bool` test, a let-else bails out when the pattern doesn't match, and a pattern that can't fail may sit to the left of a binding, in `for` names, and in function and lambda parameters.
 
 Chapter 12 of the Mixer's Guide has an example of each.

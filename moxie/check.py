@@ -4493,6 +4493,13 @@ class Checker(RefineMixin):
                 gadt = gadt or bool(fx)
                 self.tp_eq.update(fx)
                 self.tp_decl = {**self.tp_decl, **self.case_bounds(p, st)}
+            if len(a.pats or []) > 1:
+                sets = [frozenset(x for x in self.pat_names(p) if x[:1].islower()) for p in a.pats]
+                if len(set(sets)) > 1:
+                    every = frozenset().union(*sets)
+                    odd = sorted(every - frozenset.intersection(*sets))
+                    self.err(getattr(a, "line", 0) or n.line, "the alternatives of an arm must bind the same names, but " + ", ".join(f"`{x}`" for x in odd)
+                             + (" is" if len(odd) == 1 else " are") + " not bound by every one")
             for p in a.pats or []:
                 self.bind_pat(p, inner, st if n.scrut is not None else None)
                 self.bind_payloads(p, sdn, inner)
