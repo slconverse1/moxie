@@ -1078,6 +1078,7 @@ Output: `Standard square at origin`, then `Unknown`.
 - `List(head, ...tail)` and `Array(a, b, c)` take sequences apart, and a Dict pattern matches a subset of entries.
 - A bare `...` skips the rest (`User(name, ...)`, `List(first, ...)`), and `is not` negates an `is` test.
 - Alternatives are joined with `|` (`Member | Guest -> ...`), and they must bind the same names.
+- A string pattern has holes that bind: `"--port=${p Int}"` and `"${stem}.mxi"` take a string apart, the way `${}` builds one.
 - `when a, b, c` matches several values at once, one pattern for each, so `Admin, true -> ...` needs no tuple parentheses; the compiler checks that every combination is covered.
 - Patterns work outside `when` too: `value is Pattern` is a `Bool` test, a let-else bails out when the pattern doesn't match, and a pattern that can't fail may sit to the left of a binding, in `for` names, and in function and lambda parameters.
 

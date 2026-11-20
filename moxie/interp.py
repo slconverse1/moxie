@@ -1282,6 +1282,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 self._pnames(q, out)
         elif c is PBin:
             out.update(e[1] for e in p.elems if e[0] == "field" and e[1])
+        elif c is PStr:
+            out.update(x[0] for x in p.parts if not isinstance(x, str) and x[0] != "_")
         elif c is PRest:
             if p.name:
                 out.add(p.name)

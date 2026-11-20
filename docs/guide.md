@@ -2646,6 +2646,36 @@ println(size(2))
 
 Output: `ann has full access.`, `bob has standard access.`, `cy is inactive.`, then `small`. Leaving out the `Member | Guest, true` arm is a compile error that names the uncovered combination. Since `|` binds tighter than the comma, `Member | Guest, true` means (Member or Guest) and true; for alternatives that are whole combinations, write them as tuples: `(Some(x), None) | (None, Some(x)) -> x`. Alternatives may sit inside a pattern (`Some(1 | 2) ->`, `(0 | 1, 0 | 1) ->`), and an `is` test takes them too when they bind no names (`if role is Member | Guest then`, `x is not A | B`). An arm with an `if` guard never counts toward coverage, so a `when` on an `Int` or `String` always ends with an unguarded `_` or `else`. **Mistakes:** a comma between alternatives (`1, 2 ->`; write `1 | 2 ->`), an arm with a different number of patterns than the `when` has values, and alternatives that bind different names.
 
+**String patterns.** A string literal in a pattern may have holes that bind, written like the `${...}` of string building. `${name}` binds the matched text, `${n Int}` (also `Double` and `Bool`) matches only text that reads as that type and binds the value, and `${_}` skips. Literal text anchors the match: text at the start must be at the start and text at the end at the end, so `"${stem}.mxi"` tests a suffix and `"--${name}"` a prefix. A hole between two pieces of text takes the shortest match, so `"${k}=${v}"` splits at the first `=`, and two holes need text between them. Alternatives with `|` work when they bind the same names, and `is` takes a string pattern too. As with a pattern function, the compiler can't tell what a string pattern accepts, so a `when` that uses one needs a `_` arm.
+
+```
+fn option(arg String) String
+  when arg
+    "--port=${p Int}" -> "port ${p + 1}"
+    "--${name}" -> "flag ${name}"
+    _ -> "other"
+fn kind(file String) String
+  when file
+    "${stem}.mxi" -> "source ${stem}"
+    "${stem}.md" | "${stem}.txt" -> "text ${stem}"
+    _ -> "unknown"
+fn route(path String) String
+  when path
+    "/api/${name}.json" -> "json ${name}"
+    "/api/${rest}" -> "api ${rest}"
+    "/" -> "home"
+    _ -> "404"
+println(option("--port=80"))
+println(option("--port=x"))
+println(kind("notes.txt"))
+println(kind("a.mxi.mxi"))
+println(route("/api/users.json"))
+println(route("/api/users"))
+if "k=3" is "k=${v Int}" then println("is ok")
+```
+
+Output: `port 81`, `flag port=x`, `text notes`, `source a.mxi`, `json users`, `api users`, then `is ok`. `--port=x` falls through to the second arm because `x` is not an `Int`. For anything this can't say, such as a prefix test nested inside another pattern, write a `pattern fn`. **Mistakes:** two holes with no text between them (`"${a}${b}"`), the same name twice, a hole type other than `Int`, `Double`, `Bool` or `String`, and a string pattern against a value that is not a `String`.
+
 
 **12a. Binary patterns**
 

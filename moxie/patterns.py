@@ -31,6 +31,60 @@ class PatternsMixin:
             return Dec(Decimal(e.text))
         raise Abort("bad literal in pattern")
 
+    @staticmethod
+    def _hole_value(text, ty):
+        """The value a typed hole binds, or None when the text does not read as that type."""
+        import re
+        if ty is None or ty == "String":
+            return text
+        if ty == "Int":
+            return int(text) if re.fullmatch(r"-?[0-9]+", text) else None
+        if ty in ("Double", "Float"):
+            return float(text) if re.fullmatch(r"-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?", text) else None
+        if ty == "Bool":
+            return {"true": True, "false": False}.get(text)
+        return None
+
+    def match_string(self, parts, v, b):
+        """Literal text anchors the match (the first piece at the start, the last at the end); a hole between pieces takes the shortest text."""
+        if not isinstance(v, str) or isinstance(v, Char):
+            return False
+        pos, end = 0, len(v)
+        if parts and isinstance(parts[0], str):
+            if not v.startswith(parts[0]):
+                return False
+            pos = len(parts[0])
+            parts = parts[1:]
+        if parts and isinstance(parts[-1], str):
+            tail = parts[-1]
+            if end - len(tail) < pos or not v.endswith(tail):
+                return False
+            end -= len(tail)
+            parts = parts[:-1]
+        out = {}
+        i = 0
+        while i < len(parts):
+            name, ty = parts[i]                      # a hole: ends at the next literal piece (or at `end` when it is the last)
+            if i + 1 < len(parts):
+                lit = parts[i + 1]
+                j = v.find(lit, pos, end)
+                if j < 0:
+                    return False
+                text, pos = v[pos:j], j + len(lit)
+                i += 2
+            else:
+                text, pos = v[pos:end], end
+                i += 1
+            val = self._hole_value(text, ty)
+            if val is None:
+                return False
+            if name != "_":
+                out[name] = val
+        if pos != end:
+            return False
+        b.update(out)
+        return True
+
     def pmatch(self, p, v, b, env):
         c = p.__class__
         if c is PBind:
@@ -38,6 +92,8 @@ class PatternsMixin:
             return True
         if c is PWild:
             return True
+        if c is PStr:
+            return self.match_string(p.parts, v, b)
         if c is PLit:
             lv = self.lit_value(p.expr)
             if isinstance(lv, bool) or isinstance(v, bool):

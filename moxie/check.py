@@ -1960,6 +1960,8 @@ class Checker(RefineMixin):
                 self.pat_names(q, out)
         elif c is PBin:
             out.extend(e[1] for e in p.elems if e[0] == "field" and e[1])
+        elif c is PStr:
+            out.extend(x[0] for x in p.parts if not isinstance(x, str) and x[0] != "_")
         elif c is PTyped:
             self.pat_names(p.pat, out)
         return out
@@ -2045,6 +2047,11 @@ class Checker(RefineMixin):
         c = p.__class__
         if c is PCon and self.rec_decl(p) is not None:
             self.type_rec(p, sc, ty, res)
+            return
+        if c is PStr:
+            for x in p.parts:
+                if not isinstance(x, str) and x[0] != "_":
+                    sc.vars[x[0]] = Var({"Int": "Int", "Double": "Float", "Float": "Float", "Bool": "Bool"}.get(x[1], "String"), False, self.loop_depth)
             return
         if ty is None or self.has_unsettled(ty) and not (ty.__class__ is tuple and ty[0] in ("app", "tup", "named")) and not self.mentions_case_rigid(ty):
             return
@@ -4600,7 +4607,7 @@ class Checker(RefineMixin):
             if eds and any(len(ed.cases or []) > 1 for ed in eds):
                 return True
             return any(self.refutable_pat(q) for _l, q in p.args or [])
-        return c in (PLit, PIn, PRel, PPin)
+        return c in (PLit, PIn, PRel, PPin, PStr)
 
     def check_pat_fit(self, p, st, line):
         """A literal or `Ok`/`Err` pattern against a value of a plain scalar type it can never match; an `Ok`/`Err` pattern against an
@@ -4630,6 +4637,8 @@ class Checker(RefineMixin):
             return
         if st.__class__ is not str or st not in SCALARS_FOR_PAT:
             return
+        if p.__class__ is PStr and st != "String":
+            self.err(line, f"this is a string pattern, but the value is a `{tshow(st)}`, so it can never match")
         if p.__class__ is PLit:
             lit = {StrLit: ("String", {"String"}), IntLit: ("Int", INTS | {"Float", "Double", "Decimal", "Byte"}),
                    CharLit: ("Char", {"Char"}), BoolLit: ("Bool", {"Bool"})}.get(p.expr.__class__)
@@ -5094,7 +5103,7 @@ class Checker(RefineMixin):
                         return
                     miss = "true" if True not in lits else "false"
                     self.err(n.line, f"`when` does not cover `{miss}`")
-                elif all(p.__class__ in (PLit, PRange, PRel, PIn, PBind, PWild, PAs) for _, p in pats):
+                elif all(p.__class__ in (PLit, PRange, PRel, PIn, PBind, PWild, PAs, PStr) for _, p in pats):
                     guarded = any(a.guard is not None and p.__class__ in (PBind, PWild, PAs) for a, p in pats)
                     self.err(n.line, f"`when` on `{tshow(st)}` needs a `_` arm" + (" (an arm with an `if` guard does not count: the compiler can't tell that the guards cover every value)" if guarded else ""))
             elif st.__class__ is tuple and st[0] == "bounded":

@@ -643,11 +643,41 @@ class PBase:
                 return PRel(t.val, e, line=line)
             if t.val in ("..", "..="):
                 self.err("a range in a pattern is written with `in`: `in ..9 -> ...`")
+        if t.kind == "STR" and any(not isinstance(x, str) for x in t.val):
+            self.next()
+            return self.parse_string_pattern(t, line)
         if t.kind in ("INT", "FLOAT", "STR", "CHAR", "HASH", "DEC"):
             self.next()
             lit = self._lit_from_tok(t)
             return self._range_tail(PLit(lit, line=line), lit)
         self.err(f"expected a pattern but found {self.describe(t)}")
+
+    HOLE_TYPES = ("Int", "Double", "Float", "Bool", "String")
+
+    def parse_string_pattern(self, tok, line):
+        """`"--port=${p Int}"`, `"${stem}.mxi"`: literal text with holes that bind.  A hole is `${name}` (a String) or `${name Type}`
+        (Int, Double or Bool: the text must read as one); `${_}` skips.  Holes need literal text between them."""
+        parts = []
+        for part in tok.val:
+            if isinstance(part, str):
+                if parts and isinstance(parts[-1], str):
+                    parts[-1] += part
+                else:
+                    parts.append(part)
+                continue
+            _k, src, spec, pline = part
+            words = src.split()
+            if spec or not 1 <= len(words) <= 2 or not (words[0] == "_" or (words[0][:1].islower() and words[0].replace("_", "a").isalnum())):
+                self.err("a hole in a string pattern is `${name}` or `${name Type}`", tok)
+            if len(words) == 2 and words[1] not in self.HOLE_TYPES:
+                self.err(f"a hole in a string pattern can be typed `Int`, `Double`, `Bool` or `String`, not `{words[1]}`", tok)
+            if parts and not isinstance(parts[-1], str):
+                self.err("two holes in a string pattern need literal text between them: there is no way to tell where one ends", tok)
+            parts.append((words[0], words[1] if len(words) == 2 else None))
+        names = [x[0] for x in parts if not isinstance(x, str) and x[0] != "_"]
+        if len(set(names)) != len(names):
+            self.err("a name is bound twice in this string pattern", tok)
+        return PStr(parts, line=line)
 
     def _pat_lit_expr(self):
         t = self.next()

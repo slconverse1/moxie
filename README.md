@@ -22,6 +22,8 @@ Dialect names. Internally, in notes, tests and commit messages, the GC-free dial
 
 Newest first.
 
+**2026-11-20 (string patterns):** a string literal with `${...}` holes is a pattern: `"--port=${p Int}"`, `"${stem}.md" | "${stem}.txt"`, `"/api/${name}.json"`. A hole is `${name}` (a `String`), `${n Int}`/`Double`/`Bool` (matches only text that reads as that type and binds the value) or `${_}`; literal text anchors at the start and end, a hole between pieces of text takes the shortest match, two holes need text between them, and a `when` using one needs a `_` arm. Works in `when`, `is` and with `|`. `tests/run_strpat.py`, guides, specs, intros.
+
 **2026-11-20 (Dict pattern rest):** a `Dict` pattern with `...` (`Dict("a" -> x, ...)`) never matched, because the rest entry was read as an entry without a key; it now skips the other entries, and `...rest` binds them as a `Dict`. Cases in `tests/run_multiwhen.py`.
 
 **2026-11-20 (alternatives everywhere, guard coverage):** `x is A | B` and `x is not A | B` test several patterns at once (they may not bind names); alternatives may be nested inside a pattern, `Some(1 | 2)`, `(0 | 1, 0 | 1)`, `Ok(0 | 1) | Err("a" | "b")`, which the parser expands into whole-pattern alternatives (at most 512; more is an error). Alternatives in a `let`, `for` or other irrefutable pattern are an error. A `when` on an `Int`, `String` or `Char` whose arms are all guarded (`n if n < 0`, `n if n >= 0`) is now a compile error asking for an unguarded `_`, instead of a run-time abort. `tests/run_multiwhen.py`, `tests/run_typesafe.py`.
