@@ -9,7 +9,8 @@ CASES = [
     ("multi-array still works", 'm = (1, 2; 3, 4)\nprintln(m)\n', 0, "MultiArray(1, 2, 3, 4)"),
     ("not after then", 'x = 2\nif x > 1 then println("a"); println("b")\n', 1, "unexpected ';'"),
     ("not after do", 'while false do println("a"); println("b")\n', 1, "unexpected ';'"),
-    ("not in a lambda", 'f = (x) -> y = x + 1; y * 2\nprintln(f(3))\n', 1, "undefined name"),
+    ("not in a lambda", 'f = (x) -> y = x + 1; y * 2\nprintln(f(3))\n', 1, "unexpected ';'"),
+    ("not after a lambda, even for a new binding", 'f = (x) -> x + 1; g = 2\nprintln(f(1))\n', 1, "unexpected ';'"),
     ("not in a when arm", 'n = 1\nwhen n\n  1 -> println("one"); println("uno")\n  _ -> println("x")\n', 1, "';'"),
 ]
 bad = 0

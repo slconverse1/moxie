@@ -488,6 +488,8 @@ class ExprParser(PBase):
         e = self.parse_inline_seq()
         self.no_trailing = save_nt
         self.stop_bol = save
+        if self.at_op(";"):
+            self.err("unexpected ';': a lambda body is one expression; write an indented block for more")
         return e
 
     def parse_args(self):

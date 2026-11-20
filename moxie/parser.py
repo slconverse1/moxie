@@ -338,7 +338,7 @@ class Parser(ExprParser):
                     if v == "->" and seen_ann:
                         i += 1
                         continue
-                    if v in ("->", "|>", "?", ":"):
+                    if v in ("->", "|>", "?", ":", ";"):
                         break
             elif k.kind == "NAME" and depth == 0 and k.val in ("if", "else", "and", "or", "in", "is", "fn", "when"):
                 break
