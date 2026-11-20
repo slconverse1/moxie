@@ -21,6 +21,8 @@ CASES = [
     ("nested alternatives with binding", 'fn f(r Result[Int, Int]) Int\n  when r\n    Ok(n) | Err(n) -> n\nprintln(f(Err(4)))\n', 0, "4"),
     ("alternatives only in arms and is", 'x = Some(1)\nSome(1 | 2) = x\n', 1, "only for a `when` arm and an `is` test"),
     ("too many combinations", 'fn f(a Int) Int\n  when a, a, a, a, a, a, a\n    ' + ", ".join("0 | 1 | 2 | 3 | 4 | 5" for _ in range(7)) + ' -> 1\n    _ -> 0\nprintln(f(3))\n', 1, "split it into separate arms"),
+    ("Dict pattern with a bare ...", 'fn f(d Dict[String, Int]) Int\n  when d\n    Dict("a" -> x, ...) -> x\n    _ -> 0\nprintln(f(Dict("a" -> 5, "b" -> 1)))\nprintln(f(Dict("z" -> 1)))\n', 0, "5\n0"),
+    ("Dict pattern with ...rest", 'fn f(d Dict[String, Int]) String\n  when d\n    Dict("a" -> x, ...rest) -> "$x ${len(rest)}"\n    _ -> "none"\nprintln(f(Dict("a" -> 5, "b" -> 1, "c" -> 2)))\n', 0, "5 2"),
 ]
 bad = 0
 for name, src, want_rc, want in CASES:

@@ -315,7 +315,12 @@ class PatternsMixin:
                 return False
             return self.match_seq(args, v, b, env)
         if name == "Dict" and k is DictV:
+            used = []
+            rest_pat = None
             for label, q in (args or []):
+                if q.__class__ is PRest:                    # `...` skips the other entries; `...rest` binds them as a Dict
+                    rest_pat = q
+                    continue
                 if label is None:
                     return False
                 key = label
@@ -326,6 +331,10 @@ class PatternsMixin:
                         return False
                 if not self.pmatch(q, v.d[key], b, env):
                     return False
+                used.append(key)
+            if rest_pat is not None and rest_pat.name:
+                left = DictV({k2: x for k2, x in v.d.items() if k2 not in used})
+                b[rest_pat.name] = left
             return True
         if args is None and not qual:
             # a type name (union member) or a named constant
