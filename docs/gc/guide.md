@@ -2482,7 +2482,7 @@ println(half("ten"))
 
 Output: `Ok(5)`, then `Err(Error(code: 7, message: "bad number: cannot read"))`. The two patterns must cover every shape of the value between them (the compiler says which case is missing, as for `when`), so the `Err(e)` here is the only thing left once `Ok(n)` has failed to match. A plain name, as in `else other -> ...`, takes the whole value. The names of the first pattern are not in scope in the else, and the names of the second are not in scope after the line. Without the `->`, the else is a value as before. A lambda can't be the else value with a pattern-looking parameter list: write it with a name first.
 
-**Custom extraction is a function that returns an `Option`.** Moxie has no `unapply` or `componentN`, and a pattern matches the shape of a value as it is. To pull a value apart in your own way, write a function that returns an `Option`, then match its result with `is` or let-else, as in Rust. Three string functions return one: `split_once(s, sep)` splits at the first separator, and `strip_prefix(s, p)` and `strip_suffix(s, p)` remove an end that is there:
+**Custom extraction is a function that returns an `Option`.** Moxie has no `unapply` or `componentN`, and a plain pattern matches the shape of a value as it is. To pull a value apart in your own way, write a function that returns an `Option`, then match its result with `is` or let-else, as in Rust (a function can also be used as a pattern itself, which is the next topic). Three string functions return one: `split_once(s, sep)` splits at the first separator, and `strip_prefix(s, p)` and `strip_suffix(s, p)` remove an end that is there:
 
 ```
 fn parse_email(raw String) Option[(String, String)]
@@ -2496,50 +2496,6 @@ println(text)
 ```
 
 Output: `User: alex, Domain: example.com`, then `None`, then `hello`.
-
-**Which pattern tool fits.** Three tools take a collection of mixed items apart, and they differ in what they do with the items that don't fit:
-
-| You want | Use |
-|---|---|
-| One kind of item, drop the rest | a `for:` block with a pattern, or `filter_map` |
-| Every kind of item gets its own result | `map` with a lambda that is a `when` |
-| A function you already have that returns an `Option` | `filter_map` |
-| The first item that fits, with its result | `find_map` |
-
-```
-enum Event
-  Click(x Int, y Int),
-  Press(c String),
-  Quit
-evs = List(Click(1, 2), Press("a"), Quit, Click(5, 6))
-xs = for
-  Click(x, _) in evs
-  yield x
-println(xs)
-ys = evs |> filter_map((e) -> if e is Click(_, y) then Some(y) else None) |> collect()
-println(ys)
-labels = evs.map()(e) -> when e
-  Click(x, y) -> "click ${x},${y}"
-  Press(c) -> "key ${c}"
-  Quit -> "quit"
-println(labels |> collect())
-```
-
-Output: `List(1, 5)`, then `List(2, 6)`, then `List("click 1,2", "key a", "quit", "click 5,6")`. The first two drop what they don't match, and the third must cover every case, as a `when` always does.
-
-**The first item that fits.** `find_map(f)` is the search that goes with `filter_map`: it applies `f` to each item and stops at the first `Some`, giving `Ok` of the payload, or an `Err` when no item gives one (it is F#'s `tryPick`, and `filter_map` is F#'s `choose`). It stops early, so it works on an endless range too. `position(pred)` gives the index of the first item that satisfies `pred`. On a `Dict` the function takes the key and the value.
-
-```
-inputs = List("apple", "42", "100", "banana")
-fn num(s String) Option[Int] = parse_number(s).ok()
-println(inputs |> find_map(num))
-println(inputs |> filter_map(num) |> collect())
-println(inputs.find_map(num).get_or(0))
-println(List("apple", "banana").find_map(num).get_or(-1))
-println(inputs.position((s) -> s == "100"))
-```
-
-Output: `Ok(42)`, then `List(42, 100)`, then `42`, then `-1`, then `Ok(2)`.
 
 **Pattern functions.** Some values have no cases to match on: a `String` that might be a number, a command-line word that might be a flag. A `pattern fn` is a function that can stand in a pattern. It is written like any function, but its last parameter is the value being matched and it returns an `Option`: `Some(payload)` when the value fits, `None` when it does not. In a pattern it is used like a constructor, `Num(n)`, and the patterns inside the parentheses match the payload. Arguments for the other parameters come first and are values: a literal, or `^name` to use a variable (the pin, as in `when`). Because it is an ordinary function, it is declared above where it is used, it is `pure` automatically (a match may not have effects), and it works anywhere a pattern does: `when`, `is`, a binding with `else`, a `for:` comprehension, inside a tuple or `Some`. One thing is different from a case: the compiler can't tell what a pattern function will accept, so a `when` that uses one needs a `_` arm.
 
@@ -2577,6 +2533,51 @@ println(List(1, 3, 5, 15).map(fizz) |> collect())
 ```
 
 Output: `port 8080`, `flag verbose`, `number 42`, `word hello`, `Ok(80)`, then `List("1", "Fizz", "Buzz", "FizzBuzz")`. The first arm of `option` has two pattern functions inside each other: `Prefix` strips `--port=`, and `Num` then reads what is left. A name must start with a capital letter and can't be the name of a type or a case, so a pattern can never be taken for something else. **Mistakes:** a `when` with pattern functions and no `_` arm, a pattern function that does not return an `Option`, a payload pattern that does not fit what the function finds (two names for one value), a value of the wrong type (`Num(n)` against an `Int`), and using it above its declaration.
+
+**Which pattern tool fits.** Three tools take a collection of mixed items apart, and they differ in what they do with the items that don't fit:
+
+| You want | Use |
+|---|---|
+| One kind of item, drop the rest | a `for:` block with a pattern, or `filter_map` |
+| Every kind of item gets its own result | `map` with a lambda that is a `when` |
+| A function you already have that returns an `Option` | `filter_map` |
+| The first item that fits, with its result | `find_map` |
+| A test of your own, usable in any pattern | a `pattern fn` |
+
+```
+enum Event
+  Click(x Int, y Int),
+  Press(c String),
+  Quit
+evs = List(Click(1, 2), Press("a"), Quit, Click(5, 6))
+xs = for
+  Click(x, _) in evs
+  yield x
+println(xs)
+ys = evs |> filter_map((e) -> if e is Click(_, y) then Some(y) else None) |> collect()
+println(ys)
+labels = evs.map()(e) -> when e
+  Click(x, y) -> "click ${x},${y}"
+  Press(c) -> "key ${c}"
+  Quit -> "quit"
+println(labels |> collect())
+```
+
+Output: `List(1, 5)`, then `List(2, 6)`, then `List("click 1,2", "key a", "quit", "click 5,6")`. The first two drop what they don't match, and the third must cover every case, as a `when` always does.
+
+**The first item that fits.** `find_map(f)` is the search that goes with `filter_map`: it applies `f` to each item and stops at the first `Some`, giving `Ok` of the payload, or an `Err` when no item gives one (it is F#'s `tryPick`, and `filter_map` is F#'s `choose`). It stops early, so it works on an endless range too. `position(pred)` gives the index of the first item that satisfies `pred`. On a `Dict` the function takes the key and the value.
+
+```
+inputs = List("apple", "42", "100", "banana")
+fn num(s String) Option[Int] = parse_number(s).ok()
+println(inputs |> find_map(num))
+println(inputs |> filter_map(num) |> collect())
+println(inputs.find_map(num).get_or(0))
+println(List("apple", "banana").find_map(num).get_or(-1))
+println(inputs.position((s) -> s == "100"))
+```
+
+Output: `Ok(42)`, then `List(42, 100)`, then `42`, then `-1`, then `Ok(2)`.
 
 **12a. Binary patterns**
 
