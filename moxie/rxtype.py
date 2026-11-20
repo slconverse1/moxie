@@ -161,6 +161,8 @@ class _P:
                         _err(f"a group type is Int, Float, Bool or String, not `{kind}`", j + 1)
                     self.i = k + 1
         mine = None
+        if capturing and name and any(g[0] == name for g in self.gs):
+            _err(f"the group name `{name}` is used twice", self.i)
         if capturing:
             self.gs.append([name, kind, False])
             mine = len(self.gs) - 1

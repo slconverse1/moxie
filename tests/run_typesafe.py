@@ -154,6 +154,7 @@ CASES = [
     ('int8-var-add-fits', 'A', 'a Int8 = 100\nb Int8 = 20\nprintln(a + b)\nprintln(a - b)\n'),
     ('int8-var-wrapping-ok', 'A', 'a Int8 = 100\nprintln(wrapping_add(a, a))\n'),
     ('int8-var-reassigned-not-const', 'A', 'mutable\n  a Int8 = 100\n  a = 1\n  println(a + a)\n'),
+    ('int8-var-chained-overflow', 'R', 'a Int8 = 100\nprintln(a + 20 + 20)\n'),
     ('int8-in-list', 'R', 'xs List[Int8] = List(1, 500)\nprintln(xs)\n'),
     ('int8-in-array', 'R', 'xs Array[Int8][2] = Array(1, 500)\nprintln(xs)\n'),
     ('int8-in-dict', 'R', 'd Dict[String, Int8] = Dict("a" -> 500)\nprintln(d)\n'),

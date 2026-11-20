@@ -312,6 +312,8 @@ fn read_header(cs List[Char], i Int) Result[Hdr, Error]
 
 fn parse_group(cs List[Char], st Ps) Result[Pn, Error]
   h = read_header(cs, st.i)?
+  if h.capturing and len(h.group.name) > 0 and (st.groups |> any((g) -> g.name == h.group.name))
+    return Err(perr("the group name `${h.group.name}` is used twice", st.i))
   idx = if h.capturing then st.ncap + 1 else st.ncap
   gs = if h.capturing then st.groups + List(h.group) else st.groups
   inner = parse_alt(cs, Ps(i: h.next, ncap: idx, groups: gs))?

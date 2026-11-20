@@ -2006,6 +2006,30 @@ class Checker(RefineMixin):
             return any(self.has_rec(q) for _l, q in p.items or [])
         return False
 
+    def int_wt(self, e, sc):
+        """The written sized-integer type (`Int8`) an expression made of such variables and constants has, else None."""
+        c = e.__class__
+        if c is Name:
+            v = sc.find(e.name)
+            return v.inttype if v is not None and v.inttype else None
+        if c is Binary and e.op in ("+", "-", "*"):
+            a, b = self.int_wt(e.l, sc), self.int_wt(e.r, sc)
+            return a or b
+        if c is Unary and e.op == "-":
+            return self.int_wt(e.e, sc)
+        return None
+
+    def rec_lit_check(self, q, t, line, nm):
+        """A literal written where `pattern fn` `nm` finds a value of another scalar type can never match: `Matches("(?<n:Int>\\d+)", "x")`."""
+        lit_ty = {IntLit: "Int", FloatLit: "Float", StrLit: "String", BoolLit: "Bool", CharLit: "Char"}
+        if q.__class__ is PLit and t in self.SCAL:
+            got = lit_ty.get(q.expr.__class__)
+            if got is not None and got != t and not (t in ("Float", "Decimal") and got == "Int") and not (t in INTS and got == "Int"):
+                self.err(line, f"the pattern `{nm}` finds a `{tshow(t)}` here, but a `{got}` is written: it can never match")
+        elif q.__class__ is PTuple and t.__class__ is tuple and t[0] == "tup" and len(q.items or []) == len(t[1]):
+            for (_l, x), y in zip(q.items, t[1]):
+                self.rec_lit_check(x, y, line, nm)
+
     def rx_payload(self, fd, ps, items, line):
         """The regex package's `Matches("(?<y:Int>\\d+)-(\\w+)", (y, w))`: a regex written as a string literal is read here, so the patterns after it
         get the types its groups declare (`Int`, `Float`, `Bool`, else `String`; `Option` of that for a group that may not take part).
@@ -2022,16 +2046,15 @@ class Checker(RefineMixin):
             return (None, -1)
         ts = []
         for _name, kind, optional in gs:
-            t = kind
-            ts.append(("app", "Option", [t]) if optional else t)
+            ts.append(("app", "Option", (kind,)) if optional else kind)
         names = [g[0] for g in gs]
         if not ts:
             return (None, 0)
         if len(ts) == 1:
             return (ts[0], 1)
         if all(names):
-            return (("tup", ts, names), len(ts))
-        return (("tup", ts), len(ts))
+            return (("tup", tuple(ts), tuple(names)), len(ts))
+        return (("tup", tuple(ts)), len(ts))
 
     def type_rec(self, p, sc, ty, res):
         """`Num(n)` where `Num` is a `pattern fn`: its leading arguments are values, the matched value has the type of its last parameter,
@@ -2074,16 +2097,20 @@ class Checker(RefineMixin):
                 self.err(line, f"the regex in `{fd.name}` has no groups, so there is nothing to match: write `{fd.name}(\"...\")` with no pattern after it")
                 return
             r0 = items[lead] if len(items) == lead + 1 else None
-            if ngroups >= 2 and r0.__class__ is PTuple and len(r0.items or []) != ngroups and not any(q.__class__ is PRest for _l, q in r0.items or []):
-                self.err(line, f"the regex in `{fd.name}` has {ngroups} groups, but the pattern after it has {len(r0.items or [])} names")
+            if ngroups >= 1 and r0.__class__ is PTuple and len(r0.items or []) != ngroups and not any(q.__class__ is PRest for _l, q in r0.items or []):
+                self.err(line, f"the regex in `{fd.name}` has {ngroups} group{'s' if ngroups != 1 else ''}, but the pattern after it has {len(r0.items or [])} names"
+                               + (": one group is the value itself, so write the name without parentheses" if ngroups == 1 else ""))
                 return
         rest = items[lead:]
         if not rest:
             return
         if len(rest) == 1:
+            self.rec_lit_check(rest[0], payload, line, fd.name)
             self.type_pat(rest[0], sc, payload, res)
             return
         if payload.__class__ is tuple and payload[0] == "tup":
+            for q, t in zip(rest, payload[1]):
+                self.rec_lit_check(q, t, line, fd.name)
             if len(payload[1]) != len(rest):
                 self.err(line, f"the pattern `{fd.name}` finds {len(payload[1])} values, but {len(rest)} patterns are written for them")
                 return
@@ -2781,7 +2808,7 @@ class Checker(RefineMixin):
         if op in ("+", "-", "*") and not (n.l.__class__ is IntLit and n.r.__class__ is IntLit):
             self._csc = sc
             lv, rv = self.const_int(n.l), self.const_int(n.r)
-            wts = {x.inttype for x in (sc.find(y.name) for y in (n.l, n.r) if y.__class__ is Name) if x is not None and x.inttype}
+            wts = {w for w in (self.int_wt(n.l, sc), self.int_wt(n.r, sc)) if w}
             if lv is not None and rv is not None and len(wts) == 1:
                 wt = next(iter(wts))
                 r = lv + rv if op == "+" else lv - rv if op == "-" else lv * rv
