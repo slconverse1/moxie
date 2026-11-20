@@ -838,7 +838,7 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 
 **The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
 
-### Open tuples, row polymorphism the moxie way
+### Open tuples, row polymorphism for the rest of us
 
 A parameter written with a bare `...` at the end, `(age Int, ...)`, accepts any tuple that has at least those named fields, a labeled tuple of any width or a declared tuple such as `Employee`. Type theorists call this **row polymorphism**: the `...` is the "rest of the row", the fields the function doesn't care about. And because `[T (age Int, ...)]` can bound a type parameter, a function can promise "whatever came in comes back out, other fields intact".
 
