@@ -103,7 +103,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), and anonymous records, the tuples whose named-field types are never declared, with the open form `(name String, ...)`.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code.
-- **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, and the idea that a function parameter has a name for the body and a label for the call.
+- **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, the idea that a function parameter has a name for the body and a label for the call, and regex literals with typed captures, `(?<y:Int>\\d{4})`, whose names get the types the groups declare (the `regex` package's `Matches("...", (y, m))`).
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 - **C#:** multi-cast delegation.
