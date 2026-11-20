@@ -1072,7 +1072,7 @@ println(message(Rectangle(origin: Point(x: 1, y: 0), w: 10, h: 10)))
 
 Output: `Standard square at origin`, then `Unknown`.
 
-**More patterns.** A pattern can be a literal, a range (`90..100`), a name that binds, or `_`. Beyond that:
+**More patterns.** A pattern can be a literal, a range (`in 90..100`), a name that binds, or `_`. Beyond that:
 - `p@Account(name, score)` binds the whole value to `p` as well as its fields.
 - `^limit` pins an existing variable, so the arm compares against its value instead of binding a new name.
 - `List(head, ...tail)` and `Array(a, b, c)` take sequences apart, and a Dict pattern matches a subset of entries.
