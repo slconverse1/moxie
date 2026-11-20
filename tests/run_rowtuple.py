@@ -28,6 +28,10 @@ CASES = [
     ("bound: field has its type", 'fn f[T (age Int, ...)](u T) Int = u.age + "x"\nprintln(1)\n', 1, "cannot apply `+`"),
     ("bound: pipeline adds fields", HEAD + 'fn full[T (name String, ...)](u T) String = u.name\nrows = List((name: "A", age: 1), (name: "B", age: 2))\nprintln(rows.map((r) -> (...r, shout: full(r) + "!")) |> map((r) -> r.shout) |> collect())\n', 0, 'List("A!", "B!")'),
     ("fields must be named", 'fn bad(u (String, ...)) Int = 1\nprintln(1)\n', 1, "names its fields and ends with `...`"),
+    ("bound: a fresh tuple is not a T", 'fn f[T (age Int, ...)](u T) T = (age: 1)\nprintln(f((age: 3, name: "x")))\n', 1, "a new tuple is not one"),
+    ("bound: a spread keeps the type", 'fn f[T (age Int, ...)](u T) T = (...u, age: 1)\nprintln(f((age: 3, name: "x")))\n', 0, '(age: 1, name: "x")'),
+    ("open-typed fn by name in a pipeline", 'fn adult(r (age Int, ...)) Bool = r.age >= 18\npeople = List((first: "Ada", age: 36), (first: "Tim", age: 9))\nprintln(people |> filter(adult) |> collect())\n', 0, 'List((first: "Ada", age: 36))'),
+    ("open-typed fn by name: missing field", 'fn adult(r (age Int, ...)) Bool = r.age >= 18\npeople = List((first: "Ada"))\nprintln(people |> filter(adult) |> collect())\n', 1, "(age Int, ...)"),
     ("not a result type", 'fn mk() (name String, ...) = (name: "x")\nprintln(1)\n', 1, "only be the type of a parameter"),
 ]
 bad = 0

@@ -537,6 +537,7 @@ class Checker(RefineMixin):
         FORGET[0] = self.rf_forget
         tys.REDUCER = self.reduce_tapp
         tys.SOURCE_ELEM = self.source_elem
+        tys.ROW_FIT = self.row_fit
         tys.UNFOLD = self.unfold
         tys.CALLER = self.type_call
         tys.IMPLEMENTS = self.implements
@@ -8476,6 +8477,8 @@ class Checker(RefineMixin):
             return out + self.tails(e.else_)
         if c in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(e):
             return [e]
+        if self.plain_tuple(e):
+            return [e]                       # a new tuple where a type parameter is the result
         if c is Lambda and self.fn_ret.__class__ is tuple and self.fn_ret[0] == "fn" and len(self.fn_ret) > 3:
             return [e]                       # a closure returned where the result type is written with a capture layout
         return []
@@ -8510,13 +8513,18 @@ class Checker(RefineMixin):
                    (a.expr.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit, Name) or self.simple_tail(a.expr))
                    for a in e.args or [])
 
+    def plain_tuple(self, e):
+        """A tuple literal with no spread whose parts are literals or names: safe to type again for the result."""
+        return e.__class__ is TupleE and self.fn_ret.__class__ is tuple and self.fn_ret[0] == "rigid" \
+            and all(not sp and (x.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or self.simple_tail(x)) for _l, x, sp in e.items)
+
     def quiet(self, e, sc):
         n = len(self.diags)
         anyc = (self.any_vars and e.__class__ is Call and e.fn.__class__ is Field and e.fn.obj.__class__ is Name
                 and sc.find(e.fn.obj.name) in self.any_vars)          # a member call on an `any` parameter has a known type
         fnret = self.fn_ret.__class__ is tuple and self.fn_ret[0] == "fn" and len(self.fn_ret) > 3      # a function that returns a closure of a written capture layout
         r = self.ev(e, sc) if e.__class__ in (IntLit, FloatLit, StrLit, BoolLit, CharLit) or anyc or self.simple_tail(e) \
-            or (fnret and e.__class__ in (Lambda, Name)) else (None, None)
+            or (fnret and e.__class__ in (Lambda, Name)) or self.plain_tuple(e) else (None, None)
         del self.diags[n:]
         return r
 

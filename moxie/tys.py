@@ -59,6 +59,8 @@ def show(t):
     if tag == "tup":
         labs = t[2] if len(t) > 2 else (None,) * len(t[1])
         return "(" + ", ".join((f"{show_label(l)}: " if l is not None else "") + show(i) for l, i in zip(labs, t[1])) + ")"
+    if tag == "rowtup":
+        return "(" + ", ".join(f"{l} {show(i)}" for l, i in zip(t[2], t[1])) + ", ...)"
     if tag == "spread":
         return "..." + show(t[1])
     if tag == "lit":
@@ -268,6 +270,7 @@ def subst_partial(t, binds):
 IMPLEMENTS = None        # set by the checker: (type, interface name) -> True / False / None
 CALLER = None            # set by the checker: (function name, argument values) -> ("lit", n) / ("slit", s) / ("bool", b), or None
 UNFOLD = None           # set by the checker: a declared tuple type -> the same as a labeled ("tup", ...), or None
+ROW_FIT = None         # set by the checker: the error text when a tuple does not fit an open tuple type, else None
 SOURCE_ELEM = None      # set by the checker: a user type with `to_stream()` -> its element type, or None
 REDUCER = None          # set by the checker: (name, args) -> the reduced type, or a symbolic ("tapp", name, args)
 
@@ -308,6 +311,13 @@ def join(a, b):
     if isinstance(a, str) and isinstance(b, str) and a in NUMERIC and b in NUMERIC:
         rank = {"Int": 0, "Float": 1, "Decimal": 2}
         return a if rank[a] >= rank[b] else b      # 1 and 2.5 for one T: the wider number
+    if a.__class__ is tuple and b.__class__ is tuple and "rowtup" in (a[0], b[0]) and (a[0] != b[0] or a[0] == "rowtup"):
+        if a[0] == b[0]:
+            return a
+        row, other = (a, b) if a[0] == "rowtup" else (b, a)
+        if ROW_FIT is not None and ROW_FIT(row, other):
+            return "conflict"                                          # the tuple lacks a field the open type needs
+        return other                                                   # an open tuple type fits the closed tuple it is used with
     ab = ("Int" if a.__class__ is tuple and a[0] == "bounded" else a)
     bb = ("Int" if b.__class__ is tuple and b[0] == "bounded" else b)
     if ab == bb and not (ab.__class__ is tuple and ab[0] in ("app", "fn", "tup", "param")):

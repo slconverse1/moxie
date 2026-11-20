@@ -699,6 +699,21 @@ println(birthday(Employee(name: "Bo", age: 40, salary: 9)))
 
 Output: `(name: "Alice", age: 30, role: "Admin")`, `hi Alice`, `hi Bo`, `Alice is 31 next year`, `(name: "Alice", age: 31)`, then `Employee(name: "Bo", age: 41, salary: 9)`. The open type can also **bound a type parameter**, as in `birthday`: `[T (age Int, ...)]` says `T` is whatever tuple the caller passes, as long as it has `age Int`, and the result is that same `T`, so a labeled tuple comes back as a labeled tuple and an `Employee` as an `Employee`, with the other fields untouched. The body sees only the promised fields, and the call is refused when the argument lacks one. **Mistakes:** passing a tuple with an extra field to an exact tuple type (the message suggests the `...` form), a tuple that lacks a field or has one of the wrong type, using a field the open type does not name (`u.age` when only `name` is promised), an open type in a result or with an unnamed field (`(String, ...)`), and `...` anywhere but the end.
 
+Open types fit pipelines, because each stage asks only for the fields it uses and the rest ride along. A function can be passed by name, as `filter(adult)` below, and the compiler checks every element against what the function needs:
+
+```
+fn adult(r (age Int, ...)) Bool = r.age >= 18
+fn label(r (first String, last String, ...)) String = "${r.first} ${r.last}"
+fn birthday[T (age Int, ...)](u T) T = u.update
+  age: u.age + 1
+people = List((first: "Ada", last: "Lovelace", age: 36), (first: "Tim", last: "Kid", age: 9))
+older = people |> filter(adult) |> map(birthday) |> map((r) -> (...r, full: label(r))) |> collect()
+for p in older
+  println(p)
+```
+
+Output: `(first: "Ada", last: "Lovelace", age: 37, full: "Ada Lovelace")`. Each stage gets the whole tuple, so `map` can add a field (`full`) and the next stage can ask for it. A result can't be an open type, so a stage that adds fields is written as a lambda, as `map` is above, or its result is written out in full. Passing `filter(adult)` a list of tuples with no `age` is a compile error that names the missing field.
+
 ```
 enum Shape
   Circle(radius Double),
@@ -3950,6 +3965,21 @@ fn load_config(conn Connection) Result[Dict[String, String][64], Error]
     SELECT key, value FROM config
   rows? |> collect()
 ```
+
+**Open types and SQL.** The rows of a query are labeled tuples, so a function written for an open type takes them directly, whatever else the query selected:
+
+```
+fn adult(r (age Int, ...)) Bool = r.age >= 18
+fn greet(r (name String, ...)) String = "hi ${r.name}"
+inline fn staff(conn Connection, dept String) Result[Stream[(name String, age Int)], Error]
+  sql(conn):
+    SELECT name, age FROM staff WHERE dept = $dept ORDER BY id
+rows = staff(conn, "eng")?
+for p in rows |> filter(adult)
+  println(greet(p))
+```
+
+The same `greet` works on a query that selects `name, dept`, or on a tuple built in the program, so a report function can be written once and fed from SQL, a file or a test.
 
 A **transaction** commits when its function returns `Ok` and rolls back on `Err` or `?`:
 
