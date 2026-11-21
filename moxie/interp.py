@@ -32,6 +32,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         self.out = out if out is not None else sys.stdout
         self.err = err if err is not None else sys.stderr
         self.search_dir = search_dir
+        from . import parser as _parser
+        _parser.SEARCH_DIR[0] = search_dir          # the parser finds a package's exported units here
         self.test_mode = test_mode
         from .pools import Pools
         from .perms import Perms

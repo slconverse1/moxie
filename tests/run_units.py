@@ -10,7 +10,19 @@ def run(src, gc=False):
     return r.returncode, r.stdout + r.stderr
 U = "unit m\nunit s\nunit kg\nunit N = kg*m/s^2\n"
 SC = "unit m\nunit s\nunit km = 1000 m\nunit h = 3600 s\nunit mile = 1609.344 m\nunit cm = 0.01 m\nunit kmh = km / h\n"
+G = "unit m\nunit s\nfn twice[U](x Double[U]) Double[U] = x + x\nfn add[U](a Double[U], b Double[U]) Double[U] = a + b\nfn rate[A, B](a Double[A], b Double[B]) Double[A/B] = a / b\nfn sq[U](x Double[U]) Double[U^2] = x * x\n"
 CASES = [
+ ("a unit-generic function runs", G + "println(twice(3.0 m))\nprintln(rate(6.0 m, 2.0 s))\nprintln(sq(3.0 m))\n", "6.0\n3.0\n9.0"),
+ ("a unit variable keeps the argument's unit", G + "a Double[s] = twice(3.0 m)\n", "expected `Double[s]`, found `Double[m]`"),
+ ("a unit variable can be a quotient", G + "d Double[m/s] = rate(6.0 m, 2.0 s)\nprintln(d)\n", "3.0"),
+ ("two variables give a quotient", G + "d Double[s] = rate(6.0 m, 2.0 s)\n", "expected `Double[s]`, found `Double[m/s]`"),
+ ("a power of a unit variable", G + "e Double[m^2] = sq(3.0 m)\nprintln(e)\n", "9.0"),
+ ("a power gives the wrong unit", G + "f Double[m] = sq(3.0 m)\n", "expected `Double[m]`, found `Double[m^2]`"),
+ ("one variable, two units", G + "c = add(1.0 m, 2.0 s)\n", "needs one type"),
+ ("a generic result takes part in arithmetic", G + "b = twice(3.0 m) + 1.0 s\n", "the units differ"),
+ ("nested generic calls", G + "g = twice(twice(1.0 m)) + 2.0 m\nprintln(g)\n", "6.0"),
+ ("the body is checked with U as a unit", "unit m\nfn bad[U](x Double[U]) Double[U] = x * x\n", "expected `Double[U]`, found `Double[U^2]`"),
+ ("a plain number binds the unit to nothing", G + "h = twice(2.0)\nprintln(h + 1.0)\n", "5.0"),
  ("a quantity prints as its number", U + "println(5.0 m)\n", "5.0"),
  ("an Int quantity", U + "println(3 m + 4 m)\n", "7"),
  ("units are erased at run time", U + "x = 2.5 m\nprintln(x * 2.0)\n", "5.0"),

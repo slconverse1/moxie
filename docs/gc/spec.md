@@ -811,7 +811,9 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Arithmetic.** `+`, `-`, `%` and the comparisons need equal dimensions (a plain number has none, so `1.0 m + 2.0` is an error). `*` and `/` add and subtract exponents; an empty dimension is a plain number. A quantity times or divided by a plain number keeps its unit.
 - **Built-ins.** `abs`, `min`, `max`, `sum`, `clamp` keep the unit; `floor`, `ceil`, `round` give an `Int` of it; `sqrt` halves every exponent (an odd one is an error); `pow(x, k)` multiplies them (`k` a constant `Int`); `product` of quantities is an error; `magnitude(q)` is the bare number.
 - **Scaled units.** A scaled unit has the dimension of what it scales, so `Double[km]` is `Double[m]`. Quantities are stored in the base unit: `5.0 km` is `5000.0`, which is also what prints. `d in km` is the number of kilometers in a quantity (a plain number; `d / 1.0 km` is the same): `in` followed by a declared unit (`v in km/h`) is a conversion, and `in` followed by anything else is membership. The unit must have the quantity's dimension, so `d in s` is a compile error; the result is a `Double`, or an `Int` for an `Int` quantity written in its base unit. An `Int` amount must be a whole number of base units (`3 km` is fine; `3 mile`, with `mile = 1609.344 m`, and `Int[mile]` are errors). Offset scales (Celsius, Fahrenheit) are not units.
-- **Not yet.** Unit-polymorphic functions, and units across packages.
+- **Unit parameters.** A type parameter written as a unit, `fn twice[U](x Double[U]) Double[U]`, stands for a dimension. A call binds it from the arguments (`U` is `m/s` for a `Double[m/s]`; a plain number binds it to no unit), and the result substitutes it, so `Double[A/B]` and `Double[U^2]` work. A parameter used twice must get one dimension. In the body `U` behaves as a base unit nobody else has, so `x + x` is a `Double[U]` and `x * x` a `Double[U^2]`.
+- **Packages.** `export unit m` makes a unit part of a package's interface. `import phys` brings its exported units into scope unqualified, so `5.0 m`, `Double[m/s]` and `d in km` work, and the signatures of its exported functions are checked in those units (a scaled unit keeps its factor). A unit the package does not export cannot be written as a literal. A unit declared twice (here and in a package) is an error. Units declared in one file of a multi-file package are not yet visible to its other files.
+- **Not yet.** Nothing is planned beyond this.
 
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.
@@ -954,7 +956,7 @@ type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' | 'union' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' | 'union' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | [ 'export' ] unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
 fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;

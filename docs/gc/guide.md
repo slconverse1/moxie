@@ -5676,4 +5676,22 @@ println("${d in km} km")
 
 Output: `5.5`, `25.0`, `3000`, `5.5 km`. `in` followed by a declared unit is a conversion, anything else after `in` is still a membership test (`x in 1..5`). The unit has to be the same kind as the quantity (`d in s` is a compile error), and the result is a plain number: a `Double`, or an `Int` only when an `Int` quantity is written in its base unit (`3 km in m`). `d / 1.0 km` does the same. An `Int` amount has to be a whole number of the base unit, so `3 km` is fine and `3 mile` or `Int[mile]` is a compile error: write `3.0 mile`. Temperatures in Celsius or Fahrenheit are not units here, because their zero points differ from kelvin's; kelvin is an ordinary unit.
 
-Not here yet: functions that work for any unit. A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable, like a `Double`.
+A function can work for any unit. Write the unit as a type parameter: `fn twice[U](x Double[U]) Double[U] = x + x`. Each call fixes `U` from its arguments, so `twice(3.0 m)` is a `Double[m]` and `twice(2.0 s)` is a `Double[s]`. `U` may be a whole quotient (`m/s`), and the result can combine parameters: `Double[A/B]`, `Double[U^2]`.
+
+```
+unit m
+unit s
+
+fn twice[U](x Double[U]) Double[U] = x + x
+fn rate[A, B](a Double[A], b Double[B]) Double[A/B] = a / b
+fn sq[U](x Double[U]) Double[U^2] = x * x
+
+println(twice(3.0 m))
+v Double[m/s] = rate(6.0 m, 2.0 s)
+println(v)
+println(sq(3.0 m))
+```
+
+Output: `6.0`, `3.0`, `9.0`. Inside the body `U` is an unknown but fixed unit, so `x + x` is fine and `x * x` is a `Double[U^2]`, not a `Double[U]`. Two parameters that share one `U` must have the same unit: `add(1.0 m, 2.0 s)` is an error.
+
+A package can export units: write `export unit m` in the package and `import` it, and its units are in scope in your file, so `phys.speed(10.0 m, 2.0 s)` is checked in meters and seconds. A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable, like a `Double`.

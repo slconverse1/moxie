@@ -90,7 +90,7 @@ type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' | 'union' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' | 'union' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | [ 'export' ] unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
 fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;

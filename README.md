@@ -18,6 +18,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Units: spread typing, unit parameters, packages. The checker now types the names bound by a spread in an enum payload pattern (`Circle(radius: r, *more)`: `r` has the field's type and `more` the leftover fields). A function can be generic over units (`fn twice[U](x Double[U]) Double[U]`, `Double[A/B]`, `Double[U^2]`): a call binds `U` to the argument's dimension and the result uses it. A package can `export unit m`, and `import` brings its units into scope, so `5.0 m`, `d in km` and exported signatures such as `Double[m/s]` work across packages (`tests/run_unitpkg.py`, plus new cases in `run_units.py` and `run_tuplespread.py`).
+
 Design language. Moxie is now called a design language wherever it introduces itself: both intros, both Specs, both Guides and this README say that it is a language design (a specification and a reference interpreter), not yet a production compiler.
 
 Sized integers keep their width through inference. The checker used to give every `Int8`..`UInt64` the one type `Int` and kept the written width in a side note on variables, so a width reached through a generic call, a method of a generic tuple, a field of a generic tuple or a loop variable was lost and `first(xs) + u` (an `Int8` plus a `UInt8`) went unchecked. The width is now part of the checker type (`tys.Sized`, which still compares as `Int` everywhere else), so every route carries it and Spec 3's mixed-number rule is enforced on all of them. Methods of generic tuples now also have their result typed. `tests/run_numeric.py` has 18 new inference cases.

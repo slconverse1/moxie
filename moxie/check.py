@@ -471,6 +471,9 @@ class Checker(RefineMixin):
         if stmts is None:
             return
         own = {x.name for x in stmts if x.__class__ in (TupleDecl, EnumDecl, AliasDecl)}
+        for x in stmts:
+            if x.__class__ is UnitDecl and x.name not in self.unit_dims:
+                self.declare_unit(x)                    # a package's units are known here, so its signatures (`Double[m/s]`) and `5.0 m` check
         alias = st.alias or st.pkg[-1]
         mp = {nm: f"{alias}.{nm}" for nm in own}              # the package's own types, under names that cannot clash with this file's
         if st.names is None:
@@ -1101,7 +1104,7 @@ class Checker(RefineMixin):
         if app is not None:
             return app
         if n in INTS or n in ("Double", "Float"):
-            q = self.qty_from_groups(t, n)
+            q = self.qty_from_groups(t, n, keep)
             if q is not None:
                 return q
         if n in INTS:
@@ -1135,7 +1138,7 @@ class Checker(RefineMixin):
             return ("named", n)
         return None
 
-    def qty_from_groups(self, t, n):
+    def qty_from_groups(self, t, n, keep=None):
         """`Double[m/s]` or `Int[m]`: a number with a unit, when the argument spells declared units."""
         g = t.groups
         if not (g and g[0]) or n == "BigInt" or (not self.unit_dims and n not in ("Double", "Float")):
@@ -1149,6 +1152,12 @@ class Checker(RefineMixin):
             pairs = units.from_expr(x.expr)
         if not pairs:
             return None
+        uvar = lambda nm: nm not in self.unit_dims and (nm in self.fn_tparams or bool(keep and nm in keep))
+        if n in ("Double", "Float") and any(uvar(nm) for nm, _e in pairs) and all(nm in self.unit_dims or uvar(nm) for nm, _e in pairs):
+            d = ()                                  # `Double[U]` in a generic function: `U` stands for a unit, written `'U` inside the dimension
+            for nm, e in pairs:
+                d = units.mul(d, units.power(self.unit_dims[nm] if nm in self.unit_dims else (("'" + nm, 1),), e))
+            return self.qty_type("Float", d)
         if not all(nm in self.unit_dims for nm, _e in pairs):
             if n in ("Double", "Float") and not self.sig_mode:
                 bad = next(nm for nm, _e in pairs if nm not in self.unit_dims)
@@ -2331,6 +2340,10 @@ class Checker(RefineMixin):
         elif c is PCon and ty.__class__ is tuple and any(q.__class__ is PRest for _l, q in p.args or []) \
                 and len(p.path) == 1 and ty[0] == "named" and ty[1] == p.path[0] and ty[1] in self.tuples:
             self.type_field_pat(p.args or [], self.pat_fields(ty), sc, res, ty)        # `Item(id: i, ...rest)` on a declared tuple
+        elif c is PCon and ty.__class__ is tuple and any(q.__class__ is PRest for _l, q in p.args or []) \
+                and (self.con_payload(p, ty) or {"_": 0}).keys() != {"_"}:
+            pl = self.con_payload(p, ty)                  # `Circle(radius: r, *more)`: the case's fields, as for a tuple
+            self.type_field_pat(p.args or [], list(pl.items()), sc, res, ("named", p.path[-1]))
         elif c is PCon and ty.__class__ is tuple:
             fields = self.con_payload(p, ty)
             for i, (lab, q) in enumerate(p.args or []):
@@ -8479,7 +8492,7 @@ class Checker(RefineMixin):
             return None
         if ret.__class__ is tuple and ret[0] == "param":
             return binds.get(ret[1])
-        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup", "appv", "tapp"):
+        if ret.__class__ is tuple and ret[0] in ("app", "fn", "tup", "appv", "tapp", "qty"):
             return tys.subst(ret, binds)
         return ret if not tys.params_in(ret) else None
 

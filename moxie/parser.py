@@ -22,6 +22,10 @@ class FwdType:
         self.kind, self.name, self.ntp, self.line = kind, name, ntp, line
 
 
+SEARCH_DIR = [None]    # where local packages are found (set by the interpreter)
+UNIT_SCAN = set()      # package files being read for their units, so a cycle of imports ends
+
+
 class Parser(ExprParser):
 
     # ------------------------------------------------------------ module
@@ -466,7 +470,46 @@ class Parser(ExprParser):
             alias = self.next().val
         if self.at_op("("):
             names = [a.expr.name if isinstance(a.expr, Name) else a.expr for a in self.parse_args()]
+        self.import_units(parts)
         return ImportDecl(parts, alias, names, line=line)
+
+    def import_units(self, parts):
+        """The units a local package exports (`export unit m`) are in scope here, so `5.0 m` and `d in km` parse.  The scale of each
+        comes from the package's own declarations, in order."""
+        import os
+        from .packages import package_files
+        if self.file is None or self.file.startswith("<"):
+            base = "."
+        else:
+            base = os.path.dirname(os.path.abspath(self.file))
+        found = None
+        for b in (SEARCH_DIR[0], base):
+            if b is None:
+                continue
+            try:
+                found = package_files(b, parts)
+            except Exception:
+                found = None
+            if found:
+                break
+        if not found:
+            return
+        for path in found[0]:
+            if path in UNIT_SCAN:
+                continue
+            UNIT_SCAN.add(path)
+            try:
+                prog = parse_program(open(path, encoding="utf-8").read(), path)
+            except Exception:
+                continue
+            finally:
+                UNIT_SCAN.discard(path)
+            local = {}
+            for st in prog.stmts:
+                if st.__class__ is UnitDecl:
+                    local[st.name] = units_mod.decl_scale(st.text, local)
+                    if st.vis == "export":
+                        self.units[st.name] = local[st.name]
 
     def parse_using(self):
         line = self.next().line
@@ -638,6 +681,12 @@ class Parser(ExprParser):
             i += 1
         t = self.peek(i)
         if t.kind != "NAME":
+            return None
+        if t.val == "unit" and mods and self.peek(i + 1).kind == "NAME":
+            for _ in range(i):
+                self.next()
+            if self.is_unit_decl():
+                return self.parse_unit_decl(mods)
             return None
         if t.val == "fn":
             nt = self.peek(i + 1)

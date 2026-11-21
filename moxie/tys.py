@@ -36,8 +36,8 @@ NUMERIC = {"Int", "Float", "Decimal"}
 
 def show_dims(dims):
     """A dimension as a program writes it: `m/s^2`, `kg*m/s^2`, `1/s`."""
-    num = [f"{n}" + (f"^{e}" if e != 1 else "") for n, e in dims if e > 0]
-    den = [f"{n}" + (f"^{-e}" if e != -1 else "") for n, e in dims if e < 0]
+    num = [f"{n.lstrip(chr(39))}" + (f"^{e}" if e != 1 else "") for n, e in dims if e > 0]
+    den = [f"{n.lstrip(chr(39))}" + (f"^{-e}" if e != -1 else "") for n, e in dims if e < 0]
     top = "*".join(num) if num else "1"
     return top if not den else top + "/" + ("*".join(den) if len(den) == 1 else "(" + "*".join(den) + ")")
 
@@ -215,6 +215,19 @@ def subst(t, binds):
     if t.__class__ is not tuple:
         return t
     tag = t[0]
+    if tag == "qty" and any(n[:1] == "'" for n, _e in t[2]):
+        from . import units
+        d = ()
+        for n, e in t[2]:
+            if n[:1] != "'":
+                d = units.mul(d, ((n, e),))
+            elif n in binds:
+                d = units.mul(d, units.power(binds[n], e))
+            elif _PARTIAL[0]:
+                d = units.mul(d, ((n, e),))
+            else:
+                return None
+        return ("qty", t[1], d) if d else t[1]
     if tag in ("param", "pvar"):
         v = binds.get(t[1], t) if _PARTIAL[0] else binds.get(t[1])
         return ("lit", v) if v.__class__ is int and not isinstance(v, bool) else v
@@ -313,6 +326,8 @@ def params_in(t, out=None):
     if t.__class__ is tuple:
         if t[0] == "param":
             out.add(t[1])
+        elif t[0] == "qty":
+            out.update(n for n, _e in t[2] if n[:1] == "'")
         elif t[0] == "appv":
             out.add(t[1])
             for a in t[2]:
@@ -372,11 +387,40 @@ def join(a, b):
     return "conflict"
 
 
+def _unify_qty(pat, act, binds):
+    """`Double[U]` against `Double[m/s]` binds the unit variable `'U` to `m/s`; `Double[U/B]` solves for what is left once the others are known."""
+    from . import units
+    vs = [(n, e) for n, e in pat[2] if n[:1] == "'"]
+    if not vs:
+        return None
+    adims = act[2] if act.__class__ is tuple and act[0] == "qty" else (() if act in ("Int", "Float") else None)
+    if adims is None:
+        return None
+    rem = adims
+    for n, e in pat[2]:
+        if n[:1] != "'":
+            rem = units.div(rem, ((n, e),))
+        elif n in binds:
+            rem = units.div(rem, units.power(binds[n], e))
+    open_ = [(n, e) for n, e in vs if n not in binds]
+    if not open_:
+        return None if not rem else (pat, act)
+    if len(open_) > 1:
+        return None
+    n, e = open_[0]
+    if any(x % e for _u, x in rem):
+        return (pat, act)
+    binds[n] = tuple((u, x // e) for u, x in rem)
+    return None
+
+
 def unify(pat, act, binds):
     """Bind the parameters in `pat` from the type `act`.  Returns None when it fits, else a pair (expected, found) naming the
     clash.  A parameter bound twice must agree (`join`)."""
     if pat is None or act is None:
         return None
+    if pat.__class__ is tuple and pat[0] == "qty":
+        return _unify_qty(pat, act, binds)
     if pat.__class__ is tuple and pat[0] == "param":
         if act.__class__ is tuple and act[0] == "param":
             return None

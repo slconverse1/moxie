@@ -37,6 +37,10 @@ CASES = [
  ("* is typed like ...", T + "when it\n  Item(id: i, *rest) -> println(rest.nme)\n", "has no field `nme`"),
  ("* nested in one pattern", 'p = (status: "ok", items: List((id: 1, tags: List("u", "b"), owner: "ada"), (id: 2, tags: List("l"), owner: "g")))\nwhen p\n  (status: "ok", items: List((id: f, tags: List(a, *o), *e), *rem), *top) -> println("${f} ${a} ${o} ${e} ${rem.len()} ${top}")\n  _ -> println("no")\n', '1 u List("b") (owner: "ada") 1 ()'),
  ("a pattern over several lines", 'p = (status: "ok", n: 3)\nwhen p\n  (\n    status: "ok",\n    *rest\n  ) -> println(rest)\n  _ -> println("no")\n', "(n: 3)"),
+ ("a spread in an enum case is typed", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Circle(radius: 1.5, label: \"c\")\nwhen s\n  Circle(radius: r, *more) -> println(r + more.label)\n  _ -> println(0)\n", "cannot apply `+` to `Double` and `String`"),
+ ("a spread in an enum case still runs", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Circle(radius: 1.5, label: \"c\")\nwhen s\n  Circle(radius: r, *more) -> println(\"${r} ${more.label}\")\n  _ -> println(0)\n", "1.5 c"),
+ ("the rest of an enum case is the other fields", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Square(side: 2.0, label: \"q\")\nwhen s\n  Square(side: x, *more) -> println(more)\n  _ -> println(0)\n", "(label: \"q\")"),
+ ("an enum case spread names a field the case lacks", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Square(side: 2.0, label: \"q\")\nwhen s\n  Square(radius: x, *more) -> println(more)\n  _ -> println(0)\n", "can never match"),
  ("* is still multiplication", "println(2 * 3)\n", "6"),
 ]
 fails = []
