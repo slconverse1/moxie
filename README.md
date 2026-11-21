@@ -18,6 +18,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Blocks of children, the last design item. A function marks its last parameter `block` (`fn ul(class String, block items List[Li]) Ul`), and a call followed by an indented block fills it: each line is a child, `if`/`elif`/`else` and `for` add children conditionally or per element, `...list` adds a list, and a binding adds nothing. The block is rewritten by the parser into list concatenations, so the existing typing and capacity rules apply (`tests/run_block.py`, 38 cases). Spec 9b and section 25, and Guide chapter 21 (gc: 22).
+
 Set algebra, from the F# and Swift survey. `Set` had `+` (union); it now has `-` (difference, or one element removed), `&` (intersection), `^` (symmetric difference), and `is_subset`, `is_superset`, `is_disjoint`. The survey (F# 9 and 10, Swift 6 to 6.3) found nothing else moxie lacks except a block form that collects children for DSLs, the open item in Spec section 25.
 
 Units: spread typing, unit parameters, packages. The checker now types the names bound by a spread in an enum payload pattern (`Circle(radius: r, *more)`: `r` has the field's type and `more` the leftover fields). A function can be generic over units (`fn twice[U](x Double[U]) Double[U]`, `Double[A/B]`, `Double[U^2]`): a call binds `U` to the argument's dimension and the result uses it. A package can `export unit m`, and `import` brings its units into scope, so `5.0 m`, `d in km` and exported signatures such as `Double[m/s]` work across packages (`tests/run_unitpkg.py`, plus new cases in `run_units.py` and `run_tuplespread.py`).

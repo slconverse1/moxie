@@ -59,7 +59,7 @@ def _defs():
         # compound
         "TupleE": "items",         # items: list of (label, expr, spread)
         "MArr": "rows",
-        "Call": "fn args trailing chain",  # args: list of Arg
+        "Call": "fn args trailing chain block",  # args: list of Arg
         "Arg": "label expr mod",   # mod: None 'ref' 'using' 'spread' 'move'
         "GenApp": "base groups",
         "Field": "obj name",
@@ -92,8 +92,9 @@ def _defs():
         "ForM": "lines yield_",        # lines: [(kind, pat, expr, else_)]
         "CompE": "kind elem key pat iter cond",
         "Block": "stmts",
+        "Splat": "e",                  # `...items` as a line of a collecting block
         "Lambda": "params body recv locals ret",
-        "Param": "pat name type default mod variadic where wtext",
+        "Param": "pat name type default mod variadic where wtext block",
         "RunE": "target limit try_",
         "TodoE": "msg",
         "PathE": "segs",

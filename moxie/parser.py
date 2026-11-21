@@ -186,6 +186,9 @@ class Parser(ExprParser):
     def parse_stmt_core(self, allow_decl):
         t = self.peek()
         line = t.line
+        if getattr(self, "collecting", 0) and t.kind == "OP" and t.val == "...":       # `...items` in a block of children
+            self.next()
+            return ExprStmt(Splat(self.parse_expr(), line=line), line=line)
         if t.kind == "OP" and t.val == "\\":
             self.next()
             if self._ends_stmt(self.peek()):

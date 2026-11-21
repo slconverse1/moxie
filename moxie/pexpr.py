@@ -492,7 +492,79 @@ class ExprParser(PBase):
                 call.trailing = ph_lambda(body, line)
                 continue
             break
+        if call.__class__ is Call and not self.no_trailing and call.trailing is None and self.at_block() and not self.trailing_if_block():
+            call.block = self.parse_collect_block()          # `ul(class: "menu")` and an indented block of children
         return call
+
+    def trailing_if_block(self):
+        """`stmt` then an indented `if cond` line with no body of its own is the trailing-`if` form, not a block of children."""
+        i = self.p + 2
+        if not (self.toks[i].kind == "NAME" and self.toks[i].val == "if"):
+            return False
+        while self.toks[i].kind not in ("NL", "EOF"):
+            i += 1
+        return self.toks[i + 1].kind != "INDENT" if self.toks[i].kind == "NL" else True
+
+    def parse_collect_block(self):
+        """An indented block after a call: each line is a child, a binding, an `if` / `for` of children, or `...list`.  It becomes one
+        expression, the list of the children, which the checker passes to the callee's `block` parameter."""
+        line = self.peek().line
+        self.expect_nl_indent()
+        self.collecting = getattr(self, "collecting", 0) + 1
+        try:
+            stmts = self.parse_stmts_until_dedent()
+        finally:
+            self.collecting -= 1
+        self.expect_dedent()
+        return self.collect_list(stmts, line)
+
+    def collect_list(self, stmts, line):
+        """The statements of a collecting block as a block that ends in the concatenation of its pieces."""
+        if stmts.__class__ is Block:
+            stmts = stmts.stmts
+        out, names = [], []
+        for s in stmts:
+            c = s.__class__
+            if c is Assign or c is ElseLet or c is Refine:
+                out.append(s)
+                continue
+            if c is not ExprStmt:
+                self.err("a block of children holds children, bindings, `if`, `for` and `...list`; this line is something else", None)
+            x = s.e
+            xl = getattr(x, "line", line) or line
+            if x.__class__ is Splat:
+                piece = Pipe(x.e, Call(Name("collect", line=xl), [], None, None, None, line=xl), line=xl)
+            elif x.__class__ is IfE:
+                br = [(cond, self.collect_list(body, xl)) for cond, body in x.branches]
+                els = self.collect_list(x.else_, xl) if x.else_ is not None else Call(Name("List", line=xl), [], None, None, None, line=xl)
+                piece = IfE(br, els, line=xl)
+            elif x.__class__ is ForE:
+                if x.else_ is not None or x.label is not None:
+                    self.err("a `for` in a block of children takes no `else` or label", None)
+                lam = Lambda([Param(None if x.pat.__class__ is not PBind else None, x.pat.name if x.pat.__class__ is PBind else None, None, None, None, False, None, None, line=xl)]
+                             if x.pat.__class__ is PBind else
+                             [Param(x.pat, None, None, None, None, False, None, None, line=xl)],
+                             ExprStmt(self.collect_list(x.body, xl), line=xl), None, None, None, line=xl)
+                piece = Pipe(Pipe(x.iter, Call(Name("flat_map", line=xl), [Arg(None, lam, None)], None, None, None, line=xl), line=xl),
+                             Call(Name("collect", line=xl), [], None, None, None, line=xl), line=xl)
+            elif x.__class__ in (WhileE, DaemonE):
+                self.err("a block of children holds children, bindings, `if`, `for` and `...list`; a loop other than `for` is not one of them", None)
+            elif x.__class__ is WhenE:
+                self.err("a `when` is not allowed in a block of children: use `if` / `elif` / `else`", None)
+            else:
+                piece = Call(Name("List", line=xl), [Arg(None, x, None)], None, None, None, line=xl)
+            self._kid_n = getattr(self, "_kid_n", 0) + 1
+            nm = f"kids__{self._kid_n}"
+            out.append(Assign(PBind(nm, line=xl), piece, None, "=", None, None, line=xl))
+            names.append(nm)
+        total = None
+        for nm in names:
+            n = Name(nm, line=line)
+            total = n if total is None else Binary("+", total, n, line=line)
+        if total is None:
+            total = Call(Name("List", line=line), [], None, None, None, line=line)
+        out.append(ExprStmt(total, line=line))
+        return Block(out, line=line)
 
     def parse_lambda_body(self):
         if self.peek().kind == "NL" and self.peek(1).kind == "INDENT":
@@ -1264,10 +1336,13 @@ class ExprParser(PBase):
         t = self.peek()
         line = t.line
         mod = None
-        if t.kind == "NAME" and t.val in ("ref", "lazy", "using", "move") and self.peek(1).kind == "NAME" \
+        is_block = False
+        if t.kind == "NAME" and t.val in ("ref", "lazy", "using", "move", "block") and self.peek(1).kind == "NAME" \
                 and (self.at_op(",", 2) or self.at_op(")", 2) or self.at_op("=", 2) or self.at_op(":", 2) or self.type_follows(2)):
             mod = t.val
             self.next()
+            if mod == "block":            # `block items List[Li]`: the parameter an indented block of children fills
+                is_block, mod = True, None
             t = self.peek()
             if mod == "using" and not (self.type_follows(1) or self.at_op(":", 1)):
                 self.err("a `using` parameter needs a name and a type: write `using ctx Context`", t)
@@ -1303,6 +1378,11 @@ class ExprParser(PBase):
             default = self.parse_expr()
         if mod == "using" and (name is None or name == "_"):
             self.err("a `using` parameter needs a name and a type: write `using ctx Context`", t)
+        if is_block:
+            if default is None:
+                default = Call(Name("List", line=line), [], None, None, None, line=line)       # no block given: no children
+            p = Param(pat, name, typ, default, mod, variadic, where, wtext, True, line=line)
+            return p
         return Param(pat, name, typ, default, mod, variadic, where, wtext, line=line)
 
     # ------------------------------------------------------------ blocks

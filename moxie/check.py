@@ -3246,7 +3246,10 @@ class Checker(RefineMixin):
                     and a[1] not in self.tuples and a[1] not in self.enums and a[1] not in self.aliases:
                 el, num = a[2][0], {"Int", "Float", "Decimal"}
                 other = b[2][0] if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Array", "Set", "Ring", "Stream") and len(b[2]) == 1 else b
-                if el in self.SCAL and other in self.SCAL and el != other and not (el in num and other in num and "Decimal" not in (el, other)):
+                decl = lambda t: t.__class__ is tuple and t[0] == "named" and t[1] in self.tuples and t[1] not in self.aliases
+                clash = (el in self.SCAL and other in self.SCAL and el != other and not (el in num and other in num and "Decimal" not in (el, other))) \
+                    or (decl(el) and other in self.SCAL) or (el in self.SCAL and decl(other)) or (decl(el) and decl(other) and el != other)
+                if clash:
                     self.err(n.line, (f"cannot add a `{tshow(other)}` to a `{tshow(a)}`" if op == "+" else f"cannot apply `{op}` to a `{tshow(a)}` and a `{tshow(other)}`") + f": its elements are `{tshow(el)}`")
                     return None, None
             for u, v in ((a, b), (b, a)):
@@ -6005,7 +6008,34 @@ class Checker(RefineMixin):
             return self.qty_type(base, units.power(dims, k)), None
         return NOANY
 
+    def attach_block(self, n, sc):
+        """`ul(class: "menu")` and an indented block of children: the block (already one list expression) is passed as the argument for the
+        callee's `block` parameter, which must be a `List`."""
+        fd = None
+        f = n.fn
+        if f.__class__ is Name and sc.find(f.name) is None and len(self.fns.get(f.name, ())) == 1:
+            fd = self.fns[f.name][0]
+        elif f.__class__ is Field and f.obj.__class__ is Name and sc.find(f.obj.name) is None and f"{f.obj.name}.{f.name}" in self.fns:
+            fd = self.fns[f"{f.obj.name}.{f.name}"][0]
+        who = f.name if f.__class__ in (Name, Field) else "this function"
+        bp = next((i for i, p in enumerate(fd.params or []) if getattr(p, "block", None)), None) if fd is not None else None
+        if bp is None:
+            self.err(n.line, f"`{who}` has no `block` parameter, so it can't take an indented block of children (declare one: `fn {who}(.., block items List[T])`)")
+            n.block = None
+            return
+        p = fd.params[bp]
+        if p.type.__class__ is not TName or p.type.path[-1] != "List":
+            self.err(n.line, f"the `block` parameter `{p.name}` of `{who}` must be a `List` of the children (`block {p.name} List[T]`)")
+        if any(a.label == p.name for a in n.args) or sum(1 for a in n.args if not a.label) > bp:
+            self.err(n.line, f"`{who}` is given its `{p.name}` twice: once in the parentheses and once as an indented block")
+            n.block = None
+            return
+        n.args = list(n.args) + [Arg(p.name, n.block, None)]
+        n.block = None
+
     def e_Call(self, n, sc, *a, **k):
+        if n.block is not None:
+            self.attach_block(n, sc)
         if self.unit_dims and n.fn.__class__ is Name and n.fn.name in self.UNIT_FNS and n.fn.name not in self.fns \
                 and sc.find(n.fn.name) is None:
             r = self.unit_call(n, sc)

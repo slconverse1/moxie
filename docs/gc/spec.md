@@ -350,7 +350,7 @@ How the heap behaves:
 - **Variadic parameters**. The last parameter may be written `numbers ...Int`. **[gc]** It is an ordinary `List[Int]`: `fn calculate_sum(base Int, numbers List[Int]) Int`. The call site packs the trailing arguments into a list, and a variadic function is compiled once, not once per argument count. Zero arguments are legal.
   - At most one, last, and without defaults, `ref`, or `lazy`. `f(100, ...values)` fills it from any array, list, or tuple (**[gc]** a `List` of unknown length can be spread). A named call passes a list value: `numbers: List(10, 20, 30)`.
   - The element type is one type; mixed types use a union element or a tuple parameter. A variadic is not a pipeline slot.
-- **Builders and DSLs** need no macros, and moxie has none. A builder is a set of ordinary functions that each return a value, and nesting is nested calls. Variadic parameters let a parent take any number of children, and nominal tuples give type safety (a `ul` accepts only `Li` items). The other tools are trailing blocks, receiver blocks (`x.do`, `x.update`), named arguments and defaults, `using` contextual parameters, user-defined operators, infix functions in backticks, and `impl` blocks for types you don't own. Children are returned values: there is no lambda with an implicit receiver, and a dedicated child-collection mechanism is open (section 25). See the Guide, chapter 21.
+- **Builders and DSLs** need no macros, and moxie has none. A builder is a set of ordinary functions that each return a value, and nesting is nested calls. Variadic parameters let a parent take any number of children, and nominal tuples give type safety (a `ul` accepts only `Li` items). The other tools are trailing blocks, receiver blocks (`x.do`, `x.update`), named arguments and defaults, `using` contextual parameters, user-defined operators, infix functions in backticks, and `impl` blocks for types you don't own. Children are returned values: there is no lambda with an implicit receiver. A function that wants its children as an indented block marks its last parameter `block`: `fn ul(class String, block items List[Li]) Ul`, and a call such as `ul(class: "menu")` followed by an indented block fills it (section 9b). See the Guide, chapter 21.
 - **Contextual parameters.** A parameter marked `using` is filled in from the surrounding scope: `fn send_request(url String, using ctx Context, config RequestConfig) Unit`. The parameter always has a name (`using Context` and `using _ Context` are errors), and a call inside the body that writes `using` passes it along. There is no `summon`: a function that wants the value uses the parameter's name.
   - A candidate is a binding declared `using ctx = ...` or a `using` parameter in an enclosing function. Only explicit candidates count. The innermost scope that has one wins, and two candidates in the same scope are an ambiguity error. No candidate is a Missing Context Error.
   - The call site writes `using` where the value is injected: `send_request("u", using, cfg)`, or `ctx: using` in a named call. A caller may override by passing a value. Injecting a resource type is an error: a channel end, timer, or file has one owner, and a callee could consume or close it out of sight. An `Atom` may be injected, since copying it is already implicit and it has nothing to consume or close.
@@ -389,7 +389,14 @@ How the heap behaves:
   - `⠀⠀⠀⠀count: port / 100`
 - **Why `field: value` and not `=`.** In a body `=` is always a binding, so `port = 443` would introduce a new local. The colon form can't be mistaken for one.
 - **Passing a builder.** A function taking `Config.() -> Config` is called with `() -> ...` or with a trailing lambda. The function that receives it runs it on a value of its own choosing.
-- **No hidden store.** The receiver is an ordinary value. A block that wants to collect children (the DSL case) returns them from ordinary calls, as in the Guide. A dedicated child-collection mechanism is still open.
+- **Blocks of children.** A parameter written `block items List[T]` (it must be the last parameter and a `List`; it defaults to an empty list) receives an indented block written after a call: `ul(class: "menu")` and then the block. Each line of the block is one child, and it is the list of the children that the parameter gets. The lines are:
+  - an expression, one child of type `T`;
+  - a binding `x = e`, which adds nothing and is visible to the lines after it;
+  - `if cond`, `elif` and `else`, each branch a block of children (no `else` adds nothing);
+  - `for pattern in source`, whose body is a block of children, and the children of every iteration are added in order;
+  - `...list`, which adds every element of a list (or other source).
+
+  Nothing else is allowed in the block (`when`, `while`, `return`, `break` are errors). A block of children is sugar for building the list with `+`, so the capacity rules of section 7 apply, and the children are checked against `T`. The block fills the `block` parameter, so passing that parameter in the parentheses as well is an error, and a function with no `block` parameter can't be called with a block.
 
 **9b. Contracts**
 - **What they are.** A contract states what a function needs and what it promises, in the code and not in a comment. `requires` is a **precondition** that the caller must meet, `ensures` is a **postcondition** that the function guarantees, and `invariant` is a condition that every value of a tuple type must satisfy. Contracts are for faults that are bugs; an expected failure still returns a `Result`.
@@ -842,7 +849,7 @@ Moxie's rule is that a type error is a compile error. There are two kinds of exc
 
 **25. Still open**
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
-1. **Not designed:** a dedicated child-collection mechanism for DSLs. The REPL parked after the 2026-11-02 survey is now built (section 22). Dropped after the survey: units of measure (`Int[m]`; a wrapper tuple with `impl Add` covers the common mistake) and active patterns (lowercase pattern names clash with bindings, and few languages have them).
+1. **Settled:** child collection for DSLs is the `block` parameter (section 9b). The REPL parked after the 2026-11-02 survey is now built (section 22). Dropped after the survey: units of measure (`Int[m]`; a wrapper tuple with `impl Add` covers the common mistake) and active patterns (lowercase pattern names clash with bindings, and few languages have them).
 2a. **Foreign functions (section 19a):** the names `CString` and `cstr`, and callbacks that take other pointers or must answer C from a foreign thread are open. The bindgen tool handles clean library headers and not the most tangled ones.
 2. **Tooling designs (section 22):** the doctest example syntax, and the Markdown subset and page layout for `moxie doc`, are sketches.
 3. **Contracts (section 9b):** nothing is open in the design. The compile error for a failing constant `requires` is built in the reference interpreter.
@@ -875,10 +882,12 @@ item : decl | stmt ;
 
 # ---------------------------------------------------------------- statements
 stmt : simple { ';' simple } [ ';' ] NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound ;
-simple : base [ 'if' expr [ 'else' expr ] ] ;
+simple : base [ 'if' expr [ 'else' expr ] ] | '...' expr ;
+callblock : primary { '(' [ args ] ')' | '.' ident | '?' } '(' [ args ] ')' childblock ;
+childblock : NL INDENT { stmt } DEDENT ;
 base : 'break' 'daemon' | 'break' [ label ] '(' expr { ',' expr } ')' | 'export' ident [ type ] '=' expr | pattern [ type ] '=' expr 'else' expr | 'return' [ expr { ',' expr } ] | 'break' [ label ] [ '(' expr ')' ] | 'continue' [ label ] | binding | assign | incr | expr { ',' expr } ;
 blockend : [ target_list [ type ] '=' ] expr_b | 'return' expr_b ;
-expr_b : pipe_b | postfix_b | lambda_b | fnblock | gofn | dotblock | postfix '+%' fnblock | pipe '|>' 'seq' armsx | when_b ;
+expr_b : pipe_b | postfix_b | callblock | lambda_b | fnblock | gofn | dotblock | postfix '+%' fnblock | pipe '|>' 'seq' armsx | when_b ;
 lambda_b : '(' [ params ] ')' '->' ( block | when_b | postfix '.' 'update' updblock ) ;
 dotblock : primary { '(' [ args ] ')' | '.' ident } ( '.' 'do' block | '.' 'update' updblock ) ;
 gofn : 'go' 'fn' '(' [ params ] ')' [ '(' [ params ] ')' ] block ;
@@ -964,7 +973,7 @@ tparams : '[' tparam { ',' tparam } ']' ;
 tparam : ident [ '[' hk { ',' hk } ']' ] [ bound { '+' bound } ] [ 'where' expr ] ;
 bound : ident [ '[' type_args ']' ] | '(' type_item { ',' type_item } [ ',' ] ')' ;
 params : param { ',' param } ;
-param : '(' target_item { ',' target_item } ')' | [ 'ref' | 'using' | 'move' | 'lazy' ] ( ident [ '...' ] [ type ] | literal | 'self' ) [ 'where' expr ] [ '=' expr ] ;
+param : '(' target_item { ',' target_item } ')' | [ 'ref' | 'using' | 'move' | 'lazy' | 'block' ] ( ident [ '...' ] [ type ] | literal | 'self' ) [ 'where' expr ] [ '=' expr ] ;
 tupledecl : 'tuple' ident [ tparams ] [ '(' [ params ] ')' ] [ derivs ] [ 'where' expr ] NL [ INDENT { tmember { ',' tmember } [ ',' ] NL [ INDENT { accessor | stmt } DEDENT ] } DEDENT ] ;
 accessor : [ 'priv' ] ident [ '(' [ params ] ')' ] [ type ] ( block | NL ) ;
 tmember : field | propdecl | 'invariant' expr ;

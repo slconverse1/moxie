@@ -4054,6 +4054,30 @@ println(page)
 
 Output: `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. **Mistake:** `ul(h1("x"))` is a compile error, because `ul` takes only `Li` items. A macro system isn't needed, and moxie has none.
 
+A function can also take its children as an indented block, so the markup reads like the page. The parameter is marked `block` and is a `List`. Each line of the block is a child; an `if` adds children only when its condition holds, a `for` adds the children of every iteration, `...list` adds every element of a list, and a binding adds nothing. A call with no block gets an empty list.
+
+```
+tuple Item
+  text String
+fn item(text String) Item
+  Item(text: "<li>$text</li>")
+fn menu(name String, block items List[Item]) String
+  inner = items |> map(_.text) |> reduce("", _1 + _2)
+  "<ul id=$name>$inner</ul>"
+admin = true
+pages = List("Home", "About")
+page = menu("nav")
+  item("Start")
+  if admin
+    item("Admin")
+  for p in pages
+    item(p)
+println(page)
+println(menu("empty"))
+```
+
+Output: `<ul id=nav><li>Start</li><li>Admin</li><li>Home</li><li>About</li></ul>`, then `<ul id=empty></ul>`. The block is ordinary code that builds one list: the children are checked against the `block` parameter's `List` type, so a child of the wrong type is a compile error, and a call to a function without a `block` parameter can't take a block. A `when` is not allowed in a block (use `if` / `elif` / `else`).
+
 **Chapter 22: SQL**
 
 The manifest names the schema, and the compiler checks every query against it:

@@ -2002,99 +2002,107 @@ null
 ]
 ],
 [
-4062,
+4060,
+"tuple Item\n  text String\nfn item(text String) Item\n  Item(text: \"<li>$text</li>\")\nfn menu(name String, block items List[Item]) String\n  inner = items |> map(_.text) |> reduce(\"\", _1 + _2)\n  \"<ul id=$name>$inner</ul>\"\nadmin = true\npages = List(\"Home\", \"About\")\npage = menu(\"nav\")\n  item(\"Start\")\n  if admin\n    item(\"Admin\")\n  for p in pages\n    item(p)\nprintln(page)\nprintln(menu(\"empty\"))\n",
+[
+"<ul id=nav><li>Start</li><li>Admin</li><li>Home</li><li>About</li></ul>",
+"<ul id=empty></ul>"
+]
+],
+[
+4086,
 "[database]\nschema = \"schema.sql\"\ndriver = \"postgres\"\n",
 null
 ],
 [
-4070,
+4094,
 "tuple Telemetry\n  id Int,\n  value Double\ninline fn fetch_active_telemetry(\n  conn Connection,\n  min_value Double\n) Result[Stream[Telemetry], Error]\n  sql(conn):\n    SELECT id, value FROM telemetry\n    WHERE value >= $min_value AND active = true\n    ORDER BY id\nrows = fetch_active_telemetry(conn, 0.5)?\nfor t in rows\n  println(\"${t.id}: ${t.value}\")\n",
 null
 ],
 [
-4089,
+4113,
 "fn load_config(conn Connection) Result[Dict[String, String], Error]\n  rows = sql(conn):\n    SELECT key, value FROM config\n  rows? |> collect()\n",
 null
 ],
 [
-4098,
+4122,
 "fn adult(r (age Int, ...)) Bool = r.age >= 18\nfn greet(r (name String, ...)) String = \"hi ${r.name}\"\ninline fn staff(conn Connection, dept String) Result[Stream[(name String, age Int)], Error]\n  sql(conn):\n    SELECT name, age FROM staff WHERE dept = $dept ORDER BY id\nfn report(conn Connection) Result[Unit, Error]\n  rows = staff(conn, \"eng\")?\n  for p in rows |> filter(adult)\n    println(greet(p))\n  Ok(())\n",
 null
 ],
 [
-4115,
+4139,
 "fn move_funds(\n  tx Connection,\n  from_id Int,\n  to_id Int,\n  amount Int\n) Result[Unit, Error]\n  debit = sql(tx):\n    UPDATE accounts SET balance = balance - $amount WHERE id = $from_id\n  \\debit?\n  credit = sql(tx):\n    UPDATE accounts SET balance = balance + $amount WHERE id = $to_id\n  \\credit?\n  Ok(())\n\nfn transfer(\n  conn Connection,\n  from_id Int,\n  to_id Int,\n  amount Int\n) Result[Unit, Error]\n  transaction(conn, move_funds(_, from_id, to_id, amount))\n",
 null
 ],
 [
-4143,
+4167,
 "fn double(x Int) Int\n  x * 2\ntest \"double doubles\"\n  assert_eq(double(4), 8)\n  assert(double(0) == 0)\n  assert_ne(double(1), 3)\ntotal = dbg(double(2)) * 2\nprintln(\"$total\")\n",
 null
 ],
 [
-4160,
+4184,
 "test \"reversing twice changes nothing\"\n  forall xs List[Int]\n    assert_eq(xs |> reverse() |> reverse() |> collect(), xs)\n",
 null
 ],
 [
-4168,
+4192,
 "tuple Pct\n  n Int\n\nimpl Generatable for Pct\n  static fn generate(g Gen) Self = Pct(gen_int(g, 0, 100))\n  fn shrink() List[Pct]\n    when n\n      0 -> List()\n      else List(Pct(0), Pct(n - 1))\n",
 null
 ],
 [
-4186,
+4210,
 "$ moxie fmt --check src\nwould change src/parse.mxi\n$ moxie fmt src\nformatted src/parse.mxi\n",
 null
 ],
 [
-4216,
+4240,
 "old = List(1, 2, 3)\nnew = old + 4\nprintln(\"${len(old)} ${len(new)}\")\n",
 [
 "3 4"
 ]
 ],
 [
-4228,
+4252,
 "pure fn area(w Int, h Int) Int\n  w * h\npure fn noisy(w Int) Int\n  println(\"w is $w\")    // ERROR: pure fn calls println\n  w\n",
 null
 ],
 [
-4242,
+4266,
 "fn inc(x Int) Int = x + 1\nfn twice(x Int) Int = x * 2\nfn square(x Int) Int = x * x\npipeline = inc ~> twice ~> square\nout List[Int] = List(1, 2, 3) |> map(pipeline) |> collect()\nprintln(\"${pipeline(2)} ${out(0)} ${out(1)} ${out(2)}\")\n",
 [
 "36 16 36 64"
 ]
 ],
 [
-4253,
+4277,
 "steps Array[(Int) -> Int] = (inc, twice, square)\nresult = steps |> reduce(0)(acc, f) -> f(acc)\nprintln(\"$result\")\n",
 [
 "4"
 ]
 ],
 [
-4261,
+4285,
 "add5 = curry(add)(5)\nmake_adder = (k Int) -> (n Int) -> n + k\nprintln(\"${add5(1)} ${make_adder(10)(1)}\")\n",
 [
 "6 11"
 ]
 ],
 [
-4273,
+4297,
 "enum Expr\n  Num(n Int),\n  Add(l Expr, r Expr),\n  Mul(l Expr, r Expr)\nfn eval(e Expr) Int\n  when e\n    Num(n) -> n\n    Add(l, r) -> eval(l) + eval(r)\n    Mul(l, r) -> eval(l) * eval(r)\ne = Expr.Add(l: Num(n: 2), r: Mul(l: Num(n: 3), r: Num(n: 4)))\nprintln(\"${eval(e)}\")\n",
 [
 "14"
 ]
 ],
 [
-4289,
+4313,
 "fn fold_tree[T, R](t Tree[T], base R, f (R, T, R) -> R) R\n  when t\n    Leaf -> base\n    Node(l, v, r) -> f(fold_tree(l, base, f), v, fold_tree(r, base, f))\nsum = fold_tree(small, 0, (a, v, b) -> a + v + b)\ndepth = fold_tree(small, 0, (a, _, b) -> 1 + (if a > b then a else b))\nprintln(\"$sum $depth\")\n",
 [
 "6 2"
 ]
 ],
 [
-4303,
+4327,
 "fn positive(n Int) Result[Int, Error]\n  if n > 0 then Ok(n) else fail(1, \"not positive\")\nfn small(n Int) Result[Int, Error]\n  if n < 100 then Ok(n) else fail(2, \"too big\")\nfn check(n Int) Result[Int, Error]\n  positive(n) |>> small\nfn check2(n Int) Result[Int, Error]\n  p = positive(n)?\n  small(p)\nprintln(\"${is_ok(check(5))} ${is_ok(check(-1))} ${is_ok(check2(500))}\")\nwhen check(500)\n  Ok(v) -> println(\"ok $v\")\n  Err(e) -> println(e.message)\n",
 [
 "true false false",
@@ -2102,21 +2110,21 @@ null
 ]
 ],
 [
-4321,
+4345,
 "r1 Result[Int, Error] = Ok(1)\nr2 Result[Int, Error] = Ok(2)\nbad Result[Int, Error] = fail(9, \"bad\")\nprintln(\n  \"${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}\"\n)\n",
 [
 "Ok(3) true"
 ]
 ],
 [
-4332,
+4356,
 "all_ok = traverse(check, List(5, 20, 7) |> to_stream())\none_bad = traverse(check, List(5, -1, 7) |> to_stream())\nprintln(\"${is_ok(all_ok)} ${is_ok(one_bad)}\")\n",
 [
 "true false"
 ]
 ],
 [
-4342,
+4366,
 "fn check(n Int) Result[Int, String]\n  when n > 0\n    true -> Ok(n)\n    false -> Err(\"bad ${n}\")\ninputs = List(5, -1, 7, -3)\nprintln(validate(check, inputs))\n(good, bad) = partition_results(inputs |> map(check) |> collect())\nprintln(\"$good $bad\")\nprintln(recover(check(-2), (e) -> 0))\ntries = Atom[Int](0)\nfn flaky() Result[Int, String]\n  k = swap(tries, _ + 1)\n  when k < 3\n    true -> Err(\"not yet\")\n    false -> Ok(k)\nprintln(retry(5, 10ms, flaky))\n",
 [
 "Err(List(\"bad -1\", \"bad -3\"))",
@@ -2126,7 +2134,7 @@ null
 ]
 ],
 [
-4365,
+4389,
 "tuple User\n  name String\n  email String\n\nfn check_name(s String) Result[String, String]\n  when s == \"\"\n    true -> Err(\"name is empty\")\n    false -> Ok(s)\n\nfn check_email(s String) Result[String, String]\n  when s.contains(\"@\")\n    true -> Ok(s)\n    false -> Err(\"bad email: ${s}\")\n\nfn create(name String, email String) Result[User, List[String]]\n  map_all(User, check_name(name), check_email(email))\n\nprintln(create(\"ann\", \"ann@x.org\"))\nprintln(create(\"\", \"nope\"))\n",
 [
 "Ok(User(name: \"ann\", email: \"ann@x.org\"))",
@@ -2134,31 +2142,31 @@ null
 ]
 ],
 [
-4393,
+4417,
 "interface Functor[F[_]]\n  fn fmap[A, B](self F[A], f (A) -> B) F[B]\ninterface Applicative[F[_]]\n  Functor[F]\n  static fn pure[A](a A) F[A]\n  fn ap[A, B](self F[(A) -> B], x F[A]) F[B]\ninterface Monad[F[_]]\n  Applicative[F]\n  fn flat_map[A, B](self F[A], f (A) -> F[B]) F[B]\n",
 null
 ],
 [
-4407,
+4431,
 "impl Monad[Box]\n  fn fmap[A, B](self Box[A], f (A) -> B) Box[B]\n    when self\n      Full(v) -> Box.Full(f(v))\n      Empty -> Box.Empty\n  static fn pure[A](a A) Box[A]\n    Box.Full(a)\n  fn ap[A, B](self Box[(A) -> B], x Box[A]) Box[B]\n    when self\n      Full(g) -> x.fmap(g)\n      Empty -> Box.Empty\n  fn flat_map[A, B](self Box[A], f (A) -> Box[B]) Box[B]\n    when self\n      Full(v) -> f(v)\n      Empty -> Box.Empty\nprint(\"${Box.Full(3).map((x) -> x + 1)} \")\nprintln(\"${Box.pure(20).flat_map(half).flat_map(half)}\")\n",
 [
 "Box.Full(4) Box.Full(5)"
 ]
 ],
 [
-4433,
+4457,
 "fn dec(n Int) Box[Int]\n  if n > 0 then Box.Full(n - 1) else Box.Empty\nsq = (x Int) -> x * x\ndup = (x Int) -> List(x, x)\nfn pos(n Int) Result[Int, Error]\n  if n > 0 then Ok(n) else fail(1, \"not positive\")\nfn under(n Int) Result[Int, Error]\n  if n < 10 then Ok(n) else fail(2, \"too big\")\nprintln(\"${Box.Full(3) |>> dec |>> dec} ${Box.Full(1) |>> dec |>> dec}\")\nprintln(\"${sq <$> Box.Full(7)} ${sq <$> Box.Empty}\")\nlifted = curry(add) <$> Box.Full(4)\nprintln(\"${lifted <*> Box.Full(5)} ${lifted <*> Box.Empty}\")\ngood = Ok(4) |>> pos |>> under |>> ((v) -> Ok(v * 3))\nbad = Ok(40) |>> pos |>> under |>> ((v) -> Ok(v * 3))\nprintln(\"$good ${is_err(bad)}\")\nprintln(\"${List(1, 2) |>> dup} ${sq <$> (List(1, 2, 3) |>> dup)}\")\n",
 null
 ],
 [
-4458,
+4482,
 "good = for\n  a in Box.Full(20)\n  b in half(a)\n  c in half(b)\n  yield a + c\nbad = for\n  a in Box.Full(10)\n  b in half(a)\n  c in half(b)\n  yield a + c\nprintln(\"$good $bad\")\n",
 [
 "Box.Full(25) Box.Empty"
 ]
 ],
 [
-4474,
+4498,
 "enum Rank\n  Manager,\n  Staff\nenum User\n  Active(name String, rank Rank),\n  Retired(name String)\nenum PayError deriving show\n  NotFound(id Int)\nfn find_user(id Int) Result[User, PayError]\n  when id\n    42 -> Ok(User.Active(name: \"Ada\", rank: Manager))\n    7 -> Ok(User.Active(name: \"Bo\", rank: Staff))\n    9 -> Ok(User.Retired(name: \"Cy\"))\n    else Err(NotFound(id: id))\nfn base_pay(rank Rank) Int\n  when rank\n    Manager -> 500000\n    Staff -> 300000\nfn pay_one(id Int, bonus_pct Int) Result[Int, PayError]\n  user = find_user(id)?\n  Active(_, rank) = user else Err(NotFound(id: id))\n  base = base_pay(rank)\n  cents = if bonus_pct > 0 then base + base * bonus_pct / 100 else base\n  Ok(cents)\nfn pay_for(id Int, bonus_pct Int) Result[Int, PayError]\n  for\n    user in find_user(id)\n    Active(_, rank) = user else Err(NotFound(id: id))\n    base = base_pay(rank)\n    yield base + base * bonus_pct / 100\nfn process_batch(ids List[Int], bonus_pct Int) Result[List[Int], PayError]\n  ids |> traverse(pay_one(_, bonus_pct))\nprintln(\"${pay_one(42, 10)} ${pay_for(42, 10)}\")\nwhen process_batch(List(42, 7), 10)\n  Ok(all) -> println(\"${all(0)} ${all(1)}\")\n  Err(e) -> println(\"$e\")\nwhen process_batch(List(42, 9), 10)\n  Ok(all) -> println(\"${all(0)}\")\n  Err(e) -> println(\"$e\")\n",
 [
 "Ok(550000) Ok(550000)",
@@ -2167,56 +2175,56 @@ null
 ]
 ],
 [
-4518,
+4542,
 "fn both(a Result[Int, Error], b Result[Int, Error]) Result[Int, Error]\n  for\n    x in a\n    and y in b\n    yield x + y\nprintln(\"${both(Ok(1), Ok(2))}\")\n",
 [
 "Ok(3)"
 ]
 ],
 [
-4529,
+4553,
 "xs = List(1, 2, 3, 4)\nsquares List[Int] = List(x * x for x in xs if x > 1)\nwords = List(\"ab\", \"cde\")\nlens Dict[String, Int] = Dict(w -> len(w) for w in words)\nprintln(\"${len(squares)} ${squares(0)} ${lens(cde)}\")\n",
 [
 "3 4 Ok(3)"
 ]
 ],
 [
-4543,
+4567,
 "fn push(ref stack List[Int], x Int) Unit\n  stack += x\nfn pop(ref stack List[Int]) Int\n  top = stack(len(stack) - 1)\n  stack = remove_at(stack, len(stack) - 1)\n  top\ns List[Int] = List()\npush(ref s, 3)\npush(ref s, 4)\na = pop(ref s)\nb = pop(ref s)\nprintln(\"${a * b} ${len(s)}\")\n",
 [
 "12 0"
 ]
 ],
 [
-4560,
+4584,
 "tuple State[S, A]\n  run (S) -> (A, S)\nfn map_state[S, A, B](m State[S, A], f (A) -> B, s S) (B, S)\n  (a, s2) = m.run(s)\n  (f(a), s2)\nfn bind_state[S, A, B](m State[S, A], f (A) -> State[S, B], s S) (B, S)\n  (a, s2) = m.run(s)\n  f(a).run(s2)\nimpl[S] Monad[State[S, _]]\n  fn fmap[A, B](self State[S, A], f (A) -> B) State[S, B]\n    State(run: (s) -> map_state(self, f, s))\n  static fn pure[A](a A) State[S, A]\n    State(run: (s) -> (a, s))\n  fn flat_map[A, B](self State[S, A], f (A) -> State[S, B]) State[S, B]\n    State(run: (s) -> bind_state(self, f, s))\n  fn ap[A, B](self State[S, (A) -> B], x State[S, A]) State[S, B]\n    self.flat_map((g) -> x.fmap(g))\nnext_id = State(run: (c Int) -> (c + 1, c + 1))\ntwo = next_id.flat_map((a) -> next_id.map((b) -> (a, b)))\nr = two.run(0)\nprintln(\"${r(0)(0)} ${r(0)(1)} ${r(1)}\")\n",
 [
 "1 2 2"
 ]
 ],
 [
-4586,
+4610,
 "import fp.state\n\nfn label(name String) state.State[Int, String]\n  state.modify((n Int) -> n + 1).flat_map((u) -> state.gets((n Int) -> \"${name}${n}\"))\nprintln(state.traverse(List(\"a\", \"b\", \"c\"), label).run(0))\n",
 [
 "(List(\"a1\", \"b2\", \"c3\"), 3)"
 ]
 ],
 [
-4596,
+4620,
 "fn price(base Int, using tax Int) Int\n  base + base * tax / 100\nusing tax = 20\nprintln(\"${price(100, using)} ${price(100, 5)}\")\n",
 [
 "120 105"
 ]
 ],
 [
-4609,
+4633,
 "r = for\n  a in List(1, 2)\n  b in List(10, 20)\n  yield a + b\nprintln(r)\n",
 [
 "List(11, 21, 12, 22)"
 ]
 ],
 [
-4619,
+4643,
 "import fp.reader\nimport fp.writer\nimport fp.cont\n\ngreet = reader.asks((n String) -> \"hi ${n}\").flat_map((g) -> reader.asks((n String) -> \"${g}!\"))\nprintln(reader.run_reader(greet, \"bo\"))\nlog = writer.tell(\"start\").flat_map((u) -> writer.tell(\"end\")).map((u) -> 7)\nprintln(writer.run_writer(log))\nsafe_div = (a Int, b Int) -> cont.call_cc((leave) -> if b == 0 then leave(-1) else cont.Cont.pure(a / b))\nprintln(\"${cont.eval_cont(safe_div(10, 2))} ${cont.eval_cont(safe_div(1, 0))}\")\n",
 [
 "hi bo!",
@@ -2225,14 +2233,14 @@ null
 ]
 ],
 [
-4634,
+4658,
 "import fp.free\n\nenum Cmd[Next]\n  Say(String, Next)\n  Ask((String) -> Next)\n\nimpl Functor[Cmd]\n  fn fmap[A, B](self Cmd[A], f (A) -> B) Cmd[B]\n    when self\n      Say(s, n) -> Say(s, f(n))\n      Ask(k) -> Ask((x) -> f(k(x)))\n\nsay = (s String) -> free.lift_f(Say(s, ()))\nask = free.lift_f(Ask((x) -> x))\nprog = say(\"name?\").flat_map((u) -> ask.flat_map((n) -> say(\"hello ${n}\")))\nstep = (c Cmd[List[String]]) -> when c\n  Say(s, rest) -> List(s) + rest\n  Ask(k) -> k(\"sam\")\nprintln(free.fold_free(prog, (u) -> List(), step))\n",
 [
 "List(\"name?\", \"hello sam\")"
 ]
 ],
 [
-4662,
+4686,
 "import fp.trans\n\nfn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]\n  M.get().flat_map((n) -> if n >= limit then M.throw_error(\"too big\") else M.put(n + 1)).flat_map((u) -> M.get())\n\nfn state_then_error(s Int) Result[(Int, Int), String]\n  trans.run_identity(trans.run_except_t(trans.run_state_t(tick[trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, _]](5), s)))\nfn error_then_state(s Int) (Result[Int, String], Int)\n  trans.run_identity(trans.run_state_t(trans.run_except_t(tick[trans.ExceptT[trans.StateT[trans.Identity, Int, _], String, _]](5)), s))\nprintln(\"${state_then_error(1)} ${state_then_error(9)}\")\nprintln(\"${error_then_state(1)} ${error_then_state(9)}\")\n",
 [
 "Ok((2, 2)) Err(\"too big\")",
@@ -2240,14 +2248,14 @@ null
 ]
 ],
 [
-4680,
+4704,
 "import fp.trans\n\nfn find_first[M[_] Monad + MonadCont](xs List[Int], want Int) M[Int]\n  M.call_cc((leave) -> xs.reduce(M.pure(-1), (acc, x) -> acc.flat_map((r) -> if x == want then leave(x * 100) else M.pure(r))))\nfn begin(want Int) Int\n  trans.run_identity(trans.run_cont_t(find_first[trans.ContT[trans.Identity, Int, _]](List(1, 2, 3), want), (a) -> trans.Identity.pure(a)))\nprintln(\"${begin(2)} ${begin(9)}\")\n",
 [
 "200 -1"
 ]
 ],
 [
-4694,
+4718,
 "import fp.trans\n\ntype App[A] = trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, A]\n\nfn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]\n  M.get().flat_map((n) -> if n >= limit then M.throw_error(\"too big\") else M.put(n + 1)).flat_map((u) -> M.get())\nfn begin(s Int) Result[(Int, Int), String]\n  trans.run_identity(trans.run_except_t(trans.run_state_t(tick[App](5), s)))\nprintln(\"${begin(1)} ${begin(9)}\")\nup = trans.lift[[M[_], A] -> trans.StateT[M, Int, A], _, _](Ok(1))\nprintln(trans.run_state_t(up, 7))\n",
 [
 "Ok((2, 2)) Err(\"too big\")",
@@ -2255,21 +2263,21 @@ null
 ]
 ],
 [
-4714,
+4738,
 "total = 1.. step 1\n  |> filter(_ % 3 == 0)\n  |> map((n) -> n * n)\n  |> take(4)\n  |> sum()\nunder_50 = 1.. step 1 |> map((n) -> n * n) |> take_while(_ < 50) |> count()\nprintln(\"$total $under_50\")\n",
 [
 "270 7"
 ]
 ],
 [
-4730,
+4754,
 "a = User(id: 1, firm: Firm(name: \"Initech\", floor: 2))\nmoved = modify(a, /User/firm/floor, _ + 1)\nname_of = /User/firm ~> /Firm/name\nprintln(\"${(/User/firm/floor)(moved)} ${name_of(moved)}\")\n",
 [
 "3 Initech"
 ]
 ],
 [
-4749,
+4773,
 "println(fold_all(List(\"a\", \"b\", \"c\")))\nprintln(fold_all(List(List(1), List(2, 3))))\nprintln(fold_all(List(Sum(1), Sum(2), Sum(3))))\nprintln(fold_map((w) -> List(len(w)), List(\"a\", \"bb\", \"ccc\")))\nprintln(fold_map((n) -> Min(n), List(4, 2, 8)))\ntuple Stats deriving show\n  count Int\n  total Int\nimpl Semigroup for Stats\n  fn combine(self, other Stats) Stats\n    Stats(count: self.count + other.count, total: self.total + other.total)\nimpl Monoid for Stats\n  static fn empty() Stats = Stats(count: 0, total: 0)\nprintln(fold_map((n) -> Stats(count: 1, total: n), List(4, 6, 8)))\nprintln(fold_all[Stats](List()))\n",
 [
 "abc",
@@ -2282,7 +2290,7 @@ null
 ]
 ],
 [
-4773,
+4797,
 "interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self,\n  static fn neg(a Self) Self\n\nfn example[R Expr]() R\n  R.add(R.lit(8), R.neg(R.add(R.lit(1), R.lit(2))))\n\ntuple Eval\n  value Int\ntuple Pretty\n  text String\n\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\n  static fn neg(a Eval) Eval\n    Eval(value: 0 - a.value)\n\nimpl Expr for Pretty\n  static fn lit(n Int) Pretty\n    Pretty(text: \"$n\")\n  static fn add(a Pretty, b Pretty) Pretty\n    Pretty(text: \"(${a.text} + ${b.text})\")\n  static fn neg(a Pretty) Pretty\n    Pretty(text: \"-${a.text}\")\n\nprintln(example[Eval]().value)\nprintln(example[Pretty]().text)\n",
 [
 "5",
@@ -2290,7 +2298,7 @@ null
 ]
 ],
 [
-4811,
+4835,
 "interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self\n\ninterface Mul\n  static fn mul(a Self, b Self) Self\n\nfn sum_sq[R Expr + Mul](x R) R\n  R.add(R.mul(x, x), R.lit(1))\n\ntuple Eval\n  value Int\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\nimpl Mul for Eval\n  static fn mul(a Eval, b Eval) Eval\n    Eval(value: a.value * b.value)\n\ntuple Pretty\n  text String\nimpl Expr for Pretty\n  static fn lit(n Int) Pretty\n    Pretty(text: \"$n\")\n  static fn add(a Pretty, b Pretty) Pretty\n    Pretty(text: \"(${a.text} + ${b.text})\")\nimpl Mul for Pretty\n  static fn mul(a Pretty, b Pretty) Pretty\n    Pretty(text: \"${a.text} * ${b.text}\")\n\nprintln(sum_sq(Eval(value: 3)).value)\nprintln(sum_sq(Pretty(text: \"x\")).text)\n",
 [
 "10",
@@ -2298,14 +2306,14 @@ null
 ]
 ],
 [
-4852,
+4876,
 "interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self\n\nfn total[R Expr](a Int, b Int) R\n  R.add(R.lit(a), R.lit(b))\n\ntuple Eval\n  value Int\ntuple Pretty\n  text String\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\nimpl Expr for Pretty\n  static fn lit(n Int) Pretty\n    Pretty(text: \"$n\")\n  static fn add(a Pretty, b Pretty) Pretty\n    Pretty(text: \"(${a.text} + ${b.text})\")\n\ntuple Both[A, B]\n  first A\n  second B\nimpl[A Expr, B Expr] Expr for Both[A, B]\n  static fn lit(n Int) Both[A, B]\n    Both(first: A.lit(n), second: B.lit(n))\n  static fn add(a Both[A, B], b Both[A, B]) Both[A, B]\n    Both(first: A.add(a.first, b.first), second: B.add(a.second, b.second))\n\nr = total[Both[Eval, Pretty]](4, 5)\nprintln(\"${r.second.text} = ${r.first.value}\")\n",
 [
 "(4 + 5) = 9"
 ]
 ],
 [
-4892,
+4916,
 "interface Sym[R[_]]\n  static fn lit(n Int) R[Int],\n  static fn bool(b Bool) R[Bool],\n  static fn add(a R[Int], b R[Int]) R[Int],\n  static fn leq(a R[Int], b R[Int]) R[Bool],\n  static fn cond[A](c R[Bool], t R[A], e R[A]) R[A]\n\ntuple Id[A]\n  value A\ntuple Show[A]\n  text String\n\nfn prog[R[_] Sym]() R[Int]\n  R.cond(R.leq(R.lit(1), R.lit(2)), R.add(R.lit(10), R.lit(5)), R.lit(0))\n\nimpl Sym[Id]\n  static fn lit(n Int) Id[Int]\n    Id(value: n)\n  static fn bool(b Bool) Id[Bool]\n    Id(value: b)\n  static fn add(a Id[Int], b Id[Int]) Id[Int]\n    Id(value: a.value + b.value)\n  static fn leq(a Id[Int], b Id[Int]) Id[Bool]\n    Id(value: a.value <= b.value)\n  static fn cond[A](c Id[Bool], t Id[A], e Id[A]) Id[A]\n    if c.value then t else e\nimpl Sym[Show]\n  static fn lit(n Int) Show[Int]\n    Show(text: \"$n\")\n  static fn bool(b Bool) Show[Bool]\n    Show(text: \"$b\")\n  static fn add(a Show[Int], b Show[Int]) Show[Int]\n    Show(text: \"(${a.text} + ${b.text})\")\n  static fn leq(a Show[Int], b Show[Int]) Show[Bool]\n    Show(text: \"(${a.text} <= ${b.text})\")\n  static fn cond[A](c Show[Bool], t Show[A], e Show[A]) Show[A]\n    Show(text: \"if ${c.text} then ${t.text} else ${e.text}\")\n\nprintln(prog[Id]().value)\nprintln(prog[Show]().text)\n",
 [
 "15",
@@ -2313,7 +2321,7 @@ null
 ]
 ],
 [
-4939,
+4963,
 "interface Expr\n  static fn lit(n Int) Self,\n  static fn add(a Self, b Self) Self,\n  static fn neg(a Self) Self\n\nenum Tree deriving show\n  Lit(n Int)\n  Add(a Tree, b Tree)\n  Neg(a Tree)\n\nimpl Expr for Tree\n  static fn lit(n Int) Tree\n    Tree.Lit(n)\n  static fn add(a Tree, b Tree) Tree\n    Tree.Add(a, b)\n  static fn neg(a Tree) Tree\n    Tree.Neg(a)\n\nfn interpret[R Expr](t Tree) R\n  when t\n    Lit(n) -> R.lit(n)\n    Add(a, b) -> R.add(interpret[R](a), interpret[R](b))\n    Neg(a) -> R.neg(interpret[R](a))\n\nfn example[R Expr]() R\n  R.add(R.lit(8), R.neg(R.add(R.lit(1), R.lit(2))))\n\ntuple Eval\n  value Int\nimpl Expr for Eval\n  static fn lit(n Int) Eval\n    Eval(value: n)\n  static fn add(a Eval, b Eval) Eval\n    Eval(value: a.value + b.value)\n  static fn neg(a Eval) Eval\n    Eval(value: 0 - a.value)\n\nt = example[Tree]()\nprintln(t)\nprintln(interpret[Eval](t).value)\n",
 [
 "Tree.Add(Tree.Lit(8), Tree.Neg(Tree.Add(Tree.Lit(1), Tree.Lit(2))))",
@@ -2321,7 +2329,7 @@ null
 ]
 ],
 [
-4992,
+5016,
 "// ---- arith.mxi: the library (never edited again) ----\ntuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\n\ninterface Eval[E]\n  fn eval(self, rec (E) -> Int) Int\nimpl[E] Eval[E] for Lit\n  fn eval(self, rec (E) -> Int) Int\n    self.value\nimpl[E] Eval[E] for Add[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) + rec(self.right)\n\nunion type Arith = Lit | Add[Arith]\nfn eval_arith(e Arith) Int\n  e.eval(eval_arith)\n\n// ---- mul.mxi: a new variant and a new operation, in a new file ----\ntuple Mul[E] deriving show\n  left E\n  right E\nimpl[E] Eval[E] for Mul[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) * rec(self.right)\n\ninterface Pretty[E]\n  fn pretty(self, rec (E) -> String) String\nimpl[E] Pretty[E] for Lit\n  fn pretty(self, rec (E) -> String) String\n    \"${self.value}\"\nimpl[E] Pretty[E] for Add[E]\n  fn pretty(self, rec (E) -> String) String\n    \"(${rec(self.left)} + ${rec(self.right)})\"\nimpl[E] Pretty[E] for Mul[E]\n  fn pretty(self, rec (E) -> String) String\n    \"${rec(self.left)} * ${rec(self.right)}\"\n\nunion type Full = Lit | Add[Full] | Mul[Full]\nfn eval_full(e Full) Int\n  e.eval(eval_full)\nfn show_full(e Full) String\n  e.pretty(show_full)\n\na Arith = Add[Arith](Lit(1), Lit(2))\nf Full = Mul[Full](Lit(3), Add[Full](Lit(1), Lit(2)))\nprintln(eval_arith(a))\nprintln(eval_full(f))\nprintln(show_full(f))\nprintln(f)\n",
 [
 "3",
@@ -2331,14 +2339,14 @@ null
 ]
 ],
 [
-5055,
+5079,
 "tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\nunion type Full = Lit | Add[Full] | Mul[Full]\n\ninterface AsLit\n  fn lit_value(self) Result[Int, Error]\nimpl AsLit for Lit\n  fn lit_value(self) Result[Int, Error]\n    Ok(self.value)\nimpl[E] AsLit for Add[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\nimpl[E] AsLit for Mul[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\n\ninterface Simp[E]\n  fn simp(self, rec (E) -> E) E\nimpl[E] Simp[E] for Lit\n  fn simp(self, rec (E) -> E) E\n    self\nimpl[E AsLit] Simp[E] for Add[E]\n  fn simp(self, rec (E) -> E) E\n    when self.left.lit_value()\n      Ok(0) -> rec(self.right)\n      _ -> Add[E](rec(self.left), rec(self.right))\nimpl[E AsLit] Simp[E] for Mul[E]\n  fn simp(self, rec (E) -> E) E\n    when self.right.lit_value()\n      Ok(1) -> rec(self.left)\n      _ -> Mul[E](rec(self.left), rec(self.right))\n\nfn simplify(e Full) Full\n  e.simp(simplify)\n\nf Full = Mul[Full](Add[Full](Lit(0), Lit(4)), Lit(1))\nprintln(simplify(f))\n",
 [
 "Lit(value: 4)"
 ]
 ],
 [
-5105,
+5129,
 "tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\nunion type Arith = Lit | Add[Arith]\nunion type Full = Lit | Add[Full] | Mul[Full]\n\nfn lit[U Has[Lit]](n Int) U = Lit(n)\nfn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)\nfn mul[U Has[Mul[U]]](a U, b U) U = Mul[U](a, b)\n\nx Full = add(lit(1), mul(lit(2), lit(3)))\nprintln(x)\ny Arith = add(lit(1), lit(2))\nprintln(y)\n",
 [
 "Add(left: Lit(value: 1), right: Mul(left: Lit(value: 2), right: Lit(value: 3)))",
@@ -2346,7 +2354,7 @@ null
 ]
 ],
 [
-5131,
+5155,
 "enum Cmd[A]\n  Say(text String) Cmd[Unit]\n  Ask Cmd[String]\nenum Prog[A]\n  Pure(a A)\n  Bind[X](cmd Cmd[X], k (X) -> Prog[A])\n\nfn say(t String) Prog[Unit] = Bind(Say(t), (u) -> Pure(()))\nfn ask() Prog[String] = Bind(Ask, (s) -> Pure(s))\nimpl Prog[A]\n  fn flat_map[B](self, f (A) -> Prog[B]) Prog[B] = when self\n    Pure(a) -> f(a)\n    Bind(c, k) -> Bind(c, (x) -> k(x).flat_map(f))\nfn exec[A](p Prog[A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Say(t) ->\n      println(t)\n      exec(k(()))\n    Ask -> exec(k(\"bob\"))\n\nhello = eval\n  say(\"name?\")\n  n <- ask()\n  say(\"hi ${n}\")\nexec(hello)\n",
 [
 "name?",
@@ -2354,14 +2362,14 @@ null
 ]
 ],
 [
-5164,
+5188,
 "import fp.freer\n\nenum Say[A]\n  Print(text String) Say[Unit]\nenum Ask[A]\n  Name Ask[String]\nunion type Cmds[A] = Say[A] | Ask[A]\nunion type OnlyAsk[A] = Ask[A]\n\nfn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p\n  Pure(a) -> freer.done((a, acc))\n  Bind(c, k) -> when c\n    Print(t) -> handle_say(k(()), acc + List(t))\n    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))\n\nfn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Name -> run_ask(k(\"bob\"))\n\nhello freer.Prog[Cmds, Unit] = eval\n  n <- freer.send(Name)\n  freer.send(Print(\"hi ${n}\"))\n\n(u, out) = run_ask(handle_say(hello, List()))\nprintln(out)\n",
 [
 "List(\"hi bob\")"
 ]
 ],
 [
-5203,
+5227,
 "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\n  Add(a Value[Int], b Value[Int]) Value[Int]\n  Eq(a Value[Int], b Value[Int]) Value[Bool]\n  If(c Value[Bool], t Value[T], e Value[T])\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Add(a, b) -> eval(a) + eval(b)\n  Eq(a, b) -> eval(a) == eval(b)\n  If(c, t, e) -> if eval(c) then eval(t) else eval(e)\n\nprintln(eval(Add(Num(1), Num(2))))\nprintln(eval(If(Eq(Num(1), Num(1)), Num(5), Num(6))))\n",
 [
 "3",
@@ -2369,7 +2377,7 @@ null
 ]
 ],
 [
-5232,
+5256,
 "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\n  Pair(a Value[A], b Value[B]) Value[(A, B)]\n  Packed(v Value[A], f (A) -> String) Value[String]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Pair(a, b) -> (eval(a), eval(b))\n  Packed(v, f) -> f(eval(v))\n\nprintln(eval(Pair(Num(1), Flag(true))))\nprintln(eval(Packed(Num(41), (n) -> \"n=${n + 1}\")))\n",
 [
 "(1, true)",
@@ -2377,7 +2385,7 @@ null
 ]
 ],
 [
-5259,
+5283,
 "enum Value[T](line Int)\n  Num(line: 1)(n Int) Value[Int]\n  Flag(line: 2)(b Bool) Value[Bool]\n  Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Add(a, b) -> eval(a) + eval(b)\n\nprintln(eval(Add(Num(1), Num(2))))\nprintln(Flag(true).line)\n",
 [
 "3",
@@ -2385,7 +2393,7 @@ null
 ]
 ],
 [
-5284,
+5308,
 "tuple Open()\ntuple Closed()\ntuple File[S]\n  name String\n\nfn mk(n String) File[Open] = File(name: n)\nfn rd(f File[Open]) String = \"read \" + f.name\nfn cl(f File[Open]) File[Closed] = File(name: f.name)\n\nf = mk(\"a.txt\")\nprintln(rd(f))\ng = cl(f)\nprintln(g.name)\n",
 [
 "read a.txt",
@@ -2393,45 +2401,45 @@ null
 ]
 ],
 [
-5307,
+5331,
 "xs = List(1, 2, 3)\nsum = xs |> reduce(0, _1 + _2)\nprintln(\"$sum\")\n",
 [
 "6"
 ]
 ],
 [
-5330,
+5354,
 "[memory]\nheap = \"256MiB\"\n",
 null
 ],
 [
-5339,
+5363,
 "xs List[Int] = 1..1000000 |> collect()\ntotal = xs |> reduce(0, _1 + _2)\nprintln(\"$total\")\n",
 [
 "500000500000"
 ]
 ],
 [
-5349,
+5373,
 "log = Atom[List[String]](List())\nfn note(msg String) Unit\n  \\swap(log, _ + msg)\n",
 null
 ],
 [
-5357,
+5381,
 "log = Atom[Ring[String]](Ring[String](3))\nfn note(msg String) Unit\n  \\swap(log, _ + msg)\nfor i in 1..5\n  note(\"m$i\")\nr = @log\nprintln(\"${len(r)} ${r(0)} ${r(2)}\")\n",
 [
 "3 m3 m5"
 ]
 ],
 [
-5369,
+5393,
 "last2 = List(1, 2, 3, 4, 5) |> take_last(2) |> collect()\nprintln(\"${last2}\")\n",
 [
 "List(4, 5)"
 ]
 ],
 [
-5389,
+5413,
 "import stats\n\nscores Array[Double] = (62.0, 71.0, 71.0, 75.0, 80.0, 84.0, 98.0)\nprintln(\"mean ${stats.mean(scores):.1f}, median ${stats.median(scores):.1f}\")\nprintln(\"spread ${stats.stddev(scores):.2f}\")\nwhen stats.quantile(scores, 0.9)\n  Ok(q) -> println(\"90th percentile ${q:.1f}\")\n  Err(e) -> println(\"bad quantile\")\n",
 [
 "mean 77.3, median 75.0",
@@ -2440,7 +2448,7 @@ null
 ]
 ],
 [
-5406,
+5430,
 "import stats\n\nhours Array[Double] = (1.0, 2.0, 3.0, 4.0, 5.0)\nscore Array[Double] = (52.0, 58.0, 65.0, 70.0, 78.0)\nwhen stats.fit_line(hours, score)\n  Err(e) -> println(\"cannot fit: ${e.message}\")\n  Ok(line) ->\n    println(\"each hour adds ${line.slope:.1f} points, starting from ${line.intercept:.1f}\")\n    println(\"r squared ${line.r_squared:.3f}\")\n    println(\"6 hours predicts ${stats.predict(line, 6.0):.1f}\")\n    fitted = stats.predict_all(line, hours)\n    println(\"typical error ${stats.rmse(score, fitted):.2f} points\")\n",
 [
 "each hour adds 6.4 points, starting from 45.4",
@@ -2450,14 +2458,14 @@ null
 ]
 ],
 [
-5423,
+5447,
 "import stats\n\nx Array[Double] = (3.0, 3.0, 3.0)\ny Array[Double] = (1.0, 2.0, 3.0)\nwhen stats.fit_line(x, y)\n  Err(e) -> println(e.message)\n  Ok(line) -> println(\"fitted\")\n",
 [
 "fit_line: every x is the same, so there is no line to fit"
 ]
 ],
 [
-5439,
+5463,
 "import stats\n\nsales Array[Double] = (20.0, 24.0, 22.0, 28.0, 27.0, 33.0)\nprintln(stats.moving_average(sales, 3))\nprintln(\"forecast ${stats.smooth(sales, 0.5):.2f}\")\nprintln(\"slow forecast ${stats.smooth(sales, 0.1):.2f}\")\n",
 [
 "List(22.0, 24.666666666666668, 25.666666666666668, 29.333333333333332)",
@@ -2466,7 +2474,7 @@ null
 ]
 ],
 [
-5454,
+5478,
 "import http\n\nfn handle(req http.Request) http.Response\n  if req.method == \"POST\"\n    http.text(200, \"you said: ${req.body}\")\n  elif req.path == \"/hello\"\n    http.text(200, \"hello, mixer\")\n  else\n    http.text(404, \"nothing at ${req.path}\")\n\nfiber fn server(l Listener, count Int) Unit\n  http.serve_n(l, count, handle)\n\nl = listen(0)?\nport = port_of(l)\ngo server(l, 3)\na = http.get(\"localhost\", port, \"/hello\")?\nprintln(\"${a.status} ${a.body}\")\nb = http.post(\"localhost\", port, \"/echo\", \"hello\")?\nprintln(\"${b.status} ${b.body}\")\nc = http.get(\"localhost\", port, \"/nope\")?\nprintln(\"${c.status} ${c.body}\")\n",
 [
 "200 hello, mixer",
@@ -2475,7 +2483,7 @@ null
 ]
 ],
 [
-5489,
+5513,
 "import json\n\ntext = \"{\\\"name\\\": \\\"Al\\\", \\\"scores\\\": [90, 85.5], \\\"admin\\\": false}\"\ndoc = json.parse(text)?\nname = doc.field(\"name\").flat_map((d) -> d.as_text())?\nfirst = doc.field(\"scores\").flat_map((d) -> d.at(0)).flat_map((d) -> d.as_int())?\nprintln(\"$name $first\")\nprintln(doc.field(\"email\"))\nprintln(doc.field(\"name\").flat_map((d) -> d.as_int()))\nprintln(doc.to_json())\nprintln(json.parse(\"[1, 2\"))\n",
 [
 "Al 90",
@@ -2486,7 +2494,7 @@ null
 ]
 ],
 [
-5507,
+5531,
 "import json\n\ntuple Addr deriving dyn, show\n  city String,\n  zip Int\ntuple User deriving dyn, show\n  name String,\n  tags List[String],\n  addr Addr\n\ndynamic fn load(text String) Result[User, Error]\n  User.from_dyn(json.parse(text)?)\n\nu = User(name: \"Al\", tags: List(\"a\", \"b\"), addr: Addr(city: \"Oslo\", zip: 150))\nprintln(u.to_dyn().to_json())\nprintln(load(u.to_dyn().to_json()))\nprintln(load(\"{\\\"name\\\": \\\"Al\\\", \\\"tags\\\": [1]}\"))\n",
 [
 "{\"name\":\"Al\",\"tags\":[\"a\",\"b\"],\"addr\":{\"city\":\"Oslo\",\"zip\":150}}",
@@ -2495,7 +2503,7 @@ null
 ]
 ],
 [
-5529,
+5553,
 "import json\n\nenum Shape deriving dyn, show\n  Circle(r Float)\n  Rect(w Float, h Float)\n  Empty\n\ndynamic fn parse_shape(text String) Result[Shape, Error]\n  Shape.from_dyn(json.parse(text)?)\n\ns = Shape.Rect(w: 2.0, h: 3.0)\nprintln(s.to_dyn().to_json())\nprintln(parse_shape(s.to_dyn().to_json()))\nprintln(parse_shape(\"{\\\"case\\\": \\\"Blob\\\"}\"))\n",
 [
 "{\"case\":\"Rect\",\"w\":2.0,\"h\":3.0}",
@@ -2504,7 +2512,7 @@ null
 ]
 ],
 [
-5550,
+5574,
 "import json\n\ntuple Pair[A, B] deriving dyn, show\n  first A\n  second B\n\nenum Tree[T] deriving dyn, show\n  Leaf(v T)\n  Node(l Tree[T], r Tree[T])\n\np = Pair(first: 1, second: \"a\")\nprintln(p.to_dyn().to_json())\nprintln(Pair[Int, String].from_dyn(p.to_dyn()))\nt = Tree.Node(l: Tree.Leaf(v: 1), r: Tree.Leaf(v: 2))\nprintln(Tree[Int].from_dyn(t.to_dyn()))\n",
 [
 "{\"first\":1,\"second\":\"a\"}",
@@ -2513,14 +2521,14 @@ null
 ]
 ],
 [
-5576,
+5600,
 "interface Logger\n  fn info(self, msg String) Unit\n\ntuple Console\n  prefix String\n\nimpl Logger for Console\n  fn info(self, msg)\n    println(\"${self.prefix}: $msg\")\n\nConsole(prefix: \"app\").info(\"started\")\n",
 [
 "app: started"
 ]
 ],
 [
-5601,
+5625,
 "import regex(Matches, Finds)\n\nfn describe(line String) String\n  when line\n    Matches(\"(?<y:Int>\\\\d{4})-(?<m:Int>\\\\d\\\\d)-(?<d:Int>\\\\d\\\\d)\", (y, m, d)) -> \"date ${y + 1}/${m}/${d}\"\n    Finds(\"(\\\\w+)@(\\\\w+)\\\\.com\", (user, host)) -> \"mail ${user} at ${host}\"\n    Matches(\"v(?<n:Int>\\\\d+)(?<tag>-[a-z]+)?\", (n, tag)) -> \"version ${n} ${tag}\"\n    _ -> \"something else\"\nprintln(describe(\"2026-11-20\"))\nprintln(describe(\"write bob@example.com today\"))\nprintln(describe(\"v12-beta\"))\nprintln(describe(\"v7\"))\nprintln(describe(\"2026-11-20 and more\"))\n",
 [
 "date 2027/11/20",
@@ -2531,7 +2539,7 @@ null
 ]
 ],
 [
-5621,
+5645,
 "import regex\nimport regex(Matches, CInt, CText, must)\n\nunit = \"kg\"\nweight = must(\"(?<n:Int>\\\\d+)${unit}\")\nfn grams(s String) Int\n  when s\n    Matches(^weight, List(CInt(n))) -> n * 1000\n    _ -> 0\nprintln(grams(\"12kg\"))\nprintln(grams(\"12lb\"))\nwords = regex.must(\"\\\\w+\")\nprintln(regex.find_all(words, \"to be or not to be\").map((m) -> m.text) |> collect())\nprintln(regex.replace_all(regex.must(\"\\\\d+\"), \"a1b22\", (m) -> \"<${m.text}>\"))\nprintln(regex.split(regex.must(\",\\\\s*\"), \"a, b,c\"))\nprintln(regex.is_match(regex.must(\"^[a-z]+$\"), \"hello\"))\nprintln(regex.compile(\"a{3,1}\"))\nprintln(regex.compile(\"(\\\\d)\\\\1\"))\ntext = (0..<300) |> map((_) -> \"a\") |> join(\"\")\nprintln(regex.is_match(regex.must(\"(a+)+b\"), text))\n",
 [
 "12000",
@@ -2546,7 +2554,7 @@ null
 ]
 ],
 [
-5650,
+5674,
 "unit m\nunit s\nunit kg\nunit N = kg * m / s^2\n\nfn speed(d Double[m], t Double[s]) Double[m/s] = d / t\nfn force(mass Double[kg], a Double[m/s^2]) Double[N] = mass * a\nfn area(w Int[m], h Int[m]) Int[m^2] = w * h\n\nprintln(speed(100.0 m, 9.58 s))\nprintln(force(2.0 kg, 9.8 m/s^2))\nprintln(area(3 m, 4 m))\nd = 3.0 m + 4.0 m\nprintln(d * 2.0)\nprintln(d / 2.0 m)\nprintln(sqrt(4.0 m^2))\nprintln(sum(List(1.0 m, 2.0 m, 3.0 m)))\nprintln(magnitude(d))\n",
 [
 "10.438413361169102",
@@ -2560,7 +2568,7 @@ null
 ]
 ],
 [
-5677,
+5701,
 "unit m\nunit s\nunit km = 1000 m\nunit h = 3600 s\nunit kmh = km / h\n\nd = 5.0 km + 500.0 m\nprintln(d in km)\nprintln(90.0 kmh in m/s)\nprintln(3 km in m)\nprintln(\"${d in km} km\")\n",
 [
 "5.5",
@@ -2570,7 +2578,7 @@ null
 ]
 ],
 [
-5695,
+5719,
 "unit m\nunit s\n\nfn twice[U](x Double[U]) Double[U] = x + x\nfn rate[A, B](a Double[A], b Double[B]) Double[A/B] = a / b\nfn sq[U](x Double[U]) Double[U^2] = x * x\n\nprintln(twice(3.0 m))\nv Double[m/s] = rate(6.0 m, 2.0 s)\nprintln(v)\nprintln(sq(3.0 m))\n",
 [
 "6.0",
