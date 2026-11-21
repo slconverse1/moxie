@@ -9,6 +9,7 @@ def run(src, gc=False):
     os.unlink(f.name)
     return r.returncode, r.stdout + r.stderr
 U = "unit m\nunit s\nunit kg\nunit N = kg*m/s^2\n"
+SC = "unit m\nunit s\nunit km = 1000 m\nunit h = 3600 s\nunit mile = 1609.344 m\nunit cm = 0.01 m\nunit kmh = km / h\n"
 CASES = [
  ("a quantity prints as its number", U + "println(5.0 m)\n", "5.0"),
  ("an Int quantity", U + "println(3 m + 4 m)\n", "7"),
@@ -47,6 +48,21 @@ CASES = [
  ("a derived unit from an undeclared unit", "unit N = kg*m\n", "`kg` is not a unit"),
  ("a duration literal is still a Duration", U + "println(5s)\n", "5s"),
  ("an Int quantity divides as an Int", U + "x Int[m/s] = 7 m / 2 s\nprintln(x)\n", "3"),
+ ("a scaled literal is stored in the base unit", SC + "println(5.0 km)\n", "5000.0"),
+ ("an Int scaled literal", SC + "println(3 km)\n", "3000"),
+ ("scaled and base units add", SC + "println(5.0 km + 500.0 m)\n", "5500.0"),
+ ("dividing by one unit converts out", SC + "d = 5.0 km + 500.0 m\nprintln(d / 1.0 km)\n", "5.5"),
+ ("a fractional scale", SC + "println(2.0 mile / 1.0 km)\n", "3.218688"),
+ ("a derived scaled unit", SC + "v = 90.0 kmh\nprintln(v / 1.0 m/s)\n", "25.0"),
+ ("a scaled unit is the same type as its base", SC + "x Double[m] = 2.0 km\nprintln(x)\n", "2000.0"),
+ ("a scaled unit in a signature", SC + "fn dist(t Double[h], s Double[kmh]) Double[m] = t * s\nprintln(dist(2.0 h, 90.0 kmh) / 1.0 km)\n", "180.0"),
+ ("a small scale with a Double amount", SC + "println(250.0 cm / 1.0 m)\n", "2.5"),
+ ("an Int amount of a fractional unit", SC + "bad = 3 mile\n", "is not a whole number of its base unit"),
+ ("an Int amount of a unit below one", SC + "bad = 3 cm\n", "is not a whole number of its base unit"),
+ ("an Int type of a fractional unit", SC + "bad Int[mile] = 1\n", "is not a whole number of its base unit"),
+ ("a scaled unit of an undeclared unit", "unit km = 1000 foo\n", "`foo` is not a unit"),
+ ("a number alone is not a unit", "unit bare = 5\n", "is not a unit expression"),
+ ("mixing scaled and different dimensions", SC + "bad = 1.0 km + 1.0 s\n", "cannot add"),
 ]
 fails = []
 for name, src, want in CASES:

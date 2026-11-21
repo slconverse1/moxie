@@ -2,6 +2,7 @@
 from .pbase import PBase, HARD
 from .lexer import MoxieSyntaxError
 from .ast import *   # noqa
+from . import units as units_mod
 MUT_RE = set()      # ids of `Assign` nodes that assign to a `mutable` block's name
 
 T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_ADD, T_MUL, T_OTHER = range(13)
@@ -655,7 +656,8 @@ class ExprParser(PBase):
                 text += self.next().val + self.next().val
             else:
                 break
-        return QtyLit(lit, text, line=line)
+        pairs = units_mod.parse_text(text) or []
+        return QtyLit(lit, text, units_mod.scale_of(pairs, self.units), line=line)
 
     def parse_arg0(self):
         t = self.peek()

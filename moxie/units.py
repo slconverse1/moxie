@@ -74,3 +74,36 @@ def from_expr(e):
     if c == "Binary" and e.op == "^" and e.r.__class__.__name__ == "IntLit" and e.l.__class__.__name__ == "Name":
         return [(e.l.name, e.r.v)]
     return None
+
+
+NUM = re.compile(r"\s*(\d+(?:\.\d+)?)\s+(.*)$", re.S)
+
+
+def split_scale(text):
+    """`1000 m` -> (1000, "m"); `kg*m/s^2` -> (None, "kg*m/s^2").  A whole number stays an int, so scaled Int quantities stay exact."""
+    m = NUM.match(text)
+    if not m:
+        return None, text
+    s = m.group(1)
+    return (float(s) if "." in s else int(s)), m.group(2)
+
+
+def scale_of(pairs, table):
+    """The factor that turns a quantity written in these units into the base units: `km/h` -> 1000/3600.  `table` maps unit name to its factor."""
+    f = 1
+    for nm, e in pairs:
+        s = table.get(nm, 1)
+        f = f * (s ** e if e >= 0 else 1 / (s ** -e))
+    if isinstance(f, float) and f == int(f) and abs(f) < 2 ** 53:
+        return int(f) if all(isinstance(table.get(nm, 1), int) for nm, _e in pairs) and all(e >= 0 for _n, e in pairs) else f
+    return f
+
+
+def decl_scale(text, table):
+    """The factor of `unit NAME = text` (a leading number times other units), 1 for a base unit."""
+    if text is None:
+        return 1
+    lead, rest = split_scale(text)
+    pairs = parse_text(rest) or []
+    f = scale_of(pairs, table)
+    return f if lead is None else lead * f

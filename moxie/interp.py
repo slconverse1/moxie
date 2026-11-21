@@ -473,7 +473,11 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         return Done(v)
 
     def ev_QtyLit(self, n, env):
-        return getattr(self, "ev_" + n.num.__class__.__name__)(n.num, env)       # units are erased: `5.0 m` is 5.0
+        r = getattr(self, "ev_" + n.num.__class__.__name__)(n.num, env)         # units are erased: `5.0 m` is 5.0
+        if n.scale is not None and n.scale != 1:
+            v = r.v if hasattr(r, "v") else r              # a scaled unit is stored in its base unit: `5.0 km` is 5000.0
+            return Done(v * n.scale)
+        return r
 
     def ev_UnitDecl(self, n, env):
         return Done(UNIT)

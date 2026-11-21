@@ -806,11 +806,12 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Not done.** A regex built at run time cannot have typed names (its payload is the `Cap` list). When the repeated part of a group may match nothing (`(a*)*`), the final empty repetition is not recorded: the group keeps the text of its last non-empty repetition where Perl and Python give an empty string. The match itself is the same.
 
 **23g. Units of measure** (checker only; units are erased at run time)
-- **Declarations.** `unit m` declares a base unit; `unit N = kg * m / s^2` a unit derived from earlier ones. Each unit has a dimension, a set of base units with whole exponents; a derived unit is the same type as its definition. A unit declared twice, or defined from an undeclared unit, is an error.
+- **Declarations.** `unit m` declares a base unit; `unit N = kg * m / s^2` a unit derived from earlier ones; `unit km = 1000 m` (a number, then units) a scaled unit, a multiple of units declared before it. Each unit has a dimension, a set of base units with whole exponents; a derived unit is the same type as its definition. A unit declared twice, or defined from an undeclared unit, is an error.
 - **Quantities.** `5.0 m` and `3 m` (a number, a space, a declared unit; `*`, `/` and `^n` may follow: `9.8 m/s^2`). Types are `Double[m]`, `Int[m/s]`, `Double[(m/s)^2]`; `Double[meter]` with an undeclared name is an error. A unit with no space (`5s`) is still a Duration literal.
 - **Arithmetic.** `+`, `-`, `%` and the comparisons need equal dimensions (a plain number has none, so `1.0 m + 2.0` is an error). `*` and `/` add and subtract exponents; an empty dimension is a plain number. A quantity times or divided by a plain number keeps its unit.
 - **Built-ins.** `abs`, `min`, `max`, `sum`, `clamp` keep the unit; `floor`, `ceil`, `round` give an `Int` of it; `sqrt` halves every exponent (an odd one is an error); `pow(x, k)` multiplies them (`k` a constant `Int`); `product` of quantities is an error; `magnitude(q)` is the bare number.
-- **Not yet.** Scaled units (`km`), unit-polymorphic functions, and units across packages.
+- **Scaled units.** A scaled unit has the dimension of what it scales, so `Double[km]` is `Double[m]`. Quantities are stored in the base unit: `5.0 km` is `5000.0`, which is also what prints. A number in a unit is `d / 1.0 km`. An `Int` amount must be a whole number of base units (`3 km` is fine; `3 mile`, with `mile = 1609.344 m`, and `Int[mile]` are errors). Offset scales (Celsius, Fahrenheit) are not units.
+- **Not yet.** Unit-polymorphic functions, and units across packages.
 
 **24. Prelude reference**
 Signatures only, grouped. Names with an asterisk are planned.
@@ -976,7 +977,7 @@ member : fnsig | 'type' ident | field | 'property' ident type | { 'static' | 'dy
 fnsig : 'fn' [ '(' [ 'ref' ] ident ')' ] [ fname ] [ tparams ] [ '(' [ params ] ')' ] [ type ] ;
 fname : ident | '+' | '-' | '*' | '/' | '==' | '<' | '>' | '<=' | '>=' | '%' | '|>>' | '<$>' | '~>' | '++' | '<<' | '>>' | '&' | '|' | '^' | '~=' ;
 impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [ INDENT { fndecl | 'type' ident '=' type NL | 'static' { 'dynamic' } fndecl | 'forward' fndecl } DEDENT ] ;
-unitdecl : 'unit' ident [ '=' unitexpr ] NL ;
+unitdecl : 'unit' ident [ '=' [ INT | FLOAT ] unitexpr ] NL ;
 unitexpr : unitfactor { ( '*' | '/' ) unitfactor } ;
 unitfactor : ident [ '^' INT ] ;
 aliasdecl : 'type' [ 'alias' | 'union' | 'opaque' ] ident [ tparams ] '=' ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;

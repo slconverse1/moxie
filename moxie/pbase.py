@@ -36,7 +36,7 @@ class PBase:
         self.file = file
         self.no_trailing = False
         self.nl_stop = False
-        self.units = set()          # unit names declared so far in this file (`unit m`): a number then a unit is a quantity
+        self.units = {}             # unit name -> its factor to the base unit, for the units declared so far in this file (`unit m`): a number then a unit is a quantity
 
     # ---------------------------------------------------------------- tokens
     def peek(self, k=0):

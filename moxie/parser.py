@@ -3,6 +3,7 @@ from .pexpr import ExprParser, ph_lambda
 from .pbase import HARD, ASSIGN_OPS, PBase
 from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
+from . import units as units_mod
 
 EFFMODS = ("pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic", "pattern")        # soft: only modifiers when a declaration follows
 MODS = {"unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure", "pattern"}
@@ -505,7 +506,7 @@ class Parser(ExprParser):
         i = 3
         while self.peek(i).kind not in ("NL", "EOF"):
             t = self.peek(i)
-            if not (t.kind in ("NAME", "INT") or t.kind == "OP" and t.val in ("*", "/", "^")):
+            if not (t.kind in ("NAME", "INT", "FLOAT") or t.kind == "OP" and t.val in ("*", "/", "^")):
                 return False
             i += 1
         return i > 3
@@ -519,10 +520,12 @@ class Parser(ExprParser):
             self.next()
             text = ""
             while self.peek().kind not in ("NL", "EOF"):
-                text += str(self.next().val)
+                tk = self.next()
+                text += str(tk.val) + (" " if tk.kind in ("INT", "FLOAT") and not (self.peek().kind == "OP" and self.peek().val == "^") else "")
+            text = text.strip()
             if not text:
-                self.err("a unit needs its definition after `=`, such as `unit N = kg * m / s^2`")
-        self.units.add(name)
+                self.err("a unit needs its definition after `=`, such as `unit N = kg * m / s^2` or `unit km = 1000 m`")
+        self.units[name] = units_mod.decl_scale(text, self.units)
         return UnitDecl(name, text, mods[0] if mods else None, line=line)
 
     def parse_type_decl(self, mods):

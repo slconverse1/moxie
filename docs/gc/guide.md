@@ -5658,4 +5658,21 @@ Output: `10.438413361169102`, `19.6`, `12`, `14.0`, `3.5`, `2.0`, `6.0`, `7.0`.
 
 `+`, `-` and comparisons need the same unit on both sides, and a plain number is not a quantity (`1.0 m + 2.0` is an error; write `2.0 m`). `*` and `/` combine the units, so `Double[m] / Double[s]` is `Double[m/s]`, and `m / m` is a plain number. Multiplying by a plain number keeps the unit. `abs`, `min`, `max`, `sum`, `floor`, `ceil` and `round` keep it; `sqrt` halves it (every power must be even); `pow(x, 2)` multiplies it (the exponent must be a constant); `product` of quantities is refused, because the unit would depend on how many there are. `magnitude(q)` is the bare number, and `x * 1.0 m` attaches a unit to one. A literal takes a unit only if the unit was declared above it, so `5 s` is five seconds only if you declared `unit s`; `5s` with no space is still a `Duration`. Write a power with `^`: `m/s^2`, or `(m/s)^2` in a type.
 
-Not here yet: scaled units (`km` against `m`) and functions that work for any unit. A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable, like a `Double`.
+A unit can be a multiple of another: `unit km = 1000 m`, `unit mile = 1609.344 m`, `unit h = 3600 s`. A scaled unit has the same dimension as its base, so `Double[km]` and `Double[m]` are the same type and `3.0 km + 500.0 m` is fine. Every quantity is stored in the base unit, so `5.0 km` is `5000.0` and `println(5.0 km)` prints `5000.0`. To get a number in a unit, divide by one of it:
+
+```
+unit m
+unit s
+unit km = 1000 m
+unit h = 3600 s
+unit kmh = km / h
+
+d = 5.0 km + 500.0 m
+println(d / 1.0 km)
+println(90.0 kmh / 1.0 m/s)
+println(3 km)
+```
+
+Output: `5.5`, `25.0`, `3000`. An `Int` amount has to be a whole number of the base unit, so `3 km` is fine and `3 mile` or `Int[mile]` is a compile error: write `3.0 mile`. Temperatures in Celsius or Fahrenheit are not units here, because their zero points differ from kelvin's; kelvin is an ordinary unit.
+
+Not here yet: functions that work for any unit. A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable, like a `Double`.

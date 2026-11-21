@@ -123,7 +123,7 @@ def _defs():
         "ImplDecl": "iface target tparams members bodyless proxy",
         "AliasDecl": "kind name tparams type vis where wtext",
         "UnitDecl": "name text vis",
-        "QtyLit": "num text",
+        "QtyLit": "num text scale",
         "ImportDecl": "pkg alias names",
         "UsingDecl": "name expr",
         "InitDecl": "body",

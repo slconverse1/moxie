@@ -401,6 +401,7 @@ class Checker(RefineMixin):
         USER_NAMES[0] = self.fns
         self.rx_names = set()           # the regex package's `Matches` / `Finds`, once imported by name
         self.recs = {}                   # `pattern fn` name -> its FnDecl
+        self.unit_scale = {}             # unit name -> its factor to the base unit (`km` is 1000 `m`)
         self.unit_dims = {}              # unit name -> its dimension (a sorted tuple of (base unit, exponent))
         self.lam_node = {}               # Var -> the Lambda written in its binding, for the call-site recheck of unannotated parameters
         self.lam_ret = {}                # Var -> the written type of what a lambda bound to it returns
@@ -1152,6 +1153,8 @@ class Checker(RefineMixin):
             if n in ("Double", "Float") and not self.sig_mode:
                 bad = next(nm for nm, _e in pairs if nm not in self.unit_dims)
                 self.err(getattr(t, "line", 0) or self.cur_line, f"`{bad}` is not a unit: declare it with `unit {bad}` before writing `{n}[{bad}]`")
+            return None
+        if n not in ("Double", "Float") and self.whole_scale_error(pairs, "/".join(nm if e == 1 else f"{nm}^{e}" for nm, e in pairs), getattr(t, "line", 0) or self.cur_line):
             return None
         return self.qty_type("Float" if n in ("Double", "Float") else "Int", self.dims_of(pairs, 0))
 
@@ -2456,14 +2459,21 @@ class Checker(RefineMixin):
             return
         if st.text is None:
             self.unit_dims[st.name] = ((st.name, 1),)
+            self.unit_scale[st.name] = 1
             return
-        pairs = units.parse_text(st.text)
+        lead, rest = units.split_scale(st.text)
+        pairs = units.parse_text(rest)
         d = self.dims_of(pairs, st.line) if pairs else None
         if d is None:
             if not pairs:
-                self.err(st.line, f"`unit {st.name} = {st.text}` is not a unit expression: write units joined by `*` and `/`, with `^2` for a power (`kg * m / s^2`)")
+                self.err(st.line, f"`unit {st.name} = {st.text}` is not a unit expression: write units joined by `*` and `/`, with `^2` for a power (`kg * m / s^2`), "
+                                  f"or a number and a unit for a scaled unit (`km = 1000 m`)")
+            return
+        if lead is not None and not d:
+            self.err(st.line, f"`unit {st.name} = {st.text}` has no unit after the number: write what it is a multiple of, such as `1000 m`")
             return
         self.unit_dims[st.name] = d
+        self.unit_scale[st.name] = units.decl_scale(st.text, self.unit_scale)
 
     def dims_of(self, pairs, line):
         """The dimension of [(unit, exp)] written in a program, or None (with an error) when a unit is not declared."""
@@ -2484,7 +2494,17 @@ class Checker(RefineMixin):
         d = self.dims_of(pairs, n.line) if pairs else None
         if d is None or t is None:
             return None, None
+        if t == "Int" and self.whole_scale_error(pairs, n.text, n.line):
+            return None, None
         return self.qty_type(t, d), None
+
+    def whole_scale_error(self, pairs, text, line):
+        """An integer amount of a unit that is not a whole number of base units (`3 mile`, `Int[mile]`) cannot be stored exactly."""
+        sc = units.scale_of(pairs, self.unit_scale)
+        if isinstance(sc, float) and sc != int(sc) or isinstance(sc, float) and sc < 1 and sc != 1:
+            self.err(line, f"`{text}` is not a whole number of its base unit, so an `Int` amount of it can't be stored exactly: write the amount as a `Double` (`3.0 {text}`)")
+            return True
+        return False
 
     def qty_parts(self, t):
         """(base, dims) of a type that is a quantity, a plain number (dims ()), or None for anything else."""
@@ -8055,7 +8075,8 @@ class Checker(RefineMixin):
         """A type name nothing declares: not a type of this program, a built-in, a type parameter in scope, or a name from a package."""
         if nm in self.SCALAR_TYPES or nm in INTS or nm in self.BUILTIN_GENERICS or nm in self.tuples or nm in self.enums \
                 or nm in self.aliases or nm in self.iface_decls or nm in self.ifaces or nm in self.fn_tparams or nm in self.tp_decl \
-                or nm in self.pv or nm in self.handle_types.values() or nm in self.handle_types or nm in self.prelude or nm in self.globals:
+                or nm in self.pv or nm in self.handle_types.values() or nm in self.handle_types or nm in self.prelude or nm in self.globals \
+                or nm in self.unit_dims:
             return False
         if len(nm) <= 2 or nm.isupper():
             return False                                   # a type parameter of an enclosing declaration (`T`, `M`, `E`, `S`)
