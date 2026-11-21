@@ -1112,7 +1112,7 @@ class Checker(RefineMixin):
                     lo, hi = self.const_int(x.expr.lo), self.const_int(x.expr.hi)
                     if lo is not None and hi is not None:
                         return ("bounded", lo, hi if x.expr.incl else hi - 1)
-            return "Int"
+            return tys.Sized(n) if n in self.INTW and n != "Int" else "Int"
         if n in ("Double", "Float"):
             return "Float"
         if n in ("String", "Bool", "Char", "Unit", "Decimal"):
@@ -2080,7 +2080,7 @@ class Checker(RefineMixin):
         c = e.__class__
         if c is Name:
             v = sc.find(e.name)
-            return v.inttype if v is not None and v.inttype else None
+            return v.inttype if v is not None and v.inttype else (tys.twt(v.ty) if v is not None else None)
         if c is Binary and e.op in ("+", "-", "*"):
             a, b = self.int_wt(e.l, sc), self.int_wt(e.r, sc)
             return a or b
@@ -2146,12 +2146,12 @@ class Checker(RefineMixin):
         sb, bb = self.INTW[b]
         return (sa == sb and bb >= ba) or (not sa and sb and bb > ba)
 
-    def width_assign(self, expr, sc, tnode, line):
+    def width_assign(self, expr, sc, tnode, line, act=None):
         """A sized integer given to a place of another written width (`e Int8 = d` with `d Int16`, a `UInt8` passed as `Int8`): the same
         fits rule as arithmetic.  True when the value is settled here (fits a `Double`, or reported), so the caller skips the general check."""
         if tnode.__class__ is not TName or len(tnode.path) != 1 or tnode.groups or tnode.path[0] in self.tuples or tnode.path[0] in self.aliases:
             return False
-        w = self.int_wt(expr, sc)
+        w = self.int_wt(expr, sc) or tys.twt(act)
         if w is None or w not in self.INTW:
             return False
         want = tnode.path[0]
@@ -2171,7 +2171,7 @@ class Checker(RefineMixin):
         Returns True after reporting an error."""
         if a not in ("Int", "Float") or b not in ("Int", "Float"):
             return False
-        wl, wr = self.int_wt(n.l, sc), self.int_wt(n.r, sc)
+        wl, wr = self.int_wt(n.l, sc) or tys.twt(lt), self.int_wt(n.r, sc) or tys.twt(rt)
         self._csc = sc
         lit = lambda x: x.__class__ is IntLit and not x.suffix or (x.__class__ is Unary and x.e.__class__ is IntLit and not x.e.suffix)
         if a == "Int" and b == "Int":
@@ -3214,7 +3214,9 @@ class Checker(RefineMixin):
                         c = lc + rc if op == "+" else lc - rc if op == "-" else lc * rc
                         if not -2**63 <= c <= 2**64 - 1:
                             self.err(n.line, f"the constant `{c}` overflows: it does not fit any integer type")
-                    return "Int", c
+                    wl, wr = self.int_wt(n.l, sc) or tys.twt(lt), self.int_wt(n.r, sc) or tys.twt(rt)
+                    w = wl if wl and (not wr or self.int_fits(wr, wl)) else wr
+                    return (tys.Sized(w) if w and w != "Int" and op in ("+", "-", "*", "/", "%") else "Int"), c
                 if "Float" in (a, b):
                     return "Float", None
                 return (a if a == b else None), None
@@ -4225,7 +4227,7 @@ class Checker(RefineMixin):
             if missing:
                 self.err(n.line, f"`{tshow(bt)}` doesn't implement `{missing[0]}`, so it can't be stored as `any {' + '.join(names)}`")
         if n.ann is not None and n.op == "=":
-            if not self.width_assign(n.value, sc, n.ann, n.line):
+            if not self.width_assign(n.value, sc, n.ann, n.line, t):
                 self.compat(ann, t, c, n.line)
             self.check_union_member(n.ann, t, n.line)
             m = self.union_member_tag(n.ann, t)
@@ -7324,6 +7326,19 @@ class Checker(RefineMixin):
         """`b.plus(1)` where `b` is a plain tuple or enum with a method `plus`: the arguments are checked against its parameters
         (after `self`), and the result has its declared type.  Anything not settled (type parameters, `Self`) is left alone."""
         rt = self.base(self.quick_ty(fn.obj, sc))
+        if rt.__class__ is tuple and rt[0] == "app" and isinstance(rt[1], str) and rt[1] not in self.aliases:
+            gd = self.tuples.get(rt[1]) or self.enums.get(rt[1])
+            gm = self.methods.get((rt[1], fn.name))
+            if gd is not None and gm is not None and getattr(gd, "tparams", None) and len(gd.tparams) == len(rt[2]) \
+                    and not gm.tparams and gm.alias is None and gm.ret is not None \
+                    and gm.params and gm.params[0].name == "self":
+                names = {tp.name for tp in gd.tparams}
+                ret = self.ty_of_type(gm.ret, 0, names)          # `b.get()` on a `Box[Int8]` is an `Int8`: the type arguments go in
+                if ret is not None and "Self" not in tshow(ret):
+                    ret = tys.subst(ret, {tp.name: a for tp, a in zip(gd.tparams, rt[2])})
+                    if not self.has_unsettled(ret):
+                        return ret
+            return None
         if rt.__class__ is not tuple or rt[0] != "named":
             return None
         decl = self.tuples.get(rt[1]) or self.enums.get(rt[1])
@@ -8671,7 +8686,7 @@ class Checker(RefineMixin):
                     and a.expr.__class__ is not Move and a.mod != "move":
                 self.err(n.line, f"parameter `{p.name}` is kept by the library; write `move {self.arg_name(a)}`")
             if p.type is not None:
-                if not (self.cur_sc is not None and self.width_assign(a.expr, self.cur_sc, p.type, n.line)):
+                if not (self.cur_sc is not None and self.width_assign(a.expr, self.cur_sc, p.type, n.line, t)):
                     self.compat(self.ty_of_type(p.type), t, c, n.line)
                 if p.type.__class__ is TName and p.type.path[-1] in self.FIT and isinstance(c, int) and not isinstance(c, bool) \
                         and p.type.path[-1] not in self.tuples and p.type.path[-1] not in self.aliases:

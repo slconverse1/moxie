@@ -139,6 +139,25 @@ def _arg_compat(x, y):
     return compatible(x, y)
 
 
+class Sized(str):
+    """The checker type of a sized integer (`Int8`, `UInt16`, ...).  It compares and hashes as `Int`, so every rule that treats integers alike
+    still does, while `.wt` keeps the written width through generics, collections, results and inference; the width rules (Spec 3) read it."""
+    __slots__ = ("wt",)
+
+    def __new__(cls, wt):
+        o = str.__new__(cls, "Int")
+        o.wt = wt
+        return o
+
+    def __reduce__(self):
+        return (Sized, (self.wt,))
+
+
+def twt(t):
+    """The sized-integer width a checker type carries (`Int8`), else None."""
+    return getattr(t, "wt", None) if t.__class__ is Sized else None
+
+
 INT_NAMES = {"Int", "Int8", "Int16", "Int32", "Int64", "UInt8", "UInt16", "UInt32", "UInt64"}
 
 

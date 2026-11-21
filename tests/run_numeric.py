@@ -8,6 +8,7 @@ def run(src, gc=False):
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=120)
     os.unlink(f.name)
     return r.returncode, r.stdout + r.stderr
+PRE = 'fn first[T](xs List[T]) T = xs(0)\nfn id[T](x T) T = x\ntuple Box[T](v T)\nimpl Box[T]\n  fn inner(self) T = self.v\n'
 CASES = [
  ("Int8 with Int16 widens", "a Int8 = 6\nb Int16 = 6\nc UInt8 = 6\nd Int64 = 6\ne UInt64 = 6\nx Double = 2.5\nprintln(a + b)\n", "12"),
  ("UInt8 with Int16 widens", "a Int8 = 6\nb Int16 = 6\nc UInt8 = 6\nd Int64 = 6\ne UInt64 = 6\nx Double = 2.5\nprintln(c + b)\n", "12"),
@@ -45,6 +46,15 @@ CASES = [
  ("a field assigned to a narrower type", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\ne Int8 = h.id\n", "`Int16` does not convert to `Int8`"),
  ("an inferred binding keeps its width", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nd = wide()\nbad = d + a\n", "cannot apply `+` to `UInt8` and `Int8`"),
  ("a field passed as a narrower parameter", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nfn f(x Int8) Int8 = x\nprintln(f(h.id))\n", "`Int16` does not convert to `Int8`"),
+ ("a generic result keeps its width", PRE + "xs List[Int8] = List(1, 2)\nu UInt8 = 3\nbad = first(xs) + u\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a generic result widens", PRE + "xs List[Int8] = List(1, 2)\nw Int16 = 3\nprintln(first(xs) + w)\n", "4"),
+ ("a generic result assigned to another width", PRE + "xs List[Int8] = List(1, 2)\nbad UInt8 = first(xs)\n", "`Int8` does not convert to `UInt8`"),
+ ("a generic identity keeps the width", PRE + "a Int8 = 1\nu UInt8 = 3\nbad = id(a) + u\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a generic field keeps the width", PRE + "a Int8 = 1\nu UInt8 = 3\nb = Box(a)\nbad = b.v + u\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a method result keeps the width", PRE + "a Int8 = 1\nu UInt8 = 3\nb = Box(a)\nbad = b.inner() + u\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a sum of widths keeps the width", PRE + "a Int8 = 1\nu UInt8 = 3\nc = a + a\nbad = c + u\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a for loop variable keeps the element width", PRE + "xs List[Int8] = List(1, 2)\nu UInt8 = 3\nfor x in xs\n  bad = x + u\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a generic result with a literal is fine", PRE + "xs List[Int8] = List(1, 2)\nprintln(first(xs) + 1)\n", "2"),
 ]
 fails = []
 for name, src, want in CASES:
