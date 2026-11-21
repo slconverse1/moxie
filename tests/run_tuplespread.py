@@ -21,6 +21,14 @@ CASES = [
  ("destructuring with a declared tuple", T + "Item(id: k, ...others) = it\nprintln(others)\n", '(tags: List("a"), owner: "ada")'),
  ("a list spread is still a list", "when List(1, 2, 3)\n  List(a, ...r) -> println(r)\n  _ -> println(0)\n", "List(2, 3)"),
  ("a dict spread is still a dict", "when Dict(a -> 1, b -> 2)\n  Dict(a -> x, ...r) -> println(r)\n  _ -> println(0)\n", 'Dict("b" -> 2)'),
+ ("a bound field has its type", T + "when it\n  Item(id: i, ...rest) -> println(i + \"x\")\n", "cannot apply `+` to `Int` and `String`"),
+ ("rest has the type of what is left", T + "when it\n  Item(id: i, ...rest) -> println(rest.nme)\n", "has no field `nme` (it has `tags`, `owner`)"),
+ ("rest does not have a field the pattern took", T + "when it\n  Item(id: i, ...rest) -> println(rest.id)\n", "has no field `id`"),
+ ("a field of rest has its type", T + "when it\n  Item(id: i, ...rest) -> println(rest.owner + 1)\n", "cannot apply `+`"),
+ ("a label the declared tuple lacks", T + "when it\n  Item(idd: i, ...rest) -> println(1)\n", "has no field `idd`"),
+ ("a label an anonymous tuple lacks", 'when (a: 1, b: 2)\n  (c: x, ...r) -> println(1)\n', "has no field `c`"),
+ ("anonymous destructuring is typed", '(id: j, ...others) = (id: 7, name: "x", age: 3)\nprintln(others.age + "x")\n', "cannot apply `+`"),
+ ("anonymous destructuring reads rest", '(id: j, ...others) = (id: 7, name: "x", age: 3)\nprintln(others.age + 1)\n', "4"),
 ]
 fails = []
 for name, src, want in CASES:

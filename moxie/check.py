@@ -2313,6 +2313,9 @@ class Checker(RefineMixin):
             self.type_pat(p.pat, sc, self.ty_of_type(p.type), res)
         elif c is PTuple:
             items = p.items or []
+            if any(l is not None for l, _ in items) and any(q.__class__ is PRest for _, q in items):
+                self.type_field_pat(items, self.pat_fields(ty), sc, res, ty)         # `(id: i, ...rest)`
+                return
             if any(q.__class__ is PRest for _, q in items):
                 return
             comps = None
@@ -2325,6 +2328,9 @@ class Checker(RefineMixin):
                     comps = [self.ty_of_type(x.type) for x in fs]
             for (_, q), et in zip(items, comps or []):
                 self.type_pat(q, sc, et, res)
+        elif c is PCon and ty.__class__ is tuple and any(q.__class__ is PRest for _l, q in p.args or []) \
+                and len(p.path) == 1 and ty[0] == "named" and ty[1] == p.path[0] and ty[1] in self.tuples:
+            self.type_field_pat(p.args or [], self.pat_fields(ty), sc, res, ty)        # `Item(id: i, ...rest)` on a declared tuple
         elif c is PCon and ty.__class__ is tuple:
             fields = self.con_payload(p, ty)
             for i, (lab, q) in enumerate(p.args or []):
@@ -2333,6 +2339,43 @@ class Checker(RefineMixin):
                 else:
                     ft = list(fields.values())[i] if fields and i < len(fields) else None
                 self.type_pat(q, sc, ft, res)
+
+    def pat_fields(self, ty):
+        """[(name, type)] of a tuple type with named fields (an anonymous tuple, or a declared non-generic one), else None."""
+        if ty.__class__ is tuple and ty[0] == "tup" and len(ty) > 2 and ty[2] and all(isinstance(x, str) and x != "..." for x in ty[2]) \
+                and not any(x.__class__ is tuple and x and x[0] == "spread" for x in ty[1]):
+            return list(zip(ty[2], ty[1]))
+        if ty.__class__ is tuple and ty[0] == "named" and ty[1] in self.tuples and not self.tuples[ty[1]].tparams:
+            fs = self.tuples[ty[1]].fields or []
+            if fs and not any(getattr(x, "name", None) in (None, "...") for x in fs):
+                return [(x.name, self.ty_of_type(x.type)) for x in fs]
+        return None
+
+    def type_field_pat(self, args, fields, sc, res, ty):
+        """A pattern over named fields with a `...rest`: each label takes its field's type, a name without a label takes the next field,
+        and `...rest` is a labeled tuple of the fields left out.  A label the tuple does not have can never match."""
+        used, pos, rest = set(), 0, None
+        names = [n for n, _t in fields] if fields else None
+        for lab, q in args:
+            if q.__class__ is PRest:
+                rest = q
+                continue
+            ft = None
+            if lab is not None:
+                if names is not None and lab not in names:
+                    self.err(self.cur_line, f"`{tshow(ty)}` has no field `{lab}` (it has {', '.join('`%s`' % n for n in names)}): this pattern can never match")
+                elif names is not None:
+                    ft = dict(fields)[lab]
+                    used.add(lab)
+            elif names is not None and pos < len(names):
+                ft = fields[pos][1]
+                used.add(names[pos])
+                pos += 1
+            self.type_pat(q, sc, ft, res)
+        if rest is not None and rest.name:
+            left = [(n, t) for n, t in fields if n not in used] if fields else None
+            rt = ("tup", tuple(t for _n, t in left), tuple(n for n, _t in left)) if left is not None and all(t is not None for _n, t in left) else None
+            sc.vars[rest.name] = Var(rt, res, self.loop_depth)
 
     def con_payload(self, p, ty):
         """The payload field types (name -> type) of the constructor pattern `p` against a value of type `ty`, or None when unknown."""
