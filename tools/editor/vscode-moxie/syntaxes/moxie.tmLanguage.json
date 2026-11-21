@@ -1,0 +1,111 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Moxie",
+  "scopeName": "source.moxie",
+  "fileTypes": ["mxi"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#triple-string" },
+    { "include": "#string" },
+    { "include": "#char" },
+    { "include": "#numbers" },
+    { "include": "#declarations" },
+    { "include": "#keywords" },
+    { "include": "#constants" },
+    { "include": "#types" },
+    { "include": "#calls" },
+    { "include": "#operators" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.block.documentation.moxie", "match": "///.*$" },
+        { "name": "comment.line.double-slash.moxie", "match": "//.*$" },
+        { "name": "comment.block.moxie", "begin": "/\\*", "end": "\\*/",
+          "patterns": [{ "include": "#nested-block" }] }
+      ]
+    },
+    "nested-block": {
+      "begin": "/\\*", "end": "\\*/", "name": "comment.block.moxie",
+      "patterns": [{ "include": "#nested-block" }]
+    },
+    "interpolation": {
+      "patterns": [
+        { "name": "constant.character.escape.moxie", "match": "\\\\." },
+        { "name": "meta.interpolation.moxie", "begin": "\\$\\{", "end": "\\}",
+          "beginCaptures": { "0": { "name": "punctuation.section.interpolation.begin.moxie" } },
+          "endCaptures": { "0": { "name": "punctuation.section.interpolation.end.moxie" } },
+          "patterns": [{ "include": "$self" }] },
+        { "name": "variable.other.interpolated.moxie", "match": "\\$[A-Za-z_][A-Za-z0-9_]*" }
+      ]
+    },
+    "string": {
+      "name": "string.quoted.double.moxie",
+      "begin": "\"", "end": "\"",
+      "patterns": [{ "include": "#interpolation" }]
+    },
+    "triple-string": {
+      "name": "string.quoted.triple.moxie",
+      "begin": "\"\"\"", "end": "\"\"\"",
+      "patterns": [{ "include": "#interpolation" }]
+    },
+    "char": {
+      "name": "string.quoted.single.moxie",
+      "match": "'(\\\\.|[^'\\\\])'"
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.hex.moxie", "match": "\\b0[xX][0-9A-Fa-f_]+([iu](8|16|32|64))?\\b" },
+        { "name": "constant.numeric.binary.moxie", "match": "\\b0[bB][01_]+([iu](8|16|32|64))?\\b" },
+        { "name": "constant.numeric.float.moxie", "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*([eE][+-]?[0-9]+)?f?\\b" },
+        { "name": "constant.numeric.integer.moxie", "match": "\\b[0-9][0-9_]*([iu](8|16|32|64))?\\b" },
+        { "name": "constant.numeric.duration.moxie", "match": "(?<=[0-9])(ns|us|ms|s|m|h|d)\\b" }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        { "match": "\\b(fn|fiber)\\s+([a-z_][A-Za-z0-9_]*)",
+          "captures": { "1": { "name": "keyword.declaration.function.moxie" }, "2": { "name": "entity.name.function.moxie" } } },
+        { "match": "\\b(tuple|enum|interface|impl|unit|opaque\\s+type|union\\s+type|type)\\s+([A-Z][A-Za-z0-9_]*)",
+          "captures": { "1": { "name": "keyword.declaration.type.moxie" }, "2": { "name": "entity.name.type.moxie" } } },
+        { "match": "\\b(test)\\b", "name": "keyword.declaration.test.moxie" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        { "name": "keyword.control.moxie",
+          "match": "\\b(if|elif|else|when|while|for|in|is|return|break|continue|yield|go|try_go|do|then|select|seq|assert|match)\\b" },
+        { "name": "keyword.operator.word.moxie", "match": "\\b(and|or|not|as|where|with|using|lazy|update)\\b" },
+        { "name": "storage.modifier.moxie",
+          "match": "\\b(export|internal|priv|static|forward|inline|pure|impure|prints|parks|tailrec|unsafe|dynamic|foreign|pattern|union|opaque|mutable|move|ref|daemon|deriving|requires|ensures|invariant|closes|delegate|property|proxy|forall|import|step|todo|handle|any|sql)\\b" }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        { "name": "constant.language.moxie", "match": "\\b(true|false|self|Self)\\b" },
+        { "name": "constant.language.wildcard.moxie", "match": "(?<![A-Za-z0-9_])_(?![A-Za-z0-9_])" }
+      ]
+    },
+    "types": {
+      "patterns": [
+        { "name": "support.type.builtin.moxie",
+          "match": "\\b(Int|Int8|Int16|Int32|Int64|UInt|UInt8|UInt16|UInt32|UInt64|BigInt|Byte|Double|Float|Decimal|String|Bool|Char|Unit|Duration|List|Array|Ring|Set|Dict|Option|Result|Error|Stream|Chan|ChanR|ChanW|Future|FutureR|FutureW|Atom|Range|Secret)\\b" },
+        { "name": "entity.name.type.moxie", "match": "\\b[A-Z][A-Za-z0-9_]*\\b" }
+      ]
+    },
+    "calls": {
+      "match": "\\b([a-z_][A-Za-z0-9_]*)(?=\\()",
+      "name": "entity.name.function.call.moxie"
+    },
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.arrow.moxie", "match": "->|~>|<~" },
+        { "name": "keyword.operator.pipe.moxie", "match": "\\|>>|\\|>|<\\$>|<\\*>" },
+        { "name": "keyword.operator.spread.moxie", "match": "\\.\\.\\.|\\.\\.<|\\.\\." },
+        { "name": "keyword.operator.comparison.moxie", "match": "==|~=|!=|<=|>=|<|>" },
+        { "name": "keyword.operator.assignment.moxie", "match": "[-+*/%&|^]?=" },
+        { "name": "keyword.operator.arithmetic.moxie", "match": "[-+*/%&|^~]|<<|>>" }
+      ]
+    }
+  }
+}
