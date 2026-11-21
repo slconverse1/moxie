@@ -124,6 +124,7 @@ def _defs():
         "AliasDecl": "kind name tparams type vis where wtext",
         "UnitDecl": "name text vis",
         "QtyLit": "num text scale",
+        "QtyIn": "e text scale",
         "ImportDecl": "pkg alias names",
         "UsingDecl": "name expr",
         "InitDecl": "body",

@@ -259,6 +259,10 @@ class ExprParser(PBase):
                     self.next()
                     neg = True
                 self.next()
+                if not neg and t.val == "in" and self.peek().kind == "NAME" and self.peek().val in self.units:
+                    text = self.unit_text()                       # `d in km`: the number of kilometers in a quantity
+                    left = QtyIn(left, text, units_mod.scale_of(units_mod.parse_text(text) or [], self.units), line=line)
+                    continue
                 right = self._climb(tier + 1)
                 left = InOp(left, right, neg, line=line)
             elif t.kind == "BTICK":
@@ -646,6 +650,12 @@ class ExprParser(PBase):
         t = self.peek()
         if not (t.kind == "NAME" and t.sp and t.line == line and t.val in self.units):
             return lit
+        text = self.unit_text()
+        pairs = units_mod.parse_text(text) or []
+        return QtyLit(lit, text, units_mod.scale_of(pairs, self.units), line=line)
+
+    def unit_text(self):
+        """The unit expression at the cursor (`km`, `m/s^2`, `kg*m`), which starts with a declared unit."""
         text = self.next().val
         while True:
             t = self.peek()
@@ -656,8 +666,7 @@ class ExprParser(PBase):
                 text += self.next().val + self.next().val
             else:
                 break
-        pairs = units_mod.parse_text(text) or []
-        return QtyLit(lit, text, units_mod.scale_of(pairs, self.units), line=line)
+        return text
 
     def parse_arg0(self):
         t = self.peek()

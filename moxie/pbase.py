@@ -826,6 +826,7 @@ class PBase:
             else:
                 _, src, spec, line = part
                 sub = type(self)(tokenize(src, self.file), self.file)
+                sub.units = self.units                  # `${d in km}` in a string knows the units declared so far
                 for tk in sub.toks:
                     tk.line = line
                 outer = PBase.RECORD

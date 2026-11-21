@@ -63,6 +63,16 @@ CASES = [
  ("a scaled unit of an undeclared unit", "unit km = 1000 foo\n", "`foo` is not a unit"),
  ("a number alone is not a unit", "unit bare = 5\n", "is not a unit expression"),
  ("mixing scaled and different dimensions", SC + "bad = 1.0 km + 1.0 s\n", "cannot add"),
+ ("in converts a quantity out", SC + "d = 5.0 km + 500.0 m\nprintln(d in km)\nprintln(d in m)\n", "5.5\n5500.0"),
+ ("in with a compound unit", SC + "println(90.0 kmh in m/s)\n", "25.0"),
+ ("in on an Int quantity in its base unit stays an Int", SC + "println(3 km in m)\n", "3000"),
+ ("in on an Int quantity in a bigger unit is a Double", SC + "println(1500 m in km)\n", "1.5"),
+ ("in inside an interpolation", SC + 'println("${5.0 km in m} m")\n', "5000.0 m"),
+ ("in with parentheses before arithmetic", SC + "println((5.0 km in km) + 1.0)\n", "6.0"),
+ ("membership with in still works", SC + "if 2 in List(1, 2)\n  println(\"yes\")\n", "yes"),
+ ("a range with in still works", SC + "for x in 1..2\n  println(x)\n", "1\n2"),
+ ("in a different kind of unit", SC + "d = 5.0 km\nbad = d in s\n", "they are not the same kind of quantity"),
+ ("in on a plain number", SC + "bad = 3.0 in km\n", "needs a quantity on its left"),
 ]
 fails = []
 for name, src, want in CASES:

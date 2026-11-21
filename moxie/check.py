@@ -2498,6 +2498,20 @@ class Checker(RefineMixin):
             return None, None
         return self.qty_type(t, d), None
 
+    def e_QtyIn(self, n, sc):
+        t = self.ev(n.e, sc)[0]
+        pairs = units.parse_text(n.text)
+        d = self.dims_of(pairs, n.line) if pairs else None
+        if d is None or t is None:
+            return None, None
+        if not (t.__class__ is tuple and t[0] == "qty"):
+            self.err(n.line, f"`in {n.text}` needs a quantity on its left, found `{tshow(t)}`" + ("" if t not in ("Int", "Float") else ": give it a unit first, such as `2.0 m`"))
+            return None, None
+        if t[2] != d:
+            self.err(n.line, f"cannot write `{tshow(t)}` in `{n.text}`: they are not the same kind of quantity (`{tshow(t)}` and `{tshow(self.qty_type(t[1], d))}`)")
+            return None, None
+        return ("Int" if t[1] == "Int" and n.scale == 1 else "Float"), None
+
     def whole_scale_error(self, pairs, text, line):
         """An integer amount of a unit that is not a whole number of base units (`3 mile`, `Int[mile]`) cannot be stored exactly."""
         sc = units.scale_of(pairs, self.unit_scale)

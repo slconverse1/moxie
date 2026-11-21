@@ -479,6 +479,10 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             return Done(v * n.scale)
         return r
 
+    def ev_QtyIn(self, n, env):
+        v = yield from self.ev(n.e, env)
+        return v if n.scale == 1 else v / n.scale          # a quantity is stored in its base unit; `d in km` divides by the factor
+
     def ev_UnitDecl(self, n, env):
         return Done(UNIT)
 
