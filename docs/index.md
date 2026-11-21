@@ -23,22 +23,22 @@ You're welcome!
 You can try moxie three ways, from least to most effort. Remember that what you run is the reference interpreter, not a compiler, so nothing here produces a native program.
 
 1. **In your browser.** [Try moxie](try.html) runs a program on this site, with nothing to install. It's a sandbox: no network, no native libraries, and files that live only in the page.
-2. **Download the interpreter.** [moxie.zip](moxie.zip) is the whole interpreter, and it needs only Python 3.11 or later. Unzip it, save the lines below as `hello.mxi` next to the `moxie` folder, and run it from there:
+2. **Download the interpreter.** [moxie.zip](moxie.zip) is the whole interpreter, and it needs only Python 3.11 or later. Unzip it, save the next two lines below as `hello.mxi` next to the `moxie` folder, and run it from there:
 
-   ```
-   class_name = "Moxie 101"
-   println("Welcome to $class_name")
-   ```
+```
+class_name = "Moxie 101"
+println("Welcome to $class_name")
+```
 
-   ```
-   $ python3 -m moxie run hello.mxi
-   Welcome to Moxie 101
-   ```
+```
+$ python3 -m moxie run hello.mxi
+Welcome to Moxie 101
+```
 
-   `python3 -m moxie check hello.mxi` checks a program without running it, and `test` runs its `test` blocks. `python3 -m moxie repl` opens an interactive session: type an expression and see its value and type, and refer to earlier results as `res1`, `res2`, or `it`.
+`python3 -m moxie check hello.mxi` checks a program without running it, and `test` runs its `test` blocks. `python3 -m moxie repl` opens an interactive session: type an expression and see its value and type, and refer to earlier results as `res1`, `res2`, or `it`.
 3. **Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
 
-**On a Mac.** Check `python3 --version` in Terminal. If it is older than 3.11, install a current Python from python.org or with `brew install python`. Then:
+**From a terminal (macOS, Linux and other Unix).** This is way 2 again, with the shell commands spelled out. Check `python3 --version`. If it is older than 3.11, install a current Python: from python.org or with `brew install python` on a Mac, or with your distribution's package manager (`apt install python3`, `dnf install python3`, and so on; package names differ between systems). Then:
 
 ```
 mkdir -p ~/moxie-work && cd ~/moxie-work
@@ -47,7 +47,9 @@ unzip moxie.zip
 python3 -m moxie run hello.mxi
 ```
 
-with `hello.mxi` saved next to the `moxie` folder. To run moxie from any folder, add `export PYTHONPATH="$HOME/moxie-work:$PYTHONPATH"` and `alias moxie='python3 -m moxie'` to `~/.zshrc`, run `source ~/.zshrc`, and then `moxie run main.mxi` works anywhere. The interpreter reaches native libraries through `ctypes`, which the browser version cannot do.
+with `hello.mxi` saved next to the `moxie` folder. To run moxie from any folder, add `export PYTHONPATH="$HOME/moxie-work:$PYTHONPATH"` and `alias moxie='python3 -m moxie'` to your shell's startup file (`~/.zshrc` on a Mac, usually `~/.bashrc` on Linux), reload it (for example `source ~/.zshrc`), and then `moxie run main.mxi` works anywhere. Unix is the main platform for moxie, but Unix variants differ in small ways (the Python install step above, the shell's startup file), so expect to adjust a command here and there. The interpreter reaches native libraries through `ctypes`, which the browser version cannot do.
+
+**Windows.** Not yet tested. In principle it should work: install Python 3.11 or later from python.org, unzip `moxie.zip`, and run `py -m moxie run hello.mxi` from that folder in PowerShell. The `curl` and `alias` steps above are Unix shell commands and won't carry over, and native-library examples would need Windows DLLs.
 
 Everything above runs moxie, the GC-free dialect. To run [moxie/gc](gc/) instead, add `--gc` on the command line: `python3 -m moxie --gc run hello.mxi`.
 
@@ -113,6 +115,8 @@ By synthesizing these features, and untold others, into an elegant mash-up, moxi
 ## Immutability, and the fine print
 
 Moxie's values are immutable, and the guarantee is simple: **once a value exists, it never changes.** No operation, anywhere, alters a tuple, list, string, or any other value in place that another part of the program could see. (The one place a variable is written in place is a `mutable` block, below, and nothing outside it can ever observe the writes.) "Updating" something means building a new value and rebinding a name to it. That's why `p.score += 10` is shorthand for rebuilding `p`, why a `List` grows with `list += 4`, and why old versions of your data stay valid for as long as you hold them.
+
+A helpful mental model: read `x = 5` not as an assignment statement that changes a box, but as a statement of equality, as in math. It says that `x` *is* 5 from here on, just as "let x = 5" does in a proof, and nothing can quietly make it something else.
 
 The fine print:
 

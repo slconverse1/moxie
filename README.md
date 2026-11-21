@@ -18,6 +18,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Intro pages. "Get it running" now keeps the typed-in lines flush with the text (no stray restarted numbering), the "On a Mac" section became a terminal section for macOS, Linux and other Unix, with a note that Windows is untested, and the Immutability section says to read `x = 5` as a statement of equality, as in math.
+
 Dialect names. Internally, in notes, tests and commit messages, the GC-free dialect is **moxie/nc** ("no collector") and the collected one is **moxie/gc**; the site pages and the specs keep saying "moxie" for the default dialect and "GC-free moxie" where the contrast matters.
 
 Newest first.
