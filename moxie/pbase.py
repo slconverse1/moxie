@@ -676,9 +676,9 @@ class PBase:
                     if self.peek().kind == "NAME" and self.at_op(":", 1):
                         label = self.next().val
                         self.next()
-                    if self.at_op("..."):
+                    if self.at_op("...") or self.at_op("*"):
                         self.next()
-                        nm = None if self.at_op(",") or self.at_op(")") else self.next().val      # a bare `...` skips the rest
+                        nm = None if self.at_op(",") or self.at_op(")") else self.next().val      # a bare `...` (or `*`) skips the rest
                         items.append((label, PRest(nm, line=line)))
                     else:
                         items.append((label, self.parse_pattern_nested()))
@@ -781,9 +781,9 @@ class PBase:
         self.no_trailing = False
         while True:
             label = None
-            if self.at_op("..."):
+            if self.at_op("...") or self.at_op("*"):
                 self.next()
-                nm = None if self.at_op(",") or self.at_op(")") else self.next().val          # a bare `...` skips the rest
+                nm = None if self.at_op(",") or self.at_op(")") else self.next().val          # a bare `...` (or `*`) skips the rest
                 args.append((None, PRest(nm, line=self.peek().line)))
             else:
                 if dict_entries and self.peek().kind in ("NAME", "STR") and self.at_op(":", 1):

@@ -24,7 +24,7 @@ label : HASH ;
 binding : target_list [ type ] '=' expr { ( ',' | '=' ) expr } ;
 target_list : target { ',' target } ;
 target : ident | '_' | '(' [ target_item { ',' target_item } ] ')' | ident { '.' ident } '(' [ target_item { ',' target_item } ] ')' ;
-target_item : [ ident ':' ] target | '...' [ ident ] ;
+target_item : [ ident ':' ] target | ( '...' | '*' ) [ ident ] ;
 assign : lvalue ( '=' | '+=' | '-=' | '*=' | '/=' | '%=' ) expr ;
 lvalue : ( ident | 'self' ) { '(' [ args ] ')' | '.' ident | '.' INT } [ '@' ( INT | ident ) ] ;
 incr : lvalue ( '++' | '--' ) ;
@@ -74,7 +74,7 @@ titem : '...' | [ ident ] ':' expr | [ ident ':' ] [ '...' ] expr ;
 
 # ---------------------------------------------------------------- patterns
 pattern : ident '@' pattern_atom | pattern_atom ;
-pattern_atom : 'in' range_pat | 'not' 'in' range_pat | '_' | ident | literal | '-' literal | '^' ident | '^' '(' expr ')' | '...' [ ident ]
+pattern_atom : 'in' range_pat | 'not' 'in' range_pat | '_' | ident | literal | '-' literal | '^' ident | '^' '(' expr ')' | ( '...' | '*' ) [ ident ]
              | '(' [ pat_item { ',' pat_item } ] ')' | ident { '.' ident } '(' [ pat_item { ',' pat_item } ] ')'
              | ( '<' | '>' | '<=' | '>=' ) literal | 'in' range_pat | 'not' 'in' range_pat
              | literal ( '..' | '..=' | '..<' ) literal ;

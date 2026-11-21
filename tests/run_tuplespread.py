@@ -29,6 +29,15 @@ CASES = [
  ("a label an anonymous tuple lacks", 'when (a: 1, b: 2)\n  (c: x, ...r) -> println(1)\n', "has no field `c`"),
  ("anonymous destructuring is typed", '(id: j, ...others) = (id: 7, name: "x", age: 3)\nprintln(others.age + "x")\n', "cannot apply `+`"),
  ("anonymous destructuring reads rest", '(id: j, ...others) = (id: 7, name: "x", age: 3)\nprintln(others.age + 1)\n', "4"),
+ ("* is a short spelling of ... on a list", "when List(1, 2, 3)\n  List(a, *r) -> println(r)\n  _ -> println(0)\n", "List(2, 3)"),
+ ("a bare * skips the rest", "when List(1, 2, 3)\n  List(a, *) -> println(a)\n  _ -> println(0)\n", "1"),
+ ("* on a dict", "when Dict(a -> 1, b -> 2)\n  Dict(a -> x, *r) -> println(r)\n  _ -> println(0)\n", 'Dict("b" -> 2)'),
+ ("* on a tuple", T + "when it\n  Item(id: i, *rest) -> println(rest)\n", '(tags: List("a"), owner: "ada")'),
+ ("* in destructuring", '(id: j, *more) = (id: 7, name: "x", age: 3)\nprintln(more)\n', '(name: "x", age: 3)'),
+ ("* is typed like ...", T + "when it\n  Item(id: i, *rest) -> println(rest.nme)\n", "has no field `nme`"),
+ ("* nested in one pattern", 'p = (status: "ok", items: List((id: 1, tags: List("u", "b"), owner: "ada"), (id: 2, tags: List("l"), owner: "g")))\nwhen p\n  (status: "ok", items: List((id: f, tags: List(a, *o), *e), *rem), *top) -> println("${f} ${a} ${o} ${e} ${rem.len()} ${top}")\n  _ -> println("no")\n', '1 u List("b") (owner: "ada") 1 ()'),
+ ("a pattern over several lines", 'p = (status: "ok", n: 3)\nwhen p\n  (\n    status: "ok",\n    *rest\n  ) -> println(rest)\n  _ -> println("no")\n', "(n: 3)"),
+ ("* is still multiplication", "println(2 * 3)\n", "6"),
 ]
 fails = []
 for name, src, want in CASES:
