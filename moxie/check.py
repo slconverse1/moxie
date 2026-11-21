@@ -3242,12 +3242,12 @@ class Checker(RefineMixin):
                         and u[1] not in ("Duration",):
                     self.err(n.line, f"cannot apply `{op}` to `{u[1]}`: it has no `{op}` method (write `impl` with `fn {op}(self, other {u[1]}) {u[1]}`)")
                     return None, None
-            if op == "+" and a.__class__ is tuple and a[0] == "app" and a[1] in ("List", "Array", "Set", "Ring") and len(a[2]) == 1 \
+            if (op == "+" or op in ("-", "&", "^") and a.__class__ is tuple and a[1:2] == ("Set",)) and a.__class__ is tuple and a[0] == "app" and a[1] in ("List", "Array", "Set", "Ring") and len(a[2]) == 1 \
                     and a[1] not in self.tuples and a[1] not in self.enums and a[1] not in self.aliases:
                 el, num = a[2][0], {"Int", "Float", "Decimal"}
                 other = b[2][0] if b.__class__ is tuple and b[0] == "app" and b[1] in ("List", "Array", "Set", "Ring", "Stream") and len(b[2]) == 1 else b
                 if el in self.SCAL and other in self.SCAL and el != other and not (el in num and other in num and "Decimal" not in (el, other)):
-                    self.err(n.line, f"cannot add a `{tshow(other)}` to a `{tshow(a)}`: its elements are `{tshow(el)}`")
+                    self.err(n.line, (f"cannot add a `{tshow(other)}` to a `{tshow(a)}`" if op == "+" else f"cannot apply `{op}` to a `{tshow(a)}` and a `{tshow(other)}`") + f": its elements are `{tshow(el)}`")
                     return None, None
             for u, v in ((a, b), (b, a)):
                 un = n.l if u is a else n.r
@@ -7728,7 +7728,7 @@ class Checker(RefineMixin):
 
     # Builtins whose result type does not depend on what they are given.  A builtin that works on several kinds of value
     # (`upper` on a String or a Char, `floor` giving an Int or a Double) is left out: the checker has no overloads yet.
-    BUILTIN_RET = {"len": "Int", "trim": "String", "starts_with": "Bool", "ends_with": "Bool", "is_ok": "Bool", "is_err": "Bool",
+    BUILTIN_RET = {"is_subset": "Bool", "is_superset": "Bool", "is_disjoint": "Bool", "len": "Int", "trim": "String", "starts_with": "Bool", "ends_with": "Bool", "is_ok": "Bool", "is_err": "Bool",
                    "is_nan": "Bool", "is_inf": "Bool", "is_finite": "Bool", "show": "String", "sqrt": "Float",
                    "is_cancelled": "Bool", "hash": "Int", "hostname": "String", "cwd": "String", "os_name": "String",
                    "temp_dir": "String", "path_join": "String", "char_count": "Int", "grapheme_count": "Int"}

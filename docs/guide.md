@@ -948,6 +948,19 @@ println("${len(bigger)} ${len(same)} ${99 not in smaller}")
 
 Output: `4 3 true`
 
+Sets also have algebra: `+` is union, `-` difference, `&` intersection and `^` symmetric difference, and `is_subset`, `is_superset` and `is_disjoint` ask a question about two sets.
+
+```
+a = Set(1, 2, 3)
+b = Set(2, 3, 4)
+println(a - b)
+println(a & b)
+println(a ^ b)
+println(is_subset(Set(2, 3), a))
+```
+
+Output: `Set(1)`, `Set(2, 3)`, `Set(1, 4)`, `true`
+
 **5d. Dicts**
 
 ```

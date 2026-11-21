@@ -845,6 +845,21 @@ def b_contains(I, a, kw, ta):
     return I.contains(a[0], a[1])
 
 
+@bi("is_subset")
+def b_is_subset(I, a, kw, ta):
+    return all(k in a[1].items for k in a[0].items)
+
+
+@bi("is_superset")
+def b_is_superset(I, a, kw, ta):
+    return all(k in a[0].items for k in a[1].items)
+
+
+@bi("is_disjoint")
+def b_is_disjoint(I, a, kw, ta):
+    return not any(k in a[1].items for k in a[0].items)
+
+
 @bi("upper")
 def b_upper(I, a, kw, ta):
     return a[0].upper()

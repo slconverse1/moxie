@@ -842,6 +842,15 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
                 else:
                     d[r] = True
                 return SetV(d, l.cap)
+        if op in ("-", "&", "^") and isinstance(l, SetV):          # Set algebra: difference (or one element removed), intersection, symmetric difference
+            rs = r.items if isinstance(r, SetV) else {r: True}
+            if op == "-":
+                return SetV({k: True for k in l.items if k not in rs}, l.cap)
+            if op == "&":
+                return SetV({k: True for k in l.items if k in rs}, l.cap)
+            d = {k: True for k in l.items if k not in rs}
+            d.update({k: True for k in rs if k not in l.items})
+            return SetV(d, l.cap)
         if op == "*":
             if isinstance(l, Seq) and isinstance(r, int):
                 return self.new_seq(l, l.items * r)
