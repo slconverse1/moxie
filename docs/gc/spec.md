@@ -5,7 +5,7 @@ title: "Moxie/gc Spec"
 ---
 # MOXIE/GC SPEC
 
-moxie/gc is the garbage-collected dialect of moxie. No-GC moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
+moxie/gc is the garbage-collected dialect of moxie, a design language (a specification and a reference interpreter, not yet a production compiler). No-GC moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
 
 **What's different from moxie**
 

@@ -1,6 +1,6 @@
 # moxie
 
-Moxie is a language-design exercise: (mostly) compile-time type-safe, immutable, practical functional programming, Go-style channels and fibers, and, in the plain dialect, no garbage collector and no heap. A second dialect, moxie/gc, adds a collector; the two are kept apart because they make different promises. This repository holds the language documents and a reference interpreter written in plain Python 3.
+Moxie is a design language, a language-design exercise: (mostly) compile-time type-safe, immutable, practical functional programming, Go-style channels and fibers, and, in the plain dialect, no garbage collector and no heap. A second dialect, moxie/gc, adds a collector; the two are kept apart because they make different promises. This repository holds the language documents and a reference interpreter written in plain Python 3.
 
 - **Site:** https://slconverse1.github.io/moxie/ (the Site Intro, Tutorial, Mixer's Guide, Spec, and an in-browser "Try moxie" page)
 - **`docs/`** the documents, as the site's source: `index.md` (Site Intro), `tutorial.md`, `guide.md`, `spec.md`, and `gc/` for moxie/gc, the garbage-collected dialect (its Site Intro, Spec, and Guide)
@@ -17,6 +17,8 @@ Moxie is a language-design exercise: (mostly) compile-time type-safe, immutable,
 The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and nothing else. `INTERPRETER.md` lists what it checks and what it doesn't yet.
 
 ## Changes
+
+Design language. Moxie is now called a design language wherever it introduces itself: both intros, both Specs, both Guides and this README say that it is a language design (a specification and a reference interpreter), not yet a production compiler.
 
 Sized integers keep their width through inference. The checker used to give every `Int8`..`UInt64` the one type `Int` and kept the written width in a side note on variables, so a width reached through a generic call, a method of a generic tuple, a field of a generic tuple or a loop variable was lost and `first(xs) + u` (an `Int8` plus a `UInt8`) went unchecked. The width is now part of the checker type (`tys.Sized`, which still compares as `Int` everywhere else), so every route carries it and Spec 3's mixed-number rule is enforced on all of them. Methods of generic tuples now also have their result typed. `tests/run_numeric.py` has 18 new inference cases.
 

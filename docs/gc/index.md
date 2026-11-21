@@ -9,6 +9,8 @@ title: "moxie/gc"
 
 Allow us to introduce you to moxie/gc.
 
+First, plainly: moxie/gc is a **design language**. It is a language design, a complete specification with a working reference interpreter, and not yet a production compiler. Everything below describes the design.
+
 Moxie/gc is a (mostly) compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem. Where the compiler can't verify a type, it says so with a warning and shows how to write the code so the check happens at compile time instead of at run time (see the Spec, section 24a).
 
 Moxie/gc compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie/gc-to-hardware mapping is so tight, moxie/gc runs impossibly fast. Best of all, you never have to give a thought about memory: moxie/gc has a garbage collector (GC) built for short pauses. **[gc]**
