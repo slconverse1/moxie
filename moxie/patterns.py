@@ -250,15 +250,21 @@ class PatternsMixin:
         if v.__class__ is not TupleV:
             return False
         if any(l is not None for l, _ in items):
+            used = set()
+            rest = None
             for l, q in items:
                 if q.__class__ is PRest:
-                    continue                    # `(name: n, ...)`: the other fields are not looked at
+                    rest = q                    # `(name: n, ...)`: the other fields are not looked at; `...r` binds them
+                    continue
                 if l is None:
                     return False
                 if not v.names or l not in v.names:
                     return False
+                used.add(v.names.index(l))
                 if not self.pmatch(q, v.vals[v.names.index(l)], b, env):
                     return False
+            if rest is not None and rest.name:
+                b[rest.name] = self.rest_fields(v.vals, v.names, used)
             return True
         if len(items) != len(v.vals):
             return False
@@ -267,29 +273,43 @@ class PatternsMixin:
                 return False
         return True
 
+    @staticmethod
+    def rest_fields(vals, names, used):
+        """The fields a pattern left out, as a labeled tuple of what remains (`Item(id: i, ...rest)` binds `rest` to the other fields)."""
+        keep = [k for k in range(len(vals)) if k not in used]
+        return TupleV([vals[k] for k in keep], [names[k] for k in keep])
+
     def match_args(self, args, vals, names, b, env):
         """args: [(label, pat)]; vals/names: payload."""
         if args is None:
             return True
         i = 0
         n = len(vals)
+        used = set()
+        rest = None
         for label, q in args:
             if q.__class__ is PRest:
-                if q.name:
-                    b[q.name] = ListV(list(vals[i:]))
+                rest = (q, i)
                 i = n
                 continue
             if label is not None:
                 if not names or label not in names:
                     return False
+                used.add(names.index(label))
                 x = vals[names.index(label)]
             else:
                 if i >= n:
                     return False
+                used.add(i)
                 x = vals[i]
                 i += 1
             if not self.pmatch(q, x, b, env):
                 return False
+        if rest is not None and rest[0].name:
+            if names:
+                b[rest[0].name] = self.rest_fields(vals, names, used | set(range(rest[1])))
+            else:
+                b[rest[0].name] = ListV(list(vals[rest[1]:]))
         if args and not any(l is not None or q.__class__ is PRest for l, q in args) and len(args) != n:
             return False
         return True
