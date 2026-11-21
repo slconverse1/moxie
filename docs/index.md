@@ -24,8 +24,9 @@ You're welcome!
 
 You can try moxie three ways, from least to most effort. Remember that what you run is the reference interpreter, not a compiler, so nothing here produces a native program.
 
-1. **In your browser.** [Try moxie](try.html) runs a program on this site, with nothing to install. It's a sandbox: no network, no native libraries, and files that live only in the page.
-2. **Download the interpreter.** [moxie.zip](moxie.zip) is the whole interpreter, and it needs only Python 3.11 or later. Unzip it, save the next two lines below as `hello.mxi` next to the `moxie` folder, and run it from there:
+**1. In your browser.** [Try moxie](try.html) runs a program on this site, with nothing to install. It's a sandbox: no network, no native libraries, and files that live only in the page.
+
+**2. Download the interpreter.** [moxie.zip](moxie.zip) is the whole interpreter, and it needs only Python 3.11 or later. Unzip it, save the next two lines below as `hello.mxi` next to the `moxie` folder, and run it from there:
 
 ```
 class_name = "Moxie 101"
@@ -38,7 +39,8 @@ Welcome to Moxie 101
 ```
 
 `python3 -m moxie check hello.mxi` checks a program without running it, and `test` runs its `test` blocks. `python3 -m moxie repl` opens an interactive session: type an expression and see its value and type, and refer to earlier results as `res1`, `res2`, or `it`.
-3. **Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
+
+**3. Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
 
 **From a terminal (macOS, Linux and other Unix).** This is way 2 again, with the shell commands spelled out. Check `python3 --version`. If it is older than 3.11, install a current Python: from python.org or with `brew install python` on a Mac, or with your distribution's package manager (`apt install python3`, `dnf install python3`, and so on; package names differ between systems). Then:
 
