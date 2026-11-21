@@ -26,6 +26,16 @@ CASES = [
  ("a cast makes Int with Double fine", "n = 5\nx = 2.5\nprintln(cast[Double](n) * x)\n", "12.5"),
  ("a literal expression with Double", "x = 2.5\nprintln(x * (2 + 3))\n", "12.5"),
  ("a bounded Int with Double", "n Int[1..10] = 4\nx = 2.5\nprintln(n * x)\n", "10.0"),
+ ("assigning Int16 to Int8 needs a cast", "d Int16 = 6\ne Int8 = d\n", "`Int16` does not convert to `Int8`"),
+ ("assigning UInt8 to Int8 needs a cast", "k UInt8 = 6\nw Int8 = k\n", "`UInt8` does not convert to `Int8`"),
+ ("assigning Int8 to Int16 widens", "m Int8 = 6\nd Int16 = m\nprintln(d)\n", "6"),
+ ("assigning UInt8 to Int16 widens", "k UInt8 = 6\nz Int16 = k\nprintln(z)\n", "6"),
+ ("a sized Int8 is accepted for a Double parameter", "fn f(x Double) Double = x * 2.0\nm Int8 = 6\nprintln(f(m))\n", "12.0"),
+ ("an Int64 is not accepted for a Double parameter", "fn f(x Double) Double = x\nd Int64 = 6\nprintln(f(d))\n", "does not convert to `Double`"),
+ ("an Int16 argument for an Int8 parameter", "fn f(x Int8) Int8 = x\nd Int16 = 6\nprintln(f(d))\n", "`Int16` does not convert to `Int8`"),
+ ("an Int8 argument for an Int16 parameter", "fn f(x Int16) Int16 = x\nm Int8 = 6\nprintln(f(m))\n", "6"),
+ ("a cast narrows on purpose", "d Int16 = 6\ne Int8 = cast[Int8](d)\nprintln(e)\n", "6"),
+ ("a literal still fits a narrow type", "e Int8 = 100\nprintln(e)\n", "100"),
 ]
 fails = []
 for name, src, want in CASES:

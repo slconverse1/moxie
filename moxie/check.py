@@ -2100,6 +2100,25 @@ class Checker(RefineMixin):
         sb, bb = self.INTW[b]
         return (sa == sb and bb >= ba) or (not sa and sb and bb > ba)
 
+    def width_assign(self, expr, sc, tnode, line):
+        """A sized integer given to a place of another written width (`e Int8 = d` with `d Int16`, a `UInt8` passed as `Int8`): the same
+        fits rule as arithmetic.  True when the value is settled here (fits a `Double`, or reported), so the caller skips the general check."""
+        if tnode.__class__ is not TName or len(tnode.path) != 1 or tnode.groups or tnode.path[0] in self.tuples or tnode.path[0] in self.aliases:
+            return False
+        w = self.int_wt(expr, sc)
+        if w is None or w not in self.INTW:
+            return False
+        want = tnode.path[0]
+        if want in ("Double", "Float"):
+            return want == "Double" and self.int_fits(w, "Double")
+        if want not in self.INTW:
+            return False
+        self._csc = sc
+        if self.int_fits(w, want) or self.const_int(expr) is not None and expr.__class__ is not Name:
+            return False
+        self.err(line, f"`{w}` does not convert to `{want}`: not every `{w}` fits, so write `cast[{want}](x)` (or `try_cast[{want}](x)` to check)")
+        return True
+
     def check_num_mix(self, n, sc, lt, rt, a, b):
         """Mixed numbers: a value converts implicitly only when every value of its type fits the other side's type (Spec 3), so `Int8 + Int16`
         is an `Int16`, while `Int8 + UInt8`, `Int64 + UInt64` and `Int + Double` need a `cast`.  A literal takes the other side's type.
@@ -4086,7 +4105,8 @@ class Checker(RefineMixin):
             if missing:
                 self.err(n.line, f"`{tshow(bt)}` doesn't implement `{missing[0]}`, so it can't be stored as `any {' + '.join(names)}`")
         if n.ann is not None and n.op == "=":
-            self.compat(ann, t, c, n.line)
+            if not self.width_assign(n.value, sc, n.ann, n.line):
+                self.compat(ann, t, c, n.line)
             self.check_union_member(n.ann, t, n.line)
             m = self.union_member_tag(n.ann, t)
             if m is not None:
@@ -8527,7 +8547,8 @@ class Checker(RefineMixin):
                     and a.expr.__class__ is not Move and a.mod != "move":
                 self.err(n.line, f"parameter `{p.name}` is kept by the library; write `move {self.arg_name(a)}`")
             if p.type is not None:
-                self.compat(self.ty_of_type(p.type), t, c, n.line)
+                if not (self.cur_sc is not None and self.width_assign(a.expr, self.cur_sc, p.type, n.line)):
+                    self.compat(self.ty_of_type(p.type), t, c, n.line)
                 if p.type.__class__ is TName and p.type.path[-1] in self.FIT and isinstance(c, int) and not isinstance(c, bool) \
                         and p.type.path[-1] not in self.tuples and p.type.path[-1] not in self.aliases:
                     r = self.FIT[p.type.path[-1]]
