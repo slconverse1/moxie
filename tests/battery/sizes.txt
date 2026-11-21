@@ -44,5 +44,5 @@ fn g(m Int) Int = if m > 0 then pos(m) else 0
 println(g(1))
 ### try_cast result must be handled
 reject: mismatched types
-type alias Percent = Int[0..100]
+type Percent = Int[0..100]
 x Percent = try_cast[Percent](5)

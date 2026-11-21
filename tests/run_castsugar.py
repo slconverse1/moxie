@@ -8,7 +8,7 @@ CASES = [
  ("mixing the two in one file is an error", 'x = 70\nprintln([Int8](x))\nprintln(cast[Int8](x))\n', 2, "one spelling of a conversion per file"),
  ("mixing, long spelling first", 'x = 70\nprintln(cast[Int8](x))\nprintln([Int8](x))\n', 2, "already converts with `cast[T](x)`"),
  ("mixing inside a string interpolation", 'x = 70\nprintln(cast[Int8](x))\nprintln("${[Int8](x)}")\n', 2, "one spelling"),
- ("to a bounded alias", 'type alias Pct = Int[0..100]\nx = 70\np = [Pct](x)\nprintln([Int](p) + 1)\n', 0, "71"),
+ ("to a bounded alias", 'type Pct = Int[0..100]\nx = 70\np = [Pct](x)\nprintln([Int](p) + 1)\n', 0, "71"),
  ("in a lambda", 'println(List(1, 2).fmap((n) -> [Int32](n)))\n', 0, "List(1, 2)"),
  ("aborts like cast", 'x = 300\nprintln([Int8](x))\n', 1, "abort"),
  ("a constant that cannot fit is a compile error", 'println([Int8](300))\n', 2, "does not fit"),

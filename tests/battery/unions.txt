@@ -1,43 +1,43 @@
 ### value converts into a union
 ok: 1
-type union IS = Int | String
+type IS = Int | String
 x IS = 1
 println(x)
 ### value not in the union
 reject: 
-type union IS = Int | String
+type IS = Int | String
 x IS = true
 ### union does not convert back
 reject: 
-type union IS = Int | String
+type IS = Int | String
 x IS = 1
 y Int = x
 ### when over union missing a member
 reject: does not cover
-type union IS = Int | String
+type IS = Int | String
 fn f(x IS) Int = when x
   Int -> 1
 ### when over union complete
 ok
-type union IS = Int | String
+type IS = Int | String
 fn f(x IS) Int = when x
   Int -> 1
   String -> 2
 ### when over union with type patterns needs member names
 reject: 
-type union IS = Int | String
+type IS = Int | String
 fn f(x IS) Int = when x
   Bool -> 1
   _ -> 2
 ### repeated union member
 reject: 
-type union IS = Int | Int
+type IS = Int | Int
 ### union of unknown type
 reject: 
-type union IS = Int | Nope
+type IS = Int | Nope
 ### union argument accepts members
 ok: 3
-type union IS = Int | String
+type IS = Int | String
 fn f(x IS) Int = when x
   Int -> x
   String -> 0
@@ -48,7 +48,7 @@ tuple A()
 tuple B()
 impl A
   fn hi() Int = 1
-type union AB = A | B
+type AB = A | B
 fn f(x AB) Int = x.hi()
 ### method on union with all members
 ok: 1
@@ -58,6 +58,6 @@ impl A
   fn hi() Int = 1
 impl B
   fn hi() Int = 2
-type union AB = A | B
+type AB = A | B
 fn f(x AB) Int = x.hi()
 println(f(A()))

@@ -12,7 +12,7 @@ BAD = [
  ("a constant built from constants", FIB + 'N = fib(4) * 2\nb Array[Int][N + 1] = Array(1)\n', "expected `Array[Int][7]`, found `Array[Int][1]`"),
  ("an abort is a compile error", PORT + 'p = port(99999)\n', "evaluating `port(99999)` at compile time aborts: assertion failed"),
  ("a runaway recursion", DEEP + 'x = deep(0)\n', "recursed too deeply"),
- ("a function in a type-level number", FIB + 'type alias Fixed[T] = when T\n  X -> Array[Int][fib(4)]\nc Fixed[Int] = Array(1)\n', "expected `Array[Int][3]`, found `Array[Int][1]`"),
+ ("a function in a type-level number", FIB + 'type Fixed[T] = when T\n  X -> Array[Int][fib(4)]\nc Fixed[Int] = Array(1)\n', "expected `Array[Int][3]`, found `Array[Int][1]`"),
 ]
 GOOD = [
  ("a size from a function runs", FIB + 'a Array[Int][fib(5)] = Array(1, 2, 3, 4, 5)\nprintln(a(4))\n', "5"),
@@ -49,7 +49,7 @@ report("eval_fuel stops a slow call", "did not finish in 100 steps" in o, o)
 rc, o = run("check", FIB + 'a Array[Int][fib(12)] = Array(1)\n', '[program]\neval_fuel = 0\n')
 report("eval_fuel must be 1 or more", "eval_fuel must be a whole number" in o, o)
 PKG = 'export fn big(n Int) Bool\n  n > 3\nexport fn double(n Int) Int\n  n * 2\nexport fn noisy(n Int) Int\n  println(n)\n  n\n'
-GUARD = 'type alias Pad[N] = when N\n  M if %s(M) -> Array[Int][M]\n  M -> Array[Int][3]\n'
+GUARD = 'type Pad[N] = when N\n  M if %s(M) -> Array[Int][M]\n  M -> Array[Int][3]\n'
 
 
 def run_pkg(cmd, src):

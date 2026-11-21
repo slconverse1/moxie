@@ -1,11 +1,11 @@
-"""Type functions: `type alias F[T] = when T: pattern -> type`, matching, recursion, numbers, fuel.  Run: python3 tests/run_typefun.py"""
+"""Type functions: `type F[T] = when T: pattern -> type`, matching, recursion, numbers, fuel.  Run: python3 tests/run_typefun.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-ELEM = 'type alias Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n'
-CONCAT = 'type alias Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n'
-LENGTH = 'type alias Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n'
-SHRINK = 'type alias Shrink[T] = when T\n  Array[X][N] -> Array[X][N - 1]\n'
+ELEM = 'type Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n'
+CONCAT = 'type Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n'
+LENGTH = 'type Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n'
+SHRINK = 'type Shrink[T] = when T\n  Array[X][N] -> Array[X][N - 1]\n'
 BOX = 'tuple Box[T]\n  v T\n'
 BAD = [
  ("Elem of a List", ELEM + 'a Elem[List[String]] = 3\n', "expected `String`, found `Int`"),
@@ -16,9 +16,9 @@ BAD = [
  ("size arithmetic in a result", SHRINK + 'd Shrink[Array[Int][3]] = Array(1, 2, 3)\n', "expected `Array[Int][2]`, found `Array[Int][3]`"),
  ("a stuck type is only itself", ELEM + 'fn f[C](x C) Elem[C]\n  x\n', "expected `Elem[C]`, found `C`"),
  ("a type function in a result type", ELEM + 'fn f(xs List[Int]) Elem[List[Int]]\n  "s"\n', "expected `Int`, found `String`"),
- ("the fuel stops a runaway", 'type alias Spin[T] = when T\n  X -> Spin[(X, X)]\ns Spin[Int] = 1\n', "grew past the size limit"),
- ("the fuel stops a slow one", 'type alias Count[T] = when T\n  X -> Count[Array[X][1]]\ns Count[Int] = 1\n', "did not finish in 64 reductions"),
- ("an arm that does not shrink is warned about", 'type alias Spin[T] = when T\n  X -> Spin[(X, X)]\n', "which is not a piece of what its arm matched"),
+ ("the fuel stops a runaway", 'type Spin[T] = when T\n  X -> Spin[(X, X)]\ns Spin[Int] = 1\n', "grew past the size limit"),
+ ("the fuel stops a slow one", 'type Count[T] = when T\n  X -> Count[Array[X][1]]\ns Count[Int] = 1\n', "did not finish in 64 reductions"),
+ ("an arm that does not shrink is warned about", 'type Spin[T] = when T\n  X -> Spin[(X, X)]\n', "which is not a piece of what its arm matched"),
 ]
 GOOD = [
  ("Elem of a List", ELEM + 'a Elem[List[String]] = "s"\nprintln(a)\n', "s"),
@@ -29,16 +29,16 @@ GOOD = [
  ("size arithmetic", SHRINK + 'c Shrink[Array[Int][3]] = Array(1, 2)\nprintln(c(1))\n', "2"),
  ("an arm that shrinks gets no warning", LENGTH + 'println("ok")\n', "ok"),
 ]
-PAD = 'type alias Pad[N] = when N\n  M if M > 3 -> Array[Int][M]\n  M if M <= 3 -> Array[Int][3]\n'
-COL = 'type alias Col[K] = when K\n  "id" -> Int\n  "name" -> String\n'
-SAME = 'type alias Same[A, B] = when A\n  X if X == B -> Bool\n  X -> Unit\n'
+PAD = 'type Pad[N] = when N\n  M if M > 3 -> Array[Int][M]\n  M if M <= 3 -> Array[Int][3]\n'
+COL = 'type Col[K] = when K\n  "id" -> Int\n  "name" -> String\n'
+SAME = 'type Same[A, B] = when A\n  X if X == B -> Bool\n  X -> Unit\n'
 BAD += [
  ("a guard picks the arm: big", PAD + 'c Pad[5] = Array(1, 2)\n', "expected `Array[Int][5]`, found `Array[Int][2]`"),
  ("a guard picks the arm: small", PAD + 'c Pad[2] = Array(1, 2)\n', "expected `Array[Int][3]`, found `Array[Int][2]`"),
  ("a string as a type", COL + 'd Col["id"] = "x"\n', "expected `Int`, found `String`"),
  ("no string arm", COL + 'f Col["zip"] = 1\n', "no arm of `Col` matches `\"zip\"`"),
  ("== in a guard compares types", SAME + 'g Same[Int, String] = true\n', "expected `Unit`, found `Bool`"),
- ("a guard that is not a comparison", 'type alias T[N] = when N\n  M if M -> Int\n  M -> Unit\nx T[1] = 1\n', "a guard in a type function compares"),
+ ("a guard that is not a comparison", 'type T[N] = when N\n  M if M -> Int\n  M -> Unit\nx T[1] = 1\n', "a guard in a type function compares"),
 ]
 GOOD += [
  ("guards: the large arm", PAD + 'a Pad[5] = Array(1, 2, 3, 4, 5)\nprintln(a(4))\n', "5"),
@@ -46,8 +46,8 @@ GOOD += [
  ("a string arm", COL + 'e Col["name"] = "x"\nprintln(e)\n', "x"),
  ("== in a guard: equal types", SAME + 'g Same[Int, Int] = true\nprintln(g)\n', "true"),
 ]
-GET = 'type alias Get[R, K] = when R\n  (K T, ...Rest) -> T\n  (_ _, ...Rest) -> Get[Rest, K]\nfn get[R, K](row R, key K) Get[R, K]\n  todo\n'
-NAMES = 'type alias Names[R] = when R\n  () -> ()\n  (k _, ...Rest) -> (k, ...Names[Rest])\n'
+GET = 'type Get[R, K] = when R\n  (K T, ...Rest) -> T\n  (_ _, ...Rest) -> Get[Rest, K]\nfn get[R, K](row R, key K) Get[R, K]\n  todo\n'
+NAMES = 'type Names[R] = when R\n  () -> ()\n  (k _, ...Rest) -> (k, ...Names[Rest])\n'
 USER = 'tuple User\n  id Int\n  name String\n  zip Int\n'
 BAD += [
  ("get finds a field by name: wrong type", GET + USER + 'u = User(id: 1, name: "a", zip: 3)\nx Int = get(u, "name")\n', "expected `Int`, found `String`"),
@@ -58,7 +58,7 @@ BAD += [
 GOOD += [
  ("get finds a field by name", GET + USER + 'fn look(u User) Unit\n  y String = get(u, "name")\n  z Int = get(u, "zip")\n  println(y)\nprintln("ok")\n', "ok"),
 ]
-NAMED = 'interface Named\n  fn name() String\ntuple Dog\n  n String\nimpl Named for Dog\n  fn name() String = n\ntype alias Label[T] = when T\n  X Named -> String\n  _ -> Int\n'
+NAMED = 'interface Named\n  fn name() String\ntuple Dog\n  n String\nimpl Named for Dog\n  fn name() String = n\ntype Label[T] = when T\n  X Named -> String\n  _ -> Int\n'
 BAD += [
  ("X: Iface matches an implementer", NAMED + 'c Label[Dog] = 3\n', "expected `String`, found `Int`"),
  ("X: Iface skips a non-implementer", NAMED + 'd Label[Bool] = "s"\n', "expected `Int`, found `String`"),
@@ -93,7 +93,7 @@ BAD += [
 GOOD += [
  ("an any local agrees with itself and its alias", ANY + MK + 'fn f(a any Container) Unit\n  x any Container = make()\n  x.put(x.first())\n  y = a\n  y.put(a.first())\nprintln("ok")\n', "ok"),
 ]
-BIG = 'fn big(n Int) Bool\n  n > 3\ntype alias Pad2[N] = when N\n  M if big(M) -> Array[Int][M]\n  M -> Array[Int][3]\n'
+BIG = 'fn big(n Int) Bool\n  n > 3\ntype Pad2[N] = when N\n  M if big(M) -> Array[Int][M]\n  M -> Array[Int][3]\n'
 BAD += [
  ("a guard that calls a function: true", BIG + 'a Pad2[5] = Array(1, 2)\n', "expected `Array[Int][5]`, found `Array[Int][2]`"),
  ("a guard that calls a function: false", BIG + 'b Pad2[2] = Array(1, 2)\n', "expected `Array[Int][3]`, found `Array[Int][2]`"),
@@ -108,11 +108,11 @@ DESC = 'fn describe(x any Named + Aged) String\n  "${x.name()} ${x.age()}"\n'
 BAD += [
  ("an intersection needs every interface", NA + DESC + 'println(describe(Dog(n: "rex")))\n', "`Dog` doesn't implement `Aged`, which `any Named + Aged` needs for `x`"),
  ("a single any is checked too", NA + 'fn f(x any Aged) Int\n  x.age()\nprintln(f(Dog(n: "r")))\n', "`Dog` doesn't implement `Aged`"),
- ("X: A + B matches only both", NA + 'type alias Kind[T] = when T\n  X Named + Aged -> String\n  _ -> Int\nb Kind[Dog] = "s"\n', "expected `Int`, found `String`"),
+ ("X: A + B matches only both", NA + 'type Kind[T] = when T\n  X Named + Aged -> String\n  _ -> Int\nb Kind[Dog] = "s"\n', "expected `Int`, found `String`"),
 ]
 GOOD += [
  ("an intersection takes a type with both", NA + DESC + 'println(describe(Cat(n: "tom", a: 3)))\n', "tom 3"),
- ("X: A + B matches a type with both", NA + 'type alias Kind[T] = when T\n  X Named + Aged -> String\n  _ -> Int\na Kind[Cat] = "s"\nprintln(a)\n', "s"),
+ ("X: A + B matches a type with both", NA + 'type Kind[T] = when T\n  X Named + Aged -> String\n  _ -> Int\na Kind[Cat] = "s"\nprintln(a)\n', "s"),
 ]
 fails = []
 

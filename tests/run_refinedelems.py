@@ -2,7 +2,7 @@
 Run: python3 tests/run_refinedelems.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-POS = 'type alias Pos = Int where self > 0\n'
+POS = 'type Pos = Int where self > 0\n'
 CASES = [
  ('a parameter of refined elements accepts good ones', POS + 'fn total(xs List[Pos][3]) Int\n  reduce(0, (a, b) -> a + b, xs)\nprintln(total(List(1, 2, 3)))\n', 0, '6'),
  ('a parameter of refined elements aborts on a bad one', POS + 'fn total(xs List[Pos][3]) Int\n  reduce(0, (a, b) -> a + b, xs)\nprintln(total(List(1, 0, 3)))\n', 1, 'requires failed in total'),

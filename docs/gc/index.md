@@ -464,12 +464,12 @@ This prints `app info: 12:00 started` and `app ERROR: failed`. The GC-free diale
 
 An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from five other tools, and moxie has all five. Modularity (above) covered two of them, the interface and the closure; this section covers the rest.
 
-**An opaque type protects an invariant.** `type opaque` is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules.
+**An opaque type protects an invariant.** opaque type is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules.
 
 ```
 tuple AccountData
   balance Double
-type opaque Account = AccountData
+opaque type Account = AccountData
 
 export fn open_account(initial Double) Result[Account, Error]
   if initial < 0
@@ -573,7 +573,7 @@ This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds
 
 | Need | Moxie's tool | Mutability |
 | --- | --- | --- |
-| Enforce a rule about a value | `type opaque` with `export`ed functions | Immutable |
+| Enforce a rule about a value | opaque type with `export`ed functions | Immutable |
 | Hide a private counter or handle | A closure over an `Atom`, or a tuple field | Only the `Atom` |
 | Thread state through a pipeline | `ref` parameters, returned tuples (State in moxie/gc) | Immutable |
 | An in-place algorithm | A `mutable` block | Local only, never visible |
@@ -1916,7 +1916,7 @@ begin(0)    // where go calls withdraw(acct, n) with n = 0 at run time
 - **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them: put `keep_in_release = true` under `[contracts]` in `Moxie.toml` to leave them on in a release build.
 - **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a Array[T][N]) T` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e Array[Int][3]`, so the check can happen at compile time instead.
 - **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
-- **Refined parameters and aliases.** A `where` after a parameter's type (`i Int where i >= 0 and i < len(xs)`) is a precondition the compiler tries to *prove* at every call, from the tests and bindings it can see; what it can't prove is a compile error. A condition you reuse can be named with a refined alias, `type alias Pos = Int where self > 0`, and then used on parameters (`n Pos`), annotated bindings (`x Pos = n`), results (`ensures` on `result`), and fields (an `invariant` on the field). Anything the compiler can't see is still checked when the program runs.
+- **Refined parameters and aliases.** A `where` after a parameter's type (`i Int where i >= 0 and i < len(xs)`) is a precondition the compiler tries to *prove* at every call, from the tests and bindings it can see; what it can't prove is a compile error. A condition you reuse can be named with a refined alias, `type Pos = Int where self > 0`, and then used on parameters (`n Pos`), annotated bindings (`x Pos = n`), results (`ensures` on `result`), and fields (an `invariant` on the field). Anything the compiler can't see is still checked when the program runs.
 - **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
 - **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
 
@@ -1927,15 +1927,15 @@ Eiffel made contracts famous. In moxie they sit beside the types, and the checke
 Most languages let you write functions on values. Moxie also lets you write functions on *types*, and run them while the compiler checks your program. A type alias whose body is a `when` is a function that takes a type apart and builds another, with an arm for each shape:
 
 ```
-type alias Elem[T] = when T
+type Elem[T] = when T
   List[X] -> X
   Array[X][N] -> X
 
-type alias Concat[A, B] = when A
+type Concat[A, B] = when A
   () -> B
   (H, ...T) -> (H, ...Concat[T, B])
 
-type alias Length[T] = when T
+type Length[T] = when T
   () -> 0
   (H, ...Rest) -> 1 + Length[Rest]
 
@@ -1943,14 +1943,14 @@ tuple User
   id Int
   name String
 
-type alias Get[R, K] = when R
+type Get[R, K] = when R
   (K T, ...Rest) -> T
   (_ _, ...Rest) -> Get[Rest, K]
 
 fn big(n Int) Bool
   n > 3
 
-type alias Pad[N] = when N
+type Pad[N] = when N
   M if big(M) -> Array[Int][M]
   M -> Array[Int][3]
 
@@ -1976,10 +1976,10 @@ Scala does much of this with implicits and inline code, and C++ with templates. 
 
 ## 28. Run-time metadata, only where it's needed
 
-Moxie keeps type information at run time only for values whose type is chosen at run time. An enum is a one-byte tag plus its largest case, a `type union` is a tag plus its largest member, and an `any Interface` value is a tag plus a payload. Everything else, such as an `Int`, a `String`, or a tuple, carries nothing, because the compiler already knows its type. The tag is what lets `when` take a value apart by type, with an action for each:
+Moxie keeps type information at run time only for values whose type is chosen at run time. An enum is a one-byte tag plus its largest case, a union type is a tag plus its largest member, and an `any Interface` value is a tag plus a payload. Everything else, such as an `Int`, a `String`, or a tuple, carries nothing, because the compiler already knows its type. The tag is what lets `when` take a value apart by type, with an action for each:
 
 ```
-type union Value = Int | String
+type Value = Int | String
 fn describe(v Value) String
   when v
     n@Int -> "the number ${n + 1}"

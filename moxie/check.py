@@ -397,7 +397,7 @@ class Checker(RefineMixin):
         self.in_tfun = False
         self.any_params = {}             # inside a function: parameter name -> its type (an ('any', iface, key) for `any I`)
         self.any_vars = {}               # Var of a parameter typed `any I` -> ('any', iface, key)
-        self.union_expect = {}           # id of an `if`/`when` whose value goes where a `type union` is expected -> its members
+        self.union_expect = {}           # id of an `if`/`when` whose value goes where a union type is expected -> its members
         USER_NAMES[0] = self.fns
         self.rx_names = set()           # the regex package's `Matches` / `Finds`, once imported by name
         self.recs = {}                   # `pattern fn` name -> its FnDecl
@@ -409,8 +409,8 @@ class Checker(RefineMixin):
         self.tail_eq = {}                # id of a tail expression -> the GADT type equations its `if` branch learned
         self.tail_ctx = {}               # id of a tail expression inside a narrowed `if` branch -> (its scope, path overrides)
         self.narrow_paths = {}           # (id of a Var, field names) -> the narrowed type inside an `if p.f is T` branch
-        self.union_paths = {}            # id of a `p.f` node whose field has a `type union` -> its members
-        self.union_vars = {}             # Var of a parameter typed with a `type union` -> the names of its members
+        self.union_paths = {}            # id of a `p.f` node whose field has a union type -> its members
+        self.union_vars = {}             # Var of a parameter typed with a union type -> the names of its members
         self.assoc = {}                  # (type name, member) -> the written type of an associated type
         self.consts = {}                 # top-level constant bindings the compiler could evaluate
         self.tf_fuel = TF_FUEL
@@ -1407,7 +1407,7 @@ class Checker(RefineMixin):
              tuple(f.name for f in td.fields or []))
         return r
 
-    # ------------------------------------------------------------ type functions (`type alias F[T] = when T: ...`)
+    # ------------------------------------------------------------ type functions (`type F[T] = when T: ...`)
     def tfun(self, name):
         """(parameter names, scrutinee type, [(pattern, result)]) for a type function, built once from its declaration."""
         tf = self.tfuns.get(name)
@@ -2726,7 +2726,7 @@ class Checker(RefineMixin):
         return "Bool", None
 
     def union_members(self, t, depth=0):
-        """The names of the members of a written type that is a `type union` (a nested union flattened), else None."""
+        """The names of the members of a written type that is a union type (a nested union flattened), else None."""
         if depth > 6:
             return None
         if t.__class__ is TUnion:
@@ -5182,7 +5182,7 @@ class Checker(RefineMixin):
         return {"println", "print", "show", "dbg", "assert", "assert_eq", "len", "min", "max", "ok", "fail", "swap"}
 
     def generic_union_cover(self, n, dn):
-        """`when c` where `c` is written as a generic `type union` of enums and tuples (`Cmds[A] = Say[A] | Ask[A]`, the commands of a
+        """`when c` where `c` is written as a generic union type of enums and tuples (`Cmds[A] = Say[A] | Ask[A]`, the commands of a
         `freer.Prog[Cmds, A]`): every case of every member must be handled, or the value of the missing one aborts at run time."""
         if dn.__class__ is not TName or len(dn.path) != 1 or dn.groups:
             return
@@ -5279,7 +5279,7 @@ class Checker(RefineMixin):
 
     def decl_node(self, e, sc, depth=0):
         """The written type of an expression, where one was written: a parameter or annotated local, the result of a function, a
-        field of a tuple, an element of a declared List or Array.  The type system does not carry `type union` types, so this
+        field of a tuple, an element of a declared List or Array.  The type system does not carry union type types, so this
         is how a `when` finds the union its value has."""
         c = e.__class__
         if depth > 4:
@@ -5404,7 +5404,7 @@ class Checker(RefineMixin):
         return self.decl_node(b.e, sc, depth)
 
     def union_cover(self, n, sc, st=None):
-        """A `when` on a value typed with a `type union` (a parameter, a local, a call, a field, a list element) must name every
+        """A `when` on a value typed with a union type (a parameter, a local, a call, a field, a list element) must name every
         member (or have a `_` or binding arm). A pattern this does not recognize ends the check without an error, so a union
         holding an enum may be covered by its cases."""
         members = None
@@ -6287,7 +6287,7 @@ class Checker(RefineMixin):
         return None
 
     def generic_members(self):
-        """The written members with type arguments (`List[Int]`) of every `type union`, by their text without spaces."""
+        """The written members with type arguments (`List[Int]`) of every union type, by their text without spaces."""
         if getattr(self, "_gm_n", -1) != len(self.aliases):
             self._gm = {}
             for a in self.aliases.values():
@@ -7746,7 +7746,7 @@ class Checker(RefineMixin):
             self.err(st.line, f"`deriving hash` on `{st.name}` needs `eq` in the same header, so equal values have equal hashes")
 
     def union_member_has(self, member, mname=None, iface=None):
-        """For one written member of a `type union` (`Mul[Full]`, `arith.Lit`): True or False when the checker can tell whether it has the
+        """For one written member of a union type (`Mul[Full]`, `arith.Lit`): True or False when the checker can tell whether it has the
         method `mname` (or implements `iface`), None when the member is not a declared type or this can't be told."""
         base = member.split("[")[0].strip()
         last = base.split(".")[-1]
@@ -7894,7 +7894,7 @@ class Checker(RefineMixin):
             self.compat(pt, at, ac, getattr(a.expr, "line", 0) or n.line)
 
     def check_union_method(self, n, sc):
-        """`e.pretty(...)` where `e` is a value of a `type union`: every member must have the method, or the call fails at run time for the
+        """`e.pretty(...)` where `e` is a value of a union type: every member must have the method, or the call fails at run time for the
         member that has none."""
         fn = n.fn
         if fn.__class__ is not Field or fn.obj.__class__ is not Name:
@@ -8202,7 +8202,7 @@ class Checker(RefineMixin):
     def need_hash(self, name, line, what):
         al = self.aliases.get(name)
         if al is not None and getattr(al, "kind", None) == "union" and al.type.__class__ is TUnion:
-            # a `type union` is hashable when every member is: there is nothing to derive on it
+            # a union type is hashable when every member is: there is nothing to derive on it
             for m in al.type.members:
                 mn = m.path[0] if m.__class__ is TName and len(m.path) == 1 else None
                 if mn in ("Double", "Float", "LongDouble"):
@@ -8483,7 +8483,7 @@ class Checker(RefineMixin):
 
     def union_of_children(self, td, arg_types):
         """`Mul(Lit(3), Add(...))` where the children are different types: a tuple with one type parameter whose children are the members of
-        a `type union` that lists `Mul[Union]` (an open data type, Guide 24n) is a `Mul[Union]`.  The union that fits every argument; "many"
+        a union type that lists `Mul[Union]` (an open data type, Guide 24n) is a `Mul[Union]`.  The union that fits every argument; "many"
         when several unions fit (the expected type decides, and the checker leaves the call unchecked); None when none does."""
         if len(td.tparams or []) != 1:
             return None
@@ -8872,7 +8872,7 @@ class Checker(RefineMixin):
                     self.err(line, f"`{name}` has no `{want}`, which `{fd.name}` needs of `{u}` (`{u} Has[{x}]`): add it to the union")
 
     def union_bases(self, tx):
-        """The base names of the members of a declared `type union`, generic or not (`Say[A] | Ask[A]` gives {Say, Ask}), else None."""
+        """The base names of the members of a declared union type, generic or not (`Say[A] | Ask[A]` gives {Say, Ask}), else None."""
         a = self.aliases.get(tx.path[0])
         if a is None or a.kind != "union":
             return None

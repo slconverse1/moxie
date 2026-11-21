@@ -6,7 +6,7 @@ from .ast import *   # noqa
 from . import units as units_mod
 
 EFFMODS = ("pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic", "pattern")        # soft: only modifiers when a declaration follows
-MODS = {"unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure", "pattern"}
+MODS = {"opaque", "unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure", "pattern"}
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
@@ -207,7 +207,7 @@ class Parser(ExprParser):
                 return self.parse_foreign()
             if v == "import":
                 return self.parse_import()
-            if v == "type" and self.peek(1).kind == "NAME" and self.peek(1).val in ("alias", "opaque", "union"):
+            if v == "type" and self.is_type_decl(0):
                 return self.parse_type_decl([])
             if v == "unit" and self.peek(1).kind == "NAME" and self.is_unit_decl():
                 return self.parse_unit_decl([])
@@ -528,23 +528,39 @@ class Parser(ExprParser):
         self.units[name] = units_mod.decl_scale(text, self.units)
         return UnitDecl(name, text, mods[0] if mods else None, line=line)
 
+    def is_type_decl(self, i):
+        """`type Name = ...` or `type Name[T] = ...` at token `i`.  The old forms (`type alias Name`, `type opaque Name`,
+        `type union Name`) are an error that says what to write."""
+        a, b = self.peek(i + 1), self.peek(i + 2)
+        if a.kind != "NAME":
+            return False
+        if a.val in ("alias", "opaque", "union") and b.kind == "NAME":
+            self.err(f"`type {a.val} {b.val}` is no longer a form: write " + {
+                "alias": f"`type {b.val} = ...`", "opaque": f"`opaque type {b.val} = ...`",
+                "union": f"`type {b.val} = A | B` (a `|` between types makes a union)"}[a.val])
+        return b.kind == "OP" and b.val in ("=", "[")
+
     def parse_type_decl(self, mods):
         line = self.next().line  # type
-        kind = self.next().val
         name = self.expect_ident("a type name").val
         tparams = []
         if self.at_op("["):
             tparams = self.parse_tparams_v2()
         self.expect_op("=")
+        lead = self.eat_op("|")                          # `type One = | Say`: a leading bar makes a union of one member
         if self.at_name("when"):
             typ = self.parse_type_match()
         else:
             typ = self.parse_type()
+            if lead and typ.__class__ is not TUnion:
+                typ = TUnion([typ], line=line)
+        kind = "opaque" if "opaque" in mods else "union" if typ.__class__ is TUnion else "alias"
+        mods = [m for m in mods if m != "opaque"]
         where = wtext = None
         if kind == "alias" and self.at_name("where"):
             self.next()
             wstart = self.p
-            where = self.parse_expr()                  # a refined alias: `type alias Pos = Int where self > 0` (Spec 9c)
+            where = self.parse_expr()                  # a refined alias: `type Pos = Int where self > 0` (Spec 9c)
             wtext = ""
             for tk in self.toks[wstart:self.p]:
                 wtext += (" " if tk.sp and wtext else "") + str(tk.val)
@@ -655,10 +671,12 @@ class Parser(ExprParser):
             if t.val == "interface":
                 return self.parse_iface_decl(mods)
             return self.parse_impl_decl(mods)
-        if t.val == "type" and self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in ("alias", "opaque", "union"):
+        if t.val == "type" and self.is_type_decl(i):
             for _ in range(i):
                 self.next()
             return self.parse_type_decl(mods)
+        if "opaque" in mods:
+            self.err("`opaque` goes before a `type` declaration: `opaque type Pos = Int`")
         return None
 
     # fn declaration (with optional receiver spec, operator names, aliasing)
@@ -1664,7 +1682,7 @@ def _has_pattern_params(fn):
 
 
 def apply_refined_aliases(prog, file=None):
-    """A parameter declared with a refined alias (`type alias Pos = Int where self > 0`) gets the alias's condition as its own
+    """A parameter declared with a refined alias (`type Pos = Int where self > 0`) gets the alias's condition as its own
     `where`, `self` replaced by the parameter's name, so the call-site proof and the run-time `requires` treat it like a written one."""
     import copy
     import re

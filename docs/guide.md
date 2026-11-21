@@ -587,7 +587,7 @@ println("${is_inf(1.0 / 0.0)} ${is_nan(0.0 / 0.0)}")
 Output: `true true`. `==` on floats gets a warning, and `finite(x)` returns a `Result`. **Bounded integers** state a range in the type, and a `when` that covers the range needs no `_`:
 
 ```
-type alias Percent = Int[0..100]
+type Percent = Int[0..100]
 fn describe(p Percent) String
   when p
     0 -> "empty"
@@ -762,7 +762,7 @@ when Planet.value_of("VENUS")
   Err(e) -> println("no such planet")
 ```
 
-Output: `3 2`, then `gravity 8.871391908774457`. **Mistakes:** `fn (Shape) area()` (methods live only in `impl` blocks), a bare `union` (use `enum` or `type union`), a default on a non-trailing field, and a `when` that misses a case.
+Output: `3 2`, then `gravity 8.871391908774457`. **Mistakes:** `fn (Shape) area()` (methods live only in `impl` blocks), a bare `union` (use `enum` or union type), a default on a non-trailing field, and a `when` that misses a case.
 
 **`do with`: opening an enum's cases.** `do with Light` makes the case names of `Light` bare inside its block, which is how two enums that share a case name are told apart. `do with A, B` opens several; a case name that both of them have is a compile error, and so is a case name that is also the name of a function or a type.
 
@@ -787,8 +787,8 @@ Output: `Light.Red`, then `Signal.Red`, then `Signal.Stop`. A `do with` block is
 An alias is the same type under another name, and an opaque type is a new type over a representation, so mixing them up is an error:
 
 ```
-type alias Meters = Double
-type opaque Feet = Double
+type Meters = Double
+opaque type Feet = Double
 fn to_feet(m Meters) Feet
   Feet(m * 3.28084)
 println("${to_feet(100.0)}")
@@ -807,7 +807,7 @@ println("${a.item} ${b.item}")
 Output: `5.59 hello`. A union type holds one of several types, converts in implicitly, and is taken apart with `when`:
 
 ```
-type union Identifier = Int | String
+type Identifier = Int | String
 fn describe(id Identifier) String
   when id
     Int -> "numeric id $id"
@@ -816,12 +816,12 @@ println(describe(42))
 println(describe("Node-04"))
 ```
 
-Output: `numeric id 42` then `text id Node-04`. A union may list another union, which is flattened: `type union Wide = Identifier | Bool` holds an `Int`, a `String`, or a `Bool`, and a member that appears twice after flattening is an error.
+Output: `numeric id 42` then `text id Node-04`. A union may list another union, which is flattened: `type Wide = Identifier | Bool` holds an `Int`, a `String`, or a `Bool`, and a member that appears twice after flattening is an error.
 
 A value of a union is one of its members, and the compiler holds you to that: `v + 1` on an `Identifier` is an error, because `v` might be a `String`. Say which member it is first. A `when` does that, and so does `is` in an `if`:
 
 ```
-type union Identifier = Int | String
+type Identifier = Int | String
 
 fn weight(id Identifier) Int
   if id is Int
@@ -840,7 +840,7 @@ Output: `42`, then `7`. Inside the `if id is Int` branch `id` is an `Int`. In th
 A branch that leaves narrows what follows it. After `return`, `break` or `continue` in the branch, the rest of the block knows the test failed:
 
 ```
-type union Identifier = Int | String
+type Identifier = Int | String
 
 fn weight(id Identifier) Int
   if id is String then return len(id)
@@ -886,7 +886,7 @@ println("${firm_name(a)} ${a.id} ${(/User/firm/floor)(a)} ${firm_name(b)}")
 println("${firm_name(c)} ${name_of_user(a)}")
 ```
 
-Output: `Initech 1 2 Acme`, then `Initech Ltd Initech`. The first segment is a type name and the rest are fields. `replace` and `modify` need a literal path and rewrite the nested tuples for you (`a` is unchanged). A `/` starts a path only where an operand is expected, and a path has no spaces. **Mistakes:** `type alias` with defaults or `deriving` (aliases are transparent), using a `Meters` where a `Feet` is wanted, leaving an arm out of a union `when`, a union that repeats a member after flattening, a path through an enum payload or an array, and a path held in a variable passed to `replace`.
+Output: `Initech 1 2 Acme`, then `Initech Ltd Initech`. The first segment is a type name and the rest are fields. `replace` and `modify` need a literal path and rewrite the nested tuples for you (`a` is unchanged). A `/` starts a path only where an operand is expected, and a path has no spaces. **Mistakes:** type alias with defaults or `deriving` (aliases are transparent), using a `Meters` where a `Feet` is wanted, leaving an arm out of a union `when`, a union that repeats a member after flattening, a path through an enum payload or an array, and a path held in a variable passed to `replace`.
 
 **Chapter 5: Collections**
 
@@ -1000,7 +1000,7 @@ for (name, age) in older
 
 Output: `alice is 31`, `bob is 26`, `carol is 41`, `dave is 7`. Braces mark a list of keys, so a tuple on the left of a plain `->` is still a single key: `Dict((0, 0) -> "start")` has the key `(0, 0)`. A count that doesn't match, as in `{a, b, c} -> (1, 2)`, is a compile error. Only a Dict can be spread into a `Dict(...)`; spreading a `List` there is a compile error. In the other direction, `List(...ages)` gives the `(key, value)` pairs.
 
-**Computed keys, enum keys, and union keys.** A bare lowercase name in a `Dict(...)` is the string (`alice -> 30` is `"alice" -> 30`). Anything else is a value: a call, arithmetic, a qualified name (`Color.Red -> 1`), a `$name` for the value of a variable, or a parenthesized expression. A capitalized bare name is a value too, so with an enum key type `Dict(Red -> 3, Green -> 5)` uses the cases `Red` and `Green`. Entries are added in the order written, and a later entry with the same key replaces the earlier one in place; the compiler warns when two constant keys in one `Dict(...)` are the same (`1 -> a, 2 - 1 -> b`), unless a `...spread` sits between them. A key must be hashable, so an enum used as a key derives `eq, hash`, a floating-point number is never a key, and a `type union` is a key when each of its members is, so a table can be keyed by `Int | String` without a wrapper.
+**Computed keys, enum keys, and union keys.** A bare lowercase name in a `Dict(...)` is the string (`alice -> 30` is `"alice" -> 30`). Anything else is a value: a call, arithmetic, a qualified name (`Color.Red -> 1`), a `$name` for the value of a variable, or a parenthesized expression. A capitalized bare name is a value too, so with an enum key type `Dict(Red -> 3, Green -> 5)` uses the cases `Red` and `Green`. Entries are added in the order written, and a later entry with the same key replaces the earlier one in place; the compiler warns when two constant keys in one `Dict(...)` are the same (`1 -> a, 2 - 1 -> b`), unless a `...spread` sits between them. A key must be hashable, so an enum used as a key derives `eq, hash`, a floating-point number is never a key, and a union type is a key when each of its members is, so a table can be keyed by `Int | String` without a wrapper.
 
 ```
 enum Color deriving eq, hash, show
@@ -1013,7 +1013,7 @@ more Dict[Color, Int] = Dict(...hours, $who -> 8)
 println(more)
 sizes = Dict(abs(-2) -> "two", len("abc") -> "three", (1 + 1 + 1 + 1) -> "four")
 println(sizes)
-type union Id = Int | String
+type Id = Int | String
 seen Dict[Id, Bool] = Dict(7 -> true, "x" -> false)
 println(seen.get("x"))
 ```
@@ -1550,7 +1550,7 @@ make_them_speak(s2)
 Output: `Woof! My name is Rover`, `Beep Boep! Serial count is 101`, `Woof! My name is Max`, `Beep Boep! Serial count is 500`. All methods live in `impl` blocks. An array holds one concrete type, so a mixed array uses a union type, and the shared call needs no `when`:
 
 ```
-type union Entity = Dog | Robot
+type Entity = Dog | Robot
 crowd Array[Entity] = (Dog(name: "Rex"), Robot(serial: 7))
 for e in crowd
   println(e.speak())
@@ -1692,7 +1692,7 @@ impl Describable for Int
 println(7.describe())
 ```
 
-Output: `the number 7`. Enums are closed on purpose (adding a case means every `when` must change, and the compiler finds them). For an open collection of unrelated types use `any Interface` (chapter 8d), and a `type union` of the known types is the closed alternative.
+Output: `the number 7`. Enums are closed on purpose (adding a case means every `when` must change, and the compiler finds them). For an open collection of unrelated types use `any Interface` (chapter 8d), and a union type of the known types is the closed alternative.
 
 An interface may also require a **property**, a read-only field. A type satisfies it by having a field of that name and type, and callers always write `x.name`:
 
@@ -1833,7 +1833,7 @@ Output: `Box.Full(5) Box.Empty`. Return-type polymorphism needs an explicit type
 ```
 fn one[M[_] Monad]() M[Int]
   M.pure(1)
-type alias Fail[A] = Result[A, String]
+type Fail[A] = Result[A, String]
 println("${one[[A] -> Result[A, String]]()} ${one[Fail]()}")
 x ([A] -> Result[A, String])[Int] = Ok(3)
 println(x)
@@ -1844,15 +1844,15 @@ Output: `Ok(1) Ok(1)`, then `Ok(3)`. A generic alias such as `Fail` is a type la
 **Type functions.** A type lambda only substitutes. When a type has to be taken apart, write a type alias whose body is a `when`, with an arm for each shape:
 
 ```
-type alias Elem[T] = when T
+type Elem[T] = when T
   List[X] -> X
   Array[X][N] -> X
 
-type alias Concat[A, B] = when A
+type Concat[A, B] = when A
   () -> B
   (H, ...T) -> (H, ...Concat[T, B])
 
-type alias Length[T] = when T
+type Length[T] = when T
   () -> 0
   (H, ...Rest) -> 1 + Length[Rest]
 
@@ -1863,9 +1863,9 @@ sized Array[Int][Length[(Int, String)]] = Array(1, 2)
 println("${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}")
 ```
 
-**Field names at the type level.** Tuple types keep their field names, and an arm can look a field up by name: with `type alias Get[R, K] = when R` and the arms `(K T, ...Rest) -> T` and `(_ _, ...Rest) -> Get[Rest, K]`, a function `fn get[R, K](row R, key K) Get[R, K]` called as `get(user, "name")` returns `String` and as `get(user, "zip")` returns `Int`, and `get(user, "nope")` is an error because no arm matches. A literal argument keeps its own type (`"name"`, `3`) when its parameter is used inside a type function; otherwise it is widened to `String` or `Int` as before.
+**Field names at the type level.** Tuple types keep their field names, and an arm can look a field up by name: with `type Get[R, K] = when R` and the arms `(K T, ...Rest) -> T` and `(_ _, ...Rest) -> Get[Rest, K]`, a function `fn get[R, K](row R, key K) Get[R, K]` called as `get(user, "name")` returns `String` and as `get(user, "zip")` returns `Int`, and `get(user, "nope")` is an error because no arm matches. A literal argument keeps its own type (`"name"`, `3`) when its parameter is used inside a type function; otherwise it is widened to `String` or `Int` as before.
 
-**Asking what a type can do.** An arm may use a bound as its pattern: `X Named -> String` matches any type that implements `Named` and binds it to `X`, so `type alias Label[T] = when T` with the arms `X Named -> String` and `else Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T Named]`, and it reuses the `impl` and `deriving` you already wrote.
+**Asking what a type can do.** An arm may use a bound as its pattern: `X Named -> String` matches any type that implements `Named` and binds it to `X`, so `type Label[T] = when T` with the arms `X Named -> String` and `else Int` gives `String` for a type with an `impl Named` and `Int` for the rest. This is the type-level form of `[T Named]`, and it reuses the `impl` and `deriving` you already wrote.
 
 **Intersections.** `any Named + Aged` is a value that implements both interfaces, written with the `+` that joins bounds (`[T Equatable + Show]`). `describe(Dog(...))` is a compile error when `Dog` has no `impl Aged`, and a type-function arm can ask the same, `X Named + Aged -> String`.
 
@@ -2195,8 +2195,8 @@ Output: `2`. A call `f(List(1, 2), 5)` here would abort with `requires failed in
 A condition you use often can have a name. A **refined alias** adds `where` to a type alias, and `self` stands for the value:
 
 ```
-type alias Pos = Int where self > 0
-type alias Pct = Int where self >= 0 and self <= 100
+type Pos = Int where self > 0
+type Pct = Int where self >= 0 and self <= 100
 fn half(n Pos) Int
   n / 2
 fn twice_half(m Pos) Int
@@ -2208,10 +2208,10 @@ println(half(7))
 println(describe(40))
 ```
 
-Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, but the condition is enforced wherever you declare it. A binding `x Pos = v` is proved like a call: `x Pos = 0` is a compile error, and `x Pos = n` needs a test of `n` first (`if n > 0 then`). After it, `x` is known to be positive, so `half(x)` is accepted. A function declared to return `Pos` is checked as it returns (it means `ensures result > 0`), and a field declared `Pos` is checked whenever the tuple is built (it means `invariant balance > 0`); an abort in either names the function or tuple that broke the promise. A binding from a function that returns `Pos` needs no further proof. A `List[Pos]` (or `Array`, `Set`, `Dict` values) is checked element by element when the program runs, with an abort that shows `all((item) -> item > 0, xs)`; that check is not proved at compile time. An alias can be exported from a package (`export type alias Pos = Int where self > 0`) and used as `lib.Pos` after `import lib`, or as `Pos` after `import lib(Pos)`; it works the same way, provided its condition uses only `self` and literals. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, and `x Pos = n` for an unchecked `n`.
+Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, but the condition is enforced wherever you declare it. A binding `x Pos = v` is proved like a call: `x Pos = 0` is a compile error, and `x Pos = n` needs a test of `n` first (`if n > 0 then`). After it, `x` is known to be positive, so `half(x)` is accepted. A function declared to return `Pos` is checked as it returns (it means `ensures result > 0`), and a field declared `Pos` is checked whenever the tuple is built (it means `invariant balance > 0`); an abort in either names the function or tuple that broke the promise. A binding from a function that returns `Pos` needs no further proof. A `List[Pos]` (or `Array`, `Set`, `Dict` values) is checked element by element when the program runs, with an abort that shows `all((item) -> item > 0, xs)`; that check is not proved at compile time. An alias can be exported from a package (`export type Pos = Int where self > 0`) and used as `lib.Pos` after `import lib`, or as `Pos` after `import lib(Pos)`; it works the same way, provided its condition uses only `self` and literals. **Mistakes:** `half(k)` for a plain `Int` `k` with no test first, and `x Pos = n` for an unchecked `n`.
 
 ```
-type alias Pos = Int where self > 0
+type Pos = Int where self > 0
 tuple Account
   balance Pos
   name String
@@ -2736,7 +2736,7 @@ Output: `Array(202, 33, 0, 2, 104, 105, 88, 89, 90)`, then `v2 k1 size 2 body 2 
 **Taking a value apart by its type.** A union, or an `any` value, carries a small tag with its type, and `when` reads it. A bare type is an arm (`Int ->`), and `n@Int` also binds the value itself, so `n` is an `Int` in that arm:
 
 ```
-type union Value = Int | String
+type Value = Int | String
 fn describe(v Value) String
   when v
     n@Int -> "the number ${n + 1}"
@@ -2747,7 +2747,7 @@ println(describe("hi"))
 
 Output: `the number 42`, then `the text hi`. A union is exhaustive without a `_` arm. An `any` value is taken apart the same way, with a `_` arm because the full set of types isn't known. What a name in the arm refers to depends on how you write it:
 
-Members with type arguments work the same way. With `type union Data = List[Int] | List[String] | Int`, the arms `List[Int] ->` and `xs@List[String] ->` take a `Data` apart, and inside each arm the value has that list type, so `d(0) + 1` is checked as an `Int` addition in the first and rejected in the second. `d is List[Int]` is the same test as a condition.
+Members with type arguments work the same way. With `type Data = List[Int] | List[String] | Int`, the arms `List[Int] ->` and `xs@List[String] ->` take a `Data` apart, and inside each arm the value has that list type, so `d(0) + 1` is checked as an `Int` addition in the first and rejected in the second. `d is List[Int]` is the same test as a condition.
 
 ```
 interface Speaker
@@ -3218,7 +3218,7 @@ When two fibers talk in a fixed pattern ("you send a request, I send a reply"), 
 
 ```
 import session
-type alias Client = session.Send[Int, session.Recv[Int, session.End]]
+type Client = session.Send[Int, session.Recv[Int, session.End]]
 
 fiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]
   (n, e2) = session.recv(e)?
@@ -3254,7 +3254,7 @@ A step returns a `Result`, so `?` passes a failure on: if the other fiber has en
 
 ```
 import session
-type alias Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]
+type Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]
 
 fiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]
   when session.offer(e)?
@@ -3284,8 +3284,8 @@ Output: `Ok(42)`. Both arms of the `when` have to finish the conversation: leavi
 
 ```
 import session
-type alias EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]
-type alias EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]
+type EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]
+type EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]
 
 fn serve(e session.Endpoint[EchoServer]) Result[Unit, Error]
   when session.offer(e)?
@@ -3320,8 +3320,8 @@ Output: `Ok(12)`. The client asks for 3, 2 and 1 to be doubled, then ends it.
 
 ```
 import session
-type alias Private = session.Send[Int, session.Recv[Int, session.End]]
-type alias Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]
+type Private = session.Send[Int, session.Recv[Int, session.End]]
+type Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]
 
 fiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]
   (line, e2) = session.recv(e)?
@@ -4843,7 +4843,7 @@ Output: `Tree.Add(Tree.Lit(8), Tree.Neg(Tree.Add(Tree.Lit(1), Tree.Lit(2))))`, t
 
 Suppose a library defines arithmetic as data (numbers and `+`) with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**. With an `enum` this is the **expression problem**: a new operation is easy (write a function), but a new variant means editing the `enum` and every `when` over it. Tagless final (24m) solves it, but its programs are functions, so you can't look inside one. Here is a way that keeps real data you can inspect, rewrite and serialize.
 
-**The pieces.** Each kind of node is its own tuple, generic in the type of its children. Each operation is an interface with one `impl` per node, and it gets the recursive call as a parameter. A `type union` says which nodes make up one language, and a method called on a union value goes to the member's own `impl`.
+**The pieces.** Each kind of node is its own tuple, generic in the type of its children. Each operation is an interface with one `impl` per node, and it gets the recursive call as a parameter. A union type says which nodes make up one language, and a method called on a union value goes to the member's own `impl`.
 
 ```
 // ---- arith.mxi: the library (never edited again) ----
@@ -4862,7 +4862,7 @@ impl[E] Eval[E] for Add[E]
   fn eval(self, rec (E) -> Int) Int
     rec(self.left) + rec(self.right)
 
-type union Arith = Lit | Add[Arith]
+type Arith = Lit | Add[Arith]
 fn eval_arith(e Arith) Int
   e.eval(eval_arith)
 
@@ -4886,7 +4886,7 @@ impl[E] Pretty[E] for Mul[E]
   fn pretty(self, rec (E) -> String) String
     "${rec(self.left)} * ${rec(self.right)}"
 
-type union Full = Lit | Add[Full] | Mul[Full]
+type Full = Lit | Add[Full] | Mul[Full]
 fn eval_full(e Full) Int
   e.eval(eval_full)
 fn show_full(e Full) String
@@ -4917,7 +4917,7 @@ tuple Add[E] deriving show
 tuple Mul[E] deriving show
   left E
   right E
-type union Full = Lit | Add[Full] | Mul[Full]
+type Full = Lit | Add[Full] | Mul[Full]
 
 interface AsLit
   fn lit_value(self) Result[Int, Error]
@@ -4956,7 +4956,7 @@ println(simplify(f))
 
 Output: `Lit(value: 4)`. The two rules are written once, for any union whose members answer `AsLit`; a new node adds its own one-line answer and its own rules, and nothing else changes. Each node type implements `AsLit` itself (an `impl` on the union is not what a call finds, because the value is dispatched as the member it holds).
 
-**Building in any language: `Has`.** A smart constructor should build a number in whatever language holds numbers, not only in `Arith`. Bound the type parameter with `Has[...]`, which a `type union` satisfies when it lists that node:
+**Building in any language: `Has`.** A smart constructor should build a number in whatever language holds numbers, not only in `Arith`. Bound the type parameter with `Has[...]`, which a union type satisfies when it lists that node:
 
 ```
 tuple Lit deriving show
@@ -4967,8 +4967,8 @@ tuple Add[E] deriving show
 tuple Mul[E] deriving show
   left E
   right E
-type union Arith = Lit | Add[Arith]
-type union Full = Lit | Add[Full] | Mul[Full]
+type Arith = Lit | Add[Arith]
+type Full = Lit | Add[Full] | Mul[Full]
 
 fn lit[U Has[Lit]](n Int) U = Lit(n)
 fn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)
@@ -5013,9 +5013,9 @@ hello = eval
 exec(hello)
 ```
 
-Output: `name?` then `hi bob`. `eval` is the notation for building such programs: `name <- step` runs a step and names its answer, a bare line is a step whose answer is not wanted, `x = e` is an ordinary local, and the last line is the program the block gives. Each `<-` turns the rest of the block into the function passed to `flat_map`, so `chain` works for every type that has one (`Option`, `Result`, `State`, `Prog`), and it is plain syntax, not a new kind of value. The steps are pure like any lambda, so a step cannot print; write `eval impure` to allow effects in the block (`eval pure` spells out the default), and write a line that is only for its effect as `\println("got ${n}")` (a `\` line is never a step). The enclosing function then has those effects, so a `pure fn` can't hold an `eval impure`. `hello` is a value you can build, pass around and inspect before running; `exec` is one handler, and a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a `type union` of the enums and bound the helper functions with `Has`, as above. This is the freer monad of recent work on extensible effects, which dropped the earlier encoding (a functor for every command, `Fix` and a coproduct of functors with overlapping-instance injection) in favour of exactly these two ingredients: a typed command and a membership test, here `Has`. If you need the original encoding it works too: `Fix[F]`, a `Functor` impl and a `cata` are ordinary moxie.
+Output: `name?` then `hi bob`. `eval` is the notation for building such programs: `name <- step` runs a step and names its answer, a bare line is a step whose answer is not wanted, `x = e` is an ordinary local, and the last line is the program the block gives. Each `<-` turns the rest of the block into the function passed to `flat_map`, so `chain` works for every type that has one (`Option`, `Result`, `State`, `Prog`), and it is plain syntax, not a new kind of value. The steps are pure like any lambda, so a step cannot print; write `eval impure` to allow effects in the block (`eval pure` spells out the default), and write a line that is only for its effect as `\println("got ${n}")` (a `\` line is never a step). The enclosing function then has those effects, so a `pure fn` can't hold an `eval impure`. `hello` is a value you can build, pass around and inspect before running; `exec` is one handler, and a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a union type of the enums and bound the helper functions with `Has`, as above. This is the freer monad of recent work on extensible effects, which dropped the earlier encoding (a functor for every command, `Fix` and a coproduct of functors with overlapping-instance injection) in favour of exactly these two ingredients: a typed command and a membership test, here `Has`. If you need the original encoding it works too: `Fix[F]`, a `Functor` impl and a `cata` are ordinary moxie.
 
-**A library for it: `fp.freer`.** Writing `Prog`, `send` and `flat_map` by hand for every program gets old, so the standard package `fp.freer` has them, generic over the command type: `Prog[C[_], A]` is a program whose commands are values of `C[X]`, `send` makes one command into a program, `done` ends one, and `Monad` is implemented, so `eval` blocks, `map` and the rest work on it. The commands can be one enum or a generic `type union` of several, and a handler is an ordinary function that matches on them. A handler that deals with some commands and hands the others on makes handlers compose: here `handle_say` removes the `Say` commands (collecting what they print) and leaves a program that only asks, which `run_ask` finishes:
+**A library for it: `fp.freer`.** Writing `Prog`, `send` and `flat_map` by hand for every program gets old, so the standard package `fp.freer` has them, generic over the command type: `Prog[C[_], A]` is a program whose commands are values of `C[X]`, `send` makes one command into a program, `done` ends one, and `Monad` is implemented, so `eval` blocks, `map` and the rest work on it. The commands can be one enum or a generic union type of several, and a handler is an ordinary function that matches on them. A handler that deals with some commands and hands the others on makes handlers compose: here `handle_say` removes the `Say` commands (collecting what they print) and leaves a program that only asks, which `run_ask` finishes:
 
 ```
 import fp.freer
@@ -5024,8 +5024,8 @@ enum Say[A]
   Print(text String) Say[Unit]
 enum Ask[A]
   Name Ask[String]
-type union Cmds[A] = Say[A] | Ask[A]
-type union OnlyAsk[A] = Ask[A]
+type Cmds[A] = Say[A] | Ask[A]
+type OnlyAsk[A] = | Ask[A]
 
 fn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p
   Pure(a) -> freer.done((a, acc))

@@ -20,9 +20,9 @@ BAD = [
  ("a generic call that leaves out the type argument it needs", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nx A = example()\n", "needs its type argument `R` named"),
  ("a function that ends in a binding", "fn f(n Int) Int\n  x = n + 1\n", "ends with a binding"),
  ("a function that ends in a loop with no value", "fn f(n Int) Int\n  for i in 1..n do\n    println(i)\n", "loop that gives no value"),
- ("an update value that is not a member of the field's union", "type union M = Int | String\ntuple P\n  v M\np = P(v: 1)\nq = p.update v: true\n", "holds one of `Int`, `String`, not a `Bool`"),
+ ("an update value that is not a member of the field's union", "type M = Int | String\ntuple P\n  v M\np = P(v: 1)\nq = p.update v: true\n", "holds one of `Int`, `String`, not a `Bool`"),
  ("arithmetic on Int | ()", "fn f(x Int | ()) Int\n  x + 1\n", "can't take `Int | ()`"),
- ("arithmetic on a named union with ()", "type union M = Int | ()\nfn f(x M) Int\n  x + 1\n", "can't take `Int | ()`"),
+ ("arithmetic on a named union with ()", "type M = Int | ()\nfn f(x M) Int\n  x + 1\n", "can't take `Int | ()`"),
  ("arithmetic on a field of Int | ()", "tuple P\n  v Int | ()\nfn f(p P) Int\n  p.v + 1\n", "can't take `Int | ()`"),
 ]
 GOOD = [
@@ -35,7 +35,7 @@ GOOD = [
  ("an if with no else in a Unit function", "fn f(b Bool) Unit\n  if b then\n    println(1)\nf(true)\n"),
  ("update lines with & and a nested block", "tuple I\n  n Int\ntuple P deriving show\n  x Int\n  i I\np = P(x: 1, i: I(n: 2))\nq = p.update\n  x: & + 1,\n  i:\n    n: & * 10\nprintln(q)\n"),
  ("an update of a generic tuple", "tuple Box[T] deriving show\n  v T\nb = Box(v: 1)\nprintln(b.update v: 2)\n"),
- ("an update of a field with a union type", "type union M = Int | String\ntuple P deriving show\n  v M\np = P(v: 1)\nprintln(p.update v: \"s\")\n"),
+ ("an update of a field with a union type", "type M = Int | String\ntuple P deriving show\n  v M\np = P(v: 1)\nprintln(p.update v: \"s\")\n"),
  ("a generic call with its type argument named", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nprintln(example[A]().v)\n"),
  ("a bounded R.f(...) as the R result", "interface E\n  static fn lit(n Int) Self\ntuple A\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn f[R E]() R\n  R.lit(1)\nprintln(f[A]().v)\n"),
  ("a loop with else gives a value", "fn f(n Int) Int\n  for i in 1..n do\n    if i > 2 then\n      break(i)\n  else\n    0\nprintln(f(5))\n"),

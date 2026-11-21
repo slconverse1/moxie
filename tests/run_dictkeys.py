@@ -37,8 +37,8 @@ CASES = [
  ("a built-in that is not constant is not folded", 'n = 3\nprintln(6 / abs(n - 3))\n', "division by zero"),
  ("a program's own abs is not folded as the built-in", 'fn abs(x Int) Int\n  x + 1\nprintln(6 / abs(0))\n', "6"),
  ("an array size from a folded call", 'b Array[Int][abs(-3)] = Array(1, 2)\nprintln(b)\n', "mismatched types"),
- ("a named union as a key", 'type union Key = Int | String\nd Dict[Key, Int] = Dict(1 -> 10, "a" -> 20)\nprintln(d.get(1))\nprintln(d.get("a"))\n', "Ok(10)\nOk(20)"),
- ("a union with a Double member is not a key", 'type union Key = Int | Double\nd Dict[Key, Int] = Dict(1 -> 10)\nprintln(d)\n', "its member `Double` is not hashable"),
+ ("a named union as a key", 'type Key = Int | String\nd Dict[Key, Int] = Dict(1 -> 10, "a" -> 20)\nprintln(d.get(1))\nprintln(d.get("a"))\n', "Ok(10)\nOk(20)"),
+ ("a union with a Double member is not a key", 'type Key = Int | Double\nd Dict[Key, Int] = Dict(1 -> 10)\nprintln(d)\n', "its member `Double` is not hashable"),
  ("an inline union as a key", 'd Dict[Int | String, Int] = Dict(1 -> 10, "a" -> 20)\nprintln(d.get("a"))\n', "Ok(20)"),
 ]
 fails = []

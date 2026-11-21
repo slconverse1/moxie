@@ -1,7 +1,7 @@
-"""Refined aliases across packages (`export type alias Pos = Int where self > 0`).  Run: python3 tests/run_refinedpkg.py"""
+"""Refined aliases across packages (`export type Pos = Int where self > 0`).  Run: python3 tests/run_refinedpkg.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
-LIB = "export type alias Pos = Int where self > 0\nexport fn half(n Int) Int = n / 2\n"
+LIB = "export type Pos = Int where self > 0\nexport fn half(n Int) Int = n / 2\n"
 CASES = [
  ("a qualified alias as a parameter, proved", "import lib\nfn twice(n lib.Pos) Int = n * 2\nprintln(twice(4))\n", 0, "8"),
  ("a literal that breaks the condition", "import lib\nfn twice(n lib.Pos) Int = n * 2\nprintln(twice(0))\n", 1, ""),

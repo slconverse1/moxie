@@ -377,7 +377,7 @@ class Seq:
 
     def __init__(self, items, cap=None):
         self.items = items
-        self.tag = None         # the `type union` member this list was converted to (`List[String]`), when the checker knew it
+        self.tag = None         # the union type member this list was converted to (`List[String]`), when the checker knew it
         self.cap = cap if cap is not None else len(items)
         if GC[0] and self.kind == "List":
             self.cap = INF_CAP

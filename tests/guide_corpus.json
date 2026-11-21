@@ -331,7 +331,7 @@ null
 ],
 [
 590,
-"type alias Percent = Int[0..100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    in 1..99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
+"type Percent = Int[0..100]\nfn describe(p Percent) String\n  when p\n    0 -> \"empty\"\n    in 1..99 -> \"partial\"\n    100 -> \"full\"\na Percent = 40\nprintln(describe(a))\nwhen try_cast[Percent](a + 70)\n  Ok(p) -> println(describe(p))\n  Err(e) -> println(\"out of range\")\nprintln(describe(100))\n",
 [
 "partial",
 "out of range",
@@ -436,7 +436,7 @@ null
 ],
 [
 790,
-"type alias Meters = Double\ntype opaque Feet = Double\nfn to_feet(m Meters) Feet\n  Feet(m * 3.28084)\nprintln(\"${to_feet(100.0)}\")\n",
+"type Meters = Double\nopaque type Feet = Double\nfn to_feet(m Meters) Feet\n  Feet(m * 3.28084)\nprintln(\"${to_feet(100.0)}\")\n",
 [
 "328.084"
 ]
@@ -450,7 +450,7 @@ null
 ],
 [
 810,
-"type union Identifier = Int | String\nfn describe(id Identifier) String\n  when id\n    Int -> \"numeric id $id\"\n    String -> \"text id $id\"\nprintln(describe(42))\nprintln(describe(\"Node-04\"))\n",
+"type Identifier = Int | String\nfn describe(id Identifier) String\n  when id\n    Int -> \"numeric id $id\"\n    String -> \"text id $id\"\nprintln(describe(42))\nprintln(describe(\"Node-04\"))\n",
 [
 "numeric id 42",
 "text id Node-04"
@@ -458,7 +458,7 @@ null
 ],
 [
 824,
-"type union Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is Int\n    id + 1\n  elif id is String\n    len(id)\n  else\n    0\n\nprintln(weight(41))\nprintln(weight(\"Node-04\"))\n",
+"type Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is Int\n    id + 1\n  elif id is String\n    len(id)\n  else\n    0\n\nprintln(weight(41))\nprintln(weight(\"Node-04\"))\n",
 [
 "42",
 "7"
@@ -466,7 +466,7 @@ null
 ],
 [
 843,
-"type union Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is String then return len(id)\n  id + 1\n\nprintln(weight(\"Node-04\"))\nprintln(weight(41))\n",
+"type Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is String then return len(id)\n  id + 1\n\nprintln(weight(\"Node-04\"))\nprintln(weight(41))\n",
 [
 "7",
 "42"
@@ -571,7 +571,7 @@ null
 ],
 [
 1006,
-"enum Color deriving eq, hash, show\n  Red\n  Green\n  Blue\nhours Dict[Color, Int] = Dict(Red -> 3, Green -> 5)\nwho = Color.Blue\nmore Dict[Color, Int] = Dict(...hours, $who -> 8)\nprintln(more)\nsizes = Dict(abs(-2) -> \"two\", len(\"abc\") -> \"three\", (1 + 1 + 1 + 1) -> \"four\")\nprintln(sizes)\ntype union Id = Int | String\nseen Dict[Id, Bool] = Dict(7 -> true, \"x\" -> false)\nprintln(seen.get(\"x\"))\n",
+"enum Color deriving eq, hash, show\n  Red\n  Green\n  Blue\nhours Dict[Color, Int] = Dict(Red -> 3, Green -> 5)\nwho = Color.Blue\nmore Dict[Color, Int] = Dict(...hours, $who -> 8)\nprintln(more)\nsizes = Dict(abs(-2) -> \"two\", len(\"abc\") -> \"three\", (1 + 1 + 1 + 1) -> \"four\")\nprintln(sizes)\ntype Id = Int | String\nseen Dict[Id, Bool] = Dict(7 -> true, \"x\" -> false)\nprintln(seen.get(\"x\"))\n",
 [
 "Dict(Color.Red -> 3, Color.Green -> 5, Color.Blue -> 8)",
 "Dict(2 -> \"two\", 3 -> \"three\", 4 -> \"four\")",
@@ -862,7 +862,7 @@ null
 ],
 [
 1553,
-"type union Entity = Dog | Robot\ncrowd Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
+"type Entity = Dog | Robot\ncrowd Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
 [
 "Woof! My name is Rex",
 "Beep Boep! Serial count is 7"
@@ -969,7 +969,7 @@ null
 ],
 [
 1834,
-"fn one[M[_] Monad]() M[Int]\n  M.pure(1)\ntype alias Fail[A] = Result[A, String]\nprintln(\"${one[[A] -> Result[A, String]]()} ${one[Fail]()}\")\nx ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n",
+"fn one[M[_] Monad]() M[Int]\n  M.pure(1)\ntype Fail[A] = Result[A, String]\nprintln(\"${one[[A] -> Result[A, String]]()} ${one[Fail]()}\")\nx ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n",
 [
 "Ok(1) Ok(1)",
 "Ok(3)"
@@ -977,7 +977,7 @@ null
 ],
 [
 1847,
-"type alias Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n\ntype alias Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n\ntype alias Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n\nfn head_of(xs Array[Int][3]) Elem[Array[Int][3]]\n  xs(0)\njoined Concat[(Int, String), (Bool,)] = (1, \"a\", true)\nsized Array[Int][Length[(Int, String)]] = Array(1, 2)\nprintln(\"${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}\")\n",
+"type Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n\ntype Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n\ntype Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n\nfn head_of(xs Array[Int][3]) Elem[Array[Int][3]]\n  xs(0)\njoined Concat[(Int, String), (Bool,)] = (1, \"a\", true)\nsized Array[Int][Length[(Int, String)]] = Array(1, 2)\nprintln(\"${head_of(Array(7, 8, 9))} ${joined(1)} ${sized(1)}\")\n",
 null
 ],
 [
@@ -1096,7 +1096,7 @@ null
 ],
 [
 2198,
-"type alias Pos = Int where self > 0\ntype alias Pct = Int where self >= 0 and self <= 100\nfn half(n Pos) Int\n  n / 2\nfn twice_half(m Pos) Int\n  half(m) * 2\nfn describe(p Pct) String\n  \"${p} percent\"\nprintln(twice_half(8))\nprintln(half(7))\nprintln(describe(40))\n",
+"type Pos = Int where self > 0\ntype Pct = Int where self >= 0 and self <= 100\nfn half(n Pos) Int\n  n / 2\nfn twice_half(m Pos) Int\n  half(m) * 2\nfn describe(p Pct) String\n  \"${p} percent\"\nprintln(twice_half(8))\nprintln(half(7))\nprintln(describe(40))\n",
 [
 "8",
 "3",
@@ -1105,7 +1105,7 @@ null
 ],
 [
 2214,
-"type alias Pos = Int where self > 0\ntuple Account\n  balance Pos\n  name String\nfn half(n Pos) Int\n  n / 2\nfn open_amount(n Int) Int\n  if n > 0 then\n    x Pos = n\n    half(x) * 2\n  else\n    0\nprintln(open_amount(9))\nprintln(Account(balance: 40, name: \"ann\"))\n",
+"type Pos = Int where self > 0\ntuple Account\n  balance Pos\n  name String\nfn half(n Pos) Int\n  n / 2\nfn open_amount(n Int) Int\n  if n > 0 then\n    x Pos = n\n    half(x) * 2\n  else\n    0\nprintln(open_amount(9))\nprintln(Account(balance: 40, name: \"ann\"))\n",
 [
 "8",
 "Account(balance: 40, name: \"ann\")"
@@ -1369,7 +1369,7 @@ null
 ],
 [
 2739,
-"type union Value = Int | String\nfn describe(v Value) String\n  when v\n    n@Int -> \"the number ${n + 1}\"\n    s@String -> \"the text ${s}\"\nprintln(describe(41))\nprintln(describe(\"hi\"))\n",
+"type Value = Int | String\nfn describe(v Value) String\n  when v\n    n@Int -> \"the number ${n + 1}\"\n    s@String -> \"the text ${s}\"\nprintln(describe(41))\nprintln(describe(\"hi\"))\n",
 [
 "the number 42",
 "the text hi"
@@ -1624,28 +1624,28 @@ null
 ],
 [
 3220,
-"import session\ntype alias Client = session.Send[Int, session.Recv[Int, session.End]]\n\nfiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]\n  (n, e2) = session.recv(e)?\n  e3 = session.send(e2, n * 2)?\n  Ok(session.finish(e3))\n\nfn client(c session.Endpoint[Client]) Result[Int, Error]\n  c2 = session.send(c, 21)?\n  (r, c3) = session.recv(c2)?\n  session.finish(c3)\n  Ok(r)\n\nc, s = session.connect[Client]()\ngo serve(move s)\nprintln(client(c))\n",
+"import session\ntype Client = session.Send[Int, session.Recv[Int, session.End]]\n\nfiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]\n  (n, e2) = session.recv(e)?\n  e3 = session.send(e2, n * 2)?\n  Ok(session.finish(e3))\n\nfn client(c session.Endpoint[Client]) Result[Int, Error]\n  c2 = session.send(c, 21)?\n  (r, c3) = session.recv(c2)?\n  session.finish(c3)\n  Ok(r)\n\nc, s = session.connect[Client]()\ngo serve(move s)\nprintln(client(c))\n",
 [
 "Ok(42)"
 ]
 ],
 [
 3256,
-"import session\ntype alias Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]\n\nfiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]\n  when session.offer(e)?\n    session.Branch.Left(e2) ->\n      (a, e3) = session.recv(e2)?\n      (b, e4) = session.recv(e3)?\n      e5 = session.send(e4, a + b)?\n      Ok(session.finish(e5))\n    session.Branch.Right(e2) -> Ok(session.finish(e2))\n\nfn client(c session.Endpoint[Client]) Result[Int, Error]\n  c2 = session.pick_left(c)?\n  c3 = session.send(c2, 20)?\n  c4 = session.send(c3, 22)?\n  (r, c5) = session.recv(c4)?\n  session.finish(c5)\n  Ok(r)\n\nc, s = session.connect[Client]()\ngo serve(move s)\nprintln(client(c))\n",
+"import session\ntype Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]\n\nfiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]\n  when session.offer(e)?\n    session.Branch.Left(e2) ->\n      (a, e3) = session.recv(e2)?\n      (b, e4) = session.recv(e3)?\n      e5 = session.send(e4, a + b)?\n      Ok(session.finish(e5))\n    session.Branch.Right(e2) -> Ok(session.finish(e2))\n\nfn client(c session.Endpoint[Client]) Result[Int, Error]\n  c2 = session.pick_left(c)?\n  c3 = session.send(c2, 20)?\n  c4 = session.send(c3, 22)?\n  (r, c5) = session.recv(c4)?\n  session.finish(c5)\n  Ok(r)\n\nc, s = session.connect[Client]()\ngo serve(move s)\nprintln(client(c))\n",
 [
 "Ok(42)"
 ]
 ],
 [
 3286,
-"import session\ntype alias EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]\ntype alias EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]\n\nfn serve(e session.Endpoint[EchoServer]) Result[Unit, Error]\n  when session.offer(e)?\n    session.Branch.Left(e2) ->\n      (n, e3) = session.recv(e2)?\n      e4 = session.send(e3, n * 2)?\n      serve(e4)\n    session.Branch.Right(e2) -> Ok(session.finish(e2))\n\nfn ask(c session.Endpoint[EchoClient], n Int, total Int) Result[Int, Error]\n  if n == 0\n    c2 = session.pick_right(c)?\n    session.finish(c2)\n    Ok(total)\n  else\n    c2 = session.pick_left(c)?\n    c3 = session.send(c2, n)?\n    (r, c4) = session.recv(c3)?\n    ask(c4, n - 1, total + r)\n\nfiber fn server(e session.Endpoint[EchoServer]) Result[Unit, Error]\n  serve(e)\n\nc, s = session.connect[EchoClient]()\ngo server(move s)\nprintln(ask(c, 3, 0))\n",
+"import session\ntype EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]\ntype EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]\n\nfn serve(e session.Endpoint[EchoServer]) Result[Unit, Error]\n  when session.offer(e)?\n    session.Branch.Left(e2) ->\n      (n, e3) = session.recv(e2)?\n      e4 = session.send(e3, n * 2)?\n      serve(e4)\n    session.Branch.Right(e2) -> Ok(session.finish(e2))\n\nfn ask(c session.Endpoint[EchoClient], n Int, total Int) Result[Int, Error]\n  if n == 0\n    c2 = session.pick_right(c)?\n    session.finish(c2)\n    Ok(total)\n  else\n    c2 = session.pick_left(c)?\n    c3 = session.send(c2, n)?\n    (r, c4) = session.recv(c3)?\n    ask(c4, n - 1, total + r)\n\nfiber fn server(e session.Endpoint[EchoServer]) Result[Unit, Error]\n  serve(e)\n\nc, s = session.connect[EchoClient]()\ngo server(move s)\nprintln(ask(c, 3, 0))\n",
 [
 "Ok(12)"
 ]
 ],
 [
 3322,
-"import session\ntype alias Private = session.Send[Int, session.Recv[Int, session.End]]\ntype alias Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]\n\nfiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]\n  (line, e2) = session.recv(e)?\n  session.finish(e2)\n  (n, l2) = session.recv(line)?\n  l3 = session.send(l2, n + 100)?\n  Ok(session.finish(l3))\n\nmc, ms = session.connect[Main]()\npc, ps = session.connect[Private]()\ngo worker(move ms)\nmc2 = session.send(mc, ps)?\nsession.finish(mc2)\npc2 = session.send(pc, 5)?\n(r, pc3) = session.recv(pc2)?\nsession.finish(pc3)\nprintln(r)\n",
+"import session\ntype Private = session.Send[Int, session.Recv[Int, session.End]]\ntype Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]\n\nfiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]\n  (line, e2) = session.recv(e)?\n  session.finish(e2)\n  (n, l2) = session.recv(line)?\n  l3 = session.send(l2, n + 100)?\n  Ok(session.finish(l3))\n\nmc, ms = session.connect[Main]()\npc, ps = session.connect[Private]()\ngo worker(move ms)\nmc2 = session.send(mc, ps)?\nsession.finish(mc2)\npc2 = session.send(pc, 5)?\n(r, pc3) = session.recv(pc2)?\nsession.finish(pc3)\nprintln(r)\n",
 [
 "105"
 ]
@@ -2254,7 +2254,7 @@ null
 ],
 [
 4849,
-"// ---- arith.mxi: the library (never edited again) ----\ntuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\n\ninterface Eval[E]\n  fn eval(self, rec (E) -> Int) Int\nimpl[E] Eval[E] for Lit\n  fn eval(self, rec (E) -> Int) Int\n    self.value\nimpl[E] Eval[E] for Add[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) + rec(self.right)\n\ntype union Arith = Lit | Add[Arith]\nfn eval_arith(e Arith) Int\n  e.eval(eval_arith)\n\n// ---- mul.mxi: a new variant and a new operation, in a new file ----\ntuple Mul[E] deriving show\n  left E\n  right E\nimpl[E] Eval[E] for Mul[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) * rec(self.right)\n\ninterface Pretty[E]\n  fn pretty(self, rec (E) -> String) String\nimpl[E] Pretty[E] for Lit\n  fn pretty(self, rec (E) -> String) String\n    \"${self.value}\"\nimpl[E] Pretty[E] for Add[E]\n  fn pretty(self, rec (E) -> String) String\n    \"(${rec(self.left)} + ${rec(self.right)})\"\nimpl[E] Pretty[E] for Mul[E]\n  fn pretty(self, rec (E) -> String) String\n    \"${rec(self.left)} * ${rec(self.right)}\"\n\ntype union Full = Lit | Add[Full] | Mul[Full]\nfn eval_full(e Full) Int\n  e.eval(eval_full)\nfn show_full(e Full) String\n  e.pretty(show_full)\n\na Arith = Add[Arith](Lit(1), Lit(2))\nf Full = Mul[Full](Lit(3), Add[Full](Lit(1), Lit(2)))\nprintln(eval_arith(a))\nprintln(eval_full(f))\nprintln(show_full(f))\nprintln(f)\n",
+"// ---- arith.mxi: the library (never edited again) ----\ntuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\n\ninterface Eval[E]\n  fn eval(self, rec (E) -> Int) Int\nimpl[E] Eval[E] for Lit\n  fn eval(self, rec (E) -> Int) Int\n    self.value\nimpl[E] Eval[E] for Add[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) + rec(self.right)\n\ntype Arith = Lit | Add[Arith]\nfn eval_arith(e Arith) Int\n  e.eval(eval_arith)\n\n// ---- mul.mxi: a new variant and a new operation, in a new file ----\ntuple Mul[E] deriving show\n  left E\n  right E\nimpl[E] Eval[E] for Mul[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) * rec(self.right)\n\ninterface Pretty[E]\n  fn pretty(self, rec (E) -> String) String\nimpl[E] Pretty[E] for Lit\n  fn pretty(self, rec (E) -> String) String\n    \"${self.value}\"\nimpl[E] Pretty[E] for Add[E]\n  fn pretty(self, rec (E) -> String) String\n    \"(${rec(self.left)} + ${rec(self.right)})\"\nimpl[E] Pretty[E] for Mul[E]\n  fn pretty(self, rec (E) -> String) String\n    \"${rec(self.left)} * ${rec(self.right)}\"\n\ntype Full = Lit | Add[Full] | Mul[Full]\nfn eval_full(e Full) Int\n  e.eval(eval_full)\nfn show_full(e Full) String\n  e.pretty(show_full)\n\na Arith = Add[Arith](Lit(1), Lit(2))\nf Full = Mul[Full](Lit(3), Add[Full](Lit(1), Lit(2)))\nprintln(eval_arith(a))\nprintln(eval_full(f))\nprintln(show_full(f))\nprintln(f)\n",
 [
 "3",
 "9",
@@ -2264,14 +2264,14 @@ null
 ],
 [
 4912,
-"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\ntype union Full = Lit | Add[Full] | Mul[Full]\n\ninterface AsLit\n  fn lit_value(self) Result[Int, Error]\nimpl AsLit for Lit\n  fn lit_value(self) Result[Int, Error]\n    Ok(self.value)\nimpl[E] AsLit for Add[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\nimpl[E] AsLit for Mul[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\n\ninterface Simp[E]\n  fn simp(self, rec (E) -> E) E\nimpl[E] Simp[E] for Lit\n  fn simp(self, rec (E) -> E) E\n    self\nimpl[E AsLit] Simp[E] for Add[E]\n  fn simp(self, rec (E) -> E) E\n    when self.left.lit_value()\n      Ok(0) -> rec(self.right)\n      _ -> Add[E](rec(self.left), rec(self.right))\nimpl[E AsLit] Simp[E] for Mul[E]\n  fn simp(self, rec (E) -> E) E\n    when self.right.lit_value()\n      Ok(1) -> rec(self.left)\n      _ -> Mul[E](rec(self.left), rec(self.right))\n\nfn simplify(e Full) Full\n  e.simp(simplify)\n\nf Full = Mul[Full](Add[Full](Lit(0), Lit(4)), Lit(1))\nprintln(simplify(f))\n",
+"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\ntype Full = Lit | Add[Full] | Mul[Full]\n\ninterface AsLit\n  fn lit_value(self) Result[Int, Error]\nimpl AsLit for Lit\n  fn lit_value(self) Result[Int, Error]\n    Ok(self.value)\nimpl[E] AsLit for Add[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\nimpl[E] AsLit for Mul[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\n\ninterface Simp[E]\n  fn simp(self, rec (E) -> E) E\nimpl[E] Simp[E] for Lit\n  fn simp(self, rec (E) -> E) E\n    self\nimpl[E AsLit] Simp[E] for Add[E]\n  fn simp(self, rec (E) -> E) E\n    when self.left.lit_value()\n      Ok(0) -> rec(self.right)\n      _ -> Add[E](rec(self.left), rec(self.right))\nimpl[E AsLit] Simp[E] for Mul[E]\n  fn simp(self, rec (E) -> E) E\n    when self.right.lit_value()\n      Ok(1) -> rec(self.left)\n      _ -> Mul[E](rec(self.left), rec(self.right))\n\nfn simplify(e Full) Full\n  e.simp(simplify)\n\nf Full = Mul[Full](Add[Full](Lit(0), Lit(4)), Lit(1))\nprintln(simplify(f))\n",
 [
 "Lit(value: 4)"
 ]
 ],
 [
 4962,
-"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\ntype union Arith = Lit | Add[Arith]\ntype union Full = Lit | Add[Full] | Mul[Full]\n\nfn lit[U Has[Lit]](n Int) U = Lit(n)\nfn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)\nfn mul[U Has[Mul[U]]](a U, b U) U = Mul[U](a, b)\n\nx Full = add(lit(1), mul(lit(2), lit(3)))\nprintln(x)\ny Arith = add(lit(1), lit(2))\nprintln(y)\n",
+"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\ntype Arith = Lit | Add[Arith]\ntype Full = Lit | Add[Full] | Mul[Full]\n\nfn lit[U Has[Lit]](n Int) U = Lit(n)\nfn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)\nfn mul[U Has[Mul[U]]](a U, b U) U = Mul[U](a, b)\n\nx Full = add(lit(1), mul(lit(2), lit(3)))\nprintln(x)\ny Arith = add(lit(1), lit(2))\nprintln(y)\n",
 [
 "Add(left: Lit(value: 1), right: Mul(left: Lit(value: 2), right: Lit(value: 3)))",
 "Add(left: Lit(value: 1), right: Lit(value: 2))"
@@ -2287,7 +2287,7 @@ null
 ],
 [
 5021,
-"import fp.freer\n\nenum Say[A]\n  Print(text String) Say[Unit]\nenum Ask[A]\n  Name Ask[String]\ntype union Cmds[A] = Say[A] | Ask[A]\ntype union OnlyAsk[A] = Ask[A]\n\nfn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p\n  Pure(a) -> freer.done((a, acc))\n  Bind(c, k) -> when c\n    Print(t) -> handle_say(k(()), acc + List(t))\n    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))\n\nfn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Name -> run_ask(k(\"bob\"))\n\nhello freer.Prog[Cmds, Unit] = eval\n  n <- freer.send(Name)\n  freer.send(Print(\"hi ${n}\"))\n\n(u, out) = run_ask(handle_say(hello, List()))\nprintln(out)\n",
+"import fp.freer\n\nenum Say[A]\n  Print(text String) Say[Unit]\nenum Ask[A]\n  Name Ask[String]\ntype Cmds[A] = Say[A] | Ask[A]\ntype OnlyAsk[A] = | Ask[A]\n\nfn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p\n  Pure(a) -> freer.done((a, acc))\n  Bind(c, k) -> when c\n    Print(t) -> handle_say(k(()), acc + List(t))\n    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))\n\nfn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Name -> run_ask(k(\"bob\"))\n\nhello freer.Prog[Cmds, Unit] = eval\n  n <- freer.send(Name)\n  freer.send(Print(\"hi ${n}\"))\n\n(u, out) = run_ask(handle_say(hello, List()))\nprintln(out)\n",
 [
 "List(\"hi bob\")"
 ]

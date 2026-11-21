@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
 HEAD = """import session
-type alias Client = session.Send[Int, session.Recv[Int, session.End]]
+type Client = session.Send[Int, session.Recv[Int, session.End]]
 """
 SERVE = """fiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]
   (n, e2) = session.recv(e)?
@@ -17,7 +17,7 @@ CLIENT = """fn client(c session.Endpoint[Client]) Result[Int, Error]
 """
 RUN = "c, s = session.connect[Client]()\n\\go serve(move s)\nprintln(client(c))\n"
 CHOICE = """import session
-type alias Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]
+type Client = session.Pick[session.Send[Int, session.Send[Int, session.Recv[Int, session.End]]], session.End]
 
 fiber fn serve(e session.Endpoint[session.Peer[Client]]) Result[Unit, Error]
   when session.offer(e)?
@@ -41,8 +41,8 @@ c, s = session.connect[Client]()
 println(client(c))
 """
 LOOP = """import session
-type alias EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]
-type alias EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]
+type EchoClient = session.Pick[session.Send[Int, session.Recv[Int, EchoClient]], session.End]
+type EchoServer = session.Offer[session.Recv[Int, session.Send[Int, EchoServer]], session.End]
 
 fn serve(e session.Endpoint[EchoServer]) Result[Unit, Error]
   when session.offer(e)?
@@ -71,8 +71,8 @@ c, s = session.connect[EchoClient]()
 println(ask(c, 3, 0))
 """
 DELEG = """import session
-type alias Private = session.Send[Int, session.Recv[Int, session.End]]
-type alias Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]
+type Private = session.Send[Int, session.Recv[Int, session.End]]
+type Main = session.Send[session.Endpoint[session.Peer[Private]], session.End]
 
 fiber fn worker(e session.Endpoint[session.Peer[Main]]) Result[Unit, Error]
   (line, e2) = session.recv(e)?
@@ -105,12 +105,12 @@ CHECKS = [
  ("reaching End without finishing", HEAD + "fn f(c session.Endpoint[Client]) Result[Int, Error]\n  c2 = session.send(c, 1)?\n  (r, c3) = session.recv(c2)?\n  Ok(r)\n", "never finished"),
  ("handing a function the wrong end", HEAD + SERVE + "c, s = session.connect[Client]()\n\\go serve(move c)\n", "mismatched types"),
  ("sending on the receiving end", HEAD + "c, s = session.connect[Client]()\nx = session.send(s, 1)\n", "expected `session.Endpoint[session.Send[T, S]]`"),
- ("reusing an endpoint after sending it", HEAD.replace("session.Send[Int,", "session.Send[Int,") + "type alias Main = session.Send[session.Endpoint[Client], session.End]\nfn f(mc session.Endpoint[Main], p session.Endpoint[Client]) Result[Unit, Error]\n  mc2 = session.send(mc, p)?\n  session.finish(mc2)\n  p2 = session.send(p, 1)?\n  Ok(())\n", "use of moved value `p`"),
+ ("reusing an endpoint after sending it", HEAD.replace("session.Send[Int,", "session.Send[Int,") + "type Main = session.Send[session.Endpoint[Client], session.End]\nfn f(mc session.Endpoint[Main], p session.Endpoint[Client]) Result[Unit, Error]\n  mc2 = session.send(mc, p)?\n  session.finish(mc2)\n  p2 = session.send(p, 1)?\n  Ok(())\n", "use of moved value `p`"),
  ("a correct function checks clean", HEAD + SERVE + CLIENT, None),
 ]
 RUNS.append(("a case pattern qualified by the package", CHOICE.replace("session.Branch.Left", "session.Left").replace("session.Branch.Right", "session.Right"), "Ok(42)"))
 BR = """import session
-type alias C = session.Pick[session.Send[Int, session.End], session.End]
+type C = session.Pick[session.Send[Int, session.End], session.End]
 """
 CHECKS += [
  ("every branch finishes the conversation", BR + "fn f(c session.Endpoint[C], b Bool) Result[Unit, Error]\n  if b\n    c2 = session.pick_left(c)?\n    c3 = session.send(c2, 1)?\n    Ok(session.finish(c3))\n  else\n    c2 = session.pick_right(c)?\n    Ok(session.finish(c2))\n", None),

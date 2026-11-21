@@ -2,7 +2,7 @@
 
 A lambda is applied by substitution (beta reduction), so it never exists at run time.  Passed where a type constructor is
 expected, it is the constructor its body names with the lambda's parameters left as holes; a generic alias
-(`type alias Fail[A] = Result[A, String]`) is a lambda with a name.  There is no recursion and no matching on types, so
+(`type Fail[A] = Result[A, String]`) is a lambda with a name.  There is no recursion and no matching on types, so
 reduction always ends: a lambda's body is written outside itself, and an alias may not mention its own name with other arguments.
 """
 from .ast import *   # noqa
