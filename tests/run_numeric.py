@@ -36,6 +36,15 @@ CASES = [
  ("an Int8 argument for an Int16 parameter", "fn f(x Int16) Int16 = x\nm Int8 = 6\nprintln(f(m))\n", "6"),
  ("a cast narrows on purpose", "d Int16 = 6\ne Int8 = cast[Int8](d)\nprintln(e)\n", "6"),
  ("a literal still fits a narrow type", "e Int8 = 100\nprintln(e)\n", "100"),
+ ("a field widens", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nprintln(h.id + a)\n", "6"),
+ ("a field of another signedness needs a cast", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nbad = h.len + a\n", "cannot apply `+` to `UInt8` and `Int8`"),
+ ("a function result widens", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nprintln(small() + b)\n", "5"),
+ ("two function results that do not fit", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nbad = small() + wide()\n", "cannot apply `+` to `Int8` and `UInt8`"),
+ ("a list element is checked", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nbad = xs(0) + a\n", "cannot apply `+` to `UInt8` and `Int8`"),
+ ("a list element widens", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nprintln(xs(0) + b)\n", "3"),
+ ("a field assigned to a narrower type", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\ne Int8 = h.id\n", "`Int16` does not convert to `Int8`"),
+ ("an inferred binding keeps its width", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nd = wide()\nbad = d + a\n", "cannot apply `+` to `UInt8` and `Int8`"),
+ ("a field passed as a narrower parameter", "tuple Hdr(len UInt8, id Int16)\nfn small() Int8 = 3\nfn wide() UInt8 = 3\nh = Hdr(len: 4, id: 5)\na Int8 = 1\nb Int16 = 2\nxs List[UInt8] = List(1, 2)\nfn f(x Int8) Int8 = x\nprintln(f(h.id))\n", "`Int16` does not convert to `Int8`"),
 ]
 fails = []
 for name, src, want in CASES:

@@ -231,7 +231,7 @@ SCALARS_FOR_PAT = INTS | {"String", "Bool", "Char", "Float", "Double", "Decimal"
 
 
 class Var:
-    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore", "inttype", "cv")
+    __slots__ = ("ty", "resource", "depth", "size", "kind", "fnstore", "inttype", "cv", "elwt")
 
     def __init__(self, ty=None, resource=False, depth=0):
         self.ty, self.resource, self.depth = ty, resource, depth
@@ -239,6 +239,7 @@ class Var:
             SESS["vars"].append(self)
         self.size = None                 # the element count of a fixed-size Array known from the text
         self.inttype = None              # the written integer type (`UInt8`) of an annotated binding or parameter: its width for shift checks
+        self.elwt = None                 # the written sized-integer element type of a List/Array/Ring (`List[Int8]`)
         self.cv = None                   # the constant value of an annotated sized-integer binding written as a constant (`a Int8 = 100`), outside any loop
         self.fnstore = False             # a List, Array, or Dict whose elements are written functions (`Dict[String, (Int) -> Int][4]()`)
         self.kind = None                 # "Set" or "Dict" for a variable bound to an empty `Set()` or `Dict()` (its element type is still open)
@@ -2084,7 +2085,49 @@ class Checker(RefineMixin):
             return self.int_wt(e.e, sc)
         if c is IntLit and e.suffix in self.SUFFIX_TYPE:
             return self.SUFFIX_TYPE[e.suffix]
+        if c is Field:
+            td = self.wt_tuple_decl(e.obj, sc)
+            for f in (td.fields if td is not None else None) or []:
+                if f.name == e.name:
+                    return self.written_int(f.type)
+            return None
+        if c is Call and e.fn.__class__ is Name and sc.find(e.fn.name) is None:
+            ds = self.fns.get(e.fn.name)
+            if ds and len(ds) == 1 and ds[0].ret is not None:
+                return self.written_int(ds[0].ret)
+            return None
+        if c is Call and e.fn.__class__ is Name and len(e.args or []) == 1:
+            v = sc.find(e.fn.name)
+            return v.elwt if v is not None and v.elwt else None          # `xs(i)` of a `List[Int8]`
         return None
+
+    def written_int(self, t):
+        if t.__class__ is TName and len(t.path) == 1 and not t.groups and t.path[0] in self.INTW \
+                and t.path[0] not in self.tuples and t.path[0] not in self.aliases:
+            return t.path[0]
+        return None
+
+    def elem_wt_of(self, t):
+        """The written integer element type of `List[Int8]`, `Array[UInt8]`, `Ring[Int16]`, else None."""
+        if t.__class__ is TName and len(t.path) == 1 and t.path[0] in ("List", "Array", "Ring") and t.groups and t.groups[0] \
+                and len(t.groups[0]) == 1 and t.path[0] not in self.tuples and t.path[0] not in self.aliases:
+            return self.written_int(t.groups[0][0])
+        return None
+
+    def wt_tuple_decl(self, e, sc):
+        """The declaration of the tuple type a variable (or a field of one) has, when it is a written, non-generic tuple type."""
+        if e.__class__ is Name:
+            v = sc.find(e.name)
+            ty = v.ty if v is not None else None
+            name = ty[1] if ty.__class__ is tuple and len(ty) == 2 and ty[0] == "named" else None
+        elif e.__class__ is Field:
+            td = self.wt_tuple_decl(e.obj, sc)
+            f = next((f for f in (td.fields if td is not None else None) or [] if f.name == e.name), None)
+            name = f.type.path[0] if f is not None and f.type.__class__ is TName and len(f.type.path) == 1 and not f.type.groups else None
+        else:
+            return None
+        td = self.tuples.get(name) if name else None
+        return td if td is not None and not td.tparams else None
 
     # (signed, bits) of each sized integer type the checker tracks
     INTW = {"Int8": (True, 8), "Int16": (True, 16), "Int32": (True, 32), "Int64": (True, 64), "Int": (True, 64),
@@ -4215,6 +4258,9 @@ class Checker(RefineMixin):
                     if not isinstance(n.targets, list) and self.loop_depth == 0:
                         self._csc = sc
                         sc.vars[tgt.name].cv = self.const_int(n.value)
+                sc.vars[tgt.name].elwt = self.elem_wt_of(n.ann)
+                if n.ann is None and n.op == "=" and not isinstance(n.targets, list) and sc.vars[tgt.name].inttype is None:
+                    sc.vars[tgt.name].inttype = self.int_wt(n.value, sc)          # `d = wide()` keeps the written width of its value
                 if not isinstance(n.targets, list):
                     gv = n.value.fn if n.value.__class__ is Call else None
                     if gv.__class__ is GenApp and gv.base.__class__ is Name and gv.base.name in ("Dict", "List", "Array", "Ring") and gv.groups \
@@ -8685,6 +8731,7 @@ class Checker(RefineMixin):
                 if p.type.__class__ is TName and len(p.type.path) == 1 and p.type.path[0] in self.FIT and p.type.path[0] not in self.tuples \
                         and p.type.path[0] not in self.aliases:
                     inner.vars[p.name].inttype = p.type.path[0]
+                inner.vars[p.name].elwt = self.elem_wt_of(p.type)
                 if self.any_params.get(p.name, (None,))[0] == "any":
                     self.any_vars[inner.vars[p.name]] = self.any_params[p.name]
                 if p.type is not None:
