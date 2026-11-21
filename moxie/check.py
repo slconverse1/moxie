@@ -2082,7 +2082,50 @@ class Checker(RefineMixin):
             return a or b
         if c is Unary and e.op == "-":
             return self.int_wt(e.e, sc)
+        if c is IntLit and e.suffix in self.SUFFIX_TYPE:
+            return self.SUFFIX_TYPE[e.suffix]
         return None
+
+    # (signed, bits) of each sized integer type the checker tracks
+    INTW = {"Int8": (True, 8), "Int16": (True, 16), "Int32": (True, 32), "Int64": (True, 64), "Int": (True, 64),
+            "UInt8": (False, 8), "UInt16": (False, 16), "UInt32": (False, 32), "UInt64": (False, 64)}
+
+    def int_fits(self, a, b):
+        """Does every value of the integer type `a` fit in the integer type `b`?  (`Double` is the name `Double`.)"""
+        if a == b:
+            return True
+        sa, ba = self.INTW[a]
+        if b == "Double":
+            return ba <= 32
+        sb, bb = self.INTW[b]
+        return (sa == sb and bb >= ba) or (not sa and sb and bb > ba)
+
+    def check_num_mix(self, n, sc, lt, rt, a, b):
+        """Mixed numbers: a value converts implicitly only when every value of its type fits the other side's type (Spec 3), so `Int8 + Int16`
+        is an `Int16`, while `Int8 + UInt8`, `Int64 + UInt64` and `Int + Double` need a `cast`.  A literal takes the other side's type.
+        Returns True after reporting an error."""
+        if a not in ("Int", "Float") or b not in ("Int", "Float"):
+            return False
+        wl, wr = self.int_wt(n.l, sc), self.int_wt(n.r, sc)
+        self._csc = sc
+        lit = lambda x: x.__class__ is IntLit and not x.suffix or (x.__class__ is Unary and x.e.__class__ is IntLit and not x.e.suffix)
+        if a == "Int" and b == "Int":
+            if wl and wr and wl != wr and not (self.int_fits(wl, wr) or self.int_fits(wr, wl)):
+                self.err(n.line, f"cannot apply `{n.op}` to `{wl}` and `{wr}`: neither type holds every value of the other, so convert one on purpose "
+                                 f"with `cast` (to `{wl}`, `{wr}`, or a type that holds both)")
+                return True
+            return False
+        if {a, b} == {"Int", "Float"}:
+            ix, it, w = (n.l, lt, wl) if a == "Int" else (n.r, rt, wr)
+            if lit(ix) or (ix.__class__ is not Name and self.const_int(ix) is not None) or (it.__class__ is tuple and it[0] == "bounded"):
+                return False
+            if w is not None and self.int_fits(w, "Double"):
+                return False
+            if (w or "Int") in ("Int", "Int64", "UInt64") or w is None:
+                self.err(n.line, f"cannot apply `{n.op}` to `{tshow('Int' if w is None else w)}` and `Double`: an integer this wide does not fit a `Double` exactly, "
+                                 f"so convert on purpose (`cast[Double](x)`)")
+                return True
+        return False
 
     def rec_lit_check(self, q, t, line, nm):
         """A literal written where `pattern fn` `nm` finds a value of another scalar type can never match: `Matches("(?<n:Int>\\d+)", "x")`."""
@@ -2950,6 +2993,8 @@ class Checker(RefineMixin):
                     self.err(n.line, f"`{op}` can't take `{xt[1]}`: a value of a union is one of its members, so test it first (`if x is T` or a `when`)")
                     return None, None
         self.check_op_bound(n, sc)
+        if op in ("+", "-", "*", "/", "%", "==", "!=", "<", ">", "<=", ">=") and self.check_num_mix(n, sc, lt, rt, a, b):
+            return ("Bool" if op in ("==", "!=", "<", ">", "<=", ">=") else None), None
         if op in ("+", "-", "*") and not (n.l.__class__ is IntLit and n.r.__class__ is IntLit):
             self._csc = sc
             lv, rv = self.const_int(n.l), self.const_int(n.r)

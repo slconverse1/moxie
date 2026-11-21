@@ -270,6 +270,8 @@ def arith(op, a, b):
         return r
     if ta is float and tb is float:
         return float_op(op, a, b, float)
+    if (isinstance(a, FixedInt) and tb is float) or (isinstance(b, FixedInt) and ta is float):
+        return float_op(op, float(a) if ta is float else float(int(a)), float(b) if tb is float else float(int(b)), float)       # an Int32 or narrower is exact in a Double
     if isinstance(a, FixedInt) or isinstance(b, FixedInt):
         if isinstance(a, bool) or isinstance(b, bool):
             raise Abort("cannot do arithmetic on Bool")
