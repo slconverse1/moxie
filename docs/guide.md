@@ -807,7 +807,7 @@ println("${a.item} ${b.item}")
 Output: `5.59 hello`. A union type holds one of several types, converts in implicitly, and is taken apart with `when`:
 
 ```
-type Identifier = Int | String
+union type Identifier = Int | String
 fn describe(id Identifier) String
   when id
     Int -> "numeric id $id"
@@ -821,7 +821,7 @@ Output: `numeric id 42` then `text id Node-04`. A union may list another union, 
 A value of a union is one of its members, and the compiler holds you to that: `v + 1` on an `Identifier` is an error, because `v` might be a `String`. Say which member it is first. A `when` does that, and so does `is` in an `if`:
 
 ```
-type Identifier = Int | String
+union type Identifier = Int | String
 
 fn weight(id Identifier) Int
   if id is Int
@@ -840,7 +840,7 @@ Output: `42`, then `7`. Inside the `if id is Int` branch `id` is an `Int`. In th
 A branch that leaves narrows what follows it. After `return`, `break` or `continue` in the branch, the rest of the block knows the test failed:
 
 ```
-type Identifier = Int | String
+union type Identifier = Int | String
 
 fn weight(id Identifier) Int
   if id is String then return len(id)
@@ -1013,7 +1013,7 @@ more Dict[Color, Int] = Dict(...hours, $who -> 8)
 println(more)
 sizes = Dict(abs(-2) -> "two", len("abc") -> "three", (1 + 1 + 1 + 1) -> "four")
 println(sizes)
-type Id = Int | String
+union type Id = Int | String
 seen Dict[Id, Bool] = Dict(7 -> true, "x" -> false)
 println(seen.get("x"))
 ```
@@ -1550,7 +1550,7 @@ make_them_speak(s2)
 Output: `Woof! My name is Rover`, `Beep Boep! Serial count is 101`, `Woof! My name is Max`, `Beep Boep! Serial count is 500`. All methods live in `impl` blocks. An array holds one concrete type, so a mixed array uses a union type, and the shared call needs no `when`:
 
 ```
-type Entity = Dog | Robot
+union type Entity = Dog | Robot
 crowd Array[Entity] = (Dog(name: "Rex"), Robot(serial: 7))
 for e in crowd
   println(e.speak())
@@ -2736,7 +2736,7 @@ Output: `Array(202, 33, 0, 2, 104, 105, 88, 89, 90)`, then `v2 k1 size 2 body 2 
 **Taking a value apart by its type.** A union, or an `any` value, carries a small tag with its type, and `when` reads it. A bare type is an arm (`Int ->`), and `n@Int` also binds the value itself, so `n` is an `Int` in that arm:
 
 ```
-type Value = Int | String
+union type Value = Int | String
 fn describe(v Value) String
   when v
     n@Int -> "the number ${n + 1}"
@@ -4862,7 +4862,7 @@ impl[E] Eval[E] for Add[E]
   fn eval(self, rec (E) -> Int) Int
     rec(self.left) + rec(self.right)
 
-type Arith = Lit | Add[Arith]
+union type Arith = Lit | Add[Arith]
 fn eval_arith(e Arith) Int
   e.eval(eval_arith)
 
@@ -4886,7 +4886,7 @@ impl[E] Pretty[E] for Mul[E]
   fn pretty(self, rec (E) -> String) String
     "${rec(self.left)} * ${rec(self.right)}"
 
-type Full = Lit | Add[Full] | Mul[Full]
+union type Full = Lit | Add[Full] | Mul[Full]
 fn eval_full(e Full) Int
   e.eval(eval_full)
 fn show_full(e Full) String
@@ -4917,7 +4917,7 @@ tuple Add[E] deriving show
 tuple Mul[E] deriving show
   left E
   right E
-type Full = Lit | Add[Full] | Mul[Full]
+union type Full = Lit | Add[Full] | Mul[Full]
 
 interface AsLit
   fn lit_value(self) Result[Int, Error]
@@ -4967,8 +4967,8 @@ tuple Add[E] deriving show
 tuple Mul[E] deriving show
   left E
   right E
-type Arith = Lit | Add[Arith]
-type Full = Lit | Add[Full] | Mul[Full]
+union type Arith = Lit | Add[Arith]
+union type Full = Lit | Add[Full] | Mul[Full]
 
 fn lit[U Has[Lit]](n Int) U = Lit(n)
 fn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)
@@ -5024,8 +5024,8 @@ enum Say[A]
   Print(text String) Say[Unit]
 enum Ask[A]
   Name Ask[String]
-type Cmds[A] = Say[A] | Ask[A]
-type OnlyAsk[A] = | Ask[A]
+union type Cmds[A] = Say[A] | Ask[A]
+union type OnlyAsk[A] = Ask[A]
 
 fn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p
   Pure(a) -> freer.done((a, acc))

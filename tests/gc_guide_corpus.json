@@ -450,7 +450,7 @@ null
 ],
 [
 811,
-"type Identifier = Int | String\nfn describe(id Identifier) String\n  when id\n    Int -> \"numeric id $id\"\n    String -> \"text id $id\"\nprintln(describe(42))\nprintln(describe(\"Node-04\"))\n",
+"union type Identifier = Int | String\nfn describe(id Identifier) String\n  when id\n    Int -> \"numeric id $id\"\n    String -> \"text id $id\"\nprintln(describe(42))\nprintln(describe(\"Node-04\"))\n",
 [
 "numeric id 42",
 "text id Node-04"
@@ -458,7 +458,7 @@ null
 ],
 [
 825,
-"type Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is Int\n    id + 1\n  elif id is String\n    len(id)\n  else\n    0\n\nprintln(weight(41))\nprintln(weight(\"Node-04\"))\n",
+"union type Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is Int\n    id + 1\n  elif id is String\n    len(id)\n  else\n    0\n\nprintln(weight(41))\nprintln(weight(\"Node-04\"))\n",
 [
 "42",
 "7"
@@ -466,7 +466,7 @@ null
 ],
 [
 844,
-"type Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is String then return len(id)\n  id + 1\n\nprintln(weight(\"Node-04\"))\nprintln(weight(41))\n",
+"union type Identifier = Int | String\n\nfn weight(id Identifier) Int\n  if id is String then return len(id)\n  id + 1\n\nprintln(weight(\"Node-04\"))\nprintln(weight(41))\n",
 [
 "7",
 "42"
@@ -571,7 +571,7 @@ null
 ],
 [
 1007,
-"enum Color deriving eq, hash, show\n  Red\n  Green\n  Blue\nhours Dict[Color, Int] = Dict(Red -> 3, Green -> 5)\nwho = Color.Blue\nmore Dict[Color, Int] = Dict(...hours, $who -> 8)\nprintln(more)\nsizes = Dict(abs(-2) -> \"two\", len(\"abc\") -> \"three\", (1 + 1 + 1 + 1) -> \"four\")\nprintln(sizes)\ntype Id = Int | String\nseen Dict[Id, Bool] = Dict(7 -> true, \"x\" -> false)\nprintln(seen.get(\"x\"))\n",
+"enum Color deriving eq, hash, show\n  Red\n  Green\n  Blue\nhours Dict[Color, Int] = Dict(Red -> 3, Green -> 5)\nwho = Color.Blue\nmore Dict[Color, Int] = Dict(...hours, $who -> 8)\nprintln(more)\nsizes = Dict(abs(-2) -> \"two\", len(\"abc\") -> \"three\", (1 + 1 + 1 + 1) -> \"four\")\nprintln(sizes)\nunion type Id = Int | String\nseen Dict[Id, Bool] = Dict(7 -> true, \"x\" -> false)\nprintln(seen.get(\"x\"))\n",
 [
 "Dict(Color.Red -> 3, Color.Green -> 5, Color.Blue -> 8)",
 "Dict(2 -> \"two\", 3 -> \"three\", 4 -> \"four\")",
@@ -869,7 +869,7 @@ null
 ],
 [
 1565,
-"type Entity = Dog | Robot\ncrowd Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
+"union type Entity = Dog | Robot\ncrowd Array[Entity] = (Dog(name: \"Rex\"), Robot(serial: 7))\nfor e in crowd\n  println(e.speak())\n",
 [
 "Woof! My name is Rex",
 "Beep Boep! Serial count is 7"
@@ -1376,7 +1376,7 @@ null
 ],
 [
 2751,
-"type Value = Int | String\nfn describe(v Value) String\n  when v\n    n@Int -> \"the number ${n + 1}\"\n    s@String -> \"the text ${s}\"\nprintln(describe(41))\nprintln(describe(\"hi\"))\n",
+"union type Value = Int | String\nfn describe(v Value) String\n  when v\n    n@Int -> \"the number ${n + 1}\"\n    s@String -> \"the text ${s}\"\nprintln(describe(41))\nprintln(describe(\"hi\"))\n",
 [
 "the number 42",
 "the text hi"
@@ -2312,7 +2312,7 @@ null
 ],
 [
 4979,
-"// ---- arith.mxi: the library (never edited again) ----\ntuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\n\ninterface Eval[E]\n  fn eval(self, rec (E) -> Int) Int\nimpl[E] Eval[E] for Lit\n  fn eval(self, rec (E) -> Int) Int\n    self.value\nimpl[E] Eval[E] for Add[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) + rec(self.right)\n\ntype Arith = Lit | Add[Arith]\nfn eval_arith(e Arith) Int\n  e.eval(eval_arith)\n\n// ---- mul.mxi: a new variant and a new operation, in a new file ----\ntuple Mul[E] deriving show\n  left E\n  right E\nimpl[E] Eval[E] for Mul[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) * rec(self.right)\n\ninterface Pretty[E]\n  fn pretty(self, rec (E) -> String) String\nimpl[E] Pretty[E] for Lit\n  fn pretty(self, rec (E) -> String) String\n    \"${self.value}\"\nimpl[E] Pretty[E] for Add[E]\n  fn pretty(self, rec (E) -> String) String\n    \"(${rec(self.left)} + ${rec(self.right)})\"\nimpl[E] Pretty[E] for Mul[E]\n  fn pretty(self, rec (E) -> String) String\n    \"${rec(self.left)} * ${rec(self.right)}\"\n\ntype Full = Lit | Add[Full] | Mul[Full]\nfn eval_full(e Full) Int\n  e.eval(eval_full)\nfn show_full(e Full) String\n  e.pretty(show_full)\n\na Arith = Add[Arith](Lit(1), Lit(2))\nf Full = Mul[Full](Lit(3), Add[Full](Lit(1), Lit(2)))\nprintln(eval_arith(a))\nprintln(eval_full(f))\nprintln(show_full(f))\nprintln(f)\n",
+"// ---- arith.mxi: the library (never edited again) ----\ntuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\n\ninterface Eval[E]\n  fn eval(self, rec (E) -> Int) Int\nimpl[E] Eval[E] for Lit\n  fn eval(self, rec (E) -> Int) Int\n    self.value\nimpl[E] Eval[E] for Add[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) + rec(self.right)\n\nunion type Arith = Lit | Add[Arith]\nfn eval_arith(e Arith) Int\n  e.eval(eval_arith)\n\n// ---- mul.mxi: a new variant and a new operation, in a new file ----\ntuple Mul[E] deriving show\n  left E\n  right E\nimpl[E] Eval[E] for Mul[E]\n  fn eval(self, rec (E) -> Int) Int\n    rec(self.left) * rec(self.right)\n\ninterface Pretty[E]\n  fn pretty(self, rec (E) -> String) String\nimpl[E] Pretty[E] for Lit\n  fn pretty(self, rec (E) -> String) String\n    \"${self.value}\"\nimpl[E] Pretty[E] for Add[E]\n  fn pretty(self, rec (E) -> String) String\n    \"(${rec(self.left)} + ${rec(self.right)})\"\nimpl[E] Pretty[E] for Mul[E]\n  fn pretty(self, rec (E) -> String) String\n    \"${rec(self.left)} * ${rec(self.right)}\"\n\nunion type Full = Lit | Add[Full] | Mul[Full]\nfn eval_full(e Full) Int\n  e.eval(eval_full)\nfn show_full(e Full) String\n  e.pretty(show_full)\n\na Arith = Add[Arith](Lit(1), Lit(2))\nf Full = Mul[Full](Lit(3), Add[Full](Lit(1), Lit(2)))\nprintln(eval_arith(a))\nprintln(eval_full(f))\nprintln(show_full(f))\nprintln(f)\n",
 [
 "3",
 "9",
@@ -2322,14 +2322,14 @@ null
 ],
 [
 5042,
-"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\ntype Full = Lit | Add[Full] | Mul[Full]\n\ninterface AsLit\n  fn lit_value(self) Result[Int, Error]\nimpl AsLit for Lit\n  fn lit_value(self) Result[Int, Error]\n    Ok(self.value)\nimpl[E] AsLit for Add[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\nimpl[E] AsLit for Mul[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\n\ninterface Simp[E]\n  fn simp(self, rec (E) -> E) E\nimpl[E] Simp[E] for Lit\n  fn simp(self, rec (E) -> E) E\n    self\nimpl[E AsLit] Simp[E] for Add[E]\n  fn simp(self, rec (E) -> E) E\n    when self.left.lit_value()\n      Ok(0) -> rec(self.right)\n      _ -> Add[E](rec(self.left), rec(self.right))\nimpl[E AsLit] Simp[E] for Mul[E]\n  fn simp(self, rec (E) -> E) E\n    when self.right.lit_value()\n      Ok(1) -> rec(self.left)\n      _ -> Mul[E](rec(self.left), rec(self.right))\n\nfn simplify(e Full) Full\n  e.simp(simplify)\n\nf Full = Mul[Full](Add[Full](Lit(0), Lit(4)), Lit(1))\nprintln(simplify(f))\n",
+"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\nunion type Full = Lit | Add[Full] | Mul[Full]\n\ninterface AsLit\n  fn lit_value(self) Result[Int, Error]\nimpl AsLit for Lit\n  fn lit_value(self) Result[Int, Error]\n    Ok(self.value)\nimpl[E] AsLit for Add[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\nimpl[E] AsLit for Mul[E]\n  fn lit_value(self) Result[Int, Error]\n    Err(Error(code: 1, message: \"not a literal\"))\n\ninterface Simp[E]\n  fn simp(self, rec (E) -> E) E\nimpl[E] Simp[E] for Lit\n  fn simp(self, rec (E) -> E) E\n    self\nimpl[E AsLit] Simp[E] for Add[E]\n  fn simp(self, rec (E) -> E) E\n    when self.left.lit_value()\n      Ok(0) -> rec(self.right)\n      _ -> Add[E](rec(self.left), rec(self.right))\nimpl[E AsLit] Simp[E] for Mul[E]\n  fn simp(self, rec (E) -> E) E\n    when self.right.lit_value()\n      Ok(1) -> rec(self.left)\n      _ -> Mul[E](rec(self.left), rec(self.right))\n\nfn simplify(e Full) Full\n  e.simp(simplify)\n\nf Full = Mul[Full](Add[Full](Lit(0), Lit(4)), Lit(1))\nprintln(simplify(f))\n",
 [
 "Lit(value: 4)"
 ]
 ],
 [
 5092,
-"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\ntype Arith = Lit | Add[Arith]\ntype Full = Lit | Add[Full] | Mul[Full]\n\nfn lit[U Has[Lit]](n Int) U = Lit(n)\nfn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)\nfn mul[U Has[Mul[U]]](a U, b U) U = Mul[U](a, b)\n\nx Full = add(lit(1), mul(lit(2), lit(3)))\nprintln(x)\ny Arith = add(lit(1), lit(2))\nprintln(y)\n",
+"tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\nunion type Arith = Lit | Add[Arith]\nunion type Full = Lit | Add[Full] | Mul[Full]\n\nfn lit[U Has[Lit]](n Int) U = Lit(n)\nfn add[U Has[Add[U]]](a U, b U) U = Add[U](a, b)\nfn mul[U Has[Mul[U]]](a U, b U) U = Mul[U](a, b)\n\nx Full = add(lit(1), mul(lit(2), lit(3)))\nprintln(x)\ny Arith = add(lit(1), lit(2))\nprintln(y)\n",
 [
 "Add(left: Lit(value: 1), right: Mul(left: Lit(value: 2), right: Lit(value: 3)))",
 "Add(left: Lit(value: 1), right: Lit(value: 2))"
@@ -2345,7 +2345,7 @@ null
 ],
 [
 5151,
-"import fp.freer\n\nenum Say[A]\n  Print(text String) Say[Unit]\nenum Ask[A]\n  Name Ask[String]\ntype Cmds[A] = Say[A] | Ask[A]\ntype OnlyAsk[A] = | Ask[A]\n\nfn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p\n  Pure(a) -> freer.done((a, acc))\n  Bind(c, k) -> when c\n    Print(t) -> handle_say(k(()), acc + List(t))\n    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))\n\nfn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Name -> run_ask(k(\"bob\"))\n\nhello freer.Prog[Cmds, Unit] = eval\n  n <- freer.send(Name)\n  freer.send(Print(\"hi ${n}\"))\n\n(u, out) = run_ask(handle_say(hello, List()))\nprintln(out)\n",
+"import fp.freer\n\nenum Say[A]\n  Print(text String) Say[Unit]\nenum Ask[A]\n  Name Ask[String]\nunion type Cmds[A] = Say[A] | Ask[A]\nunion type OnlyAsk[A] = Ask[A]\n\nfn handle_say[A](p freer.Prog[Cmds, A], acc List[String]) freer.Prog[OnlyAsk, (A, List[String])] = when p\n  Pure(a) -> freer.done((a, acc))\n  Bind(c, k) -> when c\n    Print(t) -> handle_say(k(()), acc + List(t))\n    Name -> freer.bind(Name, (x) -> handle_say(k(x), acc))\n\nfn run_ask[A](p freer.Prog[OnlyAsk, A]) A = when p\n  Pure(a) -> a\n  Bind(c, k) -> when c\n    Name -> run_ask(k(\"bob\"))\n\nhello freer.Prog[Cmds, Unit] = eval\n  n <- freer.send(Name)\n  freer.send(Print(\"hi ${n}\"))\n\n(u, out) = run_ask(handle_say(hello, List()))\nprintln(out)\n",
 [
 "List(\"hi bob\")"
 ]

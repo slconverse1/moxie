@@ -90,7 +90,7 @@ type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 
 # ---------------------------------------------------------------- declarations
-decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
+decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' | 'union' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
 fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
@@ -116,7 +116,7 @@ impldecl : 'impl' [ tparams ] type [ 'for' type ] [ 'proxy' '(' ident ')' ] NL [
 unitdecl : 'unit' ident [ '=' [ INT | FLOAT ] unitexpr ] NL ;
 unitexpr : unitfactor { ( '*' | '/' ) unitfactor } ;
 unitfactor : ident [ '^' INT ] ;
-aliasdecl : 'type' ident [ tparams ] '=' [ '|' ] ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;
+aliasdecl : 'type' ident [ tparams ] '=' ( type [ 'where' expr ] NL | 'when' type NL INDENT { tarm } DEDENT ) ;
 tarm : type { ',' type } [ 'if' expr ] '->' typeres NL | 'else' typeres NL ;
 typeres : tres { ( '+' | '-' | '*' ) tres } ;
 tres : type | INT | STR ;

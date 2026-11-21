@@ -1979,7 +1979,7 @@ Scala does much of this with implicits and inline code, and C++ with templates. 
 Moxie keeps type information at run time only for values whose type is chosen at run time. An enum is a one-byte tag plus its largest case, a union type is a tag plus its largest member, and an `any Interface` value is a tag plus a payload. Everything else, such as an `Int`, a `String`, or a tuple, carries nothing, because the compiler already knows its type. The tag is what lets `when` take a value apart by type, with an action for each:
 
 ```
-type Value = Int | String
+union type Value = Int | String
 fn describe(v Value) String
   when v
     n@Int -> "the number ${n + 1}"

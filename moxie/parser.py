@@ -5,8 +5,8 @@ from .lexer import MoxieSyntaxError, tokenize
 from .ast import *   # noqa
 from . import units as units_mod
 
-EFFMODS = ("pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic", "pattern")        # soft: only modifiers when a declaration follows
-MODS = {"opaque", "unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure", "pattern"}
+EFFMODS = ("union", "opaque", "pure", "tailrec", "prints", "parks", "impure", "unsafe", "dynamic", "pattern")        # soft: only modifiers when a declaration follows
+MODS = {"opaque", "union", "unsafe", "dynamic", "export", "internal", "inline", "forward", "fiber", "static", "pure", "tailrec", "prints", "parks", "impure", "pattern"}
 DECL_START = {"fn", "tuple", "enum", "interface", "impl"}
 
 
@@ -199,7 +199,7 @@ class Parser(ExprParser):
             v = t.val
             if v in MODS or v in DECL_START:
                 pass
-            if (v in MODS and v not in EFFMODS) or v in DECL_START or (v in EFFMODS and self.peek(1).kind == "NAME" and self.peek(1).val in MODS | {"fn"}):
+            if (v in MODS and v not in EFFMODS) or v in DECL_START or (v in EFFMODS and self.peek(1).kind == "NAME" and self.peek(1).val in MODS | {"fn", "type"}):
                 d = self.try_decl()
                 if d is not None:
                     return d
@@ -537,7 +537,7 @@ class Parser(ExprParser):
         if a.val in ("alias", "opaque", "union") and b.kind == "NAME":
             self.err(f"`type {a.val} {b.val}` is no longer a form: write " + {
                 "alias": f"`type {b.val} = ...`", "opaque": f"`opaque type {b.val} = ...`",
-                "union": f"`type {b.val} = A | B` (a `|` between types makes a union)"}[a.val])
+                "union": f"`union type {b.val} = A | B`"}[a.val])
         return b.kind == "OP" and b.val in ("=", "[")
 
     def parse_type_decl(self, mods):
@@ -547,15 +547,18 @@ class Parser(ExprParser):
         if self.at_op("["):
             tparams = self.parse_tparams_v2()
         self.expect_op("=")
-        lead = self.eat_op("|")                          # `type One = | Say`: a leading bar makes a union of one member
         if self.at_name("when"):
             typ = self.parse_type_match()
         else:
             typ = self.parse_type()
-            if lead and typ.__class__ is not TUnion:
-                typ = TUnion([typ], line=line)
-        kind = "opaque" if "opaque" in mods else "union" if typ.__class__ is TUnion else "alias"
-        mods = [m for m in mods if m != "opaque"]
+        if "opaque" in mods and "union" in mods:
+            self.err("a type is either `opaque` or a `union`, not both")
+        if typ.__class__ is TUnion and "union" not in mods and "opaque" not in mods:
+            self.err(f"a union is declared with the word `union` before `type`: write `union type {name} = ...`")
+        if "union" in mods and typ.__class__ is not TUnion and typ.__class__ is not TMatch:
+            typ = TUnion([typ], line=line)               # `union type One[A] = Say[A]`: a union of one member
+        kind = "opaque" if "opaque" in mods else "union" if "union" in mods else "alias"
+        mods = [m for m in mods if m not in ("opaque", "union")]
         where = wtext = None
         if kind == "alias" and self.at_name("where"):
             self.next()
@@ -626,7 +629,7 @@ class Parser(ExprParser):
     def try_decl(self):
         i = 0
         mods = []
-        while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val in EFFMODS and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn"})):
+        while self.peek(i).kind == "NAME" and self.peek(i).val in MODS and not (self.peek(i).val in EFFMODS and not (self.peek(i + 1).kind == "NAME" and self.peek(i + 1).val in MODS | {"fn", "type"})):
             mods.append(self.peek(i).val)
             if self.peek(i).val == "fiber" and self.peek(i + 1).kind == "OP" and self.peek(i + 1).val == "[" \
                     and self.peek(i + 2).kind == "INT" and self.peek(i + 3).kind == "OP" and self.peek(i + 3).val == "]":
@@ -675,8 +678,8 @@ class Parser(ExprParser):
             for _ in range(i):
                 self.next()
             return self.parse_type_decl(mods)
-        if "opaque" in mods:
-            self.err("`opaque` goes before a `type` declaration: `opaque type Pos = Int`")
+        if "opaque" in mods or "union" in mods:
+            self.err("`opaque` and `union` go before a `type` declaration: `opaque type Id = Int`, `union type Key = Int | String`")
         return None
 
     # fn declaration (with optional receiver spec, operator names, aliasing)
