@@ -99,7 +99,8 @@ def build(gc):
     flat = [(p, s, t, txt) for p, ls in parts for (s, t, txt) in ls]
     dia = ("dialect: gc\n" if gc else "") + "learn: true\n"
     # the sidebar: one list per dialect, in docs/_includes, shared by every lesson page
-    nav = ["<ul>"]
+    nav = ["<ul>", '<li class="back"><a href="../spec.html">← Spec</a></li>', '<li class="back"><a href="../tutorial.html">← Tutorial</a></li>',
+           '<li class="back"><a href="../">← Home</a></li>', '<li class="gap"></li>']
     k = 0
     for p, ls in parts:
         nav.append(f'<li class="part">{p}</li>')
@@ -124,7 +125,7 @@ def build(gc):
         body = render(txt, gc)
         if s in sl:
             refs = ", ".join(f"[{h[0]}. {h[1]}](../spec.html#{sid})" for sid, h in sl[s])
-            body = body.rstrip() + f"\n\n*In the Spec: {refs}*\n"
+            body = re.sub(r"^(# .+)$", lambda m: m.group(1) + f"\n\n<div class='specref' markdown='1'>In the Spec: {refs}</div>", body, 1, flags=re.M)
         body = re.sub(r"^# (.+)$", lambda m: f"# {i + 1}. {m.group(1)}", body, 1, flags=re.M)
         nv = []
         if i > 0:
@@ -132,7 +133,7 @@ def build(gc):
         nv.append("[Contents](./)")
         if i + 1 < len(flat):
             nv.append(f"[{flat[i + 1][2]} →]({flat[i + 1][1]}.html)")
-        page = f"---\nlayout: default\n{dia}title: \"{t} · Mixer’s Guide {name}\"\n---\n<p><small>{p}</small></p>\n\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
+        page = f"---\nlayout: default\n{dia}title: \"{t} · Mixer’s Guide {name}\"\n---\n<p class='eyebrow'>{p}</p>\n\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
         open(os.path.join(base, s + ".md"), "w", encoding="utf-8").write(page)
     return len(flat)
 

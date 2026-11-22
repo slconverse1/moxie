@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Missing values and failures: Option and Result · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 16. Missing values and failures: Option and Result
+
+<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [15. Errors and Results](../spec.html#s15)</div>
 
 Some operations don't always have an answer. Looking up a name that isn't there, reading a number from text that isn't a number, opening a file that doesn't exist. Many languages answer with a special value (`null`) or an exception. Moxie has neither. A function that might not produce a value says so in its *type*, and the compiler makes the caller deal with it.
 
@@ -256,8 +258,6 @@ Use `Option` when absence is ordinary and needs no explanation: a lookup that ma
 ## No exceptions
 
 A fault that can't be recovered, such as an index past the end of an array, an arithmetic overflow, or a failed `assert`, *aborts* the running fiber with a diagnostic instead. That is reserved for bugs, not for conditions a program should expect. A function that can fail on valid input returns a `Result`.
-
-*In the Spec: [15. Errors and Results](../spec.html#s15)*
 
 ---
 

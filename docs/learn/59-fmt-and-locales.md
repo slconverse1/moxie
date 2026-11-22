@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Templates and locales · Mixer’s Guide moxie"
 ---
-<p><small>Getting started</small></p>
+<p class='eyebrow'>Getting started</p>
 
 # 7. Templates and locales
+
+<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e)</div>
 
 Lesson 6 introduced format specs inside interpolation, `${price:.2f}`. This lesson covers the other ways to put values into text: a template written apart from its values, a template loaded at run time, and numbers and dates written the way a particular place writes them.
 
@@ -108,8 +110,6 @@ Donnerstag, 05. November 2026
 - `fmt("{:>8.2f}", x)` checks its template at compile time; `try_fmt` takes any template and returns a `Result`.
 - The `n` format type and the names in dates come from the `Locale` found by `using`.
 - `parse_number(text, locale)` and `parse_time` read what a locale writes.
-
-*In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e)*
 
 ---
 

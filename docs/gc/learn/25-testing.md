@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Testing, assertions, and checking · Mixer’s Guide moxie/gc"
 ---
-<p><small>Quality and larger programs</small></p>
+<p class='eyebrow'>Quality and larger programs</p>
 
 # 32. Testing, assertions, and checking
+
+<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)</div>
 
 Moxie has testing built in: no framework to install, and nothing to import. A `test` block is code that runs only when you ask for tests. This lesson also covers the other ways moxie helps you find mistakes before users do.
 
@@ -125,8 +127,6 @@ What it leaves alone is whatever depends on a value that only exists when the pr
 ## Putting it together
 
 A typical function's life: you write it with a signature, `moxie check` proves the types agree, a `test` block shows an example, a `forall` states the general rule, and `moxie fmt` keeps the layout tidy. Types catch the mistakes that a type can express, and tests catch what is left.
-
-*In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)*
 
 ---
 

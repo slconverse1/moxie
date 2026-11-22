@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "More stream tools: sources you build · Mixer’s Guide moxie"
 ---
-<p><small>Streams and pipelines</small></p>
+<p class='eyebrow'>Streams and pipelines</p>
 
 # 26. More stream tools: sources you build
+
+<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13)</div>
 
 Lesson 25 covered the common stages. This lesson covers the rest of the toolbox: stages that tidy and combine streams, generators that make a stream from a seed, and how to make your own types into stream sources.
 
@@ -153,8 +155,6 @@ for p in stream_packets(buf)
 Packet(id: 1)
 Packet(id: 2)
 ```
-
-*In the Spec: [13. Pipelines and streams](../spec.html#s13)*
 
 ---
 

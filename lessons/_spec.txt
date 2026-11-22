@@ -2,7 +2,7 @@
 // and tools/link_spec.py (a "Guide:" line under each Spec heading).  tests/run_links.py checks that every lesson and every Spec section is mapped.
 01-run: s22
 02-first-program: s1
-03-values-and-names: s1, s2, s3
+03-values-and-names: s0, s1, s2, s3
 58-for-imperative-programmers: s3, s18
 04-numbers: s5
 05-text: s5
@@ -15,7 +15,7 @@
 11-generics: s9a
 12-tuples: s6
 13-enums: s6
-14-missing-and-failed: s15
+14-missing-and-failed: s0, s15
 15-lists: s7
 16-arrays: s7
 56-mutable-blocks: s3
@@ -23,7 +23,7 @@
 18-types-of-types: s6
 19-patterns: s8
 51-binary-patterns-and-type-tags: s8
-20-interfaces: s12
+20-interfaces: s0, s12
 21-streams-and-pipelines: s13
 61-more-stream-tools: s13
 50-pipe-slots-and-caching: s13, s14
@@ -63,6 +63,6 @@
 44-the-system-around-your-program: s19d, s19e, s20
 54-calling-c: s19a
 65-byte-streams: s19c
-60-the-two-dialects: s0, s24a
+60-the-two-dialects: s3, s24a
 66-the-rest-of-moxie: s24
 64-where-to-go-next: s25, s26

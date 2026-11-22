@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "State, lenses, lazy sequences, and monoids · Mixer’s Guide moxie"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 48. State, lenses, lazy sequences, and monoids
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 This lesson collects four ideas that functional programmers reach for. In each case moxie offers a plain way to do the job, and sometimes also the classic abstraction.
 
@@ -234,8 +236,6 @@ An empty input gives `empty()`, so name the type when nothing else says which on
 - Streams are lazy recipes; an infinite source is fine until a terminal runs it.
 - Data paths compose with `~>` and update with `replace` and `modify`.
 - `Sum`, `Min`, and friends pick a monoid for numbers; `fold_all` and `fold_map` combine.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

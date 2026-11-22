@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "JSON and data from outside · Mixer’s Guide moxie"
 ---
-<p><small>Data from outside</small></p>
+<p class='eyebrow'>Data from outside</p>
 
 # 39. JSON and data from outside
+
+<div class='specref' markdown='1'>In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html#s23c)</div>
 
 Data from outside a program, such as a configuration file or a web response, has a shape the program doesn't know until it arrives. Moxie doesn't look inside your types at run time (there is no reflection), so the standard `json` package gives you an ordinary, closed type for such data. This lesson shows how to read it, how to write it, and how to turn it into your own types and back.
 
@@ -178,8 +180,6 @@ By default only the function that does the thing is marked, so a wrapper that ch
 - `deriving dyn` gives `to_dyn()` and `Type.from_dyn(d)` for your own tuples and enums.
 - Functions that read a `Dyn` are written `dynamic fn`.
 - Don't expect a map's keys to come out sorted, or `\u` escapes in strings (not supported yet).
-
-*In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html#s23c)*
 
 ---
 

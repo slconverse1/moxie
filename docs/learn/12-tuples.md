@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Tuples · Mixer’s Guide moxie"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 14. Tuples
+
+<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)</div>
 
 A *tuple* groups a few values into one. It is moxie's way of making a record: a point is an `x` and a `y`, a user is a name and an age. Tuples hold values of any types, and each field has a name.
 
@@ -245,8 +247,6 @@ The lesson on patterns shows every shape a pattern can take, in `when`, in funct
 ## A tuple holding a resource
 
 A tuple that holds something that must be closed or handed over exactly once, such as a channel end, is itself such a resource. The lessons on resources and concurrency cover that.
-
-*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)*
 
 ---
 

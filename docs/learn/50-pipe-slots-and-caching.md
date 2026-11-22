@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Pipe slots, `seq`, and doing work once · Mixer’s Guide moxie"
 ---
-<p><small>Streams and pipelines</small></p>
+<p class='eyebrow'>Streams and pipelines</p>
 
 # 27. Pipe slots, `seq`, and doing work once
+
+<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13), [14. Caching, memoization, and effects](../spec.html#s14)</div>
 
 Lesson 25 used `|>` to run values through stages. This lesson looks at how a pipe decides where the value goes, adds the `seq` block, and then turns to the opposite problem: doing an expensive step only once. Moxie never caches behind your back, so each way of reusing work is something you write on purpose.
 
@@ -214,8 +216,6 @@ Reach for the next recipe when the subproblems aren't visited in a fixed order: 
 - A stage is a call; a tuple result can feed a stage with no explicit arguments.
 - `seq` runs every arm that applies, in order, each seeing the previous result.
 - No hidden caching: use `lazy`, a bottom-up `reduce`, a `ref` Dict, or a cache fiber.
-
-*In the Spec: [13. Pipelines and streams](../spec.html#s13), [14. Caching, memoization, and effects](../spec.html#s14)*
 
 ---
 

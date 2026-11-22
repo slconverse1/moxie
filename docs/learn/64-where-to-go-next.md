@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Where to go next · Mixer’s Guide moxie"
 ---
-<p><small>Your program and its machine</small></p>
+<p class='eyebrow'>Your program and its machine</p>
 
 # 66. Where to go next
+
+<div class='specref' markdown='1'>In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)</div>
 
 You have now met the whole language, from `println("hello")` to session types and calling C. This last page is a map of the other things on this site and in the repository, and a short list of habits that make moxie programs good ones.
 
@@ -42,8 +44,6 @@ The commands you will use most are `run`, `test`, `check` (parse and type-check 
 - **Keep effects at the edge.** A pure core and a thin shell of I/O is easy to test and easy to read.
 
 That is the whole tour. Write something small, run it, and let it grow.
-
-*In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)*
 
 ---
 

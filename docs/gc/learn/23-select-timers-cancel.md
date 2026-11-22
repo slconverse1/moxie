@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Waiting on several things: select, timers, and cancelling · Mixer’s Guide moxie/gc"
 ---
-<p><small>Concurrency</small></p>
+<p class='eyebrow'>Concurrency</p>
 
 # 29. Waiting on several things: select, timers, and cancelling
+
+<div class='specref' markdown='1'>In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)</div>
 
 A fiber often has to wait for more than one thing: a message from a worker, or a timeout; input from one channel or another. `select` waits on several at once and runs the arm for whichever is ready.
 
@@ -179,8 +181,6 @@ The workers spin until `cancel(s)`. Each notices on its next turn, writes a fare
 Leaving a `wait` block early, with `?`, `return`, `break`, or `continue`, cancels its token first and then waits, so no fiber outlives the block. Reaching the end of it normally does *not* cancel anything: call `cancel(s)` yourself when a fiber would otherwise run forever.
 
 A fiber parked in a plain `read` or `sleep` can't notice a cancel, so a fiber that has to stop promptly waits inside a `select` that has a `cancelled` arm, and uses `after(d)` for a sleep that can be cut short.
-
-*In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)*
 
 ---
 

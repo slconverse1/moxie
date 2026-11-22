@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Values and names · Mixer’s Guide moxie/gc"
 ---
-<p><small>Getting started</small></p>
+<p class='eyebrow'>Getting started</p>
 
 # 3. Values and names
+
+<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [1. Source, blocks, bindings](../spec.html#s1), [2. Names and keywords](../spec.html#s2), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)</div>
 
 A moxie program is mostly *values* and the *names* you give them. This lesson covers the building blocks: how to bind a name, what kinds of value there are, and the one rule about names that surprises people coming from other languages.
 
@@ -157,8 +159,6 @@ println(first)
 ## Everything is an expression
 
 Most things in moxie produce a value, including `if`, `when`, `for`, and a block marked `do`. That is why you will see `label = if ...` and `area = do ...` throughout this course. The next lessons show each one.
-
-*In the Spec: [1. Source, blocks, bindings](../spec.html#s1), [2. Names and keywords](../spec.html#s2), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)*
 
 ---
 

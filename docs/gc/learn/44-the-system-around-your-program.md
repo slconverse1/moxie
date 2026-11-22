@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "The system around your program · Mixer’s Guide moxie/gc"
 ---
-<p><small>Your program and its machine</small></p>
+<p class='eyebrow'>Your program and its machine</p>
 
 # 61. The system around your program
+
+<div class='specref' markdown='1'>In the Spec: [19d. Permissions](../spec.html#s19d), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e), [20. Program arguments and environment](../spec.html#s20)</div>
 
 A program lives inside a machine. This lesson covers what it is allowed to touch, how it tells time and makes random numbers, how it keeps secrets, how it reacts to Ctrl-C, how it runs other programs, and how it shows dates.
 
@@ -296,8 +298,6 @@ In raw mode Ctrl-C is just a key, so a program must choose to quit on it. Call `
 - Wrap secrets in `Secret`; print and log freely.
 - Run other programs with a list of arguments, never a command string; check `r.code`.
 - A `DateTime` has no zone; convert through a moment to do arithmetic.
-
-*In the Spec: [19d. Permissions](../spec.html#s19d), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e), [20. Program arguments and environment](../spec.html#s20)*
 
 ---
 

@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Programs with effects as data: the freer monad · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 51. Programs with effects as data: the freer monad
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 The same idea as the last lesson covers programs that *do* things. The commands are described as data, and a program is data that holds a command and what to do with its answer. A separate function, a *handler*, decides what the commands actually do. That way the same program can talk to the real world in production and to a script in a test.
 
@@ -126,8 +128,6 @@ Handlers that run for a long program should be `tailrec fn`: a `tailrec fn` runs
 - `eval` with `name <- step` is the notation; `eval impure` allows effects in the block.
 - `fp.freer` gives `Prog`, `send`, `done`, and a `Monad` for any command type.
 - A handler that removes some commands and passes the rest on composes with others.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

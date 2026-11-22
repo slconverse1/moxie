@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Recursion and function clauses · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functions</small></p>
+<p class='eyebrow'>Functions</p>
 
 # 12. Recursion and function clauses
+
+<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [9. Functions](../spec.html#s9)</div>
 
 A function that calls itself is *recursive*. Recursion is the natural way to work through data that is built from smaller pieces of the same kind, and in moxie it is cheap enough to use freely.
 
@@ -158,8 +160,6 @@ println(total(List()))
 ## A function that calls itself needs a bound
 
 Every recursive definition above stops because its argument gets smaller. If it doesn't, the program runs out of stack and the running fiber aborts with a "stack overflow" diagnostic. Tail calls avoid it; others are limited by the stack, which is large but finite.
-
-*In the Spec: [8. Patterns and `when`](../spec.html#s8), [9. Functions](../spec.html#s9)*
 
 ---
 

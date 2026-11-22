@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Mixer’s Guide moxie"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 46. Mapping, sequencing, and combining: functors, applicatives, and monads
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 Lesson 16 chained steps that might fail with `?` and `|>>`. This lesson names the idea behind them. Three small interfaces, over *type constructors* such as `Result[_, E]` or `List[_]`, describe three ways of working with a value inside a container: change it, combine several, or chain steps that each produce a new container. They have the names Haskell programmers expect.
 
@@ -231,8 +233,6 @@ The checks run one after another. When each one is slow, `par_map_all(f, c1, c2,
 - The first `Err` (or `Empty`) stops a chain; `map_all` collects *all* the errors instead.
 - Your own types join in with `impl Monad[Box]`, no `for`.
 - Write `Box.pure(42)`, not `pure(42)`, and parenthesize `<$>` and `<*>`.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

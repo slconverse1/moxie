@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Reader, writer, and continuations · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 53. Reader, writer, and continuations
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 
 Lesson 46 introduced the `Monad` interface and what `flat_map` means. Three packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), and a **continuation** monad (a step can jump out early). The free monad is covered in lesson 51. They need closures with one type per signature, so GC-free moxie does not have them. Each is the matching transformer from lesson 54 with nothing underneath, `Identity`, so a program that later needs two effects at once can move to the transformer without relearning anything.
@@ -68,8 +70,6 @@ println("${cont.eval_cont(safe_div(10, 2))} ${cont.eval_cont(safe_div(1, 0))}")
 ```
 
 Most programs reach for `?` or `break(value)` before this, since they do the same job in plain code. Continuations earn their place when a generic function written for any monad needs an early exit (see the next lesson).
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

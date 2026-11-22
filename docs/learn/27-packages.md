@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Packages and imports · Mixer’s Guide moxie"
 ---
-<p><small>Packages</small></p>
+<p class='eyebrow'>Packages</p>
 
 # 36. Packages and imports
+
+<div class='specref' markdown='1'>In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4)</div>
 
 A program doesn't have to live in one file. Code is split into *packages*, and a package is made of one or more files. This lesson covers how to import code, what a package shares with the rest of the program, and how a larger package is laid out.
 
@@ -147,8 +149,6 @@ Moxie programs are linked statically, from source, and code that can never run i
 ## Limits and pools
 
 In GC-free moxie the compiler works out ahead of time how many of each counted resource a program can have: channels, timers, atoms, files and sockets, and fibers. `moxie pools file.mxi` prints the counts, and the manifest can set memory budgets (`[fibers] memory`, `[program] memory`). That is covered in the Spec; it is what lets a moxie program say, before it starts, how much memory it will use.
-
-*In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4)*
 
 ---
 

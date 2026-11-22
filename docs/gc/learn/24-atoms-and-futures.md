@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Atoms and futures · Mixer’s Guide moxie/gc"
 ---
-<p><small>Concurrency</small></p>
+<p class='eyebrow'>Concurrency</p>
 
 # 30. Atoms and futures
+
+<div class='specref' markdown='1'>In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)</div>
 
 Channels send messages. Two other tools cover the rest of what concurrent programs need: an *atom* is a single shared value that fibers can read and update safely, and a *future* is a value that will be available later.
 
@@ -163,8 +165,6 @@ result 144
 | one answer, computed elsewhere | `Future` |
 | a counter or setting several fibers share | `Atom` |
 | to wait for the first of several events | `select` |
-
-*In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)*
 
 ---
 

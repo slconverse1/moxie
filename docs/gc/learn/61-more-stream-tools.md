@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "More stream tools: sources you build · Mixer’s Guide moxie/gc"
 ---
-<p><small>Streams and pipelines</small></p>
+<p class='eyebrow'>Streams and pipelines</p>
 
 # 26. More stream tools: sources you build
+
+<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13)</div>
 
 Lesson 25 covered the common stages. This lesson covers the rest of the toolbox: stages that tidy and combine streams, generators that make a stream from a seed, and how to make your own types into stream sources.
 
@@ -134,8 +136,6 @@ An `Option` is a source too, of zero or one element: `for x in maybe` runs once 
 ## Returning streams
 
 In moxie/gc a function can return a stream freely, unless the stream borrows a resource such as an open file. Nothing like `inline fn` is needed.
-
-*In the Spec: [13. Pipelines and streams](../spec.html#s13)*
 
 ---
 

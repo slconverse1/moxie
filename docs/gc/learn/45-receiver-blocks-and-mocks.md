@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Receiver blocks, interface composition, and mocks · Mixer’s Guide moxie/gc"
 ---
-<p><small>Designing with interfaces</small></p>
+<p class='eyebrow'>Designing with interfaces</p>
 
 # 55. Receiver blocks, interface composition, and mocks
+
+<div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html#s9b), [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
 
 Lesson 24 introduced methods and interfaces. This lesson adds the tools you reach for as programs grow: blocks that run with a value as their receiver, interfaces built from other interfaces, interfaces that require a field, and swapping a real service for a fake one in a test.
 
@@ -238,8 +240,6 @@ The other two styles are a `using` parameter for read-only services such as cloc
 - Embed interfaces to build bigger ones; one `impl` supplies everything.
 - Extend a foreign type by implementing your own interface for it.
 - A mock is another `impl`; the caller picks it by type, and it costs nothing at run time.
-
-*In the Spec: [9b. Receiver blocks](../spec.html#s9b), [12. Interfaces and `impl` blocks](../spec.html#s12)*
 
 ---
 

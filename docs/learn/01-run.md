@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Running moxie · Mixer’s Guide moxie"
 ---
-<p><small>Getting started</small></p>
+<p class='eyebrow'>Getting started</p>
 
 # 1. Running moxie
+
+<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)</div>
 
 Before any language, you need a way to run programs. There are three, from least to most effort.
 
@@ -76,8 +78,6 @@ Unix is the main platform for moxie (macOS, Linux and similar). Check `python3 -
 ## An editor
 
 Any text editor works. A [VS Code extension](https://github.com/slconverse1/moxie/tree/main/tools/editor/vscode-moxie) and a [vim syntax file](https://github.com/slconverse1/moxie/tree/main/tools/editor/vim) give colors and 2-space indentation. Indentation matters in moxie: a block is written by indenting its lines two spaces, as you will see in a few lessons.
-
-*In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)*
 
 ---
 

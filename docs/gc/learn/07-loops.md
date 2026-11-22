@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Loops · Mixer’s Guide moxie/gc"
 ---
-<p><small>Getting started</small></p>
+<p class='eyebrow'>Getting started</p>
 
 # 9. Loops
+
+<div class='specref' markdown='1'>In the Spec: [18. Fibers, loops, streams](../spec.html#s18), [18a. Labels and exits](../spec.html#s18a)</div>
 
 To do something many times, use a loop. Moxie has one loop keyword, `for`. It walks over a collection or a range, and it repeats until a condition fails. A loop is an expression, so a loop can produce a value, which this lesson gets to after the basics.
 
@@ -319,8 +321,6 @@ error: `n` is changed inside the loop (line 4) only for the loop's own condition
 ```
 
 Moxie has no `forEach`, `map` loop statement, or `do ... while`. A `for` with `continue` covers the first, streams cover the second, and a `for true` with a `break` covers the third. Streams and their pipelines get a lesson of their own.
-
-*In the Spec: [18. Fibers, loops, streams](../spec.html#s18), [18a. Labels and exits](../spec.html#s18a)*
 
 ---
 

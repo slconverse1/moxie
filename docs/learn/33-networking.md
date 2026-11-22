@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Networking, deadlines, and parallel work · Mixer’s Guide moxie"
 ---
-<p><small>Data from outside</small></p>
+<p class='eyebrow'>Data from outside</p>
 
 # 42. Networking, deadlines, and parallel work
+
+<div class='specref' markdown='1'>In the Spec: [19c. Files and sockets](../spec.html#s19c), [23b. HTTP (the `http` package)](../spec.html#s23b)</div>
 
 This lesson covers talking over a network, waiting with a deadline, racing two jobs against each other, and spreading work across fibers. Everything here uses `localhost`, so each example is a complete program that runs on its own.
 
@@ -200,8 +202,6 @@ The order of any output the calls themselves print is up to the scheduler, but t
 - `timeout:` turns a wait into an `Err` with code `TIMED_OUT`.
 - `race` and `with_timeout` stop work by *asking*, through a `Cancel` token.
 - `par_map` and `par_traverse` give results in input order, with a compile-time `limit:`.
-
-*In the Spec: [19c. Files and sockets](../spec.html#s19c), [23b. HTTP (the `http` package)](../spec.html#s23b)*
 
 ---
 

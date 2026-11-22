@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Arrays and grids · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 18. Arrays and grids
+
+<div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7)</div>
 
 A `List` can be any length and can change length when you add to it. An `Array` has a size that is part of its type, fixed when the array is made. That makes arrays the right tool when the size is part of the meaning: three colour channels, eight bytes, a 3 by 3 board. It also lets the compiler catch mistakes about size before the program runs.
 
@@ -260,8 +262,6 @@ println(dot(x, x))
 ## Array or list?
 
 Use a `List` when the number of elements isn't known up front or changes as the program runs. Use an `Array` when it is part of the meaning of the data, or you want the compiler to enforce it. Both are immutable values, and both work with the same stream operations, so changing from one to the other later is usually small.
-
-*In the Spec: [7. Collections](../spec.html#s7)*
 
 ---
 

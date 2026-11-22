@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Transformers and the mtl classes · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 54. Transformers and the mtl classes
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 
 A **transformer** adds one capability to any monad underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs rather than which stack provides it:
@@ -97,8 +99,6 @@ Ok((1, 7))
 ```
 
 Every transformer in `fp.trans` is a `MonadTrans`, and `lift[T, _, _](m)` lifts an action of the inner monad through any of them; the `_`s are inferred from `m`. There is no generic `lift` class over transformers beyond this, because a class over constructors of constructors is something moxie leaves out, which is why each transformer also has its own `lift_` function.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

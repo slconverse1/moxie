@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Naming types: aliases, opaque types, and unions · Mixer’s Guide moxie"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 21. Naming types: aliases, opaque types, and unions
+
+<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)</div>
 
 So far each type has been either built in or declared as a tuple or enum. This lesson covers three more ways to shape types: giving an existing type a second name, making a genuinely new type from an old one, and describing a value that can be one of several types.
 
@@ -228,8 +230,6 @@ User(id: 1, firm: Firm(name: "Initech Ltd", floor: 2))
 | "all of these fields together" | `tuple` |
 | "exactly one of these named cases" | `enum` |
 | "a value that could be an `Int` or a `String`" | `union type` |
-
-*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)*
 
 ---
 

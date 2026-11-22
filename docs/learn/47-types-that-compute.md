@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Types that compute · Mixer’s Guide moxie"
 ---
-<p><small>Designing with interfaces</small></p>
+<p class='eyebrow'>Designing with interfaces</p>
 
 # 57. Types that compute
+
+<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)</div>
 
 Types in moxie can be built and taken apart by small programs of their own. This is an advanced lesson. You don't need any of it to write ordinary programs, but it explains how the language's generic library is typed, and it lets you write functions whose result type depends on their arguments.
 
@@ -132,8 +134,6 @@ Nothing special is written: there's no keyword, and a function with a print or o
 - A type function is an alias whose body is a `when` over types; it can count, look up fields by name, and loop.
 - The checker limits type-level work (`type_fuel`), and all of it vanishes at run time.
 - A pure function whose arguments are constants is run by the compiler when a constant is needed, such as an array size.
-
-*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)*
 
 ---
 

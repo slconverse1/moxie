@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Fibers and channels · Mixer’s Guide moxie"
 ---
-<p><small>Concurrency</small></p>
+<p class='eyebrow'>Concurrency</p>
 
 # 28. Fibers and channels
+
+<div class='specref' markdown='1'>In the Spec: [16. Concurrency overview](../spec.html#s16), [17. Atoms, futures, channels, timers](../spec.html#s17), [18. Fibers, loops, streams](../spec.html#s18)</div>
 
 A program can do several things at once. In moxie the unit of concurrency is the *fiber*, a lightweight task, and fibers talk to each other through *channels*. The idea is borrowed from Go: don't share data between tasks, pass messages between them. Since moxie values never change, a message can't be altered behind the receiver's back.
 
@@ -198,8 +200,6 @@ The first `go` takes the only slot, so `try_go` is refused. The last `go` waits 
 ## Why this design
 
 Because values never change and channel ends have a single owner, a moxie program has no data races to reason about. Two fibers can only affect each other by sending a message, and every message is a value. The next lessons add the tools for waiting on several things at once, for shared counters, and for stopping a fiber.
-
-*In the Spec: [16. Concurrency overview](../spec.html#s16), [17. Atoms, futures, channels, timers](../spec.html#s17), [18. Fibers, loops, streams](../spec.html#s18)*
 
 ---
 

@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Truth and choices · Mixer’s Guide moxie/gc"
 ---
-<p><small>Getting started</small></p>
+<p class='eyebrow'>Getting started</p>
 
 # 8. Truth and choices
+
+<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [10. Operators](../spec.html#s10)</div>
 
 A program becomes interesting when it can decide. This lesson covers `Bool`, comparisons, and the two ways to choose: `if` and `when`.
 
@@ -273,8 +275,6 @@ B
 ```
 
 The last expression of a function is its result, so the final `if` needs no `return`. A `return` on the last line is redundant, and the compiler warns about it. The lesson on functions comes soon.
-
-*In the Spec: [8. Patterns and `when`](../spec.html#s8), [10. Operators](../spec.html#s10)*
 
 ---
 

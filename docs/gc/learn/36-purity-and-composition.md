@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Values, purity, and composing functions · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 45. Values, purity, and composing functions
+
+<div class='specref' markdown='1'>In the Spec: [14. Caching, memoization, and effects](../spec.html#s14), [23. Functional programming support](../spec.html#s23)</div>
 
 Moxie's functional features are ordinary code on top of a few language features: immutable values, higher-order functions, pipelines, and interfaces over type constructors. This lesson covers the first and the oldest ideas: values that never change, functions that say what they do, and functions built out of functions.
 
@@ -158,8 +160,6 @@ List(11, 22, 33)
 - `f ~> g ~> h` composes left to right.
 - `curry(f)(a)` fixes the first argument; `uncurry[n]` goes the other way.
 - Capturing closures can be passed around, but not stored in data structures.
-
-*In the Spec: [14. Caching, memoization, and effects](../spec.html#s14), [23. Functional programming support](../spec.html#s23)*
 
 ---
 

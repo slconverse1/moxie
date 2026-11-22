@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Contracts: where and invariant · Mixer’s Guide moxie/gc"
 ---
-<p><small>Fields and promises</small></p>
+<p class='eyebrow'>Fields and promises</p>
 
 # 60. Contracts: where and invariant
+
+<div class='specref' markdown='1'>In the Spec: [9c. Contracts](../spec.html#s9c)</div>
 
 A contract states what a function needs and what it promises, in the code and not in a comment. It is for faults that are *bugs*: an expected failure, such as a missing file, still returns a `Result` (lesson 16). A contract failure ends the program with a message that says whose fault it was.
 
@@ -182,8 +184,6 @@ Wherever the condition is written, the blame and the build modes are the same. T
 - Invariants are checked wherever a value is built.
 - An interface owns the contract of its members; impls can't add their own.
 - Conditions must be pure; release builds drop contracts unless the manifest keeps them.
-
-*In the Spec: [9c. Contracts](../spec.html#s9c)*
 
 ---
 

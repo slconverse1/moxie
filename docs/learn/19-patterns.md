@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Patterns · Mixer’s Guide moxie"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 22. Patterns
+
+<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8)</div>
 
 A *pattern* describes the shape of a value and names its parts at the same time. You have used the simplest ones already: `Some(v)` in a `when`, `List(head, ...tail)`, and `a, b = ...` in a binding. This lesson collects them, because the same patterns work everywhere a value is taken apart.
 
@@ -284,8 +286,6 @@ It keeps the main path of a function flat, with the unusual cases handled at the
 ## Completeness
 
 A `when` on an enum or union must cover every case, and the compiler checks nested patterns too. If `Some(Circle(r))`, `Some(Square(s))` and `None` are covered but `Some(Triangle(_))` isn't, it is an error that names the missing case. So adding a case to an enum finds, at compile time, every `when` that needs to learn about it.
-
-*In the Spec: [8. Patterns and `when`](../spec.html#s8)*
 
 ---
 

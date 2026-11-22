@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Errors in larger programs · Mixer’s Guide moxie"
 ---
-<p><small>Quality and larger programs</small></p>
+<p class='eyebrow'>Quality and larger programs</p>
 
 # 34. Errors in larger programs
+
+<div class='specref' markdown='1'>In the Spec: [15. Errors and Results](../spec.html#s15)</div>
 
 The lesson on `Option` and `Result` covered the basics: a function that can fail returns a `Result`, and `?` passes a failure along. This lesson is about what changes when a program has many functions and several kinds of failure.
 
@@ -188,8 +190,6 @@ An index out of range, an arithmetic overflow, a division by zero, a failed asse
 | several fallible functions with different errors | `From` and `?` |
 | a form with many fields | `validate` |
 | a caller's bug | an abort, not a `Result` |
-
-*In the Spec: [15. Errors and Results](../spec.html#s15)*
 
 ---
 

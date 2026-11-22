@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Units of measure · Mixer’s Guide moxie"
 ---
-<p><small>Data from outside</small></p>
+<p class='eyebrow'>Data from outside</p>
 
 # 43. Units of measure
+
+<div class='specref' markdown='1'>In the Spec: [23g. Units of measure](../spec.html#s23g)</div>
 
 A number that means meters should not be addable to a number that means seconds. Moxie lets you say so, and checks it before the program runs. Units are a compile-time check only: at run time a quantity is just the number.
 
@@ -168,8 +170,6 @@ A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable
 - A scaled unit (`unit km = 1000 m`) is stored in the base unit; `d in km` reads the number out.
 - `fn f[U](x Double[U])` works for any unit.
 - Units cost nothing at run time.
-
-*In the Spec: [23g. Units of measure](../spec.html#s23g)*
 
 ---
 

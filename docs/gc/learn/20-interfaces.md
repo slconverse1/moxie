@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Methods and interfaces · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 24. Methods and interfaces
+
+<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
 
 You have seen methods already (`s.area()`, `xs.map(...)`). This lesson is about declaring them for your own types, and about *interfaces*, which let one function work with many different types as long as they can do the same thing.
 
@@ -237,8 +239,6 @@ println(21.double())
 ## A method is a function
 
 Because `x.f(y)` is `f(x, y)`, you can use methods in pipelines, pass them as functions, and give a method a second name with an alias (`fn bump = incremented`). The lesson on pipelines shows the payoff.
-
-*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)*
 
 ---
 

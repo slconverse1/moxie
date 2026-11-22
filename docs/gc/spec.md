@@ -41,7 +41,7 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 ## 0. Principles {#s0}
 
 <!-- guide -->
-*In the Mixer’s Guide: [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
+*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [16. Missing values and failures: Option and Result](learn/14-missing-and-failed.html), [24. Methods and interfaces](learn/20-interfaces.html)*
 <!-- /guide -->
 
 - **Everything is an expression.** Bindings, `if`, `when`, `select`, `seq`, `do`, `for` comprehensions, loops, and blocks all yield a value, and a block's value is its last expression. The only non-expressions are declarations (`fn`, `tuple`, `enum`, `interface`, `impl`, `type`, `forward fn`), `import` and `export`, `init` blocks, `test` blocks, `end` markers, and comments.
@@ -120,7 +120,7 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 ## 3. Memory model: one heap, short pauses** **[gc: rewritten] {#s3}
 
 <!-- guide -->
-*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html)*
+*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html), [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
 <!-- /guide -->
 
 **Why this is different.** No-GC moxie has no garbage collector, so it plans memory in advance: capacities are declared, resources are counted before the program starts, and strings and temporaries are released in bulk at fixed points. moxie/gc gives that up. It spends a little speed, and accepts short pauses, so that a program never sizes a collection, counts a resource, or asks where a string lives.

@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "`for` comprehensions · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 47. `for` comprehensions
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 Lesson 46 chained dependent steps with `|>>`. When there are several steps, the chain gets hard to read, and a `for` block does the same job in a shape that reads top to bottom. A `for` block is a chain of *generators* ending in `yield`, and it works for any type that has a `Monad` instance: `Result`, `List`, `Stream`, and your own types.
 
@@ -180,8 +182,6 @@ For more than one generator, use the block form with `yield`, which is the gener
 - A leading `and` joins independent generators, needing only `Applicative`.
 - `List(x for x in xs if cond)` builds a collection in one line; its size comes from the declared type.
 - Choose `?` for a short function, `for` when you have a chain of steps and the shape reads better, `traverse` for a list.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

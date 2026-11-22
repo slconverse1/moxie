@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Streams and pipelines · Mixer’s Guide moxie/gc"
 ---
-<p><small>Streams and pipelines</small></p>
+<p class='eyebrow'>Streams and pipelines</p>
 
 # 25. Streams and pipelines
+
+<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13)</div>
 
 A *stream* is a sequence of values produced one at a time. Instead of writing a loop that builds up a result, you describe a *pipeline*: where the values come from, what happens to each, and what you want at the end. Streams are the main tool for working with collections in moxie.
 
@@ -257,8 +259,6 @@ Each terminal re-runs the recipe from the source. If you need the values twice, 
 ## Why streams, and not loops?
 
 A loop says *how*: keep a counter, update a total, remember to stop. A pipeline says *what*: keep the evens, multiply, sum. The pipeline can't forget to reset an accumulator, and each stage is small enough to name and test. A `for` loop is still the right tool when the body has effects or when the iteration is genuinely stateful.
-
-*In the Spec: [13. Pipelines and streams](../spec.html#s13)*
 
 ---
 

@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Refined parameters: proofs in the signature · Mixer’s Guide moxie/gc"
 ---
-<p><small>Fields and promises</small></p>
+<p class='eyebrow'>Fields and promises</p>
 
 # 59. Refined parameters: proofs in the signature
+
+<div class='specref' markdown='1'>In the Spec: [9d. Refined parameters](../spec.html#s9d)</div>
 
 A condition on a parameter says what a function needs. A **refined parameter** says it in the signature, so a bad call can fail when you *compile*, and one the compiler can't judge is checked when the program runs. Write `where` and a condition after the parameter's type:
 
@@ -155,8 +157,6 @@ Account(balance: 40, name: "ann")
 - The checker proves what it can from tests, ranges, and bounded types; unknown compiles with a note and is checked at run time, unless `prove = true` makes it an error.
 - The condition is kept as a run-time precondition, so calls through function values are still checked at run time.
 - `type Pos = Int where self > 0` names a condition; parameters, bindings, results, and fields declared with it are all checked.
-
-*In the Spec: [9d. Refined parameters](../spec.html#s9d)*
 
 ---
 

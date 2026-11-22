@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Limits, pools, and the memory budget · Mixer’s Guide moxie"
 ---
-<p><small>Quality and larger programs</small></p>
+<p class='eyebrow'>Quality and larger programs</p>
 
 # 35. Limits, pools, and the memory budget
+
+<div class='specref' markdown='1'>In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)</div>
 
 A moxie program has no garbage collector, so the compiler works out ahead of time how much of each counted resource it can have: channels, timers, atoms, files and sockets, listeners, and the fibers themselves. This lesson shows how to read those counts, how to set limits on them, and how to give a program a memory budget.
 
@@ -71,8 +73,6 @@ Mistakes: keeping an old header after changing the program (it is refused as sta
 - `fiber[n]` limits how many copies of a fiber run at once; `go` waits for a slot, `try_go` gives `Err(NO_SLOT)`.
 - `moxie pools` shows the counts; a pool header pins them for a build.
 - A memory budget in `Moxie.toml` needs a limit on every fiber function and a known size for every pool element.
-
-*In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)*
 
 ---
 

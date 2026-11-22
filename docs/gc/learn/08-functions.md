@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Functions · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functions</small></p>
+<p class='eyebrow'>Functions</p>
 
 # 10. Functions
+
+<div class='specref' markdown='1'>In the Spec: [9. Functions](../spec.html#s9)</div>
 
 A *function* is a named piece of code that takes values in and gives a value back. You have used built-in functions such as `println` and `max`. This lesson is about writing your own.
 
@@ -238,8 +240,6 @@ A function that calls itself is *recursive*, and the lesson on recursion shows h
 ## Pure and impure
 
 A function that only computes from its arguments is *pure*: given the same arguments it gives the same result, and it affects nothing else. A function that prints, reads a file, or talks to a network has effects. Moxie keeps the two apart at the type level: the compiler works out what a function does, and refuses to use an effectful function where a pure one is required, such as in a lambda written without `fn`, or in a constant evaluated at compile time. You will see that rule in the next lesson.
-
-*In the Spec: [9. Functions](../spec.html#s9)*
 
 ---
 

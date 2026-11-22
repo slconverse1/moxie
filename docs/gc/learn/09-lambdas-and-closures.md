@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Anonymous functions and closures · Mixer’s Guide moxie/gc"
 ---
-<p><small>Functions</small></p>
+<p class='eyebrow'>Functions</p>
 
 # 11. Anonymous functions and closures
+
+<div class='specref' markdown='1'>In the Spec: [11. Closures and first-class functions](../spec.html#s11)</div>
 
 A function doesn't need a name. An *anonymous function*, which many languages call a lambda, is written `(parameters) -> body`. In these lessons the two words mean the same thing. What makes it anonymous is the missing name, not its size.
 
@@ -222,8 +224,6 @@ println(op.apply(21))
 ```
 
 A `Dict` of functions makes a dispatch table. Dictionaries have a lesson of their own, and the lesson on interfaces shows the more structured way to attach behavior to a type.
-
-*In the Spec: [11. Closures and first-class functions](../spec.html#s11)*
 
 ---
 

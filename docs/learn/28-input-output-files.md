@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Input, output, and files · Mixer’s Guide moxie"
 ---
-<p><small>Packages</small></p>
+<p class='eyebrow'>Packages</p>
 
 # 37. Input, output, and files
+
+<div class='specref' markdown='1'>In the Spec: [19b. Standard input and output](../spec.html#s19b), [19c. Files and sockets](../spec.html#s19c)</div>
 
 A program that only prints is a calculator. This lesson is about talking to the outside world: the arguments a program is started with, its environment, standard input and output, and files and directories on disk.
 
@@ -272,8 +274,6 @@ Reading a file or directory needs the `fs.read` permission and changing one need
 - `read_line()`, `read_all()`, and `stdin_lines()` read; end of input is an `Err` with code `CLOSED`.
 - Files are `Io` values. Open them, close them, and expect an `Err`.
 - Path functions on text never fail; functions that touch the disk always return a `Result`.
-
-*In the Spec: [19b. Standard input and output](../spec.html#s19b), [19c. Files and sockets](../spec.html#s19c)*
 
 ---
 

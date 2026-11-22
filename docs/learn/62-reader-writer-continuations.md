@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Reader, writer, and continuations · Mixer’s Guide moxie"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 53. Reader, writer, and continuations
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 The monads in this lesson and the next are packages that need closures of one type per signature, which GC-free moxie does not have, so they ship only with moxie/gc. The idea of each, and what to use instead, is below.
 
@@ -14,8 +16,6 @@ The monads in this lesson and the next are packages that need closures of one ty
 - **Continuations** let a computation jump out early. Use `break(value)` in a loop, a `?` that returns an `Err`, or a `when` that returns early.
 
 Lesson 46 and lesson 49 cover the monads that do exist in GC-free moxie.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

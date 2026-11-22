@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Data types that grow: the expression problem · Mixer’s Guide moxie"
 ---
-<p><small>Functional programming</small></p>
+<p class='eyebrow'>Functional programming</p>
 
 # 50. Data types that grow: the expression problem
+
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 Suppose a library defines arithmetic as data (numbers and `+`) together with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**.
 
@@ -202,8 +204,6 @@ Choose by what you do with the program. Tagless final (lesson 49) runs the progr
 - A new variant or a new operation is new code only.
 - The compiler checks that every node of a union has every operation you call on it.
 - `Has[Node]` lets one smart constructor build into any union that holds that node.
-
-*In the Spec: [23. Functional programming support](../spec.html#s23)*
 
 ---
 

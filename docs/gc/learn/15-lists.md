@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Lists · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 17. Lists
+
+<div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7)</div>
 
 A `List` holds a sequence of values of one type. It is the collection you will use most.
 
@@ -253,8 +255,6 @@ empty
 just 7
 7 and 2 more
 ```
-
-*In the Spec: [7. Collections](../spec.html#s7)*
 
 ---
 

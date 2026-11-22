@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Session types: a channel that remembers the conversation · Mixer’s Guide moxie"
 ---
-<p><small>Concurrency</small></p>
+<p class='eyebrow'>Concurrency</p>
 
 # 31. Session types: a channel that remembers the conversation
+
+<div class='specref' markdown='1'>In the Spec: [23e. Session types (the `session` package)](../spec.html#s23e)</div>
 
 When two fibers talk in a fixed pattern ("you send a request, I send a reply"), an ordinary channel can't tell you if someone gets the order wrong. A **session** is a pair of channel ends whose *type* is the conversation, so the compiler checks that each side follows it. You write the conversation once, as a type. This lesson builds on channels and fibers (lesson 28) and uses the standard `session` package.
 
@@ -199,8 +201,6 @@ Mistakes: forgetting `finish` at the end, using the old name after a step (write
 - Every step returns the next endpoint; the old name is used up.
 - `Pick` chooses, `Offer` waits and branches; a repeating conversation names itself.
 - Wrong order, wrong type, a dropped conversation, and the wrong end are compile errors.
-
-*In the Spec: [23e. Session types (the `session` package)](../spec.html#s23e)*
 
 ---
 

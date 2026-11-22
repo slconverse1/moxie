@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Dicts and sets · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 20. Dicts and sets
+
+<div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7)</div>
 
 A `Dict` maps keys to values: names to ages, ids to records, words to counts. A `Set` holds distinct values and answers "is this one of them?" quickly. Both keep their elements in the order they were added.
 
@@ -242,8 +244,6 @@ Dict("a" -> 3, "b" -> 2, "c" -> 1)
 List("a", "b", "c")
 Dict(1 -> List(1, 4), 2 -> List(2, 5), 0 -> List(3, 6))
 ```
-
-*In the Spec: [7. Collections](../spec.html#s7)*
 
 ---
 

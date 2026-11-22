@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Builders: a DSL without macros · Mixer’s Guide moxie/gc"
 ---
-<p><small>Packages</small></p>
+<p class='eyebrow'>Packages</p>
 
 # 38. Builders: a DSL without macros
+
+<div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html#s9b)</div>
 
 Some programs read best when the code looks like the thing it builds: a page of markup, a menu, a configuration. Many languages add macros for this. Moxie has none, and doesn't need them. A builder is an ordinary set of functions, and nesting is nested calls. Types keep the nesting honest.
 
@@ -250,8 +252,6 @@ Every level is a function, every list is typed, and the whole page is a value yo
 - A `block` parameter takes the indented lines under a call as a `List`, in order.
 - Inside a block, `if`, `for`, and `...list` choose the children; a binding adds none.
 - A mistake in the children is a compile error, not a surprise at run time.
-
-*In the Spec: [9b. Receiver blocks](../spec.html#s9b)*
 
 ---
 

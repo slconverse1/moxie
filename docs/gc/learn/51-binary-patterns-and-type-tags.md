@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Binary patterns, and taking a value apart by its type · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data</small></p>
+<p class='eyebrow'>Data</p>
 
 # 23. Binary patterns, and taking a value apart by its type
+
+<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8)</div>
 
 Lesson 22 showed patterns for tuples, enums, and lists. This lesson adds two more: patterns that match the *layout of bytes*, and patterns that take apart a value whose type is only known at run time.
 
@@ -155,8 +157,6 @@ Mistakes: writing `Int(n)` for a scalar (use `n@Int`), and expecting `Dog(d)` to
 - A packet that doesn't fit just fails the arm; nothing aborts.
 - `Bin` as an expression builds bytes.
 - `n@Int` takes a union or `any` value apart by type and gives `n` the narrowed type.
-
-*In the Spec: [8. Patterns and `when`](../spec.html#s8)*
 
 ---
 

@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Regular expressions · Mixer’s Guide moxie"
 ---
-<p><small>Data from outside</small></p>
+<p class='eyebrow'>Data from outside</p>
 
 # 40. Regular expressions
+
+<div class='specref' markdown='1'>In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html#s23f)</div>
 
 A regular expression describes the shape of some text. The standard `regex` package is written in moxie, and it runs in time proportional to the text: it never backtracks, so no pattern can hang your program. The price is two missing features, back-references (`\1`) and look-around, and the package says so if you write one.
 
@@ -193,8 +195,6 @@ false
 - For a regex built at run time, use `compile` or `must`, and pin it with `^` in a pattern.
 - The engine never backtracks: no back-references, no look-around, and no pattern can hang.
 - One small difference from Perl and Python: when the repeated part of a group may match nothing (`(a*)*`), a final empty repetition isn't recorded, so the group keeps its last non-empty text.
-
-*In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html#s23f)*
 
 ---
 

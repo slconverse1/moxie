@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Properties, field delegates, and proxies · Mixer’s Guide moxie"
 ---
-<p><small>Fields and promises</small></p>
+<p class='eyebrow'>Fields and promises</p>
 
 # 58. Properties, field delegates, and proxies
+
+<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
 
 Three features let a field do more than hold a value. A *property* runs code when it is read or written. A *field delegate* adds the same behavior to many fields. A *proxy* hands a whole interface to a field, so a type does everything the field does except what you override.
 
@@ -291,8 +293,6 @@ Mistakes: `proxy` in an `impl` with no `for`, naming a field that doesn't exist 
 - `lazy` computes once; `static property` belongs to the type; properties can be watched through an Atom.
 - A delegate (`delegate(Percent)`) shares one rule across many fields.
 - `impl I for T proxy(field)` forwards the whole interface to a field except what you write.
-
-*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)*
 
 ---
 

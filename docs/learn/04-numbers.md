@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Numbers · Mixer’s Guide moxie"
 ---
-<p><small>Getting started</small></p>
+<p class='eyebrow'>Getting started</p>
 
 # 5. Numbers
+
+<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)</div>
 
 Moxie has several number types. Most programs use two of them, `Int` for whole numbers and `Double` for numbers with a fraction, and meet the others only when they need exact sizes, very large numbers, or exact decimals.
 
@@ -302,8 +304,6 @@ println(0.10d + 0.20d)
 ```
 
 A `Decimal` prints with exactly its scale, and compares exactly. The ordinary `Double` sum above shows why money is better in `Decimal`.
-
-*In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)*
 
 ---
 

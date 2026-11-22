@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Moxie and moxie/gc side by side · Mixer’s Guide moxie"
 ---
-<p><small>Your program and its machine</small></p>
+<p class='eyebrow'>Your program and its machine</p>
 
 # 64. Moxie and moxie/gc side by side
+
+<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)</div>
 
 You are reading the GC-free guide. moxie has a second dialect, moxie/gc, that keeps the same language and swaps the memory model: one shared heap with a generational collector instead of sizes worked out ahead of time. This lesson lists what changes, with a short example of each, so you can read code written for either dialect. Every example below also runs in moxie/gc, and the guide for that dialect shows the other column.
 
@@ -109,8 +111,6 @@ With no collector there are no collector pauses at all. What replaces them is a 
 ## Choosing
 
 Reach for GC-free moxie when you need a program whose worst case is known before it runs: firmware, a service with a fixed budget, anything where a pause is a bug. Reach for moxie/gc when you want the language without the bookkeeping. Both read the same, and a program that avoids the features above runs in both.
-
-*In the Spec: [0. Principles](../spec.html#s0), [24a. Departures from compile-time type safety](../spec.html#s24a)*
 
 ---
 

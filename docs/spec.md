@@ -11,7 +11,7 @@ The reference for the moxie language, a design language (a specification and a r
 ## 0. Principles {#s0}
 
 <!-- guide -->
-*In the Mixer’s Guide: [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
+*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [16. Missing values and failures: Option and Result](learn/14-missing-and-failed.html), [24. Methods and interfaces](learn/20-interfaces.html)*
 <!-- /guide -->
 
 - **Everything is an expression.** Bindings, `if`, `when`, `select`, `seq`, `do`, `for` comprehensions, loops, and blocks all yield a value, and a block's value is its last expression. The only non-expressions are declarations (`fn`, `tuple`, `enum`, `interface`, `impl`, `type`, `forward fn`), `import` and `export`, `init` blocks, `test` blocks, `end` markers, and comments.
@@ -90,7 +90,7 @@ The reference for the moxie language, a design language (a specification and a r
 ## 3. Memory model: S-space, T-space, and resets {#s3}
 
 <!-- guide -->
-*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html)*
+*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html), [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
 <!-- /guide -->
 
 **Why this exists.** A daemon is expected to run indefinitely. With no garbage collector, the strings a program builds at runtime and the temporaries of its functional transformations would grow without bound, and the program would eventually crash. S-space and T-space solve that: two stacks per fiber, released in bulk at fixed points, so a loop that runs forever uses a fixed amount of memory.

@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Calling C · Mixer’s Guide moxie"
 ---
-<p><small>Your program and its machine</small></p>
+<p class='eyebrow'>Your program and its machine</p>
 
 # 62. Calling C
+
+<div class='specref' markdown='1'>In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html#s19a)</div>
 
 Most programs never need this lesson. When one does, a library written in C already exists and rewriting it would be a waste, so moxie lets you declare its functions and call them. Because the compiler can't look inside C, a foreign declaration is something *you* promise, and the rest of the language keeps its checks around it.
 
@@ -161,8 +163,6 @@ A missing section, or a library the section doesn't list, is a compile-time erro
 - `cstr(text)` makes a `CString`; keep raw declarations private and export wrappers.
 - A `handle` is a move-only resource with a closing function.
 - A callback that C keeps becomes a channel (`Events`) or a handler fiber (`Handler`).
-
-*In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html#s19a)*
 
 ---
 

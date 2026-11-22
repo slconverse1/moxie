@@ -3,9 +3,11 @@ layout: default
 learn: true
 title: "Typeclasses · Mixer’s Guide moxie"
 ---
-<p><small>Designing with interfaces</small></p>
+<p class='eyebrow'>Designing with interfaces</p>
 
 # 56. Typeclasses
+
+<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
 
 Moxie has no separate typeclass feature. A class is an `interface`, an instance is an `impl`, a constraint is a bound, a superclass is an embedded interface, a member with no receiver is a `static fn`, and deriving is `deriving show, eq, ord, read, hash`. This lesson gathers those pieces in one place. If you know Haskell, the last section is a translation table.
 
@@ -264,8 +266,6 @@ The default is specialized for each implementing type.
 - `type Item` inside an interface is an associated type.
 - `F[_]` stands for a type constructor; write code once for every monad.
 - `any Interface` holds a mixed collection when the set of types is open.
-
-*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)*
 
 ---
 

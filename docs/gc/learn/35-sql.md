@@ -4,9 +4,11 @@ dialect: gc
 learn: true
 title: "Databases with SQL · Mixer’s Guide moxie/gc"
 ---
-<p><small>Data from outside</small></p>
+<p class='eyebrow'>Data from outside</p>
 
 # 44. Databases with SQL
+
+<div class='specref' markdown='1'>In the Spec: [21. Database access](../spec.html#s21)</div>
 
 Moxie checks SQL the way it checks everything else: before the program runs. A query is written in place with `sql(conn):` and the SQL indented below, and its result has a type the compiler knows.
 
@@ -221,8 +223,6 @@ With a schema in `Moxie.toml`, many mistakes never reach this point: an unknown 
 - `transaction(conn, f)` commits on `Ok` and rolls back on `Err`.
 - Don't nest transactions, send a transaction's connection to a channel, or open a `Connection` inside a loop.
 - `sql` is not allowed at module level or in `init`; read configuration in the entry file before `daemon`.
-
-*In the Spec: [21. Database access](../spec.html#s21)*
 
 ---
 
