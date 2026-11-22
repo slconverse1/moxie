@@ -160,7 +160,7 @@ xs = List(1, 2, 3, 4)
 squares List[Int][8] = List(x * x for x in xs if x > 1)
 words = List("ab", "cde")
 lens Dict[String, Int][8] = Dict(w -> len(w) for w in words)
-println("${len(squares)} ${squares(0)} ${lens(cde)}")
+println("${len(squares)} ${squares(0)} ${lens("cde")}")
 ```
 **Output:**
 

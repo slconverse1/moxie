@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Bareword Dict keys are gone. In a `Dict(...)` literal, in `d(k)` and in `d(k) = v`, a name is always a variable, so a word key is written as a string (`"alice" -> 30`, `ages("alice")`). Before, `alice -> 30` meant the string key and `$who` marked a variable, which read the opposite way from the rest of the language. The `Dict(age, n)` shorthand that used a variable's name as the key is gone too (`"age" -> age`), and `{a, b} -> (1, 2)` takes strings or expressions. A tuple's `t(name)` still names a field, and `$name` is still accepted in a Dict lookup. The Specs, lesson 17, the intro, and the tests are converted.
+
 A language server. `moxie lsp` speaks the Language Server Protocol over stdio: the errors and warnings of `moxie check` as you type, Format Document with the `moxie fmt` layout, and an outline of the declarations (`moxie/lsp.py`, tested by `tests/run_lsp.py`). The VS Code extension in `tools/editor/vscode-moxie` now starts it (run `npm install` there once), and the Vim README has a Neovim snippet. Neither client has been run in a live editor yet, and hover types, completion, and go to definition are not there yet.
 
 The Mixer's Guides are retired. They moved to `archive/` and are no longer published or linked; the Learning Guide is the teaching guide, the Spec and the Tutorial point to it, and the nav of both sites lists it in their place.

@@ -10,10 +10,10 @@ A `Dict` maps keys to values: names to ages, ids to records, words to counts. A 
 
 ## Making a Dict
 
-`Dict(...)` takes `key -> value` entries. A bare lowercase word before the arrow is the *string* key, so `alice -> 30` means `"alice" -> 30`:
+`Dict(...)` takes `key -> value` entries. A key is an ordinary expression, so a word is written as a string, `"alice" -> 30`, and a bare name such as `who -> 30` uses the *value* of the variable `who`:
 
 ```moxie
-ages = Dict(alice -> 30, bob -> 25, carol -> 41)
+ages = Dict("alice" -> 30, "bob" -> 25, "carol" -> 41)
 println(ages)
 println(len(ages))
 ```
@@ -33,11 +33,11 @@ In GC-free moxie a dict also has a *capacity*, the room reserved for its entries
 A lookup might find nothing, so `ages(alice)` is a `Result`: `Ok` with the value, or `Err` when the key is missing. You take it apart the way you take apart any `Result`:
 
 ```moxie
-ages = Dict(alice -> 30, bob -> 25)
-when ages(alice)
+ages = Dict("alice" -> 30, "bob" -> 25)
+when ages("alice")
   Ok(a) -> println("alice is $a")
   Err(e) -> println("no alice")
-when ages(zed)
+when ages("zed")
   Ok(a) -> println("zed is $a")
   Err(e) -> println("no zed")
 ```
@@ -48,12 +48,12 @@ alice is 30
 no zed
 ```
 
-In `ages(alice)` the bare word is the key `"alice"`. To look up with a variable, write `ages($who)`, and `get_or` supplies a default:
+In `ages("alice")` the key is a string. To look up with a variable, write its name, `ages(who)`, and `get_or` supplies a default:
 
 ```moxie
-ages = Dict(alice -> 30, bob -> 25)
+ages = Dict("alice" -> 30, "bob" -> 25)
 who = "bob"
-println(ages($who))
+println(ages(who))
 println(get_or(ages, "dave", 0))
 println(get_or(ages, "bob", 0))
 ```
@@ -70,7 +70,7 @@ Ok(25)
 A `for` loop takes the entries as `(key, value)` pairs, in insertion order. `keys` and `values` give just one side:
 
 ```moxie
-ages = Dict(alice -> 30, bob -> 25, carol -> 41)
+ages = Dict("alice" -> 30, "bob" -> 25, "carol" -> 41)
 for (name, age) in ages
   println("$name is $age")
 println(keys(ages) |> collect())
@@ -91,8 +91,8 @@ List(30, 25, 41)
 A Dict is a value, so an update gives a new Dict. A *spread* brings in the old entries, and the entries written after replace or add:
 
 ```moxie
-ages = Dict(alice -> 30, bob -> 25, carol -> 41)
-older = Dict(...ages, alice -> 31, dave -> 7)
+ages = Dict("alice" -> 30, "bob" -> 25, "carol" -> 41)
+older = Dict(...ages, "alice" -> 31, "dave" -> 7)
 println(older)
 println(len(ages))
 println(len(older))
@@ -125,9 +125,9 @@ An assignment through a name does the same thing, rebinding it to a changed copy
 
 ```moxie
 ages = Dict[String, Int][10]()
-ages(alice) = 30
-ages(bob) = 25
-ages(alice) = 31
+ages("alice") = 30
+ages("bob") = 25
+ages("alice") = 31
 println(ages)
 ```
 **Output:**

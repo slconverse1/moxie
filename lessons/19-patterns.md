@@ -10,7 +10,7 @@ A pattern can stand in a `when` arm, on the left of a binding, in a function par
 tuple Point(x Int, y Int)
 Point(a, b) = Point(3, 4)
 println(a + b)
-for (name, age) in Dict(ann -> 30, bo -> 25)
+for (name, age) in Dict("ann" -> 30, "bo" -> 25)
   println("$name is $age")
 ```
 ```output

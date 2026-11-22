@@ -1331,7 +1331,7 @@ fn fib_memo(n Int, ref seen Dict[Int, Int]) Int
   if known >= 0
     return known
   v = if n < 2 then n else fib_memo(n - 1, ref seen) + fib_memo(n - 2, ref seen)
-  seen($n) = v
+  seen(n) = v
   v
 
 fn fib(n Int) Int
@@ -1341,7 +1341,7 @@ fn fib(n Int) Int
 println("${fib(40)}")
 ```
 
-Output: `102334155`, instantly. Without the table the same recursion makes over three hundred million calls. **[gc]** (The table needs no declared size here, because a Dict grows as needed.) (`$n` in `seen($n)` means "the value of `n` as the key". A bare `n` would be the word `n`.) The other recipes are a table built bottom-up with `reduce`, and one fiber or Atom that owns a shared table and answers over channels.
+Output: `102334155`, instantly. Without the table the same recursion makes over three hundred million calls. **[gc]** (The table needs no declared size here, because a Dict grows as needed.) The other recipes are a table built bottom-up with `reduce`, and one fiber or Atom that owns a shared table and answers over channels.
 
 ## 17. Generics
 
