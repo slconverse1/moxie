@@ -141,7 +141,7 @@ A parameter normally receives a copy of the value, so a function can't change th
 
 ```moxie
 fn bump(ref counter Int) Unit
-  counter++
+  counter += 1
 n = 1
 bump(ref n)
 bump(ref n)
@@ -157,7 +157,7 @@ Forgetting `ref` at the call is an error:
 
 ```moxie
 fn bump(ref counter Int) Unit
-  counter++
+  counter += 1
 n = 1
 bump(n)
 ```
