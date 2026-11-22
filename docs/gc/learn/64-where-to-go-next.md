@@ -5,7 +5,7 @@ title: "Where to go next · Learning Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 65. Where to go next
+# 66. Where to go next
 
 You have now met the whole language, from `println("hello")` to session types and calling C. This last page is a map of the other things on this site and in the repository, and a short list of habits that make moxie programs good ones.
 
@@ -45,4 +45,4 @@ That is the whole tour. Write something small, run it, and let it grow.
 
 ---
 
-[← Moxie and moxie/gc side by side](60-the-two-dialects.html) · [Contents](./)
+[← …moxie: the rest of the toolbox](66-the-rest-of-moxie.html) · [Contents](./)
