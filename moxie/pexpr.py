@@ -616,7 +616,7 @@ class ExprParser(PBase):
         while not self.at_op("}"):
             t = self.peek()
             nt = self.peek(1)
-            if t.kind in ("NAME", "INT") and nt.kind == "OP" and nt.val in (",", "}") and not (t.kind == "NAME" and t.val[:1].isupper()):
+            if t.kind == "INT" and nt.kind == "OP" and nt.val in (",", "}"):
                 self.next()
                 keys.append((t.val, None))
             elif t.kind == "STR" and nt.kind == "OP" and nt.val in (",", "}"):
@@ -749,7 +749,7 @@ class ExprParser(PBase):
             self.expect_op("->")
             val = self.parse_expr()
             return Arg(None, TupleE([(None, key, False), (None, val, False)], line=line), None, line=line)
-        if t.kind in ("NAME", "INT") and self.at_op("->", 1) and not (t.kind == "NAME" and t.val[:1].isupper() and getattr(self, "dict_call", False)):
+        if t.kind in ("NAME", "INT") and self.at_op("->", 1) and not (t.kind == "NAME" and getattr(self, "dict_call", False)):   # in a Dict a name is the variable, not a word
             label = t.val
             self.next()
             self.next()
@@ -820,7 +820,9 @@ class ExprParser(PBase):
         for a in args:                      # a bare name after a named argument, or anywhere in a Dict, names itself: `User(name: who, age)`
             if a.label is not None:
                 seen_named = True
-            elif a.mod is None and a.expr.__class__ is Name and (seen_named or is_dict):
+            elif a.mod is None and a.expr.__class__ is Name and is_dict:
+                self.err_at(line, f"a `Dict` entry is written `key -> value`; to use `{a.expr.name}` as a key write `\"{a.expr.name}\" -> {a.expr.name}`")
+            elif a.mod is None and a.expr.__class__ is Name and seen_named:
                 a.label = a.expr.name
         partial = False
         new_args = []

@@ -55,7 +55,7 @@ class PlacesMixin:
         raise Abort("cannot update this kind of target")
 
     def index_keys(self, coll, call, env):
-        keyed = coll.__class__ is DictV or (coll.__class__ is TupleV and coll.names is not None)
+        keyed = coll.__class__ is TupleV and coll.names is not None
         out = []
         for a in call.args:
             e = a.expr

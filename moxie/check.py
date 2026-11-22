@@ -7083,7 +7083,7 @@ class Checker(RefineMixin):
             if vt is None or self.has_unsettled(vt):
                 return None
             key = ex.expr if ex.__class__ is Dollar else ex
-            if (ex.__class__ is Dollar or key.__class__ in (IntLit, StrLit, CharLit, BoolLit)) and kt is not None and not self.has_unsettled(kt):
+            if kt is not None and not self.has_unsettled(kt):
                 at = self.quiet(key, sc)[0]
                 if at is not None and not self.has_unsettled(at):
                     self.compat(kt, at, None, ex.line if getattr(ex, "line", 0) else self.cur_line)

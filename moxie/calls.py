@@ -775,13 +775,11 @@ class CallsMixin:
 
     # ------------------------------------------------------------ indexing
     def index_call(self, coll, n, env):
-        keyed = coll.__class__ is DictV or (coll.__class__ is TupleV and coll.names is not None)
+        keyed = coll.__class__ is TupleV and coll.names is not None          # a name in a tuple's parentheses is a field name; in a Dict it is a variable
         args = []
         for a in n.args:
             e = a.expr
             if keyed and e.__class__ is Name:
-                v = env.lookup(e.name, self)
-                # bareword key: a literal name
                 args.append(e.name)
                 continue
             if e.__class__ is Dollar:
