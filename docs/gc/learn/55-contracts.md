@@ -52,12 +52,12 @@ println(inc(z))
 abort in fiber main (line 7): requires failed in inc: x > 0 (caller bug)
 ```
 
-Here the function was given a value it said it couldn't take. When the *function* is wrong, it's an `ensures` that fails:
+Here the function was given a value it said it couldn't take. When the *function* is wrong, it's an `ensures` that fails. This body is arithmetic the checker can't follow, so the failure shows up when the program runs:
 
 ```moxie
 fn bad(x Int) Int
   ensures result > x
-  x - 1
+  x * x - x * x
 
 println(bad(5))
 ```
@@ -65,6 +65,21 @@ println(bad(5))
 
 ```
 abort in fiber main (line 5): ensures failed in bad: result > x (supplier bug)
+```
+
+When the checker *can* follow the body, it catches the broken promise before the program runs:
+
+```moxie
+fn worse(x Int) Int
+  ensures result > x
+  x - 1
+
+println(worse(5))
+```
+**The compiler says:**
+
+```
+error: `worse` promises `result > x`, but the value returned here can never satisfy it
 ```
 
 A `requires` whose arguments are all constants and that fails is a compile error, as a constant index out of range is:
@@ -163,7 +178,7 @@ Account(balance: 5)
 
 `i Int where i >= 0` is a `requires`, `Int where result >= 0` after the result type is an `ensures`, and `balance Int where balance >= 0` after a field is an `invariant`. Use whichever reads better; a condition with several lines or a name for the old state belongs in a `requires` or `ensures` line.
 
-Whatever the spelling, the blame and the build modes are the same, and all of them are checked when the program runs. On a parameter the checker goes further, as lesson 49 explains: it tries to prove the condition at each call, so what it proves costs nothing, what it can see is false is a compile error, and what it can neither prove nor refute is still checked when the program runs, unless `prove = true` asks for a proof every time. Proving results and fields is not done yet.
+Whatever the spelling, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 49 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it proves costs nothing to rely on, what it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
 
 ## What to remember
 

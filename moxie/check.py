@@ -3905,6 +3905,8 @@ class Checker(RefineMixin):
             self.last_loop_lost = {}
             if k == len(stmts) - 1 and st.__class__ is ExprStmt and st.e.__class__ is Name and new_scope:
                 self.tail_ctx.setdefault(id(st.e), (inner, {}))          # a tail that is a name is looked up where the block bound it
+            if k == len(stmts) - 1 and st.__class__ is ExprStmt and self.rf_is_exit(st.e):
+                self.rf_exit(st.e, inner)
             last = self.ev(st, inner)
             if self.last_loop_lost:
                 lost = {**lost, **self.last_loop_lost}
@@ -3989,6 +3991,8 @@ class Checker(RefineMixin):
 
     def e_Return(self, n, sc):
         t, c = self.ev(n.e, sc)
+        if n.e is not None:
+            self.rf_exit(n.e, sc)
         if n.e is not None and getattr(self, "cur_fn", None) is not None and n.e.__class__ is not Name:
             self.tag_value(n.e, self.cur_fn.ret, t)
         if n.e is not None:
@@ -4604,6 +4608,8 @@ class Checker(RefineMixin):
             if b.__class__ is Block:
                 types.append(self.eval_with_paths(bpaths, lambda: self.e_Block(b, bsc)))
             else:
+                if self.rf_is_exit(b):
+                    self.rf_exit(b, bsc)
                 types.append(self.eval_with_paths(bpaths, lambda: self.ev(b, bsc)))
             del self.ifacts[mark:]
             self.tp_eq = old_eq
@@ -6093,6 +6099,7 @@ class Checker(RefineMixin):
         self.check_range_calls(n, sc)
         self.note_safety(n, sc, self.pipe_ty, k.get("extra", a[0] if a else 0))
         self.rf_check_call(n, sc, k.get("extra", a[0] if a else 0))
+        self.rf_check_construct(n, sc)
         self.check_dict_spread(n, sc)
         self.check_dict_dupes(n, sc)
         self.check_literal_closures(n, sc)
@@ -8956,6 +8963,7 @@ class Checker(RefineMixin):
             inner.vars[nm] = Var(None, False, 0)
         saved_ifacts, self.ifacts = self.ifacts, []
         self.rf_enter_fn(n, inner)
+        saved_rf = self.rf_begin_fn(n)
         self.fn_ret = self.ty_of_type(n.ret) if n.ret is not None else None
         self.in_fiber = False
         self.check_type_arity(n.ret, n.line)
@@ -8978,6 +8986,9 @@ class Checker(RefineMixin):
             for te in self.value_tails(n.body):
                 self.note_expected(te, self.fn_ret)
                 self.has_expect(te, n.ret)
+            rb = n.body.e if n.body.__class__ is ExprStmt else n.body
+            if rb.__class__ is not Block and self.rf_is_exit(rb):
+                self.rf_exit(rb, inner)
             t, c = self.ev(n.body, inner)
             self.check_tail(n.body, inner)
             self.tag_tails(n)
@@ -8986,6 +8997,7 @@ class Checker(RefineMixin):
             self.check_endpoints_finished(n, sess_start)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
         self.ifacts = saved_ifacts
+        self.rf_end_fn(saved_rf)
         self.any_params = saved_any
         self.cur_fn = saved_fn
         self.tp_decl = saved_decl

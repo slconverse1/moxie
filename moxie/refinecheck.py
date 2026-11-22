@@ -261,6 +261,97 @@ class RefineMixin:
         else:
             self.warn_unverified(line, f"{what}; it is checked when the program runs ({ways}, or set `[contracts] prove = true` to make this an error)")
 
+    # ------------------------------------------------------------ results: an `ensures` on `result`, proved where the function exits
+    def rf_begin_fn(self, fd):
+        """At a function: the `ensures` conditions to prove at its exits, and which expressions are exits.  Returns what to restore."""
+        saved = (getattr(self, "rf_goals", None), getattr(self, "rf_tail_ids", None), getattr(self, "rf_fd", None))
+        goals = [(cond, text) for kw, cond, _ln, text in (fd.contracts or []) if kw == "ensures"] if fd.body is not None else []
+        self.rf_goals, self.rf_fd = goals, fd
+        self.rf_tail_ids = {id(te) for te in self.tails_all(fd.body)} if goals else set()
+        return saved
+
+    def rf_end_fn(self, saved):
+        self.rf_goals, self.rf_tail_ids, self.rf_fd = saved
+
+    def rf_is_exit(self, e):
+        return bool(getattr(self, "rf_goals", None)) and id(e) in self.rf_tail_ids
+
+    def rf_param_subst(self, fd, sc):
+        subst = {}
+        for p in fd.params or []:
+            if not p.name or p.mod == "ref" or not self.rf_stable(p.name):
+                continue
+            if p.type is not None and self.rf_int_ty(self.ty_of_type(p.type)):
+                subst[("v", p.name)] = R.atom(p.name)
+            subst[("path", p.name)] = p.name
+            subst[("len", p.name)] = R.atom(("len", p.name))
+        return subst
+
+    def rf_exit(self, e, sc):
+        """The expression `e` is a value the function leaves with: prove each linear `ensures` for it from the facts held here."""
+        fd = getattr(self, "rf_fd", None)
+        if not getattr(self, "rf_goals", None) or e is None or fd is None or self.fn_ret is None or not self.rf_int_ty(self.fn_ret):
+            return
+        lin = self.rf_lin(e, sc)
+        if lin is None:
+            return
+        subst = self.rf_param_subst(fd, sc)
+        subst[("v", "result")] = lin
+        subst[("path", "result")] = None
+        subst[("len", "result")] = self.rf_fresh()
+        line = getattr(e, "line", 0) or self.cur_line
+        for cond, text in self.rf_goals:
+            goal = self.rf_formula(cond, None, subst, False)
+            if goal is None:
+                continue                                   # not linear integer arithmetic: left to the run-time check
+            r = R.proves(list(self.ifacts), goal)
+            if r == "no":
+                self.err(line, f"`{fd.name}` promises `{text}`, but the value returned here can never satisfy it")
+            elif r == "unknown":
+                self.rf_unknown(line, f"can't prove `{text}` for the result of `{fd.name}`",
+                                "test the value before returning it, or loosen the promise")
+
+    # ------------------------------------------------------------ fields: an `invariant`, proved where a tuple is built
+    def rf_check_construct(self, n, sc):
+        f = n.fn
+        if f.__class__ is not Name or sc.find(f.name) is not None or f.name in (self.fns or {}):
+            return
+        td = self.tuples.get(f.name)
+        if td is None or not getattr(td, "invariants", None) or n.trailing is not None:
+            return
+        fields = [x for x in td.fields or []]
+        args = list(n.args or [])
+        if any(getattr(a, "mod", None) for a in args) or any(a.expr.__class__ in (PH, Slot) for a in args):
+            return
+        supplied, k = {}, 0
+        for a in args:
+            if a.label is not None:
+                supplied[a.label] = a.expr
+            elif k < len(fields):
+                supplied[fields[k].name] = a.expr
+                k += 1
+        subst = {}
+        for fl in fields:
+            if not fl.name:
+                continue
+            expr = supplied.get(fl.name, fl.default)
+            lin = self.rf_lin(expr, sc) if expr is not None else None
+            subst[("v", fl.name)] = lin if lin is not None else self.rf_fresh()
+            path = self.rf_path(expr, sc, None) if expr is not None else None
+            subst[("path", fl.name)] = path
+            subst[("len", fl.name)] = R.atom(("len", path)) if path is not None else self.rf_fresh()
+        facts = list(self.ifacts)
+        line = getattr(n, "line", 0) or self.cur_line
+        for kw, cond, _ln, text in td.invariants:
+            goal = self.rf_formula(cond, None, subst, False)
+            if goal is None:
+                continue
+            r = R.proves(facts, goal)
+            if r == "no":
+                self.err(line, f"`{td.name}` needs `{text}`, but the values given here can never satisfy it")
+            elif r == "unknown":
+                self.rf_unknown(line, f"can't prove `{text}` for `{td.name}`", "check the values first, or loosen the invariant")
+
     # ------------------------------------------------------------ calls
     def rf_callee(self, n, sc, extra):
         """(FnDecl, receiver expression or None, has a receiver) for a call whose callee declares refinements."""

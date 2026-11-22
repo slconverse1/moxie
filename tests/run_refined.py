@@ -14,7 +14,7 @@ CASES = [
  ("a constant that can never satisfy the alias", 'type Pos = Int where self > 0\nz Pos = 0\n', BAD, "can never satisfy it"),
  ("an unproved value entering a refined alias", 'type Pos = Int where self > 0\nfn g(n Int) Int\n  x Pos = n\n  x\n', BAD, "can't prove `x > 0`"),
  ("a refined result is checked on the way out", 'type Pos = Int where self > 0\nfn g(n Int) Pos\n  n\nprintln(g(5))\nprintln(g(0))\n', RUN, "ensures failed in g: result > 0"),
- ("a refined field is an invariant", 'type Pos = Int where self > 0\ntuple Account deriving show\n  balance Pos\n  name String\nprintln(Account(balance: 5, name: "a"))\nprintln(Account(balance: 0, name: "b"))\n', RUN, "invariant of Account failed: balance > 0"),
+ ("a refined field is an invariant", 'type Pos = Int where self > 0\ntuple Account deriving show\n  balance Pos\n  name String\nprintln(Account(balance: 5, name: "a"))\nprintln(Account(balance: 1 - len(List(1)), name: "b"))\n', RUN, "invariant of Account failed: balance > 0"),
  ("a literal call that holds", GET + 'println(get(List(1, 2, 3), 1))\n', OK, "2"),
  ("checked by if", GET + 'fn f(xs List[Int], i Int) Int\n  if i >= 0 and i < len(xs) then get(xs, i) else -1\nprintln(f(List(1, 2), 1))\n', OK, "2"),
  ("checked by an early return", GET + 'fn f(xs List[Int], i Int) Int\n  return -1 if i < 0 or i >= len(xs)\n  get(xs, i)\nprintln(f(List(1, 2), 5))\n', OK, "-1"),
@@ -48,7 +48,7 @@ for name, src, want, word in CASES:
     for gc in (False, True):
         p = os.path.join(D, "t.mxi")
         open(p, "w").write(src)
-        cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["--prove"] + ["check" if want == BAD else "run", p]
+        cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + (["--prove"] if want == BAD else []) + ["check" if want == BAD else "run", p]
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
         o = r.stdout + r.stderr
         good = ((r.returncode != 0) if want in (BAD, RUN) else (r.returncode == 0)) and word in o

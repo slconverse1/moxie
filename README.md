@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Results and fields are proved at compile time. A linear `ensures` (or `where` after the result type) is proved at every exit of a function, branches and `return` included, and a linear `invariant` (or `where` after a field) at every construction of the tuple, from the same facts as a call. A condition that can never hold there is a compile error; an unknown one follows the same note-or-error rule as parameters. Tests that built a bad value on purpose to see the run-time abort now hide the value from the checker. `tests/run_proveexit.py` covers it.
+
 `io.Buffer` can rewind and seek (`ref b.rewind()`, `ref b.seek(n)`, and `io.position(b)`), so what was written can be read back. Lesson 62 now says that Reader, Writer and Cont are the transformers over `Identity`, and the intros no longer say an unprovable `where` is a compile error.
 
 Contracts and refined parameters share one rule for "unknown". When the solver can neither prove nor refute a `where` condition, the call compiles with a note and the condition (also a `requires`) is checked at run time; `[contracts] prove = true` in `Moxie.toml`, or `--prove`, makes it an error as before. A refuted condition is an error either way. `tests/run_unknown.py` covers both modes; lesson 49 and the Spec say so. Also new: `where` after a result type is an `ensures` (`fn abs(n Int) Int where result >= 0`) and after a tuple field an `invariant` (`balance Int where balance >= 0`), with Spec 9b opening on the one-mechanism view and lesson 55 "One condition, two spellings". Results and fields are run-time checks for now; proving them at compile time is future work. `tests/run_wherepos.py` covers them.

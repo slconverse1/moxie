@@ -8,7 +8,7 @@ PROG = '''fn inc(x Int) Int
   x + 1
 fn bad(x Int) Int
   ensures result > x
-  x - 1
+  x * x - x * x
 tuple P deriving show
   a Int
   invariant a >= 0
@@ -34,7 +34,7 @@ rc, o = run('z = 0\nprintln("${inc(z)}")\n')
 chk("requires failure blames caller", rc != 0 and "requires failed in inc" in o and "caller bug" in o)
 rc, o = run('println("${bad(5)}")\n')
 chk("ensures failure blames supplier", rc != 0 and "ensures failed in bad" in o and "supplier bug" in o)
-rc, o = run('println("${P(a: -1)}")\n')
+rc, o = run('println("${P(a: 0 - len(List(1)))}")\n')
 chk("invariant failure at construction", rc != 0 and "invariant of P failed" in o)
 rc, o = run('println("${P(a: 3)}")\n')
 chk("invariant holds", rc == 0 and "P(a: 3)" in o)

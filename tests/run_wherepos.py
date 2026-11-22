@@ -6,9 +6,9 @@ CASES = [
  ("a result where holds", ABS + "println(abs(-4))\n", 0, "4"),
  ("a result where is an ensures", "fn bad(n Int) Int where result >= 0\n  n\nprintln(bad(-1))\n", 1, "ensures failed in bad: result >= 0 (supplier bug)"),
  ("a field where holds", "tuple Account deriving show\n  balance Int where balance >= 0\nprintln(Account(balance: 5))\n", 0, "Account(balance: 5)"),
- ("a field where is an invariant", "tuple Account deriving show\n  balance Int where balance >= 0\nprintln(Account(balance: -1))\n", 1, "invariant of Account failed: balance >= 0"),
- ("a header field where is an invariant", "tuple Box(w Int where w > 0, h Int) deriving show\nprintln(Box(0, 3))\n", 1, "invariant of Box failed: w > 0"),
- ("a rebuild is checked too", "tuple Account deriving show\n  balance Int where balance >= 0\na = Account(balance: 1)\nb = Account(...a, balance: -3)\nprintln(b)\n", 1, "invariant of Account failed"),
+ ("a field where is an invariant", "tuple Account deriving show\n  balance Int where balance >= 0\nprintln(Account(balance: 0 - len(List(1))))\n", 1, "invariant of Account failed: balance >= 0"),
+ ("a header field where is an invariant", "tuple Box(w Int where w > 0, h Int) deriving show\nprintln(Box(len(List()), 3))\n", 1, "invariant of Box failed: w > 0"),
+ ("a rebuild is checked too", "tuple Account deriving show\n  balance Int where balance >= 0\na = Account(balance: 1)\nb = Account(...a, balance: 0 - len(List(1, 2, 3)))\nprintln(b)\n", 1, "invariant of Account failed"),
 ]
 fails = []
 for name, src, rc, want in CASES:
