@@ -478,6 +478,8 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         r = getattr(self, "ev_" + n.num.__class__.__name__)(n.num, env)         # units are erased: `5.0 m` is 5.0
         if n.scale is not None and n.scale != 1:
             v = r.v if hasattr(r, "v") else r              # a scaled unit is stored in its base unit: `5.0 km` is 5000.0
+            if isinstance(v, int) and not isinstance(v, bool) and float(n.scale).is_integer():
+                return Done(v * int(n.scale))              # an Int quantity stays an Int: `3 km` is 3000
             return Done(float(f"{v * n.scale:.12g}"))   # 12 digits: `2.01 km` is 2010.0, not 2009.9999999999998
         return r
 
