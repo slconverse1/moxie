@@ -4,7 +4,7 @@ title: "Units of measure · Learn moxie"
 ---
 <p><small>Data from outside</small></p>
 
-# 41. Units of measure
+# 42. Units of measure
 
 A number that means meters should not be addable to a number that means seconds. Moxie lets you say so, and checks it before the program runs. Units are a compile-time check only: at run time a quantity is just the number.
 

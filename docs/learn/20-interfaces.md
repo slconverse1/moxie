@@ -4,7 +4,7 @@ title: "Methods and interfaces · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 23. Methods and interfaces
+# 24. Methods and interfaces
 
 You have seen methods already (`s.area()`, `xs.map(...)`). This lesson is about declaring them for your own types, and about *interfaces*, which let one function work with many different types as long as they can do the same thing.
 

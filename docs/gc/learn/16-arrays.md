@@ -5,7 +5,7 @@ title: "Arrays and grids · Learn moxie/gc"
 ---
 <p><small>Data</small></p>
 
-# 17. Arrays and grids
+# 18. Arrays and grids
 
 A `List` can be any length and can change length when you add to it. An `Array` has a size that is part of its type, fixed when the array is made. That makes arrays the right tool when the size is part of the meaning: three colour channels, eight bytes, a 3 by 3 board. It also lets the compiler catch mistakes about size before the program runs.
 

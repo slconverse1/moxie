@@ -4,7 +4,7 @@ title: "GADTs and typestate · Learn moxie"
 ---
 <p><small>Functional programming</small></p>
 
-# 50. GADTs and typestate
+# 51. GADTs and typestate
 
 Lesson 40 got a typed evaluator by making the interpreters types, and lesson 41 got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own *result type* after its parameters. That is a GADT, a generalized algebraic data type.
 

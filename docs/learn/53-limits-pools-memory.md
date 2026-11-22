@@ -4,7 +4,7 @@ title: "Limits, pools, and the memory budget · Learn moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 33. Limits, pools, and the memory budget
+# 34. Limits, pools, and the memory budget
 
 A moxie program has no garbage collector, so the compiler works out ahead of time how much of each counted resource it can have: channels, timers, atoms, files and sockets, listeners, and the fibers themselves. This lesson shows how to read those counts, how to set limits on them, and how to give a program a memory budget.
 

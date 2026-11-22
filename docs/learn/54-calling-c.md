@@ -4,7 +4,7 @@ title: "Calling C · Learn moxie"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 58. Calling C
+# 59. Calling C
 
 Most programs never need this lesson. When one does, a library written in C already exists and rewriting it would be a waste, so moxie lets you declare its functions and call them. Because the compiler can't look inside C, a foreign declaration is something *you* promise, and the rest of the language keeps its checks around it.
 

@@ -5,7 +5,7 @@ title: "Dicts and sets · Learn moxie/gc"
 ---
 <p><small>Data</small></p>
 
-# 19. Dicts and sets
+# 20. Dicts and sets
 
 A `Dict` maps keys to values: names to ages, ids to records, words to counts. A `Set` holds distinct values and answers "is this one of them?" quickly. Both keep their elements in the order they were added.
 

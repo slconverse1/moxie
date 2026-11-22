@@ -4,7 +4,7 @@ title: "Atoms and futures · Learn moxie"
 ---
 <p><small>Concurrency</small></p>
 
-# 28. Atoms and futures
+# 29. Atoms and futures
 
 Channels send messages. Two other tools cover the rest of what concurrent programs need: an *atom* is a single shared value that fibers can read and update safely, and a *future* is a value that will be available later.
 

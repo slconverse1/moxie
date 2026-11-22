@@ -4,7 +4,7 @@ title: "Data types that grow: the expression problem · Learn moxie"
 ---
 <p><small>Functional programming</small></p>
 
-# 48. Data types that grow: the expression problem
+# 49. Data types that grow: the expression problem
 
 Suppose a library defines arithmetic as data (numbers and `+`) together with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**.
 

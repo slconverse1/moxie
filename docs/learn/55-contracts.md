@@ -4,7 +4,7 @@ title: "Contracts: requires, ensures, invariant · Learn moxie"
 ---
 <p><small>Fields and promises</small></p>
 
-# 56. Contracts: requires, ensures, invariant
+# 57. Contracts: requires, ensures, invariant
 
 A contract states what a function needs and what it promises, in the code and not in a comment. It is for faults that are *bugs*: an expected failure, such as a missing file, still returns a `Result` (lesson 14). A contract failure ends the program with a message that says whose fault it was.
 

@@ -4,7 +4,7 @@ title: "Tuples · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 13. Tuples
+# 14. Tuples
 
 A *tuple* groups a few values into one. It is moxie's way of making a record: a point is an `x` and a `y`, a user is a name and an age. Tuples hold values of any types, and each field has a name.
 

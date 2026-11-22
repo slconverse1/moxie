@@ -5,7 +5,7 @@ title: "Statistics and prediction · Learn moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 
-# 39. Statistics and prediction
+# 40. Statistics and prediction
 
 The standard `stats` package is a small library for learning how data turns into numbers, and how those numbers turn into predictions. Every function in it is short enough to read (it is `moxie/std/stats.mxi`), and it works on an `Array[Double]`. Write `import stats` and call `stats.mean(xs)`.
 

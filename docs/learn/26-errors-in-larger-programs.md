@@ -4,7 +4,7 @@ title: "Errors in larger programs · Learn moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 32. Errors in larger programs
+# 33. Errors in larger programs
 
 The lesson on `Option` and `Result` covered the basics: a function that can fail returns a `Result`, and `?` passes a failure along. This lesson is about what changes when a program has many functions and several kinds of failure.
 

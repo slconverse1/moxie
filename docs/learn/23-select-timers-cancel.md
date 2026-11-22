@@ -4,7 +4,7 @@ title: "Waiting on several things: select, timers, and cancelling · Learn moxie
 ---
 <p><small>Concurrency</small></p>
 
-# 27. Waiting on several things: select, timers, and cancelling
+# 28. Waiting on several things: select, timers, and cancelling
 
 A fiber often has to wait for more than one thing: a message from a worker, or a timeout; input from one channel or another. `select` waits on several at once and runs the arm for whichever is ready.
 

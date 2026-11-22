@@ -5,6 +5,7 @@
 58-for-imperative-programmers
 04-numbers
 05-text
+59-fmt-and-locales
 06-truth-and-choices
 07-loops
 # Functions

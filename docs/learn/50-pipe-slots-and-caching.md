@@ -4,7 +4,7 @@ title: "Pipe slots, `seq`, and doing work once · Learn moxie"
 ---
 <p><small>Streams and pipelines</small></p>
 
-# 25. Pipe slots, `seq`, and doing work once
+# 26. Pipe slots, `seq`, and doing work once
 
 Lesson 21 used `|>` to run values through stages. This lesson looks at how a pipe decides where the value goes, adds the `seq` block, and then turns to the opposite problem: doing an expensive step only once. Moxie never caches behind your back, so each way of reusing work is something you write on purpose.
 

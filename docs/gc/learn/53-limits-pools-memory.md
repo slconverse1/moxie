@@ -5,7 +5,7 @@ title: "Limits, pools, and the memory budget · Learn moxie/gc"
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 33. Limits, pools, and the memory budget
+# 34. Limits, pools, and the memory budget
 
 
 In moxie/gc the runtime manages memory for you, so pools and budgets are not part of the language. A fiber function can still say how many copies may run at once with `fiber[n]`, which this lesson starts with, but the pool header and the memory budget described later apply only to GC-free moxie.

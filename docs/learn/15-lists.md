@@ -4,7 +4,7 @@ title: "Lists · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 16. Lists
+# 17. Lists
 
 A `List` holds a sequence of values of one type. It is the collection you will use most.
 

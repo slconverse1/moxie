@@ -5,7 +5,7 @@ title: "Patterns · Learn moxie/gc"
 ---
 <p><small>Data</small></p>
 
-# 21. Patterns
+# 22. Patterns
 
 A *pattern* describes the shape of a value and names its parts at the same time. You have used the simplest ones already: `Some(v)` in a `when`, `List(head, ...tail)`, and `a, b = ...` in a binding. This lesson collects them, because the same patterns work everywhere a value is taken apart.
 

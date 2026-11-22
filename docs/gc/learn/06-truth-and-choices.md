@@ -5,7 +5,7 @@ title: "Truth and choices · Learn moxie/gc"
 ---
 <p><small>Getting started</small></p>
 
-# 7. Truth and choices
+# 8. Truth and choices
 
 A program becomes interesting when it can decide. This lesson covers `Bool`, comparisons, and the two ways to choose: `if` and `when`.
 
@@ -275,4 +275,4 @@ The last expression of a function is its result, so the final `if` needs no `ret
 
 ---
 
-[← Text](05-text.html) · [Contents](./) · [Loops →](07-loops.html)
+[← Templates and locales](59-fmt-and-locales.html) · [Contents](./) · [Loops →](07-loops.html)

@@ -4,7 +4,7 @@ title: "Mapping, sequencing, and combining: functors, applicatives, and monads Â
 ---
 <p><small>Functional programming</small></p>
 
-# 44. Mapping, sequencing, and combining: functors, applicatives, and monads
+# 45. Mapping, sequencing, and combining: functors, applicatives, and monads
 
 Lesson 14 chained steps that might fail with `?` and `|>>`. This lesson names the idea behind them. Three small interfaces, over *type constructors* such as `Result[_, E]` or `List[_]`, describe three ways of working with a value inside a container: change it, combine several, or chain steps that each produce a new container. They have the names Haskell programmers expect.
 

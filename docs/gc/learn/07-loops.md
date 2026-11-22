@@ -5,7 +5,7 @@ title: "Loops · Learn moxie/gc"
 ---
 <p><small>Getting started</small></p>
 
-# 8. Loops
+# 9. Loops
 
 To do something many times, use a loop. Moxie has `for` for walking over a collection or a range, and `while` for repeating until a condition fails. Both are expressions, so a loop can produce a value, which this lesson gets to after the basics.
 

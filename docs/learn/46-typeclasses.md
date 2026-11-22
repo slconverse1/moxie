@@ -4,7 +4,7 @@ title: "Typeclasses · Learn moxie"
 ---
 <p><small>Designing with interfaces</small></p>
 
-# 52. Typeclasses
+# 53. Typeclasses
 
 Moxie has no separate typeclass feature. A class is an `interface`, an instance is an `impl`, a constraint is a bound, a superclass is an embedded interface, a member with no receiver is a `static fn`, and deriving is `deriving show, eq, ord, read, hash`. This lesson gathers those pieces in one place. If you know Haskell, the last section is a translation table.
 

@@ -4,7 +4,7 @@ title: "Refined parameters: proofs in the signature · Learn moxie"
 ---
 <p><small>Fields and promises</small></p>
 
-# 55. Refined parameters: proofs in the signature
+# 56. Refined parameters: proofs in the signature
 
 A `requires` line says what a function needs, and a bad call fails when it runs. A **refined parameter** says it in the signature, and a bad call fails when you *compile*. Write `where` and a condition after the parameter's type:
 

@@ -5,7 +5,7 @@ title: "Anonymous functions and closures · Learn moxie/gc"
 ---
 <p><small>Functions</small></p>
 
-# 10. Anonymous functions and closures
+# 11. Anonymous functions and closures
 
 A function doesn't need a name. An *anonymous function*, which many languages call a lambda, is written `(parameters) -> body`. In these lessons the two words mean the same thing. What makes it anonymous is the missing name, not its size.
 

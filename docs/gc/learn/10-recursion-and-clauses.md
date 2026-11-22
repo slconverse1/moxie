@@ -5,7 +5,7 @@ title: "Recursion and function clauses · Learn moxie/gc"
 ---
 <p><small>Functions</small></p>
 
-# 11. Recursion and function clauses
+# 12. Recursion and function clauses
 
 A function that calls itself is *recursive*. Recursion is the natural way to work through data that is built from smaller pieces of the same kind, and in moxie it is cheap enough to use freely.
 

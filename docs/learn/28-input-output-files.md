@@ -4,7 +4,7 @@ title: "Input, output, and files · Learn moxie"
 ---
 <p><small>Packages</small></p>
 
-# 35. Input, output, and files
+# 36. Input, output, and files
 
 A program that only prints is a calculator. This lesson is about talking to the outside world: the arguments a program is started with, its environment, standard input and output, and files and directories on disk.
 

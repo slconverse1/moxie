@@ -5,7 +5,7 @@ title: "Fibers and channels · Learn moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 
-# 26. Fibers and channels
+# 27. Fibers and channels
 
 A program can do several things at once. In moxie the unit of concurrency is the *fiber*, a lightweight task, and fibers talk to each other through *channels*. The idea is borrowed from Go: don't share data between tasks, pass messages between them. Since moxie values never change, a message can't be altered behind the receiver's back.
 

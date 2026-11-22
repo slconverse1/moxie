@@ -4,7 +4,7 @@ title: "Receiver blocks, interface composition, and mocks · Learn moxie"
 ---
 <p><small>Designing with interfaces</small></p>
 
-# 51. Receiver blocks, interface composition, and mocks
+# 52. Receiver blocks, interface composition, and mocks
 
 Lesson 20 introduced methods and interfaces. This lesson adds the tools you reach for as programs grow: blocks that run with a value as their receiver, interfaces built from other interfaces, interfaces that require a field, and swapping a real service for a fake one in a test.
 

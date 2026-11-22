@@ -291,4 +291,4 @@ println(len(request))
 
 ---
 
-[← Numbers](04-numbers.html) · [Contents](./) · [Truth and choices →](06-truth-and-choices.html)
+[← Numbers](04-numbers.html) · [Contents](./) · [Templates and locales →](59-fmt-and-locales.html)

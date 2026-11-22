@@ -4,7 +4,7 @@ title: "Binary patterns, and taking a value apart by its type · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 22. Binary patterns, and taking a value apart by its type
+# 23. Binary patterns, and taking a value apart by its type
 
 Lesson 19 showed patterns for tuples, enums, and lists. This lesson adds two more: patterns that match the *layout of bytes*, and patterns that take apart a value whose type is only known at run time.
 

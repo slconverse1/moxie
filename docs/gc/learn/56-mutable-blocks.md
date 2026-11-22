@@ -5,7 +5,7 @@ title: "In-place algorithms: `mutable` blocks · Learn moxie/gc"
 ---
 <p><small>Data</small></p>
 
-# 18. In-place algorithms: `mutable` blocks
+# 19. In-place algorithms: `mutable` blocks
 
 Moxie values never change, and a loop's rebindings don't leave the loop. For most code that is a gain. A few algorithms, though, are most naturally written as *loops that write into an array*: sorting, prefix sums, a sieve, union-find. A `mutable` block gives those algorithms the shape they want without giving up what moxie promises from outside.
 

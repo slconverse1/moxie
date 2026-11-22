@@ -5,7 +5,7 @@ title: "The system around your program · Learn moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 57. The system around your program
+# 58. The system around your program
 
 A program lives inside a machine. This lesson covers what it is allowed to touch, how it tells time and makes random numbers, how it keeps secrets, how it reacts to Ctrl-C, how it runs other programs, and how it shows dates.
 

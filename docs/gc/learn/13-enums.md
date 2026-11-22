@@ -5,7 +5,7 @@ title: "Enums · Learn moxie/gc"
 ---
 <p><small>Data</small></p>
 
-# 14. Enums
+# 15. Enums
 
 A tuple says "a value has *all* of these fields". An *enum* says "a value is *one of* these cases". A traffic light is red, yellow, or green. A shape is a circle with a radius, or a rectangle with a width and height. Enums are how moxie describes data that comes in kinds.
 
