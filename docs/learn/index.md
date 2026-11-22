@@ -65,3 +65,5 @@ You don't need to know any functional programming. If you do, the lessons point 
 
 30. [JSON and data from outside](30-json.html)
 31. [Regular expressions](31-regex.html)
+32. [Statistics and prediction](32-statistics.html)
+33. [Networking, deadlines, and parallel work](33-networking.html)

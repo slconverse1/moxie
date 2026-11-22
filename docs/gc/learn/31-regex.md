@@ -196,4 +196,4 @@ false
 
 ---
 
-[← JSON and data from outside](30-json.html) · [Contents](./)
+[← JSON and data from outside](30-json.html) · [Contents](./) · [Statistics and prediction →](32-statistics.html)

@@ -42,3 +42,5 @@
 # Data from outside
 30-json
 31-regex
+32-statistics
+33-networking
