@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Limits, pools, and the memory budget · Learn moxie/gc"
+title: "Limits, pools, and the memory budget · Learning Guide moxie/gc"
 ---
 <p><small>Quality and larger programs</small></p>
 

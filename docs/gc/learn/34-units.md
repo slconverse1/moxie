@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Units of measure · Learn moxie/gc"
+title: "Units of measure · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Databases with SQL · Learn moxie/gc"
+title: "Databases with SQL · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 

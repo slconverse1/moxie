@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Contracts: requires, ensures, invariant · Learn moxie/gc"
+title: "Contracts: requires, ensures, invariant · Learning Guide moxie/gc"
 ---
 <p><small>Fields and promises</small></p>
 

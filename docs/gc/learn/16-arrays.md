@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Arrays and grids · Learn moxie/gc"
+title: "Arrays and grids · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Contracts: requires, ensures, invariant · Learn moxie"
+title: "Contracts: requires, ensures, invariant · Learning Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 

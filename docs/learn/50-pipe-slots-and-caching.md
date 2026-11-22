@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Pipe slots, `seq`, and doing work once · Learn moxie"
+title: "Pipe slots, `seq`, and doing work once · Learning Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>
 

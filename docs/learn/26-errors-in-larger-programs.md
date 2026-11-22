@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Errors in larger programs · Learn moxie"
+title: "Errors in larger programs · Learning Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 

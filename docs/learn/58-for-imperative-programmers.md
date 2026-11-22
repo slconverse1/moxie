@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Moxie for imperative programmers · Learn moxie"
+title: "Moxie for imperative programmers · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

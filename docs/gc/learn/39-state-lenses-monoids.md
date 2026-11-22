@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "State, lenses, lazy sequences, and monoids · Learn moxie/gc"
+title: "State, lenses, lazy sequences, and monoids · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

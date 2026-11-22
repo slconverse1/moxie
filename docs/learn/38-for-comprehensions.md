@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "`for` comprehensions · Learn moxie"
+title: "`for` comprehensions · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

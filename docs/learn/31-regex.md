@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Regular expressions · Learn moxie"
+title: "Regular expressions · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

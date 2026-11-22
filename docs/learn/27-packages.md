@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Packages and imports · Learn moxie"
+title: "Packages and imports · Learning Guide moxie"
 ---
 <p><small>Packages</small></p>
 

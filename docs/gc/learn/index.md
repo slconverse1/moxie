@@ -1,9 +1,9 @@
 ---
 layout: default
 dialect: gc
-title: "Learn moxie/gc"
+title: "Learning Guide moxie/gc"
 ---
-# LEARN MOXIE/GC
+# LEARNING GUIDE MOXIE/GC
 
 This is a course in moxie/gc, taught one lesson at a time. Each lesson explains one idea, shows it in small programs, and shows exactly what those programs print. Every example is complete, so you can copy any of them into a file and run it, and every output was produced by running the example on the reference interpreter.
 

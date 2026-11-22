@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Atoms and futures · Learn moxie"
+title: "Atoms and futures · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>
 

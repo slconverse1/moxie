@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Truth and choices · Learn moxie"
+title: "Truth and choices · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Dicts and sets · Learn moxie"
+title: "Dicts and sets · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

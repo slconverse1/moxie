@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Moxie and moxie/gc side by side · Learn moxie"
+title: "Moxie and moxie/gc side by side · Learning Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 

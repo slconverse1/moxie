@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Methods and interfaces · Learn moxie"
+title: "Methods and interfaces · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Anonymous functions and closures · Learn moxie"
+title: "Anonymous functions and closures · Learning Guide moxie"
 ---
 <p><small>Functions</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Statistics and prediction · Learn moxie"
+title: "Statistics and prediction · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Limits, pools, and the memory budget · Learn moxie"
+title: "Limits, pools, and the memory budget · Learning Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 

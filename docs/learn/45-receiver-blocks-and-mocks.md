@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Receiver blocks, interface composition, and mocks · Learn moxie"
+title: "Receiver blocks, interface composition, and mocks · Learning Guide moxie"
 ---
 <p><small>Designing with interfaces</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Generic functions · Learn moxie"
+title: "Generic functions · Learning Guide moxie"
 ---
 <p><small>Functions</small></p>
 

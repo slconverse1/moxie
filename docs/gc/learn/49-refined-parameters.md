@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Refined parameters: proofs in the signature · Learn moxie/gc"
+title: "Refined parameters: proofs in the signature · Learning Guide moxie/gc"
 ---
 <p><small>Fields and promises</small></p>
 

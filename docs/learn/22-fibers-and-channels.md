@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Fibers and channels · Learn moxie"
+title: "Fibers and channels · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>
 

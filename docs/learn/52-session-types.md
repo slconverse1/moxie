@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Session types: a channel that remembers the conversation · Learn moxie"
+title: "Session types: a channel that remembers the conversation · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>
 

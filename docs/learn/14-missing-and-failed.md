@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Missing values and failures: Option and Result · Learn moxie"
+title: "Missing values and failures: Option and Result · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

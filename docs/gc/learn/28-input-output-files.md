@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Input, output, and files · Learn moxie/gc"
+title: "Input, output, and files · Learning Guide moxie/gc"
 ---
 <p><small>Packages</small></p>
 

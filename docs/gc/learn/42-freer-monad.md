@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Programs with effects as data: the freer monad · Learn moxie/gc"
+title: "Programs with effects as data: the freer monad · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

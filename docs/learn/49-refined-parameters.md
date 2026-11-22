@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Refined parameters: proofs in the signature · Learn moxie"
+title: "Refined parameters: proofs in the signature · Learning Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 

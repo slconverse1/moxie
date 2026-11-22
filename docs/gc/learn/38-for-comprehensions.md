@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "`for` comprehensions · Learn moxie/gc"
+title: "`for` comprehensions · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

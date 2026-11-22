@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "GADTs and typestate · Learn moxie"
+title: "GADTs and typestate · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

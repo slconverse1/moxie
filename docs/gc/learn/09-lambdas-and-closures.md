@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Anonymous functions and closures · Learn moxie/gc"
+title: "Anonymous functions and closures · Learning Guide moxie/gc"
 ---
 <p><small>Functions</small></p>
 

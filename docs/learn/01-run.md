@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Running moxie · Learn moxie"
+title: "Running moxie · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

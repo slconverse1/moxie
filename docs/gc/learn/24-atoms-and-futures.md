@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Atoms and futures · Learn moxie/gc"
+title: "Atoms and futures · Learning Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 

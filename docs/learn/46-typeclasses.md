@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Typeclasses · Learn moxie"
+title: "Typeclasses · Learning Guide moxie"
 ---
 <p><small>Designing with interfaces</small></p>
 

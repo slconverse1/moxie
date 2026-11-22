@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Session types: a channel that remembers the conversation · Learn moxie/gc"
+title: "Session types: a channel that remembers the conversation · Learning Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 

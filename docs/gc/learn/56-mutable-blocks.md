@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "In-place algorithms: `mutable` blocks · Learn moxie/gc"
+title: "In-place algorithms: `mutable` blocks · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Regular expressions · Learn moxie/gc"
+title: "Regular expressions · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 

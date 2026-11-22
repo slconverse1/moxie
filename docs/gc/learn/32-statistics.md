@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Statistics and prediction · Learn moxie/gc"
+title: "Statistics and prediction · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 

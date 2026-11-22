@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Networking, deadlines, and parallel work · Learn moxie"
+title: "Networking, deadlines, and parallel work · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

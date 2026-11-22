@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Lists · Learn moxie"
+title: "Lists · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

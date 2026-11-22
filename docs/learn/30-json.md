@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "JSON and data from outside · Learn moxie"
+title: "JSON and data from outside · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

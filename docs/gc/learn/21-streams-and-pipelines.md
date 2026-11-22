@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Streams and pipelines · Learn moxie/gc"
+title: "Streams and pipelines · Learning Guide moxie/gc"
 ---
 <p><small>Streams and pipelines</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Properties, field delegates, and proxies · Learn moxie/gc"
+title: "Properties, field delegates, and proxies · Learning Guide moxie/gc"
 ---
 <p><small>Fields and promises</small></p>
 

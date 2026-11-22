@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Testing, assertions, and checking · Learn moxie/gc"
+title: "Testing, assertions, and checking · Learning Guide moxie/gc"
 ---
 <p><small>Quality and larger programs</small></p>
 

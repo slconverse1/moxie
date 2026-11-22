@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Templates and locales · Learn moxie"
+title: "Templates and locales · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

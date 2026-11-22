@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Data types that grow: the expression problem · Learn moxie/gc"
+title: "Data types that grow: the expression problem · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

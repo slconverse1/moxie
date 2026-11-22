@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Networking, deadlines, and parallel work · Learn moxie/gc"
+title: "Networking, deadlines, and parallel work · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 

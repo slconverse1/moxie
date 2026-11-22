@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Text · Learn moxie/gc"
+title: "Text · Learning Guide moxie/gc"
 ---
 <p><small>Getting started</small></p>
 

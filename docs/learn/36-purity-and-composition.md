@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Values, purity, and composing functions · Learn moxie"
+title: "Values, purity, and composing functions · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

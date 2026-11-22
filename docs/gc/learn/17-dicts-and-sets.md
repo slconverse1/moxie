@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Dicts and sets · Learn moxie/gc"
+title: "Dicts and sets · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>
 

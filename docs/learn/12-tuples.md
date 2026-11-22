@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Tuples · Learn moxie"
+title: "Tuples · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Truth and choices · Learn moxie/gc"
+title: "Truth and choices · Learning Guide moxie/gc"
 ---
 <p><small>Getting started</small></p>
 

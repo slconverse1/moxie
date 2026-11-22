@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Learn moxie/gc"
+title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

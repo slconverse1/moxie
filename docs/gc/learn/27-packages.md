@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Packages and imports · Learn moxie/gc"
+title: "Packages and imports · Learning Guide moxie/gc"
 ---
 <p><small>Packages</small></p>
 

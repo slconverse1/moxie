@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Naming types: aliases, opaque types, and unions · Learn moxie"
+title: "Naming types: aliases, opaque types, and unions · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Streams and pipelines · Learn moxie"
+title: "Streams and pipelines · Learning Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>
 

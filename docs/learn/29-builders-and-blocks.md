@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Builders: a DSL without macros · Learn moxie"
+title: "Builders: a DSL without macros · Learning Guide moxie"
 ---
 <p><small>Packages</small></p>
 

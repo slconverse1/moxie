@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "The system around your program · Learn moxie/gc"
+title: "The system around your program · Learning Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 

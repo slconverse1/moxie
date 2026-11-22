@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Fibers and channels · Learn moxie/gc"
+title: "Fibers and channels · Learning Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 

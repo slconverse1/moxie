@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Arrays and grids · Learn moxie"
+title: "Arrays and grids · Learning Guide moxie"
 ---
 <p><small>Data</small></p>
 

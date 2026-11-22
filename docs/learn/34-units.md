@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Units of measure · Learn moxie"
+title: "Units of measure · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

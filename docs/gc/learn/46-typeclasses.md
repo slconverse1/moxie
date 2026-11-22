@@ -1,7 +1,7 @@
 ---
 layout: default
 dialect: gc
-title: "Typeclasses · Learn moxie/gc"
+title: "Typeclasses · Learning Guide moxie/gc"
 ---
 <p><small>Designing with interfaces</small></p>
 
