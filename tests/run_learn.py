@@ -7,6 +7,7 @@ import os, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+ENV = dict(os.environ, PYTHONPATH=ROOT)   # examples run in a scratch directory, so files they write never collide
 import make_learn
 
 def dialect_blocks(txt, gc):
@@ -52,7 +53,7 @@ def run(job):
         open(p, "w").write(re.sub(r"^//! .*\n", "", src, flags=re.M))      # what the reader sees is what runs, line numbers included
         cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + [verb, p]
         try:
-            r = subprocess.run(cmd, cwd=ROOT, input=stdin + ("\n" if stdin else ""), capture_output=True, text=True, timeout=60)
+            r = subprocess.run(cmd, cwd=d, input=stdin + ("\n" if stdin else ""), capture_output=True, text=True, timeout=60, env=ENV)
             rc, out, err = r.returncode, r.stdout, r.stderr
         except subprocess.TimeoutExpired:
             rc, out, err = -1, "", "timeout"
@@ -94,7 +95,7 @@ def fill(args):
                             open(p, "w").write(re.sub(r"^//! .*\n", "", src, flags=re.M))
                             stdin = "\n".join(re.findall(r"^//! stdin: ?(.*)$", src, re.M))
                             verb = (re.findall(r"^//! command: (\w+)", src, re.M) or ["run"])[0]
-                            r = subprocess.run([sys.executable, "-m", "moxie"] + (["--gc"] if ingc else []) + [verb, p], cwd=ROOT, input=stdin + "\n", capture_output=True, text=True, timeout=60)
+                            r = subprocess.run([sys.executable, "-m", "moxie"] + (["--gc"] if ingc else []) + [verb, p], cwd=d, input=stdin + ("\n" if stdin else ""), capture_output=True, text=True, timeout=60, env=ENV)
                         got = r.stdout.rstrip("\n") if lines[k].strip() == "```output" else re.sub(r"^main\.mxi:\d+(:\d+)?: ", "", r.stderr.strip(), flags=re.M)
                         lines[k + 1:k + 1] = got.split("\n")
                         changed = True

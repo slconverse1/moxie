@@ -152,4 +152,4 @@ In moxie/gc there is no memory budget to declare: the collector manages memory, 
 
 ---
 
-[← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./)
+[← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./) · [Input, output, and files →](28-input-output-files.html)

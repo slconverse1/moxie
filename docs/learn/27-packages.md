@@ -149,4 +149,4 @@ In GC-free moxie the compiler works out ahead of time how many of each counted r
 
 ---
 
-[← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./)
+[← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./) · [Input, output, and files →](28-input-output-files.html)
