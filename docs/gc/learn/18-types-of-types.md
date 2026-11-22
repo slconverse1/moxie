@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Naming types: aliases, opaque types, and unions · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data</p>
-
 # 21. Naming types: aliases, opaque types, and unions
 
 <div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)</div>

@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Functions · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functions</p>
-
 # 10. Functions
 
 <div class='specref' markdown='1'>In the Spec: [9. Functions](../spec.html#s9)</div>

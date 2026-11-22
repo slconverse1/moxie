@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "`for` comprehensions · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 47. `for` comprehensions
 
 <div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>

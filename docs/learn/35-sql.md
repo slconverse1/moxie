@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Databases with SQL · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data from outside</p>
-
 # 44. Databases with SQL
 
 <div class='specref' markdown='1'>In the Spec: [21. Database access](../spec.html#s21)</div>

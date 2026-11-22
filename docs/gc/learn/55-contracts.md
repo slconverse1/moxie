@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Contracts: where and invariant · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Fields and promises</p>
-
 # 60. Contracts: where and invariant
 
 <div class='specref' markdown='1'>In the Spec: [9c. Contracts](../spec.html#s9c)</div>

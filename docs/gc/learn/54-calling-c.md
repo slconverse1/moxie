@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Calling C · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Your program and its machine</p>
-
 # 62. Calling C
 
 <div class='specref' markdown='1'>In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html#s19a)</div>

@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Text · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 6. Text
 
 <div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)</div>

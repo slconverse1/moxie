@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Binary patterns, and taking a value apart by its type · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data</p>
-
 # 23. Binary patterns, and taking a value apart by its type
 
 <div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8)</div>

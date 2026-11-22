@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Regular expressions · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data from outside</p>
-
 # 40. Regular expressions
 
 <div class='specref' markdown='1'>In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html#s23f)</div>

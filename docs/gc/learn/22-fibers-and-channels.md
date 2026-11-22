@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Fibers and channels · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Concurrency</p>
-
 # 28. Fibers and channels
 
 <div class='specref' markdown='1'>In the Spec: [16. Concurrency overview](../spec.html#s16), [17. Atoms, futures, channels, timers](../spec.html#s17), [18. Fibers, loops, streams](../spec.html#s18)</div>

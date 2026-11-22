@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Patterns · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data</p>
-
 # 22. Patterns
 
 <div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8)</div>

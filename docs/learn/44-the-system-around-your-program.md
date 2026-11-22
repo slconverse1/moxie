@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "The system around your program · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Your program and its machine</p>
-
 # 61. The system around your program
 
 <div class='specref' markdown='1'>In the Spec: [19d. Permissions](../spec.html#s19d), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e), [20. Program arguments and environment](../spec.html#s20)</div>

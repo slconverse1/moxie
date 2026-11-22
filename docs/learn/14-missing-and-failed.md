@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Missing values and failures: Option and Result · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data</p>
-
 # 16. Missing values and failures: Option and Result
 
 <div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [15. Errors and Results](../spec.html#s15)</div>

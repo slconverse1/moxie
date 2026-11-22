@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Methods and interfaces · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data</p>
-
 # 24. Methods and interfaces
 
 <div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [12. Interfaces and `impl` blocks](../spec.html#s12)</div>

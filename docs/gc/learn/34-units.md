@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Units of measure · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data from outside</p>
-
 # 43. Units of measure
 
 <div class='specref' markdown='1'>In the Spec: [23g. Units of measure](../spec.html#s23g)</div>

@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "…moxie: the rest of the moxie toolbox · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Your program and its machine</p>
-
 # 65. …moxie: the rest of the moxie toolbox
 
 <div class='specref' markdown='1'>In the Spec: [24. Prelude reference](../spec.html#s24)</div>

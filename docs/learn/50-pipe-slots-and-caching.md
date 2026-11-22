@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Pipe slots, `seq`, and doing work once · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Streams and pipelines</p>
-
 # 27. Pipe slots, `seq`, and doing work once
 
 <div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13), [14. Caching, memoization, and effects](../spec.html#s14)</div>

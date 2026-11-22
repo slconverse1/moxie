@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Builders: a DSL without macros · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Packages</p>
-
 # 38. Builders: a DSL without macros
 
 <div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html#s9b)</div>

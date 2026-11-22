@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Testing, assertions, and checking · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Quality and larger programs</p>
-
 # 32. Testing, assertions, and checking
 
 <div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)</div>

@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Recursion and function clauses · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functions</p>
-
 # 12. Recursion and function clauses
 
 <div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [9. Functions](../spec.html#s9)</div>

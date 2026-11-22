@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Truth and choices · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 8. Truth and choices
 
 <div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [10. Operators](../spec.html#s10)</div>

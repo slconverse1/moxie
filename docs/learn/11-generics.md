@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Generic functions · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Functions</p>
-
 # 13. Generic functions
 
 <div class='specref' markdown='1'>In the Spec: [9a. Generics](../spec.html#s9a)</div>

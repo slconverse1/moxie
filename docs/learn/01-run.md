@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Running moxie · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 1. Running moxie
 
 <div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)</div>

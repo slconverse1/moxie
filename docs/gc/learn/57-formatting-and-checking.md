@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Formatting and checking: `moxie fmt` and `moxie check` · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Quality and larger programs</p>
-
 # 33. Formatting and checking: `moxie fmt` and `moxie check`
 
 <div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)</div>

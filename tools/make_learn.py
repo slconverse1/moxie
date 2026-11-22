@@ -133,7 +133,7 @@ def build(gc):
         nv.append("[Contents](./)")
         if i + 1 < len(flat):
             nv.append(f"[{flat[i + 1][2]} →]({flat[i + 1][1]}.html)")
-        page = f"---\nlayout: default\n{dia}title: \"{t} · Mixer’s Guide {name}\"\n---\n<p class='eyebrow'>{p}</p>\n\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
+        page = f"---\nlayout: default\n{dia}title: \"{t} · Mixer’s Guide {name}\"\n---\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
         open(os.path.join(base, s + ".md"), "w", encoding="utf-8").write(page)
     return len(flat)
 

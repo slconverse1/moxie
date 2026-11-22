@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "JSON and data from outside · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data from outside</p>
-
 # 39. JSON and data from outside
 
 <div class='specref' markdown='1'>In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html#s23c)</div>

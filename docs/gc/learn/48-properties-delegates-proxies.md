@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Properties, field delegates, and proxies · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Fields and promises</p>
-
 # 58. Properties, field delegates, and proxies
 
 <div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)</div>

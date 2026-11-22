@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Byte streams: Reader and Writer · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Your program and its machine</p>
-
 # 63. Byte streams: Reader and Writer
 
 <div class='specref' markdown='1'>In the Spec: [19c. Files and sockets](../spec.html#s19c)</div>

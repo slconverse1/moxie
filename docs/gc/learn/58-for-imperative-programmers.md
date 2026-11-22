@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Moxie for imperative programmers · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 4. Moxie for imperative programmers
 
 <div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [18. Fibers, loops, streams](../spec.html#s18)</div>

@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Networking, deadlines, and parallel work · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data from outside</p>
-
 # 42. Networking, deadlines, and parallel work
 
 <div class='specref' markdown='1'>In the Spec: [19c. Files and sockets](../spec.html#s19c), [23b. HTTP (the `http` package)](../spec.html#s23b)</div>

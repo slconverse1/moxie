@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Programs with effects as data: the freer monad · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 51. Programs with effects as data: the freer monad
 
 <div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>

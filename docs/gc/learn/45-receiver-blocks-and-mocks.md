@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Receiver blocks, interface composition, and mocks · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Designing with interfaces</p>
-
 # 55. Receiver blocks, interface composition, and mocks
 
 <div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html#s9b), [12. Interfaces and `impl` blocks](../spec.html#s12)</div>

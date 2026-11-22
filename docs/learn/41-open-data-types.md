@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Data types that grow: the expression problem · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 50. Data types that grow: the expression problem
 
 <div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>

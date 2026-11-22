@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Values, purity, and composing functions · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 45. Values, purity, and composing functions
 
 <div class='specref' markdown='1'>In the Spec: [14. Caching, memoization, and effects](../spec.html#s14), [23. Functional programming support](../spec.html#s23)</div>

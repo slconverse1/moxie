@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Limits, pools, and the memory budget · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Quality and larger programs</p>
-
 # 35. Limits, pools, and the memory budget
 
 <div class='specref' markdown='1'>In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)</div>

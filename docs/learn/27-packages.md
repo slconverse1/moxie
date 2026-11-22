@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Packages and imports · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Packages</p>
-
 # 36. Packages and imports
 
 <div class='specref' markdown='1'>In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4)</div>

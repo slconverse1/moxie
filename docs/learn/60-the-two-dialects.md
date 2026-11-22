@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Moxie and moxie/gc side by side · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Your program and its machine</p>
-
 # 64. Moxie and moxie/gc side by side
 
 <div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)</div>

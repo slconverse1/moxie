@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Numbers · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 5. Numbers
 
 <div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)</div>

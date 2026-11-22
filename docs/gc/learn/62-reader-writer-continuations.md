@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Reader, writer, and continuations · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 53. Reader, writer, and continuations
 
 <div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>

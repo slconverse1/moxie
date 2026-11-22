@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Values and names · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 3. Values and names
 
 <div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [1. Source, blocks, bindings](../spec.html#s1), [2. Names and keywords](../spec.html#s2), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)</div>

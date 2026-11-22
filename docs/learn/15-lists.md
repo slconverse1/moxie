@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Lists · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data</p>
-
 # 17. Lists
 
 <div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7)</div>

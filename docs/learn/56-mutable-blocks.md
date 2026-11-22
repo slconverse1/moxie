@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "In-place algorithms: `mutable` blocks · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data</p>
-
 # 19. In-place algorithms: `mutable` blocks
 
 <div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3)</div>

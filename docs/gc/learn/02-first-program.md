@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Your first program · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 2. Your first program
 
 <div class='specref' markdown='1'>In the Spec: [1. Source, blocks, bindings](../spec.html#s1)</div>

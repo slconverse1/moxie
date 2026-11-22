@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Atoms and futures · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Concurrency</p>
-
 # 30. Atoms and futures
 
 <div class='specref' markdown='1'>In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)</div>

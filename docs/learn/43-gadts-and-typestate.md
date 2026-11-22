@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "GADTs and typestate · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 52. GADTs and typestate
 
 <div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23. Functional programming support](../spec.html#s23)</div>

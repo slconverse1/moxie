@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Types that compute · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Designing with interfaces</p>
-
 # 57. Types that compute
 
 <div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)</div>

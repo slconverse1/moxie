@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Errors in larger programs · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Quality and larger programs</p>
-
 # 34. Errors in larger programs
 
 <div class='specref' markdown='1'>In the Spec: [15. Errors and Results](../spec.html#s15)</div>

@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Typeclasses · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Designing with interfaces</p>
-
 # 56. Typeclasses
 
 <div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)</div>

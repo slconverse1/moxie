@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Loops · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 9. Loops
 
 <div class='specref' markdown='1'>In the Spec: [18. Fibers, loops, streams](../spec.html#s18), [18a. Labels and exits](../spec.html#s18a)</div>

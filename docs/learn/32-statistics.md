@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Statistics and prediction · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Data from outside</p>
-
 # 41. Statistics and prediction
 
 <div class='specref' markdown='1'>In the Spec: [23a. Statistics and prediction (the `stats` package)](../spec.html#s23a)</div>

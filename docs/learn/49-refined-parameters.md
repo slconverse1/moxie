@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Refined parameters: proofs in the signature · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Fields and promises</p>
-
 # 59. Refined parameters: proofs in the signature
 
 <div class='specref' markdown='1'>In the Spec: [9d. Refined parameters](../spec.html#s9d)</div>

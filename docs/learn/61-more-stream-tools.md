@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "More stream tools: sources you build · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Streams and pipelines</p>
-
 # 26. More stream tools: sources you build
 
 <div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13)</div>

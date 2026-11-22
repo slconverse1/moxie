@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Session types: a channel that remembers the conversation · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Concurrency</p>
-
 # 31. Session types: a channel that remembers the conversation
 
 <div class='specref' markdown='1'>In the Spec: [23e. Session types (the `session` package)](../spec.html#s23e)</div>

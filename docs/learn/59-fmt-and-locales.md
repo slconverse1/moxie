@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Templates and locales · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Getting started</p>
-
 # 7. Templates and locales
 
 <div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e)</div>

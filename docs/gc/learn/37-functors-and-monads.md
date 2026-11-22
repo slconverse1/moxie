@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 46. Mapping, sequencing, and combining: functors, applicatives, and monads
 
 <div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>

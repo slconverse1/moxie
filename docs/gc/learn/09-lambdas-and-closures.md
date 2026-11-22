@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Anonymous functions and closures · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functions</p>
-
 # 11. Anonymous functions and closures
 
 <div class='specref' markdown='1'>In the Spec: [11. Closures and first-class functions](../spec.html#s11)</div>

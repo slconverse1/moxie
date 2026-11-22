@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Streams and pipelines · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Streams and pipelines</p>
-
 # 25. Streams and pipelines
 
 <div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13)</div>

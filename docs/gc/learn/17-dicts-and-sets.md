@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Dicts and sets · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Data</p>
-
 # 20. Dicts and sets
 
 <div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7)</div>

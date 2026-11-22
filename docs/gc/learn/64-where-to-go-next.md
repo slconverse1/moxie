@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Where to go next · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Your program and its machine</p>
-
 # 66. Where to go next
 
 <div class='specref' markdown='1'>In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)</div>

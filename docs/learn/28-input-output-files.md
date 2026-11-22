@@ -3,8 +3,6 @@ layout: default
 learn: true
 title: "Input, output, and files · Mixer’s Guide moxie"
 ---
-<p class='eyebrow'>Packages</p>
-
 # 37. Input, output, and files
 
 <div class='specref' markdown='1'>In the Spec: [19b. Standard input and output](../spec.html#s19b), [19c. Files and sockets](../spec.html#s19c)</div>

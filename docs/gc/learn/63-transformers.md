@@ -4,8 +4,6 @@ dialect: gc
 learn: true
 title: "Transformers and the mtl classes · Mixer’s Guide moxie/gc"
 ---
-<p class='eyebrow'>Functional programming</p>
-
 # 54. Transformers and the mtl classes
 
 <div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
