@@ -15,7 +15,7 @@ x += 1
 a, b = 1, 2
 a, b = b, a
 count = 0
-count++
+count += 1
 println("$x $a $b $count")
 ```
 
@@ -1151,7 +1151,7 @@ fn add(x Int, y Int) Int
 fn make_scaler(factor Int) (Int) -> Int
   (n) -> n * factor
 fn bump(ref counter Int) Unit
-  counter++
+  counter += 1
 fn pick(use_it Bool, lazy costly Int) Int
   if use_it
     costly
@@ -2958,7 +2958,7 @@ i = 0
 sum = 0
 (last, final) = while i < 10
   sum += i
-  i++
+  i += 1
   if sum > 20
     break(i, sum)
 else

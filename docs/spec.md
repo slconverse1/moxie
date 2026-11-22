@@ -866,7 +866,7 @@ stmt : simple { ';' simple } [ ';' ] NL | simple NL INDENT 'if' expr NL [ 'else'
 simple : base [ 'if' expr [ 'else' expr ] ] | '...' expr ;
 callblock : primary { '(' [ args ] ')' | '.' ident | '?' } '(' [ args ] ')' childblock ;
 childblock : NL INDENT { stmt } DEDENT ;
-base : 'break' 'daemon' | 'break' [ label ] '(' expr { ',' expr } ')' | 'export' ident [ type ] '=' expr | pattern [ type ] '=' expr 'else' expr | 'return' [ expr { ',' expr } ] | 'break' [ label ] [ '(' expr ')' ] | 'continue' [ label ] | binding | assign | incr | expr { ',' expr } ;
+base : 'break' 'daemon' | 'break' [ label ] '(' expr { ',' expr } ')' | 'export' ident [ type ] '=' expr | pattern [ type ] '=' expr 'else' expr | 'return' [ expr { ',' expr } ] | 'break' [ label ] [ '(' expr ')' ] | 'continue' [ label ] | binding | assign | expr { ',' expr } ;
 blockend : [ target_list [ type ] '=' ] expr_b | 'return' expr_b ;
 expr_b : pipe_b | postfix_b | callblock | lambda_b | fnblock | gofn | dotblock | postfix '+%' fnblock | pipe '|>' 'seq' armsx | when_b ;
 lambda_b : '(' [ params ] ')' '->' ( block | when_b | postfix '.' 'update' updblock ) ;
@@ -883,7 +883,6 @@ target : ident | '_' | '(' [ target_item { ',' target_item } ] ')' | ident { '.'
 target_item : [ ident ':' ] target | ( '...' | '*' ) [ ident ] ;
 assign : lvalue ( '=' | '+=' | '-=' | '*=' | '/=' | '%=' ) expr ;
 lvalue : ( ident | 'self' ) { '(' [ args ] ')' | '.' ident | '.' INT } [ '@' ( INT | ident ) ] ;
-incr : lvalue ( '++' | '--' ) ;
 compound : forallstmt | formonad | [ label ] ( ifstmt | whenstmt | forstmt | dostmt ) | mutable_block | block_stmt | armsblock | withblock ;
 armsblock : ident NL INDENT arm+ DEDENT ;
 armsx : NL INDENT arm+ DEDENT ;

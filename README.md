@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+`x++` and `x--` are gone: write `x += 1` and `x -= 1`, the form that also covers `-=`, `*=` and the rest. The statements are a syntax error that says so, and the `incr` rule left the grammar. The Dict and list `get` stays: for a list or an array it is the checked read (`get(xs, 7)` is an `Err` where `xs(7)` aborts), and for a Dict it matches `d(k)`.
+
 `for` is the only loop. `for i < n` and `for read_line() is Ok(line)` loop on a condition, as in Go, and `for true` loops until a `break`; `for x in xs` is unchanged, and a membership test as a condition is written in brackets, `for (n in allowed)` (a header with an `in` at its top level is the iteration form). `while` is now a syntax error that says to write `for`, and the Spec, lessons, std library, tests and editor syntax files use `for`. A `for n in xs` where an `n` already exists gets a note, since it binds a new `n` and does not test the old one. Loop rules (rebinding passes forward, `else`, `break(value)`, labels) are unchanged.
 
 Results and fields are proved at compile time. A linear `ensures` (or `where` after the result type) is proved at every exit of a function, branches and `return` included, and a linear `invariant` (or `where` after a field) at every construction of the tuple, from the same facts as a call. A condition that can never hold there is a compile error; an unknown one says nothing (the run-time check stays) unless `prove = true` makes it an error; only parameters get a note. Tests that built a bad value on purpose to see the run-time abort now hide the value from the checker. `tests/run_proveexit.py` covers it.

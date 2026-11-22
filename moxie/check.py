@@ -4170,8 +4170,6 @@ class Checker(RefineMixin):
                             r.add(t.name)
                 elif k is Call and x.fn.__class__ is Field and x.fn.name in ref_methods and x.fn.obj.__class__ is Name:
                     r.add(x.fn.obj.name)
-                elif k is Incr and x.target.__class__ is Name:
-                    r.add(x.target.name)
                 for f in x._fields:
                     walk(getattr(x, f))
             walk(root)
@@ -4548,10 +4546,6 @@ class Checker(RefineMixin):
         else:
             self.ev(n.else_, sc)
         self.bind_pat(n.pat, sc, vt)
-        return None, None
-
-    def e_Incr(self, n, sc):
-        self.ev(n.target, sc)
         return None, None
 
     # control flow with move-state merging

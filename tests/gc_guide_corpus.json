@@ -1,7 +1,7 @@
 [
  [
   13,
-  "x = 5\nx += 1\na, b = 1, 2\na, b = b, a\ncount = 0\ncount++\nprintln(\"$x $a $b $count\")\n",
+  "x = 5\nx += 1\na, b = 1, 2\na, b = b, a\ncount = 0\ncount += 1\nprintln(\"$x $a $b $count\")\n",
   [
    "6 2 1 1"
   ]
@@ -668,7 +668,7 @@
  ],
  [
   1149,
-  "fn add(x Int, y Int) Int\n  x + y\nfn make_scaler(factor Int) (Int) -> Int\n  (n) -> n * factor\nfn bump(ref counter Int) Unit\n  counter++\nfn pick(use_it Bool, lazy costly Int) Int\n  if use_it\n    costly\n  else\n    0\nscale = make_scaler(3)\nn = 1\nbump(ref n)\nprintln(\"${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}\")\n",
+  "fn add(x Int, y Int) Int\n  x + y\nfn make_scaler(factor Int) (Int) -> Int\n  (n) -> n * factor\nfn bump(ref counter Int) Unit\n  counter += 1\nfn pick(use_it Bool, lazy costly Int) Int\n  if use_it\n    costly\n  else\n    0\nscale = make_scaler(3)\nn = 1\nbump(ref n)\nprintln(\"${add(2, 3)} ${scale(5)} $n ${pick(false, add(1, 1))}\")\n",
   [
    "5 15 2 0"
   ]
@@ -1500,7 +1500,7 @@
  ],
  [
   2957,
-  "i = 0\nsum = 0\n(last, final) = for i < 10\n  sum += i\n  i++\n  if sum > 20\n    break(i, sum)\nelse\n  (i, sum)\nprintln(\"$last $final\")\n",
+  "i = 0\nsum = 0\n(last, final) = for i < 10\n  sum += i\n  i += 1\n  if sum > 20\n    break(i, sum)\nelse\n  (i, sum)\nprintln(\"$last $final\")\n",
   [
    "7 21"
   ]

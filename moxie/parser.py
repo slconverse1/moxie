@@ -257,7 +257,7 @@ class Parser(ExprParser):
             e = self.parse_bare_tuple(e, line)
         if self.at_op("++") or self.at_op("--"):
             op = self.next().val
-            return Incr(e, 1 if op == "++" else -1, line=line)
+            self.err(f"`{op}` is not used: write `x {'+=' if op == '++' else '-='} 1`")
         return self.trail_if(ExprStmt(e, line=line))
 
     def parse_bare_tuple(self, first, line):

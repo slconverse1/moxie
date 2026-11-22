@@ -132,14 +132,6 @@ class PlacesMixin:
         r = yield from self.ev_body(n.else_, scope, hint)
         raise ReturnEx(r)
 
-    def ev_Incr(self, n, env):
-        t = n.target
-        pat = PBind(t.name) if isinstance(t, Name) else PPlace(t)
-        cur = yield from self.read_place(pat, env)
-        nv = yield from self.binop("+", cur, n.delta, n.line)
-        yield from self.bind_pattern(pat, nv, env, n)
-        return UNIT
-
     # ------------------------------------------------------------ places
     def assign_place_value(self, expr, value, env):
         c = expr.__class__

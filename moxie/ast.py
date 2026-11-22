@@ -105,7 +105,6 @@ def _defs():
         "Assign": "targets value ann op vis lazy",
         "Refine": "name cond text alias",            # after `x Pos = v`: the alias's condition on `x` (made by the parser from `type Pos = Int where self > 0`)
         "ElseLet": "pat value else_ pat2",
-        "Incr": "target delta",
         "Return": "e",
         "Break": "label e daemon",
         "Continue": "label",
