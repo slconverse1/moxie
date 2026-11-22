@@ -29,10 +29,10 @@ CASES = [
 EX = """enum Value[T] deriving show
   Num(n Int) Value[Int]
   Flag(b Bool) Value[Bool]
-  Pair(a Value[A], b Value[B]) Value[(A, B)]
-  Fst(p Value[(A, B)]) Value[A]
-  Same(a Value[A], b Value[A]) Value[Bool]
-  Packed(v Value[A], f (A) -> String) Value[String]
+  Pair[A, B](a Value[A], b Value[B]) Value[(A, B)]
+  Fst[A, B](p Value[(A, B)]) Value[A]
+  Same[A](a Value[A], b Value[A]) Value[Bool]
+  Packed[A](v Value[A], f (A) -> String) Value[String]
 """
 EXEVAL = """fn eval[T](v Value[T]) T = when v
   Num(n) -> n
@@ -43,6 +43,8 @@ EXEVAL = """fn eval[T](v Value[T]) T = when v
   Packed(v, f) -> f(eval(v))
 """
 CASES += [
+ ("an undeclared case variable is an error", "enum Value[T]\n  Pair(a Value[A], b Value[B]) Value[(A, B)]\n", 2, "declare a case's own type variables in brackets after its name"),
+ ("a header enum can't have GADT cases", "enum Value[T](line Int) deriving show\n  Num(line: 1)(n Int) Value[Int]\n", 2, "a header and a GADT don't mix"),
  ("a case variable in the result type", EX + EXEVAL + "println(eval(Pair(Num(1), Flag(true))))\nprintln(eval(Fst(Pair(Num(7), Flag(false)))))\n", 0, "(1, true)\n7"),
  ("a variable only in the payloads (existential)", EX + EXEVAL + 'println(eval(Packed(Num(41), (n) -> "n=${n + 1}")))\nprintln(eval(Packed(Flag(true), (b) -> if b then "yes" else "no")))\n', 0, "n=42\nyes"),
  ("a variable bound twice must agree", EX + "x = Same(Num(1), Flag(true))\n", 2, "expected `Value[Int]`, found `Value[Bool]`"),
@@ -67,20 +69,6 @@ enum Item[T] deriving show
   Shown[A Show](v A) Item[String]
   Pair[Left, Right](a Left, b Right) Item[(Left, Right)]
 """
-HV = """enum Value[T](line Int) deriving show
-  Num(line: 1)(n Int) Value[Int]
-  Flag(line: 2)(b Bool) Value[Bool]
-  Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]
-"""
-HEV = """fn eval[T](v Value[T]) T = when v
-  Num(n) -> n
-  Flag(b) -> b
-  Add(a, b) -> eval(a) + eval(b)
-"""
-LV = """enum Level[K](rank Int) deriving show
-  Low(rank: 1) Level[Int]
-  High(rank: 9) Level[Bool]
-"""
 IMPL = """enum Value[T] deriving show
   Num(n Int) Value[Int]
   Flag(b Bool) Value[Bool]
@@ -99,14 +87,6 @@ CASES += [
  ("a bounded existential: a value that lacks the bound", SHOWN + "x = Shown(Plain(1))\n", 2, "doesn't implement `Show`"),
  ("a case variable with a long name", SHOWN + "x = Pair(1, \"s\")\nfn f() Item[(Int, String)] = x\n", 0, ""),
  ("a result type that cannot match needs no arm", SHOWN + "fn text(i Item[String]) String = when i\n  Shown(v) -> v.show()\n", 0, ""),
- ("a header enum evaluates", HV + HEV + "println(eval(Add(Num(1), Num(2))))\nprintln(Flag(true).line)\nprintln(Add(Num(1), Num(2)).line)\n", 0, "3\n2\n3"),
- ("a header enum arm returns the wrong type", HV + "fn bad[T](v Value[T]) T = when v\n  Num(n) -> true\n  Flag(b) -> b\n  Add(a, b) -> 0\n", 2, "expected `Int`, found `Bool`"),
- ("a header enum misses a case", HV + "fn f(v Value[Int]) Int = when v\n  Num(n) -> n\n", 2, "does not cover"),
- ("a header enum has an impossible arm", HV + "fn f(v Value[Int]) Int = when v\n  Flag(b) -> 1\n  Num(n) -> n\n  Add(a, b) -> 0\n", 2, "can never match"),
- ("a header enum: the header field is on every case", HV + "fn ln[T](v Value[T]) Int = v.line\nprintln(ln(Flag(false)))\n", 0, "2"),
- ("a constant header case has a result type", LV + "fn r[K](l Level[K]) Int = l.rank\nfn only(l Level[Bool]) Int = when l\n  High -> 1\nprintln(r(Level.High))\nprintln(only(High))\n", 0, "9\n1"),
- ("a constant header case: an impossible arm", LV + "fn f(l Level[Bool]) Int = when l\n  Low -> 1\n  High -> 2\n", 2, "can never match"),
- ("a constant header case refines", LV + "fn g[K](l Level[K]) K = when l\n  Low -> true\n  High -> true\n", 2, "expected `Int`, found `Bool`"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

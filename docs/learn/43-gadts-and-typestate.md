@@ -62,14 +62,14 @@ error: mismatched types: expected `Value[Int]`, found `Value[Bool]`
 
 ## Case variables and existentials
 
-A case may use type variables of its own, written as one-letter names that the enum doesn't declare. Two shapes are useful:
+A case may use type variables of its own, declared in brackets after its name. An undeclared name is an error that says so. Two shapes are useful:
 
 ```moxie
 enum Value[T]
   Num(n Int) Value[Int]
   Flag(b Bool) Value[Bool]
-  Pair(a Value[A], b Value[B]) Value[(A, B)]
-  Packed(v Value[A], f (A) -> String) Value[String]
+  Pair[A, B](a Value[A], b Value[B]) Value[(A, B)]
+  Packed[A](v Value[A], f (A) -> String) Value[String]
 
 fn eval[T](v Value[T]) T = when v
   Num(n) -> n
@@ -95,31 +95,11 @@ A lambda whose parameter types aren't written takes them from the case once the 
 
 ## More of a GADT
 
-- **Declared case variables, with bounds.** Write a case's own variables in brackets after its name, which allows longer names and interface bounds: `Shown[A Show](v A) Item[String]`. Building one checks the bound, and in its `when` arm `v` is an `A'` that is known to be `Show`, so `v.show()` works and `v.shout()` does not. This is the usual "any showable thing" existential, with the interface named.
+- **Bounds on case variables.** A case's own variables may name an interface bound, and may have longer names: `Shown[A Show](v A) Item[String]`. Building one checks the bound, and in its `when` arm `v` is an `A'` that is known to be `Show`, so `v.show()` works and `v.shout()` does not. This is the usual "any showable thing" existential, with the interface named.
 - **Methods.** In `impl[T] Value[T]`, `when self` refines `T` the same way a `when` on a parameter does.
 - **`is`.** In `if v is Num(n)`, the then-branch knows `T` is `Int`.
-- **Header enums.** A header enum (lesson 15) may give its cases result types and payloads. A constant case writes its result type after the header values, `Low(rank: 1) Level[Cold]`. A case with a payload writes the header values first and the payload second, `Num(line: 1)(n Int) Value[Int]`; building it takes only the payload, and the header values are fixed by the case. The header fields are on every case (`v.line`), and a positional pattern (`Num(n)`) sees the payload only.
 
-```moxie
-enum Value[T](line Int)
-  Num(line: 1)(n Int) Value[Int]
-  Flag(line: 2)(b Bool) Value[Bool]
-  Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]
-
-fn eval[T](v Value[T]) T = when v
-  Num(n) -> n
-  Flag(b) -> b
-  Add(a, b) -> eval(a) + eval(b)
-
-println(eval(Add(Num(1), Num(2))))
-println(Flag(true).line)
-```
-**Output:**
-
-```
-3
-2
-```
+A GADT and a header enum (lesson 15's shared fields) don't mix: a case of an enum with a header can't state its own result type.
 
 ## Which of the three?
 

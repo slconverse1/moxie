@@ -333,6 +333,7 @@ from .refinecheck import RefineMixin
 class Checker(RefineMixin):
     def __init__(self, prelude_names):
         self.diags = []
+        self._case_var_reported = set()
         self.prelude = set(prelude_names) | EXTRA_NAMES
         self.tuples, self.enums, self.fns, self.aliases = {}, {}, {}, {}
         self.pkg_unchecked = {}          # `pkg.f` -> why a call of it is checked only at run time
@@ -6905,7 +6906,12 @@ class Checker(RefineMixin):
         known = self.known_type_names() | set(self.aliases)
         src = [f.type for f in cs.fields or [] if getattr(f, "type", None) is not None] + [getattr(cs, "ret", None)]
         own = {t.name for t in (getattr(cs, "tparams", None) or [])}
-        return own | {x for x in self.walk_names(src) if re.fullmatch(r"[A-Z][0-9]?", x) and x not in names and x not in known}
+        extra = sorted({x for x in self.walk_names(src) if re.fullmatch(r"[A-Z][0-9]?", x) and x not in names and x not in known and x not in own})
+        if extra and id(cs) not in self._case_var_reported:
+            self._case_var_reported.add(id(cs))
+            lst = ", ".join(extra)
+            self.err(getattr(cs, "line", 0) or self.cur_line, f"unknown type `{extra[0]}` in case `{cs.name}`: declare a case's own type variables in brackets after its name, as in `{cs.name}[{lst}](...)`")
+        return own
 
     def case_scheme(self, ed, cs):
         """(variables, field types, result type) of a case, with the enum's parameters and the case's own variables as ("param", n)."""

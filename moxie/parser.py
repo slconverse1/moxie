@@ -1172,6 +1172,8 @@ class Parser(ExprParser):
             ret = None
             if tparams and self.peek().kind == "NAME" and self.peek().line == t.line:
                 ret = self.parse_type()                       # a GADT case states its own result type: `Num(n Int) Value[Int]`
+            if ret is not None and header is not None:
+                self.err("a case of an enum with a header can't state its own result type: a header and a GADT don't mix (put the shared field in each case's payload instead)", t)
             cases.append(CaseDecl(t.val, fields, ret, ctps, payload, line=t.line))
             self.eat_op(",")
         self.expect_dedent()
