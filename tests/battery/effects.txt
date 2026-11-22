@@ -37,16 +37,14 @@ tailrec fn f(n Int) Int = if n == 0 then 0 else 1 + f(n - 1)
 ok: 0
 tailrec fn f(n Int) Int = if n == 0 then 0 else f(n - 1)
 println(f(5))
-### requires on a constant argument
+### a precondition on a constant argument
 reject: 
-fn f(n Int) Int
-  requires n > 0
+fn f(n Int where n > 0) Int
   n
 println(f(0))
-### ensures violated statically is not claimed (runtime) -- just parses
+### a postcondition not provable is not claimed (runtime) -- just parses
 ok
-fn f(n Int) Int
-  ensures result > 0
+fn f(n Int) Int where result > 0
   n + 1
 println(f(1))
 ### recursive lambda
