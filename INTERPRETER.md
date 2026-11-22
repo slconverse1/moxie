@@ -303,7 +303,7 @@ a needed kind with no grant into an error. Tests: `tests/run_perms.py`.
 
 `moxie/tally.py` (`moxie pools FILE`; `--pools run` also prints it and calls `compare`). `Tally` collects
 function definitions by name (like effects) and foreign functions that return a handle, and computes per
-function a `Count` of kind -> [creation sites reached, reasons]. Reasons are `loop` (inside `for`, `while`,
+function a `Count` of kind -> [creation sites reached, reasons]. Reasons are `loop` (inside `for`,
 comprehensions, daemons, lambdas), `recursion` (the function is in a call cycle) and `fiber` (reached through
 `go`). Without reasons the number is an exact upper bound; with them it is printed `N+`. Kinds match
 `moxie/pools.py`. Tests: `tests/run_tally.py`, which also runs the examples and requires that no exact count is
@@ -452,7 +452,7 @@ ceiling is checked against what a package's own code does. Tests: `tests/run_pkg
 `moxie/heap.py` enforces `[memory] heap` under `--gc`. `model_size` walks everything the program can still reach (the
 fibers' generators and Python frames, `Env` scopes, the value classes of `values.py`, `sched.py` and `streams.py`, and
 plain containers), ignoring syntax trees and the interpreter, and adds 16 bytes per value, 8 per slot and a string's bytes.
-`heap.tick` is called on each user call, each `for`/`while` turn and each scheduler step; every `heap_gap` ticks
+`heap.tick` is called on each user call, each `for` turn and each scheduler step; every `heap_gap` ticks
 (at least 4000, one hundredth of the last measurement) `check` measures, and over the limit runs `gc.collect()` and
 measures again before raising `ProgramExit` with the `out of memory` summary. `header.prepare` sets `heap_limit` and
 refuses `[memory]` without `--gc`. Tests: `tests/run_heap.py`.

@@ -72,7 +72,7 @@ good = good and "got #interrupt" in out and "got #terminate" in out and p.return
 print(("ok    " if good else "FAIL  ") + "signals arrive as keywords on a channel" + ("" if good else f"  {out!r} {err.decode()[:200]!r} rc={p.returncode}"))
 
 # a signal can arrive while the scheduler is inside the event queue's get; delivery must not deadlock on its lock
-STRESS = 'rx = signals()\nprintln("ready")\nwhile\n  s = read(rx)?\n  if s == #terminate\n    break\nprintln("done")\n'
+STRESS = 'rx = signals()\nprintln("ready")\nfor true\n  s = read(rx)?\n  if s == #terminate\n    break\nprintln("done")\n'
 with tempfile.NamedTemporaryFile("w", suffix=".mxi", delete=False) as f:
     f.write(STRESS)
 bad = 0

@@ -147,7 +147,7 @@ A `wait` block waits for every fiber started inside it before the block ends. `w
 
 ```moxie
 fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
-  while true
+  for true
     select
       cancelled(stop) ->
         \write(out, "worker ${id} stopping")

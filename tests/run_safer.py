@@ -39,7 +39,7 @@ GOOD = [
  ("a generic call with its type argument named", "interface E\n  static fn lit(n Int) Self\ntuple A deriving show\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn example[R E]() R\n  R.lit(1)\nprintln(example[A]().v)\n"),
  ("a bounded R.f(...) as the R result", "interface E\n  static fn lit(n Int) Self\ntuple A deriving show\n  v Int\nimpl E for A\n  static fn lit(n Int) A\n    A(v: n)\nfn f[R E]() R\n  R.lit(1)\nprintln(f[A]().v)\n"),
  ("a loop with else gives a value", "fn f(n Int) Int\n  for i in 1..n do\n    if i > 2 then\n      break(i)\n  else\n    0\nprintln(f(5))\n"),
- ("a while true loop that returns", "fn f(n Int) Int\n  while true do\n    if n > 0 then\n      return n\nprintln(f(2))\n"),
+ ("a while true loop that returns", "fn f(n Int) Int\n  for true do\n    if n > 0 then\n      return n\nprintln(f(2))\n"),
  ("Int | () tested before use", "fn f(x Int | ()) Int\n  if x is Int then\n    x + 1\n  else\n    0\nprintln(f(2))\n"),
 ]
 fails = []

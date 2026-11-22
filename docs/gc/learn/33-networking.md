@@ -133,7 +133,7 @@ Each function takes a `Cancel` token, because in moxie stopping is a request: wh
 
 ```moxie
 fn polite(c Cancel) Result[Int, Error]
-  while true
+  for true
     select
       cancelled(c) ->
         return Err(Error(CLOSED, "cancelled"))

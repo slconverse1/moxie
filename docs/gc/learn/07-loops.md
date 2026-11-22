@@ -7,7 +7,7 @@ title: "Loops · Learning Guide moxie/gc"
 
 # 9. Loops
 
-To do something many times, use a loop. Moxie has `for` for walking over a collection or a range, and `while` for repeating until a condition fails. Both are expressions, so a loop can produce a value, which this lesson gets to after the basics.
+To do something many times, use a loop. Moxie has one loop keyword, `for`. It walks over a collection or a range, and it repeats until a condition fails. A loop is an expression, so a loop can produce a value, which this lesson gets to after the basics.
 
 ## for
 
@@ -89,13 +89,13 @@ for i, name in List("Ann", "Bo").enumerate()
 1: Bo
 ```
 
-## while
+## for on a condition
 
-`while condition` repeats its block as long as the condition is true:
+`for condition` (a header with no `in`) repeats its block as long as the condition is true:
 
 ```moxie
 n = 1
-while n < 100
+for n < 100
   println(n)
   n = n * 3
 ```
@@ -109,24 +109,7 @@ while n < 100
 81
 ```
 
-Look at what happened to `n`. Inside the loop, `n = n * 3` is a new binding of `n` for the next pass, and the loop carries it forward the way a function call carries its arguments. So a `while` loop counts as you'd hope. What it doesn't do is change the `n` that exists *after* the loop: that one is still `1`, and the compiler tells you so if you read it there. The loop's value (below) and `name@1` (also below) are the two ways to get a result out. A `while` with no condition at all loops until something breaks out of it.
-
-If you come from Go, you can write the same loop with `for` and a condition. `for` with no `in` is a loop on a condition, and it means exactly what `while` means:
-
-```moxie
-n = 1
-for n < 50
-  println(n)
-  n = n * 3
-```
-**Output:**
-
-```
-1
-3
-9
-27
-```
+Look at what happened to `n`. Inside the loop, `n = n * 3` is a new binding of `n` for the next pass, and the loop carries it forward the way a function call carries its arguments. So a loop on a condition counts as you'd hope. What it doesn't do is change the `n` that exists *after* the loop: that one is still `1`, and the compiler tells you so if you read it there. The loop's value (below) and `name@1` (also below) are the two ways to get a result out. To loop until something breaks out of it, write `for true`. There is no `while`: writing it is an error that says to write `for`.
 
 A condition that is a test on a pattern ends a loop at the end of a stream of input. `read_line()` gives `Err` at end of file, so this reads every line:
 
@@ -135,7 +118,23 @@ for read_line() is Ok(line)
   println("got ${line}")
 ```
 
-`for x in xs` still walks a collection, so a condition that is itself a membership test (`n in allowed`) is written with `while`, where there is no ambiguity.
+A header with an `in` at its top level is the iteration form, `for x in xs`. So a condition that is itself a membership test is written in brackets:
+
+```moxie
+allowed = Set(1, 2)
+n = 1
+for (n in allowed)
+  println(n)
+  n = n + 1
+```
+**Output:**
+
+```
+1
+2
+```
+
+If you write `for n in allowed` while an `n` already exists, you get a note: that form binds a new `n` for each element, and it does not test the old one.
 
 ## break and continue
 
@@ -193,7 +192,7 @@ println(found)
 -1
 ```
 
-`while` works the same way, and a loop used only for its effects can have an `else` too. It runs when the loop finishes without a `break`:
+A loop on a condition works the same way, and a loop used only for its effects can have an `else` too. It runs when the loop finishes without a `break`:
 
 ```moxie
 for x in List(1, 2, 3)
@@ -290,7 +289,7 @@ A function that loops and returns the result is just a loop whose value is the f
 ```moxie
 fn first_square_over(limit Int) Int
   n = 1
-  while n * n <= limit
+  for n * n <= limit
     n = n + 1
   else
     n * n
@@ -307,7 +306,7 @@ Reading `n` after the loop, instead of in the `else`, is the mistake the compile
 ```moxie
 fn first_square_over(limit Int) Int
   n = 1
-  while n * n <= limit
+  for n * n <= limit
     n = n + 1
   n * n
 println(first_square_over(50))
@@ -318,7 +317,7 @@ println(first_square_over(50))
 error: `n` is changed inside the loop (line 4) only for the loop's own condition, so here it still has its old value: write `n@1` in the loop to change this one, or give it back with `else n`
 ```
 
-Moxie has no `forEach`, `map` loop statement, or `do ... while`. A `for` with `continue` covers the first, streams cover the second, and a `while` with a `break` covers the third. Streams and their pipelines get a lesson of their own.
+Moxie has no `forEach`, `map` loop statement, or `do ... while`. A `for` with `continue` covers the first, streams cover the second, and a `for true` with a `break` covers the third. Streams and their pipelines get a lesson of their own.
 
 ---
 

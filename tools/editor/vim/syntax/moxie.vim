@@ -3,7 +3,7 @@ if exists("b:current_syntax")
   finish
 endif
 
-syn keyword moxieControl if elif else when while for in is return break continue yield go try_go do then select seq assert match
+syn keyword moxieControl if elif else when for in is return break continue yield go try_go do then select seq assert match
 syn keyword moxieOperator and or not as where with using lazy update
 syn keyword moxieDecl fn fiber tuple enum interface impl unit type test
 syn keyword moxieModifier export internal priv static forward inline pure impure prints parks tailrec unsafe dynamic foreign pattern union opaque mutable move ref daemon deriving requires ensures invariant closes delegate property proxy forall import step todo handle any sql

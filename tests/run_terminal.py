@@ -61,7 +61,7 @@ def run_pty(src, keys=(), flags=(), settle=0.3):
     return p.returncode, out.decode(errors="replace"), lflag
 
 ECHO = termios.ECHO | termios.ICANON | termios.ISIG
-LOOP = 'init\n  t = raw_terminal()?\n  while\n    k = read_key(t)?\n    when k\n      Typed(c) -> println("typed $c")\n      Ctrl(c) -> println("ctrl $c")\n      Escape -> break\n      other -> println(other)\n  close(t)\n  println("bye")\n'
+LOOP = 'init\n  t = raw_terminal()?\n  for true\n    k = read_key(t)?\n    when k\n      Typed(c) -> println("typed $c")\n      Ctrl(c) -> println("ctrl $c")\n      Escape -> break\n      other -> println(other)\n  close(t)\n  println("bye")\n'
 
 rc, out, lf = run_pty(LOOP, [b"a", b"\x03", b"\x1b[A", b"\x1b"])
 check("keys arrive one at a time", rc == 0 and "typed a" in out and "ctrl c" in out and "Key.Up" in out and "bye" in out, (rc, out))

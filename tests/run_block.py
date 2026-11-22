@@ -30,7 +30,7 @@ CASES = [
  ("a function without block", D + "fn plain(x Int) Int = x\nr = plain(1)\n  2\n", "has no `block` parameter"),
  ("the block given twice", D + "m = ul(class: \"m\", items: List())\n  li(\"a\")\n", "twice"),
  ("when is not allowed", D + "n = 1\nm = ul(class: \"m\")\n  when n\n    1 -> li(\"a\")\n    _ -> li(\"b\")\n", "not allowed in a block of children"),
- ("a statement that is not a child", D + "m = ul(class: \"m\")\n  while true\n    li(\"a\")\n", "holds children"),
+ ("a statement that is not a child", D + "m = ul(class: \"m\")\n  for true\n    li(\"a\")\n", "holds children"),
  ("a count of children", D + "n = count()\n  1\n  2\n  3\nprintln(n)\nprintln(count())\n", "3\n0"),
  ("an if header call still takes its block", D + "fn ok(x Int) Bool = x > 0\nif ok(1)\n  println(\"yes\")\n", "yes"),
  ("a for header call still takes its block", D + "for x in List(1, 2).map(_ * 2)\n  println(x)\n", "2\n4"),

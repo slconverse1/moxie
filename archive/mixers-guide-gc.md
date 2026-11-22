@@ -124,14 +124,14 @@ Output: `15`. With `xs = List(1, 2)` the loop runs out, and `else` supplies `-1`
 
 ```
 n = 0
-first_big = while n < 10
+first_big = for n < 10
   if n * n > 30
     break(n)
   n = n + 1
 else
   -1
 m = 0
-none = while m < 3
+none = for m < 3
   if m * m > 30
     break(m)
   m = m + 1
@@ -186,7 +186,7 @@ rows = List(List(1, -2), List(3, -1), List(4))
 Output: `1`, `3`, `4`. Inside a `select`, a bare `break` leaves the select, so leaving a loop from there needs a label (`inbox` and `timeout` as in chapter 17):
 
 ```
-#serve while
+#serve for true
   select
     n = read(inbox) ->
       if n < 0
@@ -214,7 +214,7 @@ Output: `10 20 0`. There is no `forEach`: use a `for` loop with `continue`, and 
 ```
 fn triple_past(limit Int, cap Int) Int
   n = 1
-  while n < cap
+  for n < cap
     n = n * 3
     if n > limit
       break(n)
@@ -3243,7 +3243,7 @@ A `wait` block waits for every fiber started inside it (and every fiber those st
 
 ```
 fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
-  while true
+  for true
     select
       cancelled(stop) ->
         \write(out, "worker ${id} stopping")
@@ -3685,7 +3685,7 @@ Output: `Err(Error(code: 12, message: "read: timed out"))`, `Ok(7)`, `code 12`, 
 
 ```
 fn polite(c Cancel) Result[Int, Error]
-  while true
+  for true
     select
       cancelled(c) ->
         return Err(Error(CLOSED, "cancelled"))
@@ -4002,7 +4002,7 @@ Output: `2027-01-02T00:00:00`. All of these are pure except `to_local`, which de
 init
   t = raw_terminal()?
   println("press keys; Escape quits")
-  while
+  for true
     when read_key(t)?
       Typed(c) -> println("typed \$c")
       Ctrl(c) -> println("ctrl-\$c")

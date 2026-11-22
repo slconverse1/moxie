@@ -74,7 +74,7 @@
     "keywords": {
       "patterns": [
         { "name": "keyword.control.moxie",
-          "match": "\\b(if|elif|else|when|while|for|in|is|return|break|continue|yield|go|try_go|do|then|select|seq|assert|match)\\b" },
+          "match": "\\b(if|elif|else|when|for|in|is|return|break|continue|yield|go|try_go|do|then|select|seq|assert|match)\\b" },
         { "name": "keyword.operator.word.moxie", "match": "\\b(and|or|not|as|where|with|using|lazy|update)\\b" },
         { "name": "storage.modifier.moxie",
           "match": "\\b(export|internal|priv|static|forward|inline|pure|impure|prints|parks|tailrec|unsafe|dynamic|foreign|pattern|union|opaque|mutable|move|ref|daemon|deriving|requires|ensures|invariant|closes|delegate|property|proxy|forall|import|step|todo|handle|any|sql)\\b" }

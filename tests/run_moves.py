@@ -31,7 +31,7 @@ CASES = [
  ("using a resource after closing it is a compile error", 'init\n  c = spawn("true")?\n  close(c)\n  println(wait_child(c))\n', 1, "use of moved value `c`"),
  ("c.close() ends it too", 'init\n  c = spawn("true")?\n  c.close()\n  c.close()\n', 1, "use of moved value `c`"),
  ("closing an outer resource in a loop is refused", 'init\n  c = spawn("true")?\n  for i in 1..2\n    close(c)\n', 1, "closed inside a loop"),
- ("closing then leaving the loop is fine", 'init\n  c = spawn("true")?\n  while\n    close(c)\n    break\n', 0, "ok"),
+ ("closing then leaving the loop is fine", 'init\n  c = spawn("true")?\n  for true\n    close(c)\n    break\n', 0, "ok"),
  ("closing in both branches ends it", 'init\n  c = spawn("true")?\n  if true\n    close(c)\n  else\n    close(c)\n  close(c)\n', 1, "use of moved value `c`"),
  ("a resource made in the loop may be closed in it", 'init\n  for i in 1..2\n    c = spawn("true")?\n    close(c)\n', 0, "ok"),
  ("a function with several clauses is checked", 'fn f(c Child, 0) Unit\n  close(c)\nfn f(c Child, n Int) Unit\n  _ = wait_child(c)\n\ninit\n  c = spawn("true")?\n  f(c, 0)\n', 1, "takes ownership of `c`"),

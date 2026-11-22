@@ -30,7 +30,7 @@ target_item : [ ident ':' ] target | ( '...' | '*' ) [ ident ] ;
 assign : lvalue ( '=' | '+=' | '-=' | '*=' | '/=' | '%=' ) expr ;
 lvalue : ( ident | 'self' ) { '(' [ args ] ')' | '.' ident | '.' INT } [ '@' ( INT | ident ) ] ;
 incr : lvalue ( '++' | '--' ) ;
-compound : forallstmt | formonad | [ label ] ( ifstmt | whenstmt | forstmt | whilestmt | dostmt ) | mutable_block | block_stmt | armsblock | withblock ;
+compound : forallstmt | formonad | [ label ] ( ifstmt | whenstmt | forstmt | dostmt ) | mutable_block | block_stmt | armsblock | withblock ;
 armsblock : ident NL INDENT arm+ DEDENT ;
 armsx : NL INDENT arm+ DEDENT ;
 withblock : 'with' ident { ',' ident } block ;
@@ -47,7 +47,6 @@ arm : arm_head '->' ( simple NL | block | when_b ) | 'else' ( simple NL | block 
 arm_head : pattern_alts { ',' pattern_alts } [ 'if' expr ] | ident '=' expr | expr | 'else' ;
 pattern_alts : pattern { '|' pattern } ;
 forstmt : 'for' ( pattern 'in' expr | expr ) ( block | 'then' simple NL ) [ 'else' ( simple NL | block ) ] ;
-whilestmt : 'while' [ expr ] block [ 'else' ( simple NL | block ) ] ;
 mutable_block : 'mutable' block ;
 
 # ---------------------------------------------------------------- expressions

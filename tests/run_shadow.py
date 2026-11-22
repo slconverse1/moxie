@@ -18,17 +18,17 @@ ERR = [
  ("+= in a loop", 'total = 0\nfor i in List(1, 2)\n  total += i\nprintln(total)\n', "`total += ...` reads the outer `total`"),
  ("= reading itself in a loop", 'total = 0\nfor i in List(1, 2)\n  total = total + i\nprintln(total)\n', "`total = ... total ...` reads the outer `total`"),
  ("= reading itself in an if", 'n = 1\nif true\n  n = n + 1\nprintln(n)\n', "reads the outer `n`"),
- ("a while counter used after the loop", 'fn f(c Int) Int\n  i = 0\n  while i < c\n    i += 1\n  i\n', "only for the loop's own condition"),
+ ("a while counter used after the loop", 'fn f(c Int) Int\n  i = 0\n  for i < c\n    i += 1\n  i\n', "only for the loop's own condition"),
 ]
 QUIET = [
- ("a while loop whose condition reads the counter", 'fn f(c Int) Int\n  i = 0\n  while i < c\n    i += 1\n  c\nprintln(f(3))\n'),
- ("a while counter given back by else", 'fn f(c Int) Int\n  i = 0\n  while i < c\n    i += 1\n  else\n    i\nprintln(f(3))\n'),
+ ("a while loop whose condition reads the counter", 'fn f(c Int) Int\n  i = 0\n  for i < c\n    i += 1\n  c\nprintln(f(3))\n'),
+ ("a while counter given back by else", 'fn f(c Int) Int\n  i = 0\n  for i < c\n    i += 1\n  else\n    i\nprintln(f(3))\n'),
  ("rebinding in the same block", "x = 1\nx = x + 1\nprintln(x)\n"),
  ("gimme reaches the outer name", 'total = 0\nfor i in List(1, 2)\n  total@1 += i\nprintln(total)\n'),
  ("a function local named like a global", 'n = 1\nfn f() Int\n  n = 2\n  n\nprintln(f() + n)\n'),
  ("a lambda local named like an outer name", 'n = 1\nf = (a) -> a + 1\nprintln(f(n))\n'),
  ("a parameter rebound at the top of its function", 'fn f(xs List[Int]) List[Int]\n  xs += 1\n  xs\nprintln(f(List(1)))\n'),
- ("a while loop whose else reads the carried name", 'fn count(n Int) Int\n  j = 0\n  while j < n\n    j = j + 1\n  else\n    j\nprintln(count(3))\n'),
+ ("a while loop whose else reads the carried name", 'fn count(n Int) Int\n  j = 0\n  for j < n\n    j = j + 1\n  else\n    j\nprintln(count(3))\n'),
  ("an underscore name", '_t = 0\nfor i in List(1)\n  _t = i\nprintln(1)\n'),
 ]
 fails = []
