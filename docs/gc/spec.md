@@ -848,7 +848,7 @@ Moxie's rule is that a type error is a compile error. There are two kinds of exc
 
 **25. Still open**
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
-1. **Settled:** child collection for DSLs is the `block` parameter (section 9b). The REPL parked after the 2026-11-02 survey is now built (section 22). Dropped after the survey: units of measure (`Int[m]`; a wrapper tuple with `impl Add` covers the common mistake) and active patterns (lowercase pattern names clash with bindings, and few languages have them).
+1. **Settled:** child collection for DSLs is the `block` parameter (section 9b). The REPL parked after the 2026-11-02 survey is now built (section 22). Units of measure (section 23g) and active patterns, written `pattern fn` (section 8), were dropped after the survey and have since been built.
 2a. **Foreign functions (section 19a):** the names `CString` and `cstr`, and callbacks that take other pointers or must answer C from a foreign thread are open. The bindgen tool handles clean library headers and not the most tangled ones.
 2. **Tooling designs (section 22):** the doctest example syntax, and the Markdown subset and page layout for `moxie doc`, are sketches.
 3. **Contracts (section 9b):** nothing is open in the design. The compile error for a failing constant `requires` is built in the reference interpreter.
@@ -1039,7 +1039,7 @@ updline : { ident ':' expr ',' } ( ident ':' expr [ ',' ] NL | ident ':' NL INDE
 - An abort in any fiber ends the program, so moxie has no supervisors, links, or restarts. A test block's abort fails only that test.
 - Multi-core scheduling is ruled out, since moxie's freedom from data races depends on one fiber running at a time.
 - Contracts: an `ensures` sees a `ref` parameter's final value only, the release key is `keep_in_release`, an `impl` adding contracts is a compile error, and a failing constant `requires` is a compile error.
-- Active patterns and units of measure are dropped. `NonEmpty` is added to the prelude, and binary patterns are sketched in section 8.
+- Active patterns (`pattern fn`) and units of measure were dropped at first and are now in the language. `NonEmpty` is added to the prelude, and binary patterns are sketched in section 8.
 - `moxie doc` marks an effect as declared (a promise to callers) or inferred (not promised), and `--check` warns about an exported function with no effect declaration.
 - `curry(f)` works for any number of parameters, and `uncurry[n](g)` is its inverse with the count written in brackets; each is a compiler-known function with its own typing rule, so no parameter packs are needed (section 11).
 - Foreign functions (section 19a): a `foreign "lib"` block of body-less declarations with required, trusted effect declarations; scalars, tuples of scalars, byte arrays as pointer and length, `ref` out-parameters, and opaque handles as resources cross the boundary; callbacks only for the length of a call; `parks` calls run on an OS helper thread; only a package with `[native]` may declare them; `moxie bindgen` generates the declarations.
