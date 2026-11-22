@@ -42,6 +42,18 @@ impl Writer for Buffer
     self = Buffer(data: List(...self.data, ...bytes), pos: self.pos)
     Ok(())
 
+impl Buffer
+  /// Go back to the start, so what was written can be read.
+  fn rewind(ref self) Unit
+    self = Buffer(data: self.data, pos: 0)
+
+  /// Move the read position to byte `at`, kept between the start and the end.
+  fn seek(ref self, at Int) Unit
+    self = Buffer(data: self.data, pos: max(0, min(at, len(self.data))))
+
+/// The read position of a buffer: how many bytes have been read.
+export fn position(b Buffer) Int = b.pos
+
 /// An empty buffer.
 export fn buffer() Buffer = Buffer(data: List(), pos: 0)
 

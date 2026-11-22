@@ -68,6 +68,25 @@ println("${len(first)} ${len(second)} ${len(third)}")
 
 `io.read_all(ref r)` reads to the end and gives all the bytes.
 
+A `Buffer` can also go back and move around. `ref b.rewind()` returns to the start, which is how you read what you just wrote, and `ref b.seek(n)` moves to byte `n`, kept between the start and the end. `io.position(b)` tells you how many bytes have been read:
+
+```moxie
+import io
+
+b = io.buffer_of("abcdef")
+head = ref b.read(4)?
+println(io.position(b))
+ref b.rewind()
+again = ref b.read(2)?
+println("${len(head)} ${len(again)} ${io.position(b)}")
+```
+**Output:**
+
+```
+4
+4 2 2
+```
+
 ## Your own function over any stream
 
 Write against the interface and take the stream by `ref`:

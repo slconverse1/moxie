@@ -11,6 +11,7 @@ CASES = [
  ("a file is a Writer and a Reader", f'import io\nf = open_file("{P}", Create)?\nio.say(ref f, "to a file\\n")?\nclose(f)\ng = open_file("{P}")?\nb = io.buffer()\nn = io.copy(ref g, ref b)?\nclose(g)\nprintln(n)\n', 0, "10"),
  ("stdout takes say", 'import io\nio.say(ref stdout, "ok\\n")?\n', 0, "ok"),
  ("a function written against Writer takes any of them", 'import io\nfn greet[W io.Writer](ref w W) Result[Unit, Error]\n  io.say(ref w, "hi\\n")\nb = io.buffer()\ngreet(ref b)?\ngreet(ref stdout)?\nprintln(len(io.contents(b)))\n', 0, "hi\n3"),
+ ("rewind and seek move a Buffer's read position", 'import io\nb = io.buffer_of("abcdef")\nx = ref b.read(4)?\nref b.rewind()\ny = ref b.read(2)?\nref b.seek(5)\nz = ref b.read(10)?\nprintln("${len(x)} ${len(y)} ${len(z)} ${io.position(b)}")\n', 0, "4 2 1 6"),
  ("a Reader call needs ref", 'import io\nb = io.buffer_of("x")\nr = b.read(1)\n', 2, "changes its receiver"),
 ]
 fails = []
