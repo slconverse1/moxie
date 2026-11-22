@@ -49,6 +49,11 @@ class ReturnEx(Exception):
         self.value = value
 
 
+def _finished(v):
+    return v
+    yield
+
+
 class Done:
     """An already-finished 'generator': `yield from Done(v)` gives v."""
     __slots__ = ("v",)
@@ -57,7 +62,8 @@ class Done:
         self.v = v
 
     def __iter__(self):
-        return self
+        return _finished(self.v)           # a real generator that returns at once: `yield from` takes its value without raising StopIteration,
+                                           # which costs time in proportion to the depth of the generator stack
 
     def __next__(self):
         raise StopIteration(self.v)

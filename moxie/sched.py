@@ -568,6 +568,11 @@ class Scheduler:
         except Abort as a:
             self.abort(f, a)
             return
+        except RecursionError:
+            if os.environ.get("MOXIE_DEBUG"):
+                raise
+            self.abort(f, Abort("stack overflow: the recursion is too deep (a call in tail position does not grow the stack; see `tailrec fn`)"))
+            return
         except (TypeError, ValueError, AttributeError, KeyError) as e:
             if os.environ.get("MOXIE_DEBUG"):
                 raise

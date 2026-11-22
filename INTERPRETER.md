@@ -14,7 +14,7 @@ Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 
 ## Known limits of the reference interpreter
 
-- **Tail calls do not reuse the frame.** The language specifies that a call in tail position (and, for `tailrec fn`, every self-call) runs in constant stack. The interpreter evaluates with nested Python generators, so a tail-recursive function of depth n takes time that grows faster than n (about 0.5 s at 2,000 deep, 9 s at 8,000), and a very deep recursion can hit the Python stack. Loops (`for`, `while`) are not affected. Fixing it means a trampoline in the call path.
+- **Tail calls.** A self-call in tail position of any function (and every self-call of a `tailrec fn`) runs as a loop in constant stack. A tail call to a *different* function (mutual recursion) still nests Python generators, so it is limited by the interpreter's stack (about 30,000 deep); a recursion that is too deep ends the fiber with a `stack overflow` diagnostic. Time is linear in the depth (a 20,000-deep tail recursion takes about half a second).
 
 ## What it does
 * Runs everything in the Spec and Guide that is not marked "not designed": declarations, enums, patterns, generics,
