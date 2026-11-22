@@ -18,3 +18,6 @@
 15-lists
 16-arrays
 17-dicts-and-sets
+18-types-of-types
+19-patterns
+20-interfaces

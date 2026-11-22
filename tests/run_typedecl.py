@@ -9,6 +9,9 @@ def run(src, gc=False):
     os.unlink(f.name)
     return r.returncode, r.stdout + r.stderr
 CASES = [
+ ("two opaque types over one type do not mix", "opaque type M = Double\nopaque type F = Double\nfn d(m M) String = \"x\"\nprintln(d(F(1.0)))\n", "expected `M`, found `F`"),
+ ("an opaque value is not its representation", "opaque type F = Double\nf = F(1.0)\ny Int = f\n", "expected `Int`, found `F`"),
+ ("an opaque value passes where its own type is wanted", "opaque type F = Double\nfn d(f F) String = \"ok\"\nprintln(d(F(1.0)))\n", "ok"),
  ("an alias", "type Kg = Double\nx Kg = 2.5\nprintln(x)\n", "2.5"),
  ("a refined alias", "type Pos = Int where self > 0\nx Pos = 3\nprintln(x)\n", "3"),
  ("a refined alias rejects a bad value", "type Pos = Int where self > 0\nx Pos = 0 - 1\n", "must satisfy"),

@@ -6065,6 +6065,10 @@ class Checker(RefineMixin):
         self.check_lits_in_call(n, sc)
         self.check_nullary_called(n, sc)
         r = self._e_Call(n, sc, *a, **k)
+        if n.fn.__class__ is Name and n.fn.name not in self.fns and sc.find(n.fn.name) is None:
+            al = self.aliases.get(n.fn.name)
+            if al is not None and al.kind == "opaque" and not al.tparams and r.__class__ is tuple:
+                r = (("named", n.fn.name),) + tuple(r[1:])      # `Feet(1.0)` is a Feet, not a bare Double
         if n.fn.__class__ is Name and n.fn.name in ("println", "print", "dbg") and n.fn.name not in self.fns and sc.find(n.fn.name) is None:
             for a_ in n.args or []:
                 msg = self.late_method(self.arg_ty.get(id(getattr(a_, "expr", None))), "show", n.line)
