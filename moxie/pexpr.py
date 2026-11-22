@@ -552,7 +552,7 @@ class ExprParser(PBase):
                 piece = Pipe(Pipe(x.iter, Call(Name("flat_map", line=xl), [Arg(None, lam, None)], None, None, None, line=xl), line=xl),
                              Call(Name("collect", line=xl), [], None, None, None, line=xl), line=xl)
             elif x.__class__ in (WhileE, DaemonE):
-                self.err("a block of children holds children, bindings, `if`, `for` and `...list`; a loop other than `for` is not one of them", None)
+                self.err("a block of children holds children, bindings, `if`, `for` and `...list`; a loop on a condition (`for i < n`) is not one of them: write `for x in xs`", None)
             elif x.__class__ is WhenE:
                 self.err("a `when` is not allowed in a block of children: use `if` / `elif` / `else`", None)
             else:

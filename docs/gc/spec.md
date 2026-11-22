@@ -396,7 +396,7 @@ How the heap behaves:
   - `for pattern in source`, whose body is a block of children, and the children of every iteration are added in order;
   - `...list`, which adds every element of a list (or other source).
 
-  Nothing else is allowed in the block (`when`, `for`, `return`, `break` are errors). A block of children is sugar for building the list with `+`, so the capacity rules of section 7 apply, and the children are checked against `T`. The block fills the `block` parameter, so passing that parameter in the parentheses as well is an error, and a function with no `block` parameter can't be called with a block.
+  Nothing else is allowed in the block (`when`, a loop on a condition such as `for i < n`, `return`, and `break` are errors; `for x in xs` is allowed and adds the children of every iteration). A block of children is sugar for building the list with `+`, so the capacity rules of section 7 apply, and the children are checked against `T`. The block fills the `block` parameter, so passing that parameter in the parentheses as well is an error, and a function with no `block` parameter can't be called with a block.
 
 **9b. Contracts**
 - **One mechanism.** A contract and a refined parameter (section 9c) are one thing, a condition, in one of three places: before the body (`requires`, or `where` after a parameter), after it (`ensures`, or `where` after the result type), and on a value that is built (`invariant`, or `where` after a field). All of them are checked when the program runs, with the same blame and the same build modes. The solver of section 9c additionally tries to prove a `where` on a parameter at each call, and a condition it can neither prove nor refute stays a run-time check. The same solver also proves a linear `ensures` at each exit and a linear `invariant` at each construction, as described in section 9c.
@@ -903,10 +903,9 @@ target : ident | '_' | '(' [ target_item { ',' target_item } ] ')' | ident { '.'
 target_item : [ ident ':' ] target | ( '...' | '*' ) [ ident ] ;
 assign : lvalue ( '=' | '+=' | '-=' | '*=' | '/=' | '%=' ) expr ;
 lvalue : ( ident | 'self' ) { '(' [ args ] ')' | '.' ident | '.' INT } [ '@' ( INT | ident ) ] ;
-compound : forallstmt | formonad | [ label ] ( ifstmt | whenstmt | forstmt | dostmt ) | mutable_block | block_stmt | armsblock | withblock ;
+compound : forallstmt | formonad | [ label ] ( ifstmt | whenstmt | forstmt | dostmt ) | mutable_block | block_stmt | armsblock ;
 armsblock : ident NL INDENT arm+ DEDENT ;
 armsx : NL INDENT arm+ DEDENT ;
-withblock : 'with' ident { ',' ident } block ;
 dostmt : 'do' [ 'with' ident { ',' ident } ] block ;
 block : NL INDENT [ carry ] item+ DEDENT ;
 carry : 'in' carry_item { ',' carry_item } NL ;
