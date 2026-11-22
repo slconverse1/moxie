@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+The Spec's dated design notes now live on their own pages (`docs/design-notes.md`, `docs/gc/design-notes.md`), linked from the end of the Spec, so the Spec holds only the language as it is.
+
 `NonEmpty` now works as the Spec says: the prelude functions `len`, `min`, `max`, and `map` use a tuple or enum type's own method of the same name, and a piped call inside a method is no longer taken for the method itself. Atoms print as `Atom(10)` and timers as `Timer()`.
 
 Reading aids: both Specs have numbered headings with anchors (`#s9c`) and a sidebar outline, the Mixer’s Guide has a lesson sidebar, each lesson ends with an "In the Spec" line and each Spec section starts with an "In the Mixer’s Guide" line (from `lessons/_spec.txt`; `tools/link_spec.py`, `tests/run_links.py`). The Spec now also covers `lower`, `upper`, `replace_text`, and `unwrap`.
