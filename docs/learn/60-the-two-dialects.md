@@ -4,7 +4,7 @@ title: "Moxie and moxie/gc side by side · Learning Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 63. Moxie and moxie/gc side by side
+# 64. Moxie and moxie/gc side by side
 
 You are reading the GC-free guide. moxie has a second dialect, moxie/gc, that keeps the same language and swaps the memory model: one shared heap with a generational collector instead of sizes worked out ahead of time. This lesson lists what changes, with a short example of each, so you can read code written for either dialect. Every example below also runs in moxie/gc, and the guide for that dialect shows the other column.
 
@@ -111,4 +111,4 @@ Reach for GC-free moxie when you need a program whose worst case is known before
 
 ---
 
-[← Calling C](54-calling-c.html) · [Contents](./) · [Where to go next →](64-where-to-go-next.html)
+[← Byte streams: Reader and Writer](65-byte-streams.html) · [Contents](./) · [Where to go next →](64-where-to-go-next.html)

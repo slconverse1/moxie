@@ -463,8 +463,21 @@ def b_to_utf8(I, a, kw, ta):
 @bi("write_bytes")
 def b_write_bytes(I, a, kw, ta):
     h = a[0]
+    if h is STDOUT or h is STDERR:
+        data = bytes(int(x) for x in a[1].items)
+        sink = I.out if h is STDOUT else I.err
+        try:
+            if hasattr(sink, "buffer"):                      # a real stream: keep the order with earlier text writes
+                sink.flush()
+                sink.buffer.write(data)
+                sink.buffer.flush()
+            else:                                            # a captured stream (tests, `moxie run` inside a harness)
+                sink.write(data.decode("utf-8", "replace"))
+        except OSError as e:
+            return io_error(e)
+        return Ok(UNIT)
     if not isinstance(h, IoV) or h.closed:
-        raise Abort("write_bytes needs an open file or socket")
+        raise Abort("write_bytes needs stdout, stderr, or an open file or socket")
     try:
         h.f.write(bytes(int(x) for x in a[1].items))
         if h.kind == "socket":

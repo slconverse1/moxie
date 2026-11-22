@@ -164,4 +164,4 @@ A missing section, or a library the section doesn't list, is a compile-time erro
 
 ---
 
-[← The system around your program](44-the-system-around-your-program.html) · [Contents](./) · [Moxie and moxie/gc side by side →](60-the-two-dialects.html)
+[← The system around your program](44-the-system-around-your-program.html) · [Contents](./) · [Byte streams: Reader and Writer →](65-byte-streams.html)

@@ -1,0 +1,78 @@
+//! io: byte streams. `Reader` and `Writer` are the two interfaces a program writes its I/O code against, so the same function works on a file, a socket,
+//! standard input and output, and an in-memory `Buffer`.
+//!
+//! A reader hands back up to `n` bytes at a time and an empty array at the end. A writer takes all the bytes or gives an `Err`. Both take `ref self`,
+//! because reading moves a position and writing adds bytes, so a call names the variable it changes: `ref r.read(16)`.
+
+/// Something bytes can be read from.
+export interface Reader
+  fn read(ref self, n Int) Result[Array[Byte], Error]
+
+/// Something bytes can be written to.
+export interface Writer
+  fn write(ref self, bytes Array[Byte]) Result[Unit, Error]
+
+impl Reader for Io
+  fn read(ref self, n Int) Result[Array[Byte], Error] = read_bytes(self, n)
+
+impl Writer for Io
+  fn write(ref self, bytes Array[Byte]) Result[Unit, Error] = write_bytes(self, bytes)
+
+impl Reader for Stdio
+  fn read(ref self, n Int) Result[Array[Byte], Error] = read_bytes(self, n)
+
+impl Writer for Stdio
+  fn write(ref self, bytes Array[Byte]) Result[Unit, Error] = write_bytes(self, bytes)
+
+/// Bytes in memory that can be written to and then read from the front, one after the other.
+export tuple Buffer deriving show
+  data List[Byte]
+  pos Int
+
+impl Reader for Buffer
+  fn read(ref self, n Int) Result[Array[Byte], Error]
+    d = self.data
+    stop = min(self.pos + n, len(d))
+    chunk = d(self.pos..<stop).collect()
+    self = Buffer(data: d, pos: stop)
+    Ok(chunk)
+
+impl Writer for Buffer
+  fn write(ref self, bytes Array[Byte]) Result[Unit, Error]
+    self = Buffer(data: List(...self.data, ...bytes), pos: self.pos)
+    Ok(())
+
+/// An empty buffer.
+export fn buffer() Buffer = Buffer(data: List(), pos: 0)
+
+/// A buffer holding `text`, ready to be read from the start.
+export fn buffer_of(text String) Buffer = Buffer(data: List(...to_utf8(text)), pos: 0)
+
+/// Everything in the buffer, whether read yet or not.
+export fn contents(b Buffer) Array[Byte] = b.data |> collect()
+
+/// Write `text` as UTF-8.
+export fn say[W Writer](ref w W, text String) Result[Unit, Error]
+  ref w.write(to_utf8(text))
+
+fn gather[R Reader](ref r R, so_far List[Byte]) Result[Array[Byte], Error]
+  chunk = ref r.read(4096)?
+  when len(chunk)
+    0 -> Ok(so_far |> collect())
+    _ -> gather(ref r, List(...so_far, ...chunk))
+
+/// Read until the end.
+export fn read_all[R Reader](ref r R) Result[Array[Byte], Error]
+  gather(ref r, List())
+
+fn pump[R Reader, W Writer](ref r R, ref w W, moved Int) Result[Int, Error]
+  chunk = ref r.read(4096)?
+  when len(chunk)
+    0 -> Ok(moved)
+    n ->
+      ref w.write(chunk)?
+      pump(ref r, ref w, moved + n)
+
+/// Copy everything from `r` to `w`, and give the number of bytes moved.
+export fn copy[R Reader, W Writer](ref r R, ref w W) Result[Int, Error]
+  pump(ref r, ref w, 0)

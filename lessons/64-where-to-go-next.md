@@ -12,7 +12,7 @@ You have now met the whole language, from `println("hello")` to session types an
 
 ## The two dialects
 
-If you read the guide for one dialect and want the other, the same pages exist for both. The differences are in the lesson on the two dialects (lesson 63): collections that grow, persistent updates, one `String` type, closures that go anywhere, and the end of pools and budgets. Reach for GC-free moxie when the worst case must be known before the program runs, and moxie/gc when you want the language without the bookkeeping.
+If you read the guide for one dialect and want the other, the same pages exist for both. The differences are in the lesson on the two dialects (lesson 64): collections that grow, persistent updates, one `String` type, closures that go anywhere, and the end of pools and budgets. Reach for GC-free moxie when the worst case must be known before the program runs, and moxie/gc when you want the language without the bookkeeping.
 
 ## The interpreter
 

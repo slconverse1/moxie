@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+The `io` package. `io.Reader` and `io.Writer` are the byte-stream interface pair (`read(ref self, n)`, `write(ref self, bytes)`), implemented for files and sockets, `stdin`/`stdout`/`stderr`, and an in-memory `io.Buffer`, with `io.say`, `io.copy` and `io.read_all` generic over them. `write_bytes` now works on `stdout` and `stderr`, and `ref r.read(n)?` parses. Lesson 63 is new (byte streams) and the later lessons moved down one. `tests/run_io.py` covers both dialects.
+
 Backtick infix removed. ``a `f` b`` is gone (the lexer says so and points to `f(a, b)` or `a |> f(b)`); it came from Haskell and a call or a pipe says the same thing. The grammar, both specs, both intros, and lessons 21 and 50 are updated.
 
 `ref self` methods. A method declared `fn add(ref self, x Int) Unit` rebinds its receiver, and the call says so, `ref m.add(1)`, like any other `ref` argument; it works in interfaces and through generic bounds, and leaving the `ref` off (or adding it to an ordinary method) is a compile error. `tests/run_refself.py` covers both dialects.

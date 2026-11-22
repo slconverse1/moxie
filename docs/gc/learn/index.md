@@ -109,5 +109,6 @@ You don't need to know any functional programming. If you do, the lessons point 
 
 61. [The system around your program](44-the-system-around-your-program.html)
 62. [Calling C](54-calling-c.html)
-63. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
-64. [Where to go next](64-where-to-go-next.html)
+63. [Byte streams: Reader and Writer](65-byte-streams.html)
+64. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
+65. [Where to go next](64-where-to-go-next.html)

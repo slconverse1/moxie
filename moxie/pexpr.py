@@ -337,9 +337,12 @@ class ExprParser(PBase):
         if t.kind == "NAME" and t.val == "ref" and self.peek(1).kind == "NAME" and self.at_op(".", 2):
             self.next()                                           # `ref m.add(1)`: a method that changes its receiver
             e = self.parse_postfix()
-            if e.__class__ is not Call or e.fn.__class__ is not Field or e.fn.obj.__class__ is not Name:
+            c = e
+            while c.__class__ is Q:                                # `ref r.read(n)?`
+                c = c.e
+            if c.__class__ is not Call or c.fn.__class__ is not Field or c.fn.obj.__class__ is not Name:
                 self.err("`ref` before a method call goes with a call on a name: `ref m.add(1)`", t)
-            e.ref_recv = True
+            c.ref_recv = True
             return e
         if t.kind == "NAME" and t.val == "not":
             if not (self.peek(1).kind == "NAME" and self.peek(1).val == "in"):

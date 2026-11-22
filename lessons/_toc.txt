@@ -81,5 +81,6 @@
 # Your program and its machine
 44-the-system-around-your-program
 54-calling-c
+65-byte-streams
 60-the-two-dialects
 64-where-to-go-next
