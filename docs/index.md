@@ -1,5 +1,6 @@
 ---
 layout: default
+toc: true
 title: "Moxie"
 ---
 > This is **moxie**, the GC-free language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Mixer’s Guide, and Spec. The two are kept apart on purpose, because they make different promises.

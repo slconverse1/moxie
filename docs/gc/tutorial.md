@@ -1,5 +1,6 @@
 ---
 layout: default
+toc: true
 dialect: gc
 title: "moxie/gc Tutorial"
 ---
