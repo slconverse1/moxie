@@ -4,7 +4,7 @@ title: "Refined parameters: proofs in the signature · Learn moxie"
 ---
 <p><small>Fields and promises</small></p>
 
-# 48. Refined parameters: proofs in the signature
+# 55. Refined parameters: proofs in the signature
 
 A `requires` line says what a function needs, and a bad call fails when it runs. A **refined parameter** says it in the signature, and a bad call fails when you *compile*. Write `where` and a condition after the parameter's type:
 
@@ -159,4 +159,4 @@ Account(balance: 40, name: "ann")
 
 ---
 
-[← Properties, field delegates, and proxies](48-properties-delegates-proxies.html) · [Contents](./) · [The system around your program →](44-the-system-around-your-program.html)
+[← Properties, field delegates, and proxies](48-properties-delegates-proxies.html) · [Contents](./) · [Contracts: requires, ensures, invariant →](55-contracts.html)

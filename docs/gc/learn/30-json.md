@@ -5,7 +5,7 @@ title: "JSON and data from outside · Learn moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 
-# 30. JSON and data from outside
+# 37. JSON and data from outside
 
 Data from outside a program, such as a configuration file or a web response, has a shape the program doesn't know until it arrives. Moxie doesn't look inside your types at run time (there is no reflection), so the standard `json` package gives you an ordinary, closed type for such data. This lesson shows how to read it, how to write it, and how to turn it into your own types and back.
 

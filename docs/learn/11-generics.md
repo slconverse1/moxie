@@ -4,7 +4,7 @@ title: "Generic functions · Learn moxie"
 ---
 <p><small>Functions</small></p>
 
-# 11. Generic functions
+# 12. Generic functions
 
 A function that works the same way whatever the type of its argument can be written once. Such a function is *generic*, and it lists *type parameters* in square brackets after its name.
 

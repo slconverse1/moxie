@@ -5,7 +5,7 @@ title: "Programs with effects as data: the freer monad · Learn moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 
-# 42. Programs with effects as data: the freer monad
+# 49. Programs with effects as data: the freer monad
 
 The same idea as the last lesson covers programs that *do* things. The commands are described as data, and a program is data that holds a command and what to do with its answer. A separate function, a *handler*, decides what the commands actually do. That way the same program can talk to the real world in production and to a script in a test.
 

@@ -2,6 +2,7 @@
 01-run
 02-first-program
 03-values-and-names
+58-for-imperative-programmers
 04-numbers
 05-text
 06-truth-and-choices
@@ -36,6 +37,7 @@
 
 # Quality and larger programs
 25-testing
+57-formatting-and-checking
 26-errors-in-larger-programs
 53-limits-pools-memory
 

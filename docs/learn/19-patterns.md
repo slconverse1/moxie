@@ -4,7 +4,7 @@ title: "Patterns · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 19. Patterns
+# 21. Patterns
 
 A *pattern* describes the shape of a value and names its parts at the same time. You have used the simplest ones already: `Some(v)` in a `when`, `List(head, ...tail)`, and `a, b = ...` in a binding. This lesson collects them, because the same patterns work everywhere a value is taken apart.
 
@@ -286,4 +286,4 @@ A `when` on an enum or union must cover every case, and the compiler checks nest
 
 ---
 
-[← Naming types: aliases, opaque types, and unions](18-types-of-types.html) · [Contents](./) · [Methods and interfaces →](20-interfaces.html)
+[← Naming types: aliases, opaque types, and unions](18-types-of-types.html) · [Contents](./) · [Binary patterns, and taking a value apart by its type →](51-binary-patterns-and-type-tags.html)

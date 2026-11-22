@@ -4,7 +4,7 @@ title: "Networking, deadlines, and parallel work · Learn moxie"
 ---
 <p><small>Data from outside</small></p>
 
-# 33. Networking, deadlines, and parallel work
+# 40. Networking, deadlines, and parallel work
 
 This lesson covers talking over a network, waiting with a deadline, racing two jobs against each other, and spreading work across fibers. Everything here uses `localhost`, so each example is a complete program that runs on its own.
 

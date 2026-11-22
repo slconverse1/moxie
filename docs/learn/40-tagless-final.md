@@ -4,7 +4,7 @@ title: "Tagless final: one program, many interpreters · Learn moxie"
 ---
 <p><small>Functional programming</small></p>
 
-# 40. Tagless final: one program, many interpreters
+# 47. Tagless final: one program, many interpreters
 
 Suppose you are writing a tiny language of sums (numbers, `+`, negation) and want to run it, print it, and later do more with it. The usual way is a data type (an `enum`) and one function per job that takes it apart with `when`. **Tagless final** turns that around: you write the language as an *interface*, and a program in it is a generic function that builds its result using the interface's functions. An interpreter is a type that implements the interface, so choosing the interpreter is choosing a type argument, and no tree is built at all.
 

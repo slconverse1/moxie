@@ -4,7 +4,7 @@ title: "The system around your program · Learn moxie"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 49. The system around your program
+# 57. The system around your program
 
 A program lives inside a machine. This lesson covers what it is allowed to touch, how it tells time and makes random numbers, how it keeps secrets, how it reacts to Ctrl-C, how it runs other programs, and how it shows dates.
 
@@ -297,4 +297,4 @@ In raw mode Ctrl-C is just a key, so a program must choose to quit on it. Call `
 
 ---
 
-[← Refined parameters: proofs in the signature](49-refined-parameters.html) · [Contents](./)
+[← Contracts: requires, ensures, invariant](55-contracts.html) · [Contents](./) · [Calling C →](54-calling-c.html)

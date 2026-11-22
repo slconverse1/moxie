@@ -4,7 +4,7 @@ title: "Truth and choices · Learn moxie"
 ---
 <p><small>Getting started</small></p>
 
-# 6. Truth and choices
+# 7. Truth and choices
 
 A program becomes interesting when it can decide. This lesson covers `Bool`, comparisons, and the two ways to choose: `if` and `when`.
 

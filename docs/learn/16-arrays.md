@@ -4,7 +4,7 @@ title: "Arrays and grids · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 16. Arrays and grids
+# 17. Arrays and grids
 
 A `List` can be any length and can change length when you add to it. An `Array` has a size that is part of its type, fixed when the array is made. That makes arrays the right tool when the size is part of the meaning: three colour channels, eight bytes, a 3 by 3 board. It also lets the compiler catch mistakes about size before the program runs.
 
@@ -261,4 +261,4 @@ Use a `List` when the number of elements isn't known up front or changes as the 
 
 ---
 
-[← Lists](15-lists.html) · [Contents](./) · [Dicts and sets →](17-dicts-and-sets.html)
+[← Lists](15-lists.html) · [Contents](./) · [In-place algorithms: `mutable` blocks →](56-mutable-blocks.html)

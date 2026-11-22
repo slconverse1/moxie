@@ -5,7 +5,7 @@ title: "Functions · Learn moxie/gc"
 ---
 <p><small>Functions</small></p>
 
-# 8. Functions
+# 9. Functions
 
 A *function* is a named piece of code that takes values in and gives a value back. You have used built-in functions such as `println` and `max`. This lesson is about writing your own.
 

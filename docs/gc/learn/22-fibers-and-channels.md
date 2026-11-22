@@ -5,7 +5,7 @@ title: "Fibers and channels · Learn moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 
-# 22. Fibers and channels
+# 26. Fibers and channels
 
 A program can do several things at once. In moxie the unit of concurrency is the *fiber*, a lightweight task, and fibers talk to each other through *channels*. The idea is borrowed from Go: don't share data between tasks, pass messages between them. Since moxie values never change, a message can't be altered behind the receiver's back.
 
@@ -202,4 +202,4 @@ Because values never change and channel ends have a single owner, a moxie progra
 
 ---
 
-[← Streams and pipelines](21-streams-and-pipelines.html) · [Contents](./) · [Waiting on several things: select, timers, and cancelling →](23-select-timers-cancel.html)
+[← Pipe slots, `seq`, and doing work once](50-pipe-slots-and-caching.html) · [Contents](./) · [Waiting on several things: select, timers, and cancelling →](23-select-timers-cancel.html)

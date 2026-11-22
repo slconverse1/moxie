@@ -4,7 +4,7 @@ title: "Missing values and failures: Option and Result · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 14. Missing values and failures: Option and Result
+# 15. Missing values and failures: Option and Result
 
 Some operations don't always have an answer. Looking up a name that isn't there, reading a number from text that isn't a number, opening a file that doesn't exist. Many languages answer with a special value (`null`) or an exception. Moxie has neither. A function that might not produce a value says so in its *type*, and the compiler makes the caller deal with it.
 

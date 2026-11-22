@@ -5,7 +5,7 @@ title: "Methods and interfaces · Learn moxie/gc"
 ---
 <p><small>Data</small></p>
 
-# 20. Methods and interfaces
+# 23. Methods and interfaces
 
 You have seen methods already (`s.area()`, `xs.map(...)`). This lesson is about declaring them for your own types, and about *interfaces*, which let one function work with many different types as long as they can do the same thing.
 
@@ -239,4 +239,4 @@ Because `x.f(y)` is `f(x, y)`, you can use methods in pipelines, pass them as fu
 
 ---
 
-[← Patterns](19-patterns.html) · [Contents](./) · [Streams and pipelines →](21-streams-and-pipelines.html)
+[← Binary patterns, and taking a value apart by its type](51-binary-patterns-and-type-tags.html) · [Contents](./) · [Streams and pipelines →](21-streams-and-pipelines.html)

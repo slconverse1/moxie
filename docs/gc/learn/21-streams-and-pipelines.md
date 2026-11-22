@@ -5,7 +5,7 @@ title: "Streams and pipelines · Learn moxie/gc"
 ---
 <p><small>Streams and pipelines</small></p>
 
-# 21. Streams and pipelines
+# 24. Streams and pipelines
 
 A *stream* is a sequence of values produced one at a time. Instead of writing a loop that builds up a result, you describe a *pipeline*: where the values come from, what happens to each, and what you want at the end. Streams are the main tool for working with collections in moxie.
 
@@ -271,4 +271,4 @@ A loop says *how*: keep a counter, update a total, remember to stop. A pipeline 
 
 ---
 
-[← Methods and interfaces](20-interfaces.html) · [Contents](./) · [Fibers and channels →](22-fibers-and-channels.html)
+[← Methods and interfaces](20-interfaces.html) · [Contents](./) · [Pipe slots, `seq`, and doing work once →](50-pipe-slots-and-caching.html)

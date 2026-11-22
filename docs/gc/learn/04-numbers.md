@@ -5,7 +5,7 @@ title: "Numbers · Learn moxie/gc"
 ---
 <p><small>Getting started</small></p>
 
-# 4. Numbers
+# 5. Numbers
 
 Moxie has several number types. Most programs use two of them, `Int` for whole numbers and `Double` for numbers with a fraction, and meet the others only when they need exact sizes, very large numbers, or exact decimals.
 
@@ -305,4 +305,4 @@ A `Decimal` prints with exactly its scale, and compares exactly. The ordinary `D
 
 ---
 
-[← Values and names](03-values-and-names.html) · [Contents](./) · [Text →](05-text.html)
+[← Moxie for imperative programmers](58-for-imperative-programmers.html) · [Contents](./) · [Text →](05-text.html)

@@ -4,7 +4,7 @@ title: "Properties, field delegates, and proxies · Learn moxie"
 ---
 <p><small>Fields and promises</small></p>
 
-# 47. Properties, field delegates, and proxies
+# 54. Properties, field delegates, and proxies
 
 Three features let a field do more than hold a value. A *property* runs code when it is read or written. A *field delegate* adds the same behavior to many fields. A *proxy* hands a whole interface to a field, so a type does everything the field does except what you override.
 

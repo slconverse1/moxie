@@ -158,4 +158,4 @@ Most things in moxie produce a value, including `if`, `when`, `for`, and a block
 
 ---
 
-[← Your first program](02-first-program.html) · [Contents](./) · [Numbers →](04-numbers.html)
+[← Your first program](02-first-program.html) · [Contents](./) · [Moxie for imperative programmers →](58-for-imperative-programmers.html)

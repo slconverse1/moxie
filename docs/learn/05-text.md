@@ -4,7 +4,7 @@ title: "Text · Learn moxie"
 ---
 <p><small>Getting started</small></p>
 
-# 5. Text
+# 6. Text
 
 Text in moxie is a `String`: a sequence of Unicode characters stored as UTF-8. You have already used strings for printing. This lesson covers what else you can do with them.
 

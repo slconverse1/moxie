@@ -4,7 +4,7 @@ title: "State, lenses, lazy sequences, and monoids · Learn moxie"
 ---
 <p><small>Functional programming</small></p>
 
-# 39. State, lenses, lazy sequences, and monoids
+# 46. State, lenses, lazy sequences, and monoids
 
 This lesson collects four ideas that functional programmers reach for. In each case moxie offers a plain way to do the job, and sometimes also the classic abstraction.
 

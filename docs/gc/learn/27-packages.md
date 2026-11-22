@@ -5,7 +5,7 @@ title: "Packages and imports · Learn moxie/gc"
 ---
 <p><small>Packages</small></p>
 
-# 27. Packages and imports
+# 34. Packages and imports
 
 A program doesn't have to live in one file. Code is split into *packages*, and a package is made of one or more files. This lesson covers how to import code, what a package shares with the rest of the program, and how a larger package is laid out.
 
@@ -152,4 +152,4 @@ In moxie/gc there is no memory budget to declare: the collector manages memory, 
 
 ---
 
-[← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./) · [Input, output, and files →](28-input-output-files.html)
+[← Limits, pools, and the memory budget](53-limits-pools-memory.html) · [Contents](./) · [Input, output, and files →](28-input-output-files.html)

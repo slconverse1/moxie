@@ -4,7 +4,7 @@ title: "`for` comprehensions · Learn moxie"
 ---
 <p><small>Functional programming</small></p>
 
-# 38. `for` comprehensions
+# 45. `for` comprehensions
 
 Lesson 37 chained dependent steps with `|>>`. When there are several steps, the chain gets hard to read, and a `for` block does the same job in a shape that reads top to bottom. A `for` block is a chain of *generators* ending in `yield`, and it works for any type that has a `Monad` instance: `Result`, `List`, `Stream`, and your own types.
 

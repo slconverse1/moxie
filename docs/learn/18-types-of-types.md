@@ -4,7 +4,7 @@ title: "Naming types: aliases, opaque types, and unions · Learn moxie"
 ---
 <p><small>Data</small></p>
 
-# 18. Naming types: aliases, opaque types, and unions
+# 20. Naming types: aliases, opaque types, and unions
 
 So far each type has been either built in or declared as a tuple or enum. This lesson covers three more ways to shape types: giving an existing type a second name, making a genuinely new type from an old one, and describing a value that can be one of several types.
 

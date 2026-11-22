@@ -4,7 +4,7 @@ title: "Testing, assertions, and checking · Learn moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 25. Testing, assertions, and checking
+# 30. Testing, assertions, and checking
 
 Moxie has testing built in: no framework to install, and nothing to import. A `test` block is code that runs only when you ask for tests. This lesson also covers the other ways moxie helps you find mistakes before users do.
 
@@ -126,4 +126,4 @@ A typical function's life: you write it with a signature, `moxie check` proves t
 
 ---
 
-[← Atoms and futures](24-atoms-and-futures.html) · [Contents](./) · [Errors in larger programs →](26-errors-in-larger-programs.html)
+[← Session types: a channel that remembers the conversation](52-session-types.html) · [Contents](./) · [Formatting and checking: `moxie fmt` and `moxie check` →](57-formatting-and-checking.html)

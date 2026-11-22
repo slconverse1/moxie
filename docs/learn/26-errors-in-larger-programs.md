@@ -4,7 +4,7 @@ title: "Errors in larger programs · Learn moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 26. Errors in larger programs
+# 32. Errors in larger programs
 
 The lesson on `Option` and `Result` covered the basics: a function that can fail returns a `Result`, and `?` passes a failure along. This lesson is about what changes when a program has many functions and several kinds of failure.
 
@@ -190,4 +190,4 @@ An index out of range, an arithmetic overflow, a division by zero, a failed asse
 
 ---
 
-[← Testing, assertions, and checking](25-testing.html) · [Contents](./) · [Packages and imports →](27-packages.html)
+[← Formatting and checking: `moxie fmt` and `moxie check`](57-formatting-and-checking.html) · [Contents](./) · [Limits, pools, and the memory budget →](53-limits-pools-memory.html)
