@@ -260,8 +260,9 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         tf = (getattr(self, "manifest", None) or {}).get("program", {}).get("type_fuel")
         ef = (getattr(self, "manifest", None) or {}).get("program", {}).get("eval_fuel")
         strict = (getattr(self, "manifest", None) or {}).get("program", {}).get("safety") == "strict"
+        prove = bool((getattr(self, "manifest", None) or {}).get("contracts", {}).get("prove"))
         diags = check_program(prog, set(self.prelude.vars), self.search_dir,
-                              parse_size(kw) if kw is not None else 64, type_fuel=tf, eval_fuel=ef, strict_safety=strict)
+                              parse_size(kw) if kw is not None else 64, type_fuel=tf, eval_fuel=ef, strict_safety=strict, prove_all=prove)
         from .check import toplevel_order_diags
         diags.extend(toplevel_order_diags(prog))
         from .values import GC

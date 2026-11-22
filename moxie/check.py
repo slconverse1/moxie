@@ -324,6 +324,8 @@ def fields_of(n):
 
 
 STRICT_SAFETY = [False]          # Moxie.toml `safety = "strict"`
+PROVE_FORCED = [False]           # `--prove` on the command line
+PROVE_ALL = [False]              # Moxie.toml `[contracts] prove = true`: a condition the solver cannot prove is an error, not a run-time check
 
 
 from .refinecheck import RefineMixin
@@ -10227,11 +10229,12 @@ def check_key_sizes(prog, threshold):
     return diags
 
 
-def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None, eval_fuel=None, strict_safety=False):
+def check_program(prog, prelude_names, search_dir=None, key_warn=KEY_WARN_DEFAULT, type_fuel=None, eval_fuel=None, strict_safety=False, prove_all=False):
     from .cteval import CtEval
     CT[0] = CtEval(prog, search_dir, eval_fuel)
     try:
         STRICT_SAFETY[0] = strict_safety
+        PROVE_ALL[0] = prove_all or PROVE_FORCED[0]
         return _check_program(prog, prelude_names, search_dir, key_warn, type_fuel)
     finally:
         CT[0] = None

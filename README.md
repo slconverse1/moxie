@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Contracts and refined parameters share one rule for "unknown". When the solver can neither prove nor refute a `where` condition, the call compiles with a note and the condition (also a `requires`) is checked at run time; `[contracts] prove = true` in `Moxie.toml`, or `--prove`, makes it an error as before. A refuted condition is an error either way. `tests/run_unknown.py` covers both modes; lesson 49 and the Spec say so. Next: `where` on results and tuple fields, and one merged Spec section.
+
 `FreeT` removed. `FreeT`, `FreeStep`, `MonadFree`, `fold_free_t`, and `lift_free_t` are gone from `fp.trans`; `fp.freer` (lesson 42) does the same job without a `Functor` per command, and a handler can return an inner-monad value to get effects. Lesson 63, the moxie/gc Spec, and INTERPRETER.md are updated.
 
 `State`, `Reader`, `Writer`, and `Cont` are transformers over `Identity`. `fp.state`, `fp.reader`, `fp.writer`, and `fp.cont` now delegate to `StateT`, `ReaderT`, `WriterT`, and `ContT` from `fp.trans` (one implementation of each monad), and keep their names and plain results: `State.run(s)` still gives `(result, state)`. New constructors `state`, `reader`, `writer`, and `cont` build one from a plain function, and `Writer`'s `value` and `log` are now methods. Lesson 63 says so.

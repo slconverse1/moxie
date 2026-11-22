@@ -5,6 +5,7 @@ FIBER_KEYS = {"limit", "memory", "strings", "temps", "stack"}
 POOL_KEYS = {"warn_threshold", "header"}
 PROGRAM_KEYS = {"memory", "key_warning", "type_fuel", "eval_fuel", "safety"}
 DATABASE_KEYS = {"schema", "driver"}
+CONTRACT_KEYS = {"prove"}
 NATIVE_KEYS = {"libs", "paths"}
 MEMORY_KEYS = {"heap", "slice"}
 SIZE_UNITS = {"": 1, "B": 1, "KB": 1000, "MB": 1000 ** 2, "GB": 1000 ** 3, "KIB": 1024, "MIB": 1024 ** 2, "GIB": 1024 ** 3}
@@ -51,15 +52,15 @@ def load(path):
     except tomllib.TOMLDecodeError as e:
         raise ManifestError(f"{m}: {e}")
     import difflib
-    known_tables = ("name", "entry", "files", "version", "fibers", "pools", "program", "memory", "native", "permissions", "database")
+    known_tables = ("name", "entry", "files", "version", "fibers", "pools", "program", "memory", "native", "permissions", "database", "contracts")
     for k in data:
         if k not in known_tables:
             near = difflib.get_close_matches(k, known_tables, n=1)
             raise ManifestError(f"{m}: unknown key or table '{k}'" + (f" (did you mean '{near[0]}'?)" if near else f" (known: {', '.join(known_tables)})"))
-    out = {"path": m, "fibers": {}, "pools": {}, "program": {}, "memory": {}, "database": {}}
+    out = {"path": m, "fibers": {}, "pools": {}, "program": {}, "memory": {}, "database": {}, "contracts": {}}
     if "native" in data:
         out["native"] = native_table(m, data["native"])
-    for table, keys in (("fibers", FIBER_KEYS), ("pools", POOL_KEYS), ("program", PROGRAM_KEYS), ("memory", MEMORY_KEYS), ("database", DATABASE_KEYS)):
+    for table, keys in (("fibers", FIBER_KEYS), ("pools", POOL_KEYS), ("program", PROGRAM_KEYS), ("memory", MEMORY_KEYS), ("database", DATABASE_KEYS), ("contracts", CONTRACT_KEYS)):
         t = data.get(table, {})
         if not isinstance(t, dict):
             raise ManifestError(f"{m}: [{table}] must be a table")
@@ -71,6 +72,8 @@ def load(path):
     for table, key in (("fibers", "memory"), ("fibers", "strings"), ("fibers", "temps"), ("fibers", "stack"), ("program", "memory"), ("program", "key_warning"), ("memory", "heap")):
         if key in out[table] and parse_size(out[table][key]) is None:
             raise ManifestError(f"{m}: [{table}] {key} must be a size such as \"64KiB\" (1024-based) or \"64KB\" (1000-based)")
+    if "prove" in out["contracts"] and not isinstance(out["contracts"]["prove"], bool):
+        raise ManifestError(f"{m}: [contracts] prove must be true or false")
     if "type_fuel" in out["program"]:
         tf = out["program"]["type_fuel"]
         if not isinstance(tf, int) or isinstance(tf, bool) or tf < 1:

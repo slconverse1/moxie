@@ -48,7 +48,7 @@ for name, src, want, word in CASES:
     for gc in (False, True):
         p = os.path.join(D, "t.mxi")
         open(p, "w").write(src)
-        cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["check" if want == BAD else "run", p]
+        cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["--prove"] + ["check" if want == BAD else "run", p]
         r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
         o = r.stdout + r.stderr
         good = ((r.returncode != 0) if want in (BAD, RUN) else (r.returncode == 0)) and word in o

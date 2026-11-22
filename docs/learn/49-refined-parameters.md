@@ -30,23 +30,20 @@ println(last_or(List(), 7))
 
 Each call to `get` has to be *proved*. In `first_or`, the test `len(xs) > 0` is enough to show that index `0` is in range. In `last_or`, `n` is bound to `len(xs)`, so `n - 1` is in range when `n > 0`. Remove either test and the call is a compile error that shows the condition it couldn't prove.
 
-The checker uses what it can see: the function's own `where` clauses, the tests of an `if`/`elif`/`else`, an early `return ... if`, the range of `for i in 0..<len(xs)`, a name bound once to a sum or difference, constants, and the range of a bounded integer (`k Int[1..10]`). It reasons about whole numbers with `+`, `-`, a constant factor, and comparisons, and it is exact for those. Anything else, such as a product of two variables, is "unknown", and unknown is an error with the same message: check it first, or give the caller the same `where`.
+The checker uses what it can see: the function's own `where` clauses, the tests of an `if`/`elif`/`else`, an early `return ... if`, the range of `for i in 0..<len(xs)`, a name bound once to a sum or difference, constants, and the range of a bounded integer (`k Int[1..10]`). It reasons about whole numbers with `+`, `-`, a constant factor, and comparisons, and it is exact for those. Anything else, such as a product of two variables, is "unknown": the checker can neither prove the condition nor show that it fails. An unknown call still compiles, with a note, and the same condition is checked when the program runs, so a bad value stops the program and names the caller. Write `[contracts]` then `prove = true` in `Moxie.toml` (or pass `--prove`) to make every unknown an error instead: check it first, or give the caller the same `where`.
 
-Here is what a missing test looks like:
+A value the checker can see is wrong is always an error, in either mode:
 
 ```moxie
 fn half(n Int where n > 0) Int
   n / 2
 
-fn careless(n Int) Int
-  half(n)
-
-println(careless(4))
+println(half(0))
 ```
 **The compiler says:**
 
 ```
-error: can't prove `n > 0` for the call to `half`: check it first (`if ... then half(...)`), or give this function the same `where`
+error: `half` needs `n > 0` for `n`, but here it can never be true
 ```
 
 And two ways to satisfy it, a test and a bounded type:
@@ -153,7 +150,7 @@ Account(balance: 40, name: "ann")
 ## What to remember
 
 - `fn f(x Int where x > 0)` puts a condition in the signature; every call must prove it, or fail to compile.
-- The checker proves what it can from tests, ranges, and bounded types; unknown is an error.
+- The checker proves what it can from tests, ranges, and bounded types; unknown compiles with a note and is checked at run time, unless `prove = true` makes it an error.
 - The condition is kept as a `requires`, so calls through function values are still checked at run time.
 - `type Pos = Int where self > 0` names a condition; parameters, bindings, results, and fields declared with it are all checked.
 

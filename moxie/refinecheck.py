@@ -249,8 +249,17 @@ class RefineMixin:
         if r == "no":
             self.err(line, f"`{n.name}` must satisfy `{n.text}`, but the value given can never satisfy it")
         elif r == "unknown":
-            self.err(line, f"can't prove `{n.text}` for `{n.name}`: check it first (`if ... then`), or give the enclosing function the same `where`")
+            self.rf_unknown(line, f"can't prove `{n.text}` for `{n.name}`", "check it first (`if ... then`), or give the enclosing function the same `where`")
         return None, None
+
+    def rf_unknown(self, line, what, ways):
+        """The solver could neither prove nor refute a condition.  By default it is checked when the program runs and a note says so;
+        with `[contracts] prove = true` it is an error."""
+        from .check import PROVE_ALL
+        if PROVE_ALL[0]:
+            self.err(line, f"{what}: {ways}")
+        else:
+            self.warn_unverified(line, f"{what}; it is checked when the program runs ({ways}, or set `[contracts] prove = true` to make this an error)")
 
     # ------------------------------------------------------------ calls
     def rf_callee(self, n, sc, extra):
@@ -335,5 +344,5 @@ class RefineMixin:
             if r == "no":
                 self.err(line, f"`{fd.name}` needs `{text}` for `{p.name}`, but here it can never be true")
             elif r == "unknown":
-                self.err(line, f"can't prove `{text}` for the call to `{fd.name}`: check it first (`if ... then {fd.name}(...)`), "
-                               f"or give this function the same `where`")
+                self.rf_unknown(line, f"can't prove `{text}` for the call to `{fd.name}`",
+                                f"check it first (`if ... then {fd.name}(...)`), or give this function the same `where`")

@@ -18,7 +18,7 @@ for name, src, rc_want, word in CASES:
         with tempfile.TemporaryDirectory() as d:
             open(os.path.join(d, "lib.mxi"), "w").write(LIB)
             open(os.path.join(d, "main.mxi"), "w").write(src)
-            cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["check" if rc_want == 2 else "run", os.path.join(d, "main.mxi")]
+            cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["--prove"] + ["check" if rc_want == 2 else "run", os.path.join(d, "main.mxi")]
             r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
         o = (r.stdout + r.stderr).strip()
         ok = ((r.returncode != 0) if rc_want else r.returncode == 0) and word in o
