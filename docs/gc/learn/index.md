@@ -68,3 +68,5 @@ You don't need to know any functional programming. If you do, the lessons point 
 31. [Regular expressions](31-regex.html)
 32. [Statistics and prediction](32-statistics.html)
 33. [Networking, deadlines, and parallel work](33-networking.html)
+34. [Units of measure](34-units.html)
+35. [Databases with SQL](35-sql.html)
