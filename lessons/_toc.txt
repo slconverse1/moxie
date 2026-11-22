@@ -69,6 +69,7 @@
 # Fields and promises
 48-properties-delegates-proxies
 49-refined-parameters
+55-contracts
 
 # Your program and its machine
 44-the-system-around-your-program
