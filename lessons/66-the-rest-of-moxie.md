@@ -61,7 +61,7 @@ false
 true
 ```
 
-Integers also have the bit operators `&`, `|`, `^`, `~`, `<<`, and `>>`:
+Integers also have the bit operators `&`, `|`, `^`, `~`, `<<`, and `>>`, and each has a word form for a reader who would rather not learn the symbols: `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shl`, and `shr`:
 
 ```moxie
 println(12 & 10)
@@ -70,11 +70,19 @@ println(12 ^ 10)
 println(1 << 4)
 println(256 >> 4)
 println(~0)
+println(bit_and(12, 10))
+println(shl(1, 4))
+println(shr(256, 4))
+println(bit_not(0))
 ```
 ```output
 8
 14
 6
+16
+16
+-1
+8
 16
 16
 -1

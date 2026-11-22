@@ -1039,6 +1039,38 @@ def b_wmul(I, a, kw, ta):
     return _wrap(_wide(*a), int(a[0]) * int(a[1]))
 
 
+# The word forms of the bit operators (Spec section 10): `bit_and(a, b)` is `a & b`, and so on, for a reader who would
+# rather not learn the symbols.
+@bi("bit_and")
+def b_bit_and(I, a, kw, ta):
+    return arith("&", a[0], a[1])
+
+
+@bi("bit_or")
+def b_bit_or(I, a, kw, ta):
+    return arith("|", a[0], a[1])
+
+
+@bi("bit_xor")
+def b_bit_xor(I, a, kw, ta):
+    return arith("^", a[0], a[1])
+
+
+@bi("bit_not")
+def b_bit_not(I, a, kw, ta):
+    return bit_not(a[0])
+
+
+@bi("shl")
+def b_shl(I, a, kw, ta):
+    return arith("<<", a[0], a[1])
+
+
+@bi("shr")
+def b_shr(I, a, kw, ta):
+    return arith(">>", a[0], a[1])
+
+
 def _wrap(c, r):
     if c is int:
         return ((r + (1 << 63)) % (1 << 64)) - (1 << 63)
