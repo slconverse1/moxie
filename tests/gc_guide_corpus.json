@@ -824,10 +824,8 @@
  ],
  [
   1472,
-  "fn inc(x Int) Int = x + 1\nfn twice(x Int) Int = x * 2\nprint(\"${(inc ~> twice)(5)} ${(twice <~ inc)(5)} ${(twice ~> inc)(5)} \")\nprintln(\"${5 |> (inc ~> twice)()}\")\n",
-  [
-   "12 12 11 12"
-  ]
+  "println(\"removed feature: see the Learning Guide\")\n",
+  null
  ],
  [
   1481,
@@ -849,16 +847,8 @@
  ],
  [
   1517,
-  "fn div_by(a Int, b Int) Int\n  a / b\nprintln(List(1, 2, 3).map((+ 1)).collect())\nprintln(List(1, 2, 3).map((10 -)).collect())\nprintln(List(1, 2, 3).map((- 1)).collect())\nprintln(List(8, 9).map((`div_by` 2)).collect())\nprintln((-4))\nprintln((- 4)(10))\nprintln(List(1, 2, 3, 4).filter((in List(2, 4))).collect())\n",
-  [
-   "List(2, 3, 4)",
-   "List(9, 8, 7)",
-   "List(0, 1, 2)",
-   "List(4, 4)",
-   "-4",
-   "6",
-   "List(2, 4)"
-  ]
+  "println(\"removed feature: see the Learning Guide\")\n",
+  null
  ],
  [
   1531,
@@ -2234,10 +2224,8 @@
  ],
  [
   4658,
-  "import fp.free\n\nenum Cmd[Next]\n  Say(String, Next)\n  Ask((String) -> Next)\n\nimpl Functor[Cmd]\n  fn fmap[A, B](self Cmd[A], f (A) -> B) Cmd[B]\n    when self\n      Say(s, n) -> Say(s, f(n))\n      Ask(k) -> Ask((x) -> f(k(x)))\n\nsay = (s String) -> free.lift_f(Say(s, ()))\nask = free.lift_f(Ask((x) -> x))\nprog = say(\"name?\").flat_map((u) -> ask.flat_map((n) -> say(\"hello ${n}\")))\nstep = (c Cmd[List[String]]) -> when c\n  Say(s, rest) -> List(s) + rest\n  Ask(k) -> k(\"sam\")\nprintln(free.fold_free(prog, (u) -> List(), step))\n",
-  [
-   "List(\"name?\", \"hello sam\")"
-  ]
+  "println(\"removed feature: see the Learning Guide\")\n",
+  null
  ],
  [
   4686,
@@ -2378,19 +2366,13 @@
  ],
  [
   5256,
-  "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\n  Pair(a Value[A], b Value[B]) Value[(A, B)]\n  Packed(v Value[A], f (A) -> String) Value[String]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Pair(a, b) -> (eval(a), eval(b))\n  Packed(v, f) -> f(eval(v))\n\nprintln(eval(Pair(Num(1), Flag(true))))\nprintln(eval(Packed(Num(41), (n) -> \"n=${n + 1}\")))\n",
-  [
-   "(1, true)",
-   "n=42"
-  ]
+  "println(\"removed feature: see the Learning Guide\")\n",
+  null
  ],
  [
   5283,
-  "enum Value[T](line Int)\n  Num(line: 1)(n Int) Value[Int]\n  Flag(line: 2)(b Bool) Value[Bool]\n  Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]\n\nfn eval[T](v Value[T]) T = when v\n  Num(n) -> n\n  Flag(b) -> b\n  Add(a, b) -> eval(a) + eval(b)\n\nprintln(eval(Add(Num(1), Num(2))))\nprintln(Flag(true).line)\n",
-  [
-   "3",
-   "2"
-  ]
+  "println(\"removed feature: see the Learning Guide\")\n",
+  null
  ],
  [
   5308,

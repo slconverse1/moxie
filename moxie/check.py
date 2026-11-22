@@ -922,6 +922,9 @@ class Checker(RefineMixin):
             self.enums[st.name] = st
             self.globals.add(st.name)
             self.check_derivs(st)
+            if getattr(st, "tparams", None):
+                for cs in st.cases or []:
+                    self.case_vars(st, cs)                          # reports a one-letter variable the case doesn't declare
             for cs in st.cases or []:
                 self.cases.setdefault(cs.name, []).append(st.name)
                 self.globals.add(cs.name)
