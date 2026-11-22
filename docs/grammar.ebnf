@@ -93,7 +93,7 @@ type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' 
 # ---------------------------------------------------------------- declarations
 decl : { 'prints' | 'impure' | 'dynamic' | 'export' | 'static' | 'fiber' [ '[' INT ']' ] | 'inline' | 'tailrec' | 'forward' | 'pure' | 'pattern' | 'opaque' | 'union' } ( fndecl | tupledecl | enumdecl | ifacedecl | impldecl | aliasdecl ) | fwdtype | [ 'export' ] unitdecl | foreigndecl | importdecl | usingdecl | testdecl ;
 fwdtype : 'forward' ( 'tuple' | 'enum' ) ident [ tparams ] NL ;
-fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
+fndecl : 'fn' [ '(' [ 'ref' ] ident ')' ] fname [ tparams ] [ '(' [ params ] ')' ] [ type [ 'where' expr ] ] [ '(' ident { ',' ident } ')' ] [ 'if' expr ] ( '=' expr NL | '=' expr_b | fnbody | NL ) ;
 hk : '_' [ '[' '_' { ',' '_' } ']' ] ;
 tparams : '[' tparam { ',' tparam } ']' ;
 tparam : ident [ '[' hk { ',' hk } ']' ] [ bound { '+' bound } ] [ 'where' expr ] ;
@@ -105,7 +105,7 @@ accessor : [ 'priv' ] ident [ '(' [ params ] ')' ] [ type ] ( block | NL ) ;
 tmember : field | propdecl | 'invariant' expr ;
 propdecl : [ 'lazy' | 'static' | 'priv' ] 'property' ident type [ '=' expr ] ;
 derivs : 'deriving' ident { ',' ident } ;
-field : ident type [ 'delegate' [ '(' type { ',' type } ')' ] ] [ '=' expr ] ;
+field : ident type [ 'where' expr ] [ 'delegate' [ '(' type { ',' type } ')' ] ] [ '=' expr ] ;
 enumdecl : 'enum' ident [ tparams ] [ '(' params ')' ] [ derivs ] NL INDENT { case { ',' case } [ ',' ] NL } DEDENT ;
 case : ident [ '[' tparam { ',' tparam } ']' ] [ '(' [ case_item { ',' case_item } ] ')' ] [ '(' [ case_item { ',' case_item } ] ')' ] [ type ] ;
 case_item : [ ident ':' ] ( param ) ;

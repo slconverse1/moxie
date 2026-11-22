@@ -767,8 +767,13 @@ class Parser(ExprParser):
             return FnDecl(name, tparams, [], None, None, None, flags, None, target, line=line)
         params = self.parse_params()
         ret = None
+        rwhere = None
         if self.peek().kind != "NL" and not self.at_op("=") and not self.at_name("if"):
             ret = self.parse_type()
+            if self.at_name("where"):
+                wline = self.peek().line
+                wcond, wtext = self.parse_where_clause()
+                rwhere = ("ensures", wcond, wline, wtext)          # `Int where result >= 0` is an `ensures`
         locals_ = None
         if self.at_op("("):
             locals_ = [p.name for p in self.parse_params()]
@@ -795,7 +800,19 @@ class Parser(ExprParser):
         for prm in params:
             if getattr(prm, "where", None) is not None and prm.name and body is not None:
                 contracts = [("requires", prm.where, prm.line, prm.wtext)] + list(contracts)      # also checked on entry, for a function used as a value
+        if rwhere is not None:
+            contracts = list(contracts) + [rwhere]
         return FnDecl(name, tparams, params, ret, locals_, body, flags, None, None, guard, contracts, line=line)
+
+    def parse_where_clause(self):
+        """`where COND` after a result type or a field: the condition and its text as written."""
+        self.next()
+        wstart = self.p
+        cond = self.parse_expr()
+        text = ""
+        for tk in self.toks[wstart:self.p]:
+            text += (" " if tk.sp and text else "") + str(tk.val)
+        return cond, text
 
     def parse_foreign(self):
         """foreign "lib": a block of body-less function declarations (Spec 19a)."""
@@ -871,6 +888,7 @@ class Parser(ExprParser):
         if self.at_op("["):
             tparams = self.parse_tparams_v2()
         positional = None
+        head_invariants = []
         head_fields = None
         if self.at_op("(") and not self.peek().sp:
             self.next()
@@ -882,6 +900,9 @@ class Parser(ExprParser):
                         self.err("expected a field name", ft)
                     self.no_decl_colon("a field")
                     fty = self.parse_type()
+                    if self.at_name("where"):
+                        fcond, ftext = self.parse_where_clause()
+                        head_invariants.append(("invariant", fcond, ft.line, ftext))
                     fdef = self.parse_expr() if self.eat_op("=") else None
                     head_fields.append(FieldDecl(ft.val, fty, fdef, None, line=ft.line))
                     if not self.eat_op(","):
@@ -899,7 +920,7 @@ class Parser(ExprParser):
                 head_fields = [FieldDecl(None, t, None, None, line=line) for t in positional]
         derivs = self.parse_derivs()
         fields = []
-        invariants = []
+        invariants = head_invariants
         props = []
         self.no_block_colon()
         if self.at_block():
@@ -1104,6 +1125,10 @@ class Parser(ExprParser):
             typ = self.parse_type()
             default = None
             delegate = None
+            if self.at_name("where"):
+                fline = self.peek().line
+                fcond, ftext = self.parse_where_clause()          # `balance Int where balance >= 0` is an `invariant`
+                self._invariants.append(("invariant", fcond, fline, ftext))
             if self.at_op("="):
                 self.next()
                 default = self.parse_expr()

@@ -136,9 +136,33 @@ A condition may call only pure functions (lesson 45), as `debug_assert` may. Con
 
 Because `moxie test` checks contracts, a property test (lesson 32) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
 
-## Contracts or refined parameters?
+## One condition, two spellings
 
-Lesson 59 showed `where` on a parameter, which is *proved* at compile time. A `requires` is checked at run time (or at compile time only when the arguments are constants). Use a refined parameter when the condition is about integers and lengths and you want the compiler to insist; use a contract for anything else, including conditions on results (`ensures`) and on values you build (`invariant`).
+`requires`, `ensures`, and `invariant` are one idea, a condition, in three places: before the body, after it, and on a value that is built. `where` is the same condition written next to the thing it constrains:
+
+```moxie
+fn abs(n Int) Int where result >= 0
+  if n < 0
+    0 - n
+  else
+    n
+
+tuple Account deriving show
+  balance Int where balance >= 0
+
+println(abs(-4))
+println(Account(balance: 5))
+```
+**Output:**
+
+```
+4
+Account(balance: 5)
+```
+
+`i Int where i >= 0` is a `requires`, `Int where result >= 0` after the result type is an `ensures`, and `balance Int where balance >= 0` after a field is an `invariant`. Use whichever reads better; a condition with several lines or a name for the old state belongs in a `requires` or `ensures` line.
+
+Whatever the spelling, the blame and the build modes are the same, and all of them are checked when the program runs. On a parameter the checker goes further, as lesson 49 explains: it tries to prove the condition at each call, so what it proves costs nothing, what it can see is false is a compile error, and what it can neither prove nor refute is still checked when the program runs, unless `prove = true` asks for a proof every time. Proving results and fields is not done yet.
 
 ## What to remember
 

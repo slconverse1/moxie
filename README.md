@@ -19,7 +19,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
-Contracts and refined parameters share one rule for "unknown". When the solver can neither prove nor refute a `where` condition, the call compiles with a note and the condition (also a `requires`) is checked at run time; `[contracts] prove = true` in `Moxie.toml`, or `--prove`, makes it an error as before. A refuted condition is an error either way. `tests/run_unknown.py` covers both modes; lesson 49 and the Spec say so. Next: `where` on results and tuple fields, and one merged Spec section.
+Contracts and refined parameters share one rule for "unknown". When the solver can neither prove nor refute a `where` condition, the call compiles with a note and the condition (also a `requires`) is checked at run time; `[contracts] prove = true` in `Moxie.toml`, or `--prove`, makes it an error as before. A refuted condition is an error either way. `tests/run_unknown.py` covers both modes; lesson 49 and the Spec say so. Also new: `where` after a result type is an `ensures` (`fn abs(n Int) Int where result >= 0`) and after a tuple field an `invariant` (`balance Int where balance >= 0`), with Spec 9b opening on the one-mechanism view and lesson 55 "One condition, two spellings". Results and fields are run-time checks for now; proving them at compile time is future work. `tests/run_wherepos.py` covers them.
 
 `FreeT` removed. `FreeT`, `FreeStep`, `MonadFree`, `fold_free_t`, and `lift_free_t` are gone from `fp.trans`; `fp.freer` (lesson 42) does the same job without a `Functor` per command, and a handler can return an inner-monad value to get effects. Lesson 63, the moxie/gc Spec, and INTERPRETER.md are updated.
 
