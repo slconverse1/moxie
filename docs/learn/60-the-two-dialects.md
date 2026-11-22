@@ -4,7 +4,7 @@ title: "Moxie and moxie/gc side by side · Learning Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 60. Moxie and moxie/gc side by side
+# 63. Moxie and moxie/gc side by side
 
 You are reading the GC-free guide. moxie has a second dialect, moxie/gc, that keeps the same language and swaps the memory model: one shared heap with a generational collector instead of sizes worked out ahead of time. This lesson lists what changes, with a short example of each, so you can read code written for either dialect. Every example below also runs in moxie/gc, and the guide for that dialect shows the other column.
 
@@ -98,7 +98,7 @@ A stream works in place over what it reads from, so it can be passed down but no
 ## Resources and fibers
 
 
-Atoms, channels, timers, and futures are counted resources: the compiler adds them up before the program starts (lesson 34), so they can't be created in a loop whose count it can't bound. Fibers have slots, one pool per fiber function.
+Atoms, channels, timers, and futures are counted resources: the compiler adds them up before the program starts (lesson 35), so they can't be created in a loop whose count it can't bound. Fibers have slots, one pool per fiber function.
 
 ## Pauses and failure
 
@@ -111,4 +111,4 @@ Reach for GC-free moxie when you need a program whose worst case is known before
 
 ---
 
-[← Calling C](54-calling-c.html) · [Contents](./)
+[← Calling C](54-calling-c.html) · [Contents](./) · [Where to go next →](64-where-to-go-next.html)

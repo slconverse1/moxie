@@ -5,7 +5,7 @@ title: "Formatting and checking: `moxie fmt` and `moxie check` · Learning Guide
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 32. Formatting and checking: `moxie fmt` and `moxie check`
+# 33. Formatting and checking: `moxie fmt` and `moxie check`
 
 Two commands do most of the work of keeping a project in good shape. `moxie fmt` rewrites files into one layout. `moxie check` reads the whole program and reports mistakes without running anything. This lesson says what each does, and exactly what `check` can and can't prove.
 

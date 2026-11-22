@@ -4,7 +4,7 @@ title: "Testing, assertions, and checking · Learning Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 
-# 31. Testing, assertions, and checking
+# 32. Testing, assertions, and checking
 
 Moxie has testing built in: no framework to install, and nothing to import. A `test` block is code that runs only when you ask for tests. This lesson also covers the other ways moxie helps you find mistakes before users do.
 

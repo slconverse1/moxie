@@ -5,7 +5,7 @@ title: "Databases with SQL · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 
-# 43. Databases with SQL
+# 44. Databases with SQL
 
 Moxie checks SQL the way it checks everything else: before the program runs. A query is written in place with `sql(conn):` and the SQL indented below, and its result has a type the compiler knows.
 

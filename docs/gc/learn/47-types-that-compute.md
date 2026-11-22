@@ -5,7 +5,7 @@ title: "Types that compute · Learning Guide moxie/gc"
 ---
 <p><small>Designing with interfaces</small></p>
 
-# 54. Types that compute
+# 57. Types that compute
 
 Types in moxie can be built and taken apart by small programs of their own. This is an advanced lesson. You don't need any of it to write ordinary programs, but it explains how the language's generic library is typed, and it lets you write functions whose result type depends on their arguments.
 

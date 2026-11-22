@@ -5,7 +5,7 @@ title: "Moxie and moxie/gc side by side · Learning Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 60. Moxie and moxie/gc side by side
+# 63. Moxie and moxie/gc side by side
 
 
 You are reading the moxie/gc guide. moxie has a second dialect, GC-free moxie, that keeps the same language but has no collector: every size is worked out ahead of time. This lesson lists what moxie/gc takes away from that dialect's limits, with a short example of each. The GC-free guide shows the other column.
@@ -108,4 +108,4 @@ Reach for GC-free moxie when you need a program whose worst case is known before
 
 ---
 
-[← Calling C](54-calling-c.html) · [Contents](./)
+[← Calling C](54-calling-c.html) · [Contents](./) · [Where to go next →](64-where-to-go-next.html)

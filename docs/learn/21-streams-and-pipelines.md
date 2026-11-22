@@ -270,4 +270,4 @@ A loop says *how*: keep a counter, update a total, remember to stop. A pipeline 
 
 ---
 
-[← Methods and interfaces](20-interfaces.html) · [Contents](./) · [Pipe slots, `seq`, and doing work once →](50-pipe-slots-and-caching.html)
+[← Methods and interfaces](20-interfaces.html) · [Contents](./) · [More stream tools: sources you build →](61-more-stream-tools.html)

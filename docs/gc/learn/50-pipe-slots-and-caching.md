@@ -5,7 +5,7 @@ title: "Pipe slots, `seq`, and doing work once · Learning Guide moxie/gc"
 ---
 <p><small>Streams and pipelines</small></p>
 
-# 26. Pipe slots, `seq`, and doing work once
+# 27. Pipe slots, `seq`, and doing work once
 
 Lesson 25 used `|>` to run values through stages. This lesson looks at how a pipe decides where the value goes, adds the `seq` block, and then turns to the opposite problem: doing an expensive step only once. Moxie never caches behind your back, so each way of reusing work is something you write on purpose.
 
@@ -152,7 +152,7 @@ println(shrunk)
 
 Nothing is memoized, and nothing is cached behind your back. Caching is something you write on purpose, and moxie gives you these ways:
 
-- `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 55);
+- `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 58);
 - a `lazy` parameter (call by need) evaluates its argument once, only if the body reads it;
 - a bottom-up `reduce`, below, carries only what the next step needs;
 - a `Dict` threaded through a recursion as a `ref` parameter lets calls share work;
@@ -233,4 +233,4 @@ Reach for the next recipe when the subproblems aren't visited in a fixed order: 
 
 ---
 
-[← Streams and pipelines](21-streams-and-pipelines.html) · [Contents](./) · [Fibers and channels →](22-fibers-and-channels.html)
+[← More stream tools: sources you build](61-more-stream-tools.html) · [Contents](./) · [Fibers and channels →](22-fibers-and-channels.html)

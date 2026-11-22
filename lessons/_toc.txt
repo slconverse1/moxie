@@ -28,6 +28,7 @@
 
 # Streams and pipelines
 21-streams-and-pipelines
+61-more-stream-tools
 50-pipe-slots-and-caching
 
 # Concurrency
@@ -64,6 +65,8 @@
 41-open-data-types
 42-freer-monad
 43-gadts-and-typestate
+62-reader-writer-continuations
+63-transformers
 
 # Designing with interfaces
 45-receiver-blocks-and-mocks
@@ -79,3 +82,4 @@
 44-the-system-around-your-program
 54-calling-c
 60-the-two-dialects
+64-where-to-go-next

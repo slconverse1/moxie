@@ -5,11 +5,11 @@ title: "Programs with effects as data: the freer monad · Learning Guide moxie/g
 ---
 <p><small>Functional programming</small></p>
 
-# 50. Programs with effects as data: the freer monad
+# 51. Programs with effects as data: the freer monad
 
 The same idea as the last lesson covers programs that *do* things. The commands are described as data, and a program is data that holds a command and what to do with its answer. A separate function, a *handler*, decides what the commands actually do. That way the same program can talk to the real world in production and to a script in a test.
 
-This is an advanced lesson. It builds on GADTs (lesson 51) for typed commands and on monads (lesson 45).
+This is an advanced lesson. It builds on GADTs (lesson 52) for typed commands and on monads (lesson 46).
 
 ## Commands and programs
 
@@ -50,7 +50,7 @@ name?
 hi bob
 ```
 
-The `Bind` case has a type variable `X` that appears only in its payloads, not in its result type. That's an *existential* (lesson 51): the case hides which `X` it holds, and the typed command makes the answer's type line up with the function that receives it.
+The `Bind` case has a type variable `X` that appears only in its payloads, not in its result type. That's an *existential* (lesson 52): the case hides which `X` it holds, and the typed command makes the answer's type line up with the function that receives it.
 
 No `Functor` is needed for the commands, which is what makes this *freer* than the older *free* monad: any set of commands becomes a monad.
 
@@ -67,7 +67,7 @@ Each `<-` turns the rest of the block into the function passed to `flat_map`, so
 
 The steps are pure like any lambda, so a step cannot print. Write `eval impure` to allow effects in the block (`eval pure` spells out the default), and write a line that is only for its effect as `\println("got ${n}")`; a `\` line is never a step. The enclosing function then has those effects, so a `pure fn` can't hold an `eval impure`.
 
-`hello` is a value you can build, pass around, and inspect before running. `exec` is one handler; a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a union type of the enums and bound the helper functions with `Has` (lesson 49).
+`hello` is a value you can build, pass around, and inspect before running. `exec` is one handler; a second handler (one that collects the output, or feeds scripted answers) is another function over the same `Prog`. A new set of commands is another `Cmd` enum with its own handler; to let one program use several, make a union type of the enums and bound the helper functions with `Has` (lesson 50).
 
 ## A library for it: `fp.freer`
 

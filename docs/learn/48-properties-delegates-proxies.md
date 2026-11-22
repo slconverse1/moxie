@@ -4,7 +4,7 @@ title: "Properties, field delegates, and proxies · Learning Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 
-# 55. Properties, field delegates, and proxies
+# 58. Properties, field delegates, and proxies
 
 Three features let a field do more than hold a value. A *property* runs code when it is read or written. A *field delegate* adds the same behavior to many fields. A *proxy* hands a whole interface to a field, so a type does everything the field does except what you override.
 
@@ -167,7 +167,7 @@ Hello, Ada Lovelace
 
 ### Watching a property
 
-When the tuple is held in an Atom (lesson 29), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
+When the tuple is held in an Atom (lesson 30), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
 
 ```moxie
 tuple Account deriving show

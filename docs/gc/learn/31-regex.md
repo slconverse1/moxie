@@ -5,7 +5,7 @@ title: "Regular expressions · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 
-# 39. Regular expressions
+# 40. Regular expressions
 
 A regular expression describes the shape of some text. The standard `regex` package is written in moxie, and it runs in time proportional to the text: it never backtracks, so no pattern can hang your program. The price is two missing features, back-references (`\1`) and look-around, and the package says so if you write one.
 

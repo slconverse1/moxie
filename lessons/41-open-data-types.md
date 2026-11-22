@@ -2,7 +2,7 @@
 
 Suppose a library defines arithmetic as data (numbers and `+`) together with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**.
 
-With an `enum` this is the **expression problem**: a new *operation* is easy (write a function), but a new *variant* means editing the `enum` and every `when` over it. Tagless final (lesson 48) solves it, but its programs are functions, so you can't look inside one. This lesson shows a way that keeps real data you can inspect, rewrite, and serialize.
+With an `enum` this is the **expression problem**: a new *operation* is easy (write a function), but a new *variant* means editing the `enum` and every `when` over it. Tagless final (lesson 49) solves it, but its programs are functions, so you can't look inside one. This lesson shows a way that keeps real data you can inspect, rewrite, and serialize.
 
 ## The pieces
 
@@ -71,7 +71,7 @@ println(f)
 Mul(left: Lit(value: 3), right: Add(left: Lit(value: 1), right: Lit(value: 2)))
 ```
 
-Nothing above the "new code" comment changed: `Mul` and `Pretty` are new code, the old `Eval` impls are reused for `Lit` and `Add`, and `Full` is a new union. A node of the union is an ordinary tuple, so `f` prints, compares, and pattern-matches like any other, and `deriving dyn` (lesson 38) writes it out as JSON.
+Nothing above the "new code" comment changed: `Mul` and `Pretty` are new code, the old `Eval` impls are reused for `Lit` and `Add`, and `Full` is a new union. A node of the union is an ordinary tuple, so `f` prints, compares, and pattern-matches like any other, and `deriving dyn` (lesson 39) writes it out as JSON.
 
 In a real project the two halves would be separate files: `import arith` makes the first part available to the second.
 
@@ -174,7 +174,7 @@ A function that calls `lit` for a type parameter of its own must carry the bound
 
 ## Which style when
 
-Choose by what you do with the program. Tagless final (lesson 48) runs the program straight into a result and is the lightest way to add interpreters. Growing data types, as here, keep a tree you can print, store, send, count, rewrite, and analyze before running it. Both let you add variants and operations without editing old code, and the two meet in the middle: an `impl` that builds a tree turns a tagless-final program into this kind of data.
+Choose by what you do with the program. Tagless final (lesson 49) runs the program straight into a result and is the lightest way to add interpreters. Growing data types, as here, keep a tree you can print, store, send, count, rewrite, and analyze before running it. Both let you add variants and operations without editing old code, and the two meet in the middle: an `impl` that builds a tree turns a tagless-final program into this kind of data.
 
 ## Mistakes
 

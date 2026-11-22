@@ -4,7 +4,7 @@ title: "Packages and imports · Learning Guide moxie"
 ---
 <p><small>Packages</small></p>
 
-# 35. Packages and imports
+# 36. Packages and imports
 
 A program doesn't have to live in one file. Code is split into *packages*, and a package is made of one or more files. This lesson covers how to import code, what a package shares with the rest of the program, and how a larger package is laid out.
 

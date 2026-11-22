@@ -5,7 +5,7 @@ title: "Waiting on several things: select, timers, and cancelling · Learning Gu
 ---
 <p><small>Concurrency</small></p>
 
-# 28. Waiting on several things: select, timers, and cancelling
+# 29. Waiting on several things: select, timers, and cancelling
 
 A fiber often has to wait for more than one thing: a message from a worker, or a timeout; input from one channel or another. `select` waits on several at once and runs the arm for whichever is ready.
 

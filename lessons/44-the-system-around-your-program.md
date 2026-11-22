@@ -85,7 +85,7 @@ Don't read `now()` twice to time something: the clock can be set while you measu
 
 ## Random numbers
 
-`random()` and `random_int(r)` (which takes a range, as in `random_int(1..6)`) are for games and sampling. `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a *reproducible* source that the generator functions from property tests (lesson 31) read:
+`random()` and `random_int(r)` (which takes a range, as in `random_int(1..6)`) are for games and sampling. `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a *reproducible* source that the generator functions from property tests (lesson 32) read:
 
 ```moxie
 g = seeded(7)
@@ -166,7 +166,7 @@ apple
 pear
 ```
 
-For a program that talks over time, `spawn` starts it and gives you a `Child`. Its input and output are ordinary `Io` values, so the file and socket functions from lesson 36 work on them. Close the input when you're done writing, then wait:
+For a program that talks over time, `spawn` starts it and gives you a `Child`. Its input and output are ordinary `Io` values, so the file and socket functions from lesson 37 work on them. Close the input when you're done writing, then wait:
 
 ```moxie
 c = spawn("sort")?

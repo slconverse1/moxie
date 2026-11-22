@@ -4,7 +4,7 @@ title: "Values, purity, and composing functions · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 
-# 44. Values, purity, and composing functions
+# 45. Values, purity, and composing functions
 
 Moxie's functional features are ordinary code on top of a few language features: immutable values, higher-order functions, pipelines, and interfaces over type constructors. This lesson covers the first and the oldest ideas: values that never change, functions that say what they do, and functions built out of functions.
 

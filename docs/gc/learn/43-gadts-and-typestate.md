@@ -5,9 +5,9 @@ title: "GADTs and typestate · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 
-# 51. GADTs and typestate
+# 52. GADTs and typestate
 
-Lesson 48 got a typed evaluator by making the interpreters types, and lesson 49 got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own *result type* after its parameters. That is a GADT, a generalized algebraic data type.
+Lesson 49 got a typed evaluator by making the interpreters types, and lesson 50 got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own *result type* after its parameters. That is a GADT, a generalized algebraic data type.
 
 ## A typed evaluator
 
@@ -124,7 +124,7 @@ println(Flag(true).line)
 
 ## Which of the three?
 
-Use **tagless final** (lesson 48) when you only run the program and never look inside it. Use **open data types** (lesson 49) when you need to inspect and rewrite the data and also add cases without editing existing code. Use a **GADT** when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
+Use **tagless final** (lesson 49) when you only run the program and never look inside it. Use **open data types** (lesson 50) when you need to inspect and rewrite the data and also add cases without editing existing code. Use a **GADT** when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
 
 Haskell and Scala 3 have GADTs with a general type-equality solver, so a case may refine several parameters at once and a pattern match can introduce new type variables. Kotlin and Rust have no GADTs; the usual workaround is a sealed class or enum with an unchecked cast in each arm, which the compiler can't verify. Moxie's version is smaller: a case's result type names each parameter either as a plain type or as the enum's own parameter, and a `when` arm records one equation per parameter.
 
@@ -186,4 +186,4 @@ The state costs nothing at run time. Use typestate for protocols with an order: 
 
 ---
 
-[← Programs with effects as data: the freer monad](42-freer-monad.html) · [Contents](./) · [Receiver blocks, interface composition, and mocks →](45-receiver-blocks-and-mocks.html)
+[← Programs with effects as data: the freer monad](42-freer-monad.html) · [Contents](./) · [Reader, writer, and continuations →](62-reader-writer-continuations.html)

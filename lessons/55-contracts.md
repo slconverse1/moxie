@@ -114,13 +114,13 @@ The first line prints `tom`; the second `Cat` breaks the interface's promise, an
 
 ## Conditions are pure
 
-A condition may call only pure functions (lesson 44), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
+A condition may call only pure functions (lesson 45), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
 
-Because `moxie test` checks contracts, a property test (lesson 31) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
+Because `moxie test` checks contracts, a property test (lesson 32) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
 
 ## Contracts or refined parameters?
 
-Lesson 56 showed `where` on a parameter, which is *proved* at compile time. A `requires` is checked at run time (or at compile time only when the arguments are constants). Use a refined parameter when the condition is about integers and lengths and you want the compiler to insist; use a contract for anything else, including conditions on results (`ensures`) and on values you build (`invariant`).
+Lesson 59 showed `where` on a parameter, which is *proved* at compile time. A `requires` is checked at run time (or at compile time only when the arguments are constants). Use a refined parameter when the condition is about integers and lengths and you want the compiler to insist; use a contract for anything else, including conditions on results (`ensures`) and on values you build (`invariant`).
 
 ## What to remember
 

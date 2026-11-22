@@ -5,7 +5,7 @@ title: "Networking, deadlines, and parallel work · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 
-# 41. Networking, deadlines, and parallel work
+# 42. Networking, deadlines, and parallel work
 
 This lesson covers talking over a network, waiting with a deadline, racing two jobs against each other, and spreading work across fibers. Everything here uses `localhost`, so each example is a complete program that runs on its own.
 
@@ -37,7 +37,7 @@ close(c)
 hello from server
 ```
 
-The server reports its port through a channel (lesson 27), the client connects to it, and the line the server wrote comes out of `read_line`. `connect` returns a `Result`, since a connection can fail.
+The server reports its port through a channel (lesson 28), the client connects to it, and the line the server wrote comes out of `read_line`. `connect` returns a `Result`, since a connection can fail.
 
 Other kinds of connection exist, and they use the same `Io` functions:
 
@@ -129,7 +129,7 @@ Err(Error(code: 12, message: "read: timed out"))
 
 `timeout:` covers calls that wait on the outside world. For your own work, `race(f, g)` runs two functions at once and gives the result of whichever finishes first, and `with_timeout(d, f)` runs `f` and gives `Err` with `TIMED_OUT` if it is still going after `d`.
 
-Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the other's token, and when `with_timeout` runs out of time it sets the token. The other function ends only if it looks (`is_cancelled(c)`, or `cancelled(c) ->` in a `select`, lesson 28). Both are structured: they wait for the slower function to end before they return, so none outlives its call.
+Each function takes a `Cancel` token, because in moxie stopping is a request: when `race` has a winner it sets the other's token, and when `with_timeout` runs out of time it sets the token. The other function ends only if it looks (`is_cancelled(c)`, or `cancelled(c) ->` in a `select`, lesson 29). Both are structured: they wait for the slower function to end before they return, so none outlives its call.
 
 ```moxie
 fn polite(c Cancel) Result[Int, Error]

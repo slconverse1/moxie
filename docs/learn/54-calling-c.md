@@ -4,7 +4,7 @@ title: "Calling C · Learning Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 59. Calling C
+# 62. Calling C
 
 Most programs never need this lesson. When one does, a library written in C already exists and rewriting it would be a waste, so moxie lets you declare its functions and call them. Because the compiler can't look inside C, a foreign declaration is something *you* promise, and the rest of the language keeps its checks around it.
 
@@ -27,7 +27,7 @@ println(pow(2.0, 10.0))
 1024.0
 ```
 
-The string names the library (`"m"` is the math library, `"c"` the C library). The program needs the `ffi` permission (lesson 58).
+The string names the library (`"m"` is the math library, `"c"` the C library). The program needs the `ffi` permission (lesson 61).
 
 ## Out-parameters
 
@@ -92,7 +92,7 @@ The answer is 6, because `é` is two bytes in UTF-8.
 
 ## Handles
 
-A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too (lesson 34). A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL.
+A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too (lesson 35). A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL.
 
 This needs a library to call, so it is shown but not run:
 

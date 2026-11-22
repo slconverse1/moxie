@@ -4,7 +4,7 @@ title: "Receiver blocks, interface composition, and mocks · Learning Guide moxi
 ---
 <p><small>Designing with interfaces</small></p>
 
-# 52. Receiver blocks, interface composition, and mocks
+# 55. Receiver blocks, interface composition, and mocks
 
 Lesson 24 introduced methods and interfaces. This lesson adds the tools you reach for as programs grow: blocks that run with a value as their receiver, interfaces built from other interfaces, interfaces that require a field, and swapping a real service for a fake one in a test.
 
@@ -239,4 +239,4 @@ The other two styles are a `using` parameter for read-only services such as cloc
 
 ---
 
-[← GADTs and typestate](43-gadts-and-typestate.html) · [Contents](./) · [Typeclasses →](46-typeclasses.html)
+[← Transformers and the mtl classes](63-transformers.html) · [Contents](./) · [Typeclasses →](46-typeclasses.html)

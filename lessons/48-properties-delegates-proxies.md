@@ -151,7 +151,7 @@ Hello, Ada Lovelace
 
 ### Watching a property
 
-When the tuple is held in an Atom (lesson 29), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
+When the tuple is held in an Atom (lesson 30), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
 
 ```moxie
 tuple Account deriving show
