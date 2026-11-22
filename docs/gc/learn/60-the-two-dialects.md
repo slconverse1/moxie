@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Moxie and moxie/gc side by side · Learning Guide moxie/gc"
+title: "Moxie and moxie/gc side by side · Learner’s Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 
@@ -111,4 +111,4 @@ Reach for GC-free moxie when you need a program whose worst case is known before
 
 ---
 
-[← Byte streams: Reader and Writer](65-byte-streams.html) · [Contents](./) · […moxie: the rest of the toolbox →](66-the-rest-of-moxie.html)
+[← Byte streams: Reader and Writer](65-byte-streams.html) · [Contents](./) · […moxie: the rest of its toolbox →](66-the-rest-of-moxie.html)

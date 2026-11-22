@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Regular expressions · Learning Guide moxie"
+title: "Regular expressions · Learner’s Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

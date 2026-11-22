@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Programs with effects as data: the freer monad · Learning Guide moxie/gc"
+title: "Programs with effects as data: the freer monad · Learner’s Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

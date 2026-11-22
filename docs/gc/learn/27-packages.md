@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Packages and imports · Learning Guide moxie/gc"
+title: "Packages and imports · Learner’s Guide moxie/gc"
 ---
 <p><small>Packages</small></p>
 

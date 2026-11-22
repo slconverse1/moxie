@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Reader, writer, and continuations · Learning Guide moxie"
+title: "Reader, writer, and continuations · Learner’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

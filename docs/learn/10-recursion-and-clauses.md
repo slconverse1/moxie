@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Recursion and function clauses · Learning Guide moxie"
+title: "Recursion and function clauses · Learner’s Guide moxie"
 ---
 <p><small>Functions</small></p>
 

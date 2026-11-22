@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Calling C · Learning Guide moxie"
+title: "Calling C · Learner’s Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 

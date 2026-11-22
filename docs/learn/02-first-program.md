@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Your first program · Learning Guide moxie"
+title: "Your first program · Learner’s Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Enums · Learning Guide moxie/gc"
+title: "Enums · Learner’s Guide moxie/gc"
 ---
 <p><small>Data</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Tagless final: one program, many interpreters · Learning Guide moxie"
+title: "Tagless final: one program, many interpreters · Learner’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

@@ -12,7 +12,7 @@ This tutorial grows one small program, a gradebook, a step at a time. Each step 
 python3 -m moxie run gradebook.mxi
 ```
 
-The output shown after each step is what the whole file prints at that point, so you can check your work. The Learning Guide and the Spec are the places to go when you want the full details.
+The output shown after each step is what the whole file prints at that point, so you can check your work. The Learner’s Guide and the Spec are the places to go when you want the full details.
 
 Most steps end with a short **exercise** and a solution you can open with a click. The exercises are practice, not part of the running file: try one, then compare. The solutions were run against the gradebook as built so far.
 
@@ -460,14 +460,14 @@ If you want to be sure a program only touches what you expect, run it with `--al
 
 You have now used most of the language. Here is where each idea goes deeper:
 
-- **Patterns** reach far past `>= 90`. You can take apart enums, lists, nested tuples, and dictionaries, add `if` guards, and pin a value with `^name`. The Learning Guide has an example of each.
+- **Patterns** reach far past `>= 90`. You can take apart enums, lists, nested tuples, and dictionaries, add `if` guards, and pin a value with `^name`. The Learner’s Guide has an example of each.
 - **Enums** (sum types) let you say "a `Shape` is a `Circle` or a `Rect`," and `when` then insists you handle every case.
 - **Pipelines** have more stages: `scan`, `windows`, `chunks`, `group_by`, and more (chapter 13).
 - **`for` comprehensions** chain steps that each might fail, or that each yield several values (chapter 24).
 - **Interfaces** (`interface`, `impl`) are moxie's version of typeclasses and traits, and the prelude gives you `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, and `Numeric` to build on.
 - **Daemons, timers, `select`, and futures** are the rest of the concurrency story (chapters 16 and 17).
 - **SQL** is checked against your schema when you write `sql(conn):` (chapter 22).
-- **Input, files, sockets, permissions, and C libraries** each have a lesson in the Learning Guide.
+- **Input, files, sockets, permissions, and C libraries** each have a lesson in the Learner’s Guide.
 
 When you want a bigger challenge, try this one on your gradebook:
 

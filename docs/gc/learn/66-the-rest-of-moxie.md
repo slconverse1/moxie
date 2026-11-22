@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "…moxie: the rest of the toolbox · Learning Guide moxie/gc"
+title: "…moxie: the rest of its toolbox · Learner’s Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 
-# 65. …moxie: the rest of the toolbox
+# 65. …moxie: the rest of its toolbox
 
 The earlier lessons teach the language by topic. This page gathers the small things they skipped: a few more numeric functions, some stream and `Result` helpers, a handful of resource and library calls. Nothing here is needed to read the rest of the guide, and you can come back to any of it when a program asks for it. Each section ends with the lesson that covers its neighbourhood.
 

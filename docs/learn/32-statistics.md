@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Statistics and prediction · Learning Guide moxie"
+title: "Statistics and prediction · Learner’s Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

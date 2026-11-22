@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Missing values and failures: Option and Result · Learning Guide moxie/gc"
+title: "Missing values and failures: Option and Result · Learner’s Guide moxie/gc"
 ---
 <p><small>Data</small></p>
 

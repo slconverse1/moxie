@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Formatting and checking: `moxie fmt` and `moxie check` · Learning Guide moxie"
+title: "Formatting and checking: `moxie fmt` and `moxie check` · Learner’s Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 

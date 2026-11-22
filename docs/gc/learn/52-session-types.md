@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Session types: a channel that remembers the conversation · Learning Guide moxie/gc"
+title: "Session types: a channel that remembers the conversation · Learner’s Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 

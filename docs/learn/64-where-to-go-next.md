@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Where to go next · Learning Guide moxie"
+title: "Where to go next · Learner’s Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 
@@ -47,4 +47,4 @@ That is the whole tour. Write something small, run it, and let it grow.
 
 ---
 
-[← …moxie: the rest of the toolbox](66-the-rest-of-moxie.html) · [Contents](./)
+[← …moxie: the rest of its toolbox](66-the-rest-of-moxie.html) · [Contents](./)

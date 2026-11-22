@@ -2,7 +2,7 @@
 (its own nav, titles, and links, with the gc rules ticked).  Run after editing either page:  python3 tools/make_gc_pages.py"""
 import os, re
 D = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "docs")
-GC_NAV = ('<nav id="nav"><a href="./">moxie/gc</a><a href="learn/">Learning Guide</a><a href="tutorial.html">Tutorial</a><a href="spec.html">Spec</a>'
+GC_NAV = ('<nav id="nav"><a href="./">moxie/gc</a><a href="learn/">Learner’s Guide</a><a href="tutorial.html">Tutorial</a><a href="spec.html">Spec</a>'
           '<a href="style.html">Style</a><a href="try.html">Try moxie/gc</a><a href="repl.html">REPL</a><a href="https://github.com/slconverse1/moxie">Source</a></nav>')
 
 def sub(t, old, new, n=1):

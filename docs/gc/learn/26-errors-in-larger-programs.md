@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Errors in larger programs · Learning Guide moxie/gc"
+title: "Errors in larger programs · Learner’s Guide moxie/gc"
 ---
 <p><small>Quality and larger programs</small></p>
 

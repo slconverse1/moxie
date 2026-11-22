@@ -1,9 +1,9 @@
 ---
 layout: default
 learn: true
-title: "Learning Guide moxie"
+title: "Learner’s Guide moxie"
 ---
-# LEARNING GUIDE MOXIE
+# LEARNER’S GUIDE MOXIE
 
 This is a course in moxie, taught one lesson at a time. Each lesson explains one idea, shows it in small programs, and shows exactly what those programs print. Every example is complete, so you can copy any of them into a file and run it, and every output was produced by running the example on the reference interpreter.
 
@@ -111,5 +111,5 @@ You don't need to know any functional programming. If you do, the lessons point 
 62. [Calling C](54-calling-c.html)
 63. [Byte streams: Reader and Writer](65-byte-streams.html)
 64. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
-65. […moxie: the rest of the toolbox](66-the-rest-of-moxie.html)
+65. […moxie: the rest of its toolbox](66-the-rest-of-moxie.html)
 66. [Where to go next](64-where-to-go-next.html)

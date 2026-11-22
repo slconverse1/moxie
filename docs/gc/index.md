@@ -3,7 +3,7 @@ layout: default
 dialect: gc
 title: "moxie/gc"
 ---
-> This is **moxie/gc**, the garbage-collected language. Prefer no collector? Visit [moxie](../), its own site with its own Tutorial, Learning Guide, and Spec. The two are kept apart on purpose, because they make different promises.
+> This is **moxie/gc**, the garbage-collected language. Prefer no collector? Visit [moxie](../), its own site with its own Tutorial, Learner’s Guide, and Spec. The two are kept apart on purpose, because they make different promises.
 
 # Hello, mixers! (moxie/gc edition)
 
@@ -64,11 +64,11 @@ The [Tutorial](tutorial.html) builds one program step by step and assumes you ha
 
 Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does have is a complete specification and a working reference interpreter, so it no longer exists on paper alone. It's a software project undertaken by me, Steve Converse (feature selection and documentation), in collaboration with Google's generative AI (feature analysis) and Anthropic's Claude (feature selection, analysis, implementation, and documentation), without whom the rapid evolution and rigorous validation of the language wouldn't have been possible.
 
-The interpreter runs both moxie and moxie/gc programs, including the examples in their Learning Guides, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the speed in FCFX and the garbage collector's short pauses, are still promises, not demonstrations. **[gc]**
+The interpreter runs both moxie and moxie/gc programs, including the examples in their Learner’s Guides, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the speed in FCFX and the garbage collector's short pauses, are still promises, not demonstrations. **[gc]**
 
 Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But even so, moxie is still worth a look; its particular combination of features is truly all its own.
 
-In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Learning Guide](learn/), and reference interpreter.
+In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Learner’s Guide](learn/), and reference interpreter.
 
 ## A moxie appetizer
 
@@ -118,7 +118,7 @@ By synthesizing these features and others into an elegant mash-up, moxie balance
 
 ## Moxie’s two dialects
 
-As acknowledged, there are two dialects of moxie: the GC-free, moxie dialect, and moxie/gc, the GC dialect. The two are kept apart because they make different promises, so every passage of this moxie/gc edition related to garbage collection is marked **[gc]**, as shown above. Unmarked text is fundamentally the same in both dialects. See also the [moxie/gc Spec](spec.html), the [moxie/gc Learning Guide](learn/), the [moxie/gc Tutorial](tutorial.html), and the [GC-free moxie page](../).
+As acknowledged, there are two dialects of moxie: the GC-free, moxie dialect, and moxie/gc, the GC dialect. The two are kept apart because they make different promises, so every passage of this moxie/gc edition related to garbage collection is marked **[gc]**, as shown above. Unmarked text is fundamentally the same in both dialects. See also the [moxie/gc Spec](spec.html), the [moxie/gc Learner’s Guide](learn/), the [moxie/gc Tutorial](tutorial.html), and the [GC-free moxie page](../).
 
 Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes in moxie/gc, and with it a good deal of what moxie can't do. Here’s what's different, at a glance: Programs aren't meant to move between the two unchanged: anything written for moxie that leans on `String[n]`, `readonly` strings, `copy`, fixed capacities, or pools will need edits. The full set of differences—the ways in which moxie/gc strips away the limitations of GC-free moxie—is as follows:
 
@@ -630,17 +630,17 @@ Moxie is a general language, but four kinds of application come with the languag
 
 **Typeclasses and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
 
-**SQL databases.** See the [Learning Guide](learn/).
+**SQL databases.** See the [Learner’s Guide](learn/).
 
-**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It is not a numeric toolkit. See the [Learning Guide](learn/).
+**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It is not a numeric toolkit. See the [Learner’s Guide](learn/).
 
-**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Learning Guide](learn/). Sockets and their permissions are in superpower 23.
+**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Learner’s Guide](learn/). Sockets and their permissions are in superpower 23.
 
-**Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See the [Learning Guide](learn/).
+**Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See the [Learner’s Guide](learn/).
 
-**Units of measure.** `unit m` declares a unit and `5.0 m` is a quantity of it; the checker keeps the unit in the type (`Double[m/s]`, `Int[m^2]`) and works it through `+ - * /`, comparisons, `abs`, `sum`, `sqrt` and `pow`, so adding meters to seconds is a compile error. Units are erased at run time, and `Duration` stays separate. Scaled units (`unit km = 1000 m`) are stored in the base unit and converted out with `d in km`; unit-polymorphic functions are not done yet. See the [Learning Guide](learn/).
+**Units of measure.** `unit m` declares a unit and `5.0 m` is a quantity of it; the checker keeps the unit in the type (`Double[m/s]`, `Int[m^2]`) and works it through `+ - * /`, comparisons, `abs`, `sum`, `sqrt` and `pow`, so adding meters to seconds is a compile error. Units are erased at run time, and `Duration` stays separate. Scaled units (`unit km = 1000 m`) are stored in the base unit and converted out with `d in km`; unit-polymorphic functions are not done yet. See the [Learner’s Guide](learn/).
 
-**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the [Learning Guide](learn/). An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
+**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the [Learner’s Guide](learn/). An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
 
 ## 4. Everything is an expression
 
@@ -866,7 +866,7 @@ for p in older
   println(p)
 ```
 
-Output: `(first: "Ada", last: "Lovelace", age: 37, full: "Ada Lovelace")`. Each stage asks only for the fields it uses, so stages compose without anyone declaring a type for the intermediate shapes, and the rows of an SQL query (see the Learning Guide) fit the same functions.
+Output: `(first: "Ada", last: "Lovelace", age: 37, full: "Ada Lovelace")`. Each stage asks only for the fields it uses, so stages compose without anyone declaring a type for the intermediate shapes, and the rows of an SQL query (see the Learner’s Guide) fit the same functions.
 
 **How this relates to full row polymorphism.** Languages with the whole feature (OCaml's objects and polymorphic variants, PureScript and Elm's extensible records, Ur/Web) let you name a row variable anywhere in a type: `{age Int | r} -> {age Int | r}`, results that add or remove a field, and rows for sum types. That is hard to build. It needs row unification in the type inference, a way to say a row *lacks* a field, and a runtime layout for a record whose fields aren't known (usually an indirection or a dictionary of offsets). Moxie takes the part that pays for itself and avoids the hard parts: open types appear only in parameters and as a bound, the compiler already knows the whole shape at every call and builds a copy of the function for it, as it does for generics, so there is no layout problem and no run-time cost, and signatures are always written, so there is no inference to extend. Two small tools cover the most useful of the rest: a result written `Extend[R, (full String)]` is the argument's own type with fields added, and `without(r, "password")` gives it back with a field removed, both worked out per call. What you give up: an open type still can't be a function's result on its own (use the bound `T`, or `Extend`), a field can't be renamed or removed in a written type except through `without`, and there are no open unions. For the tabular, pipeline-and-SQL style of program this is the case that matters, and it costs the mixer one `...`.
 
@@ -892,7 +892,7 @@ println(r.width)
 
 Output: `6.0`, then `6.0`. Here `area` is *computed*: it takes no space in the tuple, and reading it multiplies, while writing it changes `width` to fit. A property can also keep a value of its own and watch it (`did_set(old)` runs after a change, and a setter can refuse a bad value by returning a `Result`), be `lazy` (computed once, on first read), be `static` (belongs to the type), or be made read-only outside the tuple with `priv set`. There is no run-time cost, because every access is specialized and inlined, and moxie/gc and moxie treat properties the same way.
 
-If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Learning Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
+If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Learner’s Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
 
 **Properties in interfaces.** An interface can ask for a property too: `name Type` means "readable", and `property name Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 18.
 
@@ -1095,7 +1095,7 @@ Output: `Standard square at origin`, then `Unknown`.
 - `when a, b, c` matches several values at once, one pattern for each, so `Admin, true -> ...` needs no tuple parentheses; the compiler checks that every combination is covered.
 - Patterns work outside `when` too: `value is Pattern` is a `Bool` test, a let-else bails out when the pattern doesn't match, and a pattern that can't fail may sit to the left of a binding, in `for` names, and in function and lambda parameters.
 
-The Learning Guide has an example of each.
+The Learner’s Guide has an example of each.
 
 In most languages, an `if` or a `switch` checks conditions or flat values. A pattern checks the shape, the case, and the values in one step, binds the pieces for you, and lets the compiler make sure no case is left out.
 
@@ -1429,7 +1429,7 @@ Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works 
 
 There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which has no GC, as well as in moxie/gc.
 
-The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Learning Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. A generic function called with a resource is checked as written for that type, so copying the resource is an error, and a function that passes a resource to a function-typed parameter is assumed to hand it over (see the Spec, section 24a).
+The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Learner’s Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. A generic function called with a resource is checked as written for that type, so copying the resource is an error, and a function that passes a resource to a function-typed parameter is assumed to hand it over (see the Spec, section 24a).
 
 
 ## 18. Interfaces and impls (a.k.a. typeclasses)
@@ -1531,7 +1531,7 @@ inc <$> Box.Full(4)                                  // Box.Full(5)
 
 Here `half` returns a `Box`, and `<$>` and `<*>` get parentheses when mixed with other operators. Use `|>>` when each step needs the previous result, and `<$>` with `<*>` when the inputs are independent and you just want them combined, with the first failure winning.
 
-**These types aren't part of moxie.** `Maybe`, `Option`, `Either`, `Validation`, `State`, a parser type, and so on, are not built into the language or its library. What the prelude gives you is the `Functor`, `Applicative`, and `Monad` interfaces, plus ready-made instances for `Result`, `Stream`, `List`, and `Array`. For any other type, the mixer defines the type and writes its `impl Monad[...]`, and then `|>>`, `<$>`, `<*>`, and `for` work on it. The Learning Guide has the full `Box` definition and its impl, with working examples.
+**These types aren't part of moxie.** `Maybe`, `Option`, `Either`, `Validation`, `State`, a parser type, and so on, are not built into the language or its library. What the prelude gives you is the `Functor`, `Applicative`, and `Monad` interfaces, plus ready-made instances for `Result`, `Stream`, `List`, and `Array`. For any other type, the mixer defines the type and writes its `impl Monad[...]`, and then `|>>`, `<$>`, `<*>`, and `for` work on it. The Learner’s Guide has the full `Box` definition and its impl, with working examples.
 
 **You can write code once for every monad:**
 
@@ -1795,7 +1795,7 @@ qsort(ref xs, (a, b) -> a - b)
 println(xs)
 ```
 
-The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees, so the convention is a small moxie wrapper around each call. The Learning Guide's lesson on calling C goes through it.
+The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees, so the convention is a small moxie wrapper around each call. The Learner’s Guide's lesson on calling C goes through it.
 
 ## 24. Resources have one owner
 
@@ -1995,7 +1995,7 @@ println(describe(41))
 println(describe("hi"))
 ```
 
-Output: `the number 42` then `the text hi`. `n@Int` binds the value itself, so `n` is an `Int` in its arm. A union is exhaustive without a `_` arm, and an `any` value needs one, since the full set of types isn't known where you match. See the Learning Guide, Chapter 12 for patterns and superpower 18 for `any` and interfaces.
+Output: `the number 42` then `the text hi`. `n@Int` binds the value itself, so `n` is an `Int` in its arm. A union is exhaustive without a `_` arm, and an `any` value needs one, since the full set of types isn't known where you match. See the Learner’s Guide, Chapter 12 for patterns and superpower 18 for `any` and interfaces.
 
 ## 29. FCFX
 

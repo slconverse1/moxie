@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Templates and locales · Learning Guide moxie"
+title: "Templates and locales · Learner’s Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

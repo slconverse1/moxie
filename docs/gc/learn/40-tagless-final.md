@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Tagless final: one program, many interpreters · Learning Guide moxie/gc"
+title: "Tagless final: one program, many interpreters · Learner’s Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

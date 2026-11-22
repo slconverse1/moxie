@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Atoms and futures · Learning Guide moxie/gc"
+title: "Atoms and futures · Learner’s Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 

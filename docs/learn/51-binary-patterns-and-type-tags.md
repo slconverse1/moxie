@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Binary patterns, and taking a value apart by its type · Learning Guide moxie"
+title: "Binary patterns, and taking a value apart by its type · Learner’s Guide moxie"
 ---
 <p><small>Data</small></p>
 

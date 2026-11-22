@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Regular expressions · Learning Guide moxie/gc"
+title: "Regular expressions · Learner’s Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>
 

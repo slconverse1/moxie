@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Builders: a DSL without macros · Learning Guide moxie/gc"
+title: "Builders: a DSL without macros · Learner’s Guide moxie/gc"
 ---
 <p><small>Packages</small></p>
 

@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Pipe slots, `seq`, and doing work once · Learning Guide moxie/gc"
+title: "Pipe slots, `seq`, and doing work once · Learner’s Guide moxie/gc"
 ---
 <p><small>Streams and pipelines</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Limits, pools, and the memory budget · Learning Guide moxie"
+title: "Limits, pools, and the memory budget · Learner’s Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 

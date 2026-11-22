@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Binary patterns, and taking a value apart by its type · Learning Guide moxie/gc"
+title: "Binary patterns, and taking a value apart by its type · Learner’s Guide moxie/gc"
 ---
 <p><small>Data</small></p>
 

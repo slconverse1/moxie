@@ -52,7 +52,7 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-ali
 <nav>
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
   <a class="brand" href="{{ base | append: '/' | relative_url }}">{% if page.dialect == 'gc' %}moxie/gc{% else %}moxie{% endif %}</a>
-  <a href="{{ base | append: '/learn/' | relative_url }}">Learning Guide</a>
+  <a href="{{ base | append: '/learn/' | relative_url }}">Learner’s Guide</a>
   <a href="{{ base | append: '/tutorial.html' | relative_url }}">Tutorial</a>
   <a href="{{ base | append: '/spec.html' | relative_url }}">Spec</a>
   <a href="{{ base | append: '/style.html' | relative_url }}">Style</a>

@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "In-place algorithms: `mutable` blocks · Learning Guide moxie"
+title: "In-place algorithms: `mutable` blocks · Learner’s Guide moxie"
 ---
 <p><small>Data</small></p>
 

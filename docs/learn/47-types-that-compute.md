@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Types that compute · Learning Guide moxie"
+title: "Types that compute · Learner’s Guide moxie"
 ---
 <p><small>Designing with interfaces</small></p>
 
