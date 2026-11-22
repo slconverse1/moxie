@@ -77,3 +77,7 @@ You don't need to know any functional programming. If you do, the lessons point 
 37. [Mapping, sequencing, and combining: functors, applicatives, and monads](37-functors-and-monads.html)
 38. [`for` comprehensions](38-for-comprehensions.html)
 39. [State, lenses, lazy sequences, and monoids](39-state-lenses-monoids.html)
+40. [Tagless final: one program, many interpreters](40-tagless-final.html)
+41. [Data types that grow: the expression problem](41-open-data-types.html)
+42. [Programs with effects as data: the freer monad](42-freer-monad.html)
+43. [GADTs and typestate](43-gadts-and-typestate.html)

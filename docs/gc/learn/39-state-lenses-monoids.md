@@ -237,4 +237,4 @@ An empty input gives `empty()`, so name the type when nothing else says which on
 
 ---
 
-[← `for` comprehensions](38-for-comprehensions.html) · [Contents](./)
+[← `for` comprehensions](38-for-comprehensions.html) · [Contents](./) · [Tagless final: one program, many interpreters →](40-tagless-final.html)

@@ -53,3 +53,6 @@
 38-for-comprehensions
 39-state-lenses-monoids
 40-tagless-final
+41-open-data-types
+42-freer-monad
+43-gadts-and-typestate
