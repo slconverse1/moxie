@@ -64,7 +64,7 @@
  ],
  [
   126,
-  "n = 0\nfirst_big = while n < 10\n  if n * n > 30\n    break(n)\n  n = n + 1\nelse\n  -1\nm = 0\nnone = while m < 3\n  if m * m > 30\n    break(m)\n  m = m + 1\nelse\n  -1\nprintln(\"$first_big $none\")\n",
+  "n = 0\nfirst_big = for n < 10\n  if n * n > 30\n    break(n)\n  n = n + 1\nelse\n  -1\nm = 0\nnone = for m < 3\n  if m * m > 30\n    break(m)\n  m = m + 1\nelse\n  -1\nprintln(\"$first_big $none\")\n",
   [
    "6 -1"
   ]
@@ -103,7 +103,7 @@
  ],
  [
   189,
-  "#serve while\n  select\n    n = read(inbox) ->\n      if n < 0\n        break #serve\n      println(\"got $n\")\n\n    read(timeout) ->\n      break #serve\n",
+  "#serve for true\n  select\n    n = read(inbox) ->\n      if n < 0\n        break #serve\n      println(\"got $n\")\n\n    read(timeout) ->\n      break #serve\n",
   null
  ],
  [
@@ -115,7 +115,7 @@
  ],
  [
   215,
-  "fn triple_past(limit Int, cap Int) Int\n  n = 1\n  while n < cap\n    n = n * 3\n    if n > limit\n      break(n)\n  else\n    0\nprintln(triple_past(100, 1000))\nprintln(triple_past(100, 50))\nfor x in List(1, 2, 3)\n  println(x)\nelse\n  println(\"ran out\")\nfor x in List(1, 2, 3)\n  if x == 2\n    break\nelse\n  println(\"not printed\")\nprintln(\"end\")\n",
+  "fn triple_past(limit Int, cap Int) Int\n  n = 1\n  for n < cap\n    n = n * 3\n    if n > limit\n      break(n)\n  else\n    0\nprintln(triple_past(100, 1000))\nprintln(triple_past(100, 50))\nfor x in List(1, 2, 3)\n  println(x)\nelse\n  println(\"ran out\")\nfor x in List(1, 2, 3)\n  if x == 2\n    break\nelse\n  println(\"not printed\")\nprintln(\"end\")\n",
   [
    "243",
    "0",
@@ -1500,7 +1500,7 @@
  ],
  [
   2957,
-  "i = 0\nsum = 0\n(last, final) = while i < 10\n  sum += i\n  i++\n  if sum > 20\n    break(i, sum)\nelse\n  (i, sum)\nprintln(\"$last $final\")\n",
+  "i = 0\nsum = 0\n(last, final) = for i < 10\n  sum += i\n  i++\n  if sum > 20\n    break(i, sum)\nelse\n  (i, sum)\nprintln(\"$last $final\")\n",
   [
    "7 21"
   ]
@@ -1632,7 +1632,7 @@
  ],
  [
   3245,
-  "fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit\n  while true\n    select\n      cancelled(stop) ->\n        \\write(out, \"worker ${id} stopping\")\n        return\n\n      else\n        sleep(10ms)\nrx, tx = Chan[String][4]()\nwait s\n  go worker(1, clone(tx), s)\n  go worker(2, tx, s)\n  sleep(50ms)\n  cancel(s)\nprintln(\"wait over\")\nprintln(read(rx))\nprintln(read(rx))\n",
+  "fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit\n  for true\n    select\n      cancelled(stop) ->\n        \\write(out, \"worker ${id} stopping\")\n        return\n\n      else\n        sleep(10ms)\nrx, tx = Chan[String][4]()\nwait s\n  go worker(1, clone(tx), s)\n  go worker(2, tx, s)\n  sleep(50ms)\n  cancel(s)\nprintln(\"wait over\")\nprintln(read(rx))\nprintln(read(rx))\n",
   [
    "wait over",
    "Ok(\"worker 1 stopping\")",
@@ -1812,7 +1812,7 @@
  ],
  [
   3687,
-  "fn polite(c Cancel) Result[Int, Error]\n  while true\n    select\n      cancelled(c) ->\n        return Err(Error(CLOSED, \"cancelled\"))\n\n      else\n        sleep(5ms)\n  Ok(0)\nfn quick(c Cancel) Result[Int, Error]\n  sleep(10ms)\n  Ok(42)\nprintln(race(polite, quick))\nprintln(with_timeout(1s, quick))\nprintln(with_timeout(50ms, polite))\n",
+  "fn polite(c Cancel) Result[Int, Error]\n  for true\n    select\n      cancelled(c) ->\n        return Err(Error(CLOSED, \"cancelled\"))\n\n      else\n        sleep(5ms)\n  Ok(0)\nfn quick(c Cancel) Result[Int, Error]\n  sleep(10ms)\n  Ok(42)\nprintln(race(polite, quick))\nprintln(with_timeout(1s, quick))\nprintln(with_timeout(50ms, polite))\n",
   [
    "Ok(42)",
    "Ok(42)",
@@ -1981,7 +1981,7 @@
  ],
  [
   4001,
-  "// not run: needs a terminal\ninit\n  t = raw_terminal()?\n  println(\"press keys; Escape quits\")\n  while\n    when read_key(t)?\n      Typed(c) -> println(\"typed \\$c\")\n      Ctrl(c) -> println(\"ctrl-\\$c\")\n      Up -> println(\"up\")\n      Down -> println(\"down\")\n      Fn(n) -> println(\"F\\$n\")\n      Escape -> break\n      else ()\n  close(t)\n",
+  "// not run: needs a terminal\ninit\n  t = raw_terminal()?\n  println(\"press keys; Escape quits\")\n  for true\n    when read_key(t)?\n      Typed(c) -> println(\"typed \\$c\")\n      Ctrl(c) -> println(\"ctrl-\\$c\")\n      Up -> println(\"up\")\n      Down -> println(\"down\")\n      Fn(n) -> println(\"F\\$n\")\n      Escape -> break\n      else ()\n  close(t)\n",
   null
  ],
  [
