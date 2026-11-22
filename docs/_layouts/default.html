@@ -24,9 +24,31 @@ pre{background:var(--code);padding:12px 14px;border-radius:8px;overflow-x:auto;l
 pre code{background:none;padding:0}
 table{border-collapse:collapse;display:block;overflow-x:auto}
 th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+
+.page{display:block}
+#toc{display:none}
+#toc ul{list-style:none;margin:0;padding:0}
+#toc li{margin:0}
+#toc a{display:block;padding:3px 8px;border-left:3px solid transparent;color:var(--ink);text-decoration:none}
+#toc a:hover{background:var(--code)}
+#toc a.here{border-left-color:var(--accent);color:var(--accent);font-weight:600}
+#toc .part{margin:12px 0 2px;padding:0 8px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+#toc code{font-size:.9em}
+#toc-small{margin:10px 0 0;border:1px solid var(--line);border-radius:8px;padding:6px 12px;background:var(--code)}
+#toc-small summary{cursor:pointer;font-weight:600;color:var(--accent)}
+#toc-small ul{list-style:none;margin:6px 0 2px;padding:0;max-height:60vh;overflow:auto}
+#toc-small a{display:block;padding:3px 0;color:var(--ink);text-decoration:none}
+#toc-small .part{margin:8px 0 2px;font-size:12px;text-transform:uppercase;color:var(--muted)}
+.pager{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:40px;padding-top:14px;border-top:1px solid var(--line);font-size:15px}
+@media (min-width:1100px){
+  body.hastoc .page{display:grid;grid-template-columns:16.5rem minmax(0,50rem);gap:32px;max-width:72rem;margin:0 auto;padding:0 16px}
+  body.hastoc main{margin:0;max-width:none;padding:8px 0 64px}
+  body.hastoc #toc{display:block;position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:16px 0 24px;font-size:14px;line-height:1.35}
+  body.hastoc #toc-small{display:none}
+}
 </style>
 </head>
-<body>
+<body{% if page.toc or page.learn %} class="hastoc"{% endif %}>
 <nav>
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
   <a class="brand" href="{{ base | append: '/' | relative_url }}">{% if gc %}moxie/gc{% else %}moxie{% endif %}</a>
@@ -38,8 +60,46 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-ali
   <a href="{{ base | append: '/repl.html' | relative_url }}">REPL</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
 </nav>
+<div class="page">
+{% if page.toc or page.learn %}<aside id="toc" aria-label="Contents">{% if page.learn %}{% if gc %}{% include learn-nav-gc.html %}{% else %}{% include learn-nav.html %}{% endif %}{% endif %}</aside>{% endif %}
 <main>
+{% if page.toc or page.learn %}<details id="toc-small"><summary>Contents</summary></details>{% endif %}
 {{ content }}
 </main>
+</div>
+{% if page.toc or page.learn %}<script>
+(function () {
+  var side = document.getElementById('toc'), small = document.getElementById('toc-small');
+  if (!side || !small) return;
+  var ul = side.querySelector('ul');
+  if (!ul) {                                  // a page without a prebuilt list: the outline is its section headings
+    var hs = document.querySelectorAll('main h2[id]');
+    if (!hs.length) { side.style.display = 'none'; small.style.display = 'none'; return; }
+    ul = document.createElement('ul');
+    hs.forEach(function (h) {
+      var li = document.createElement('li'), a = document.createElement('a');
+      a.href = '#' + h.id; a.innerHTML = h.innerHTML.replace(/\s*<a[^>]*class="anchor"[^>]*>.*?<\/a>/, '');
+      li.appendChild(a); ul.appendChild(li);
+    });
+    side.appendChild(ul);
+    if ('IntersectionObserver' in window) {
+      var links = {}; ul.querySelectorAll('a').forEach(function (a) { links[a.getAttribute('href').slice(1)] = a; });
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) { if (e.isIntersecting) {
+          Object.keys(links).forEach(function (k) { links[k].classList.remove('here'); });
+          links[e.target.id].classList.add('here');
+        } });
+      }, { rootMargin: '0px 0px -75% 0px' });
+      hs.forEach(function (h) { io.observe(h); });
+    }
+  } else {                                    // the lesson list: mark the current page
+    var here = location.pathname.replace(/\/$/, '').split('/').pop();
+    ul.querySelectorAll('a').forEach(function (a) {
+      if (a.getAttribute('href').split('/').pop() === here) { a.classList.add('here'); a.scrollIntoView({ block: 'nearest' }); }
+    });
+  }
+  small.appendChild(ul.cloneNode(true));
+})();
+</script>{% endif %}
 </body>
 </html>
