@@ -8,7 +8,7 @@ You are reading the GC-free guide. moxie has a second dialect, moxie/gc, that ke
 You are reading the moxie/gc guide. moxie has a second dialect, GC-free moxie, that keeps the same language but has no collector: every size is worked out ahead of time. This lesson lists what moxie/gc takes away from that dialect's limits, with a short example of each. The GC-free guide shows the other column.
 @end
 
-Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes, and with it a good deal of what the language has to forbid. A program written for GC-free moxie that leans on `String[n]`, `static` strings, `copy`, fixed capacities, or pools needs edits to run in moxie/gc.
+Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes, and with it a good deal of what the language has to forbid. A program written for GC-free moxie that leans on `String[n]`, `readonly` strings, `copy`, fixed capacities, or pools needs edits to run in moxie/gc.
 
 ## Collections grow
 
@@ -79,7 +79,7 @@ List(1, 2, 3, 4)
 ## One kind of string
 
 @nogc
-Text in GC-free moxie comes in more than one form. A `String[n]` holds at most `n` bytes and lives wherever the value that holds it lives, and a `static` string lasts for the whole program:
+Text in GC-free moxie comes in more than one form. A `String[n]` holds at most `n` bytes and lives wherever the value that holds it lives, and a `readonly` string lasts for the whole program:
 
 ```moxie
 name String[8] = "Ada"
@@ -93,7 +93,7 @@ Ada
 @end
 
 @gc
-moxie/gc has a single `String` type. There is no `String[n]`, no `static`, and no "lasts until the next reset":
+moxie/gc has a single `String` type. There is no `String[n]`, no `readonly`, and no "lasts until the next reset":
 
 ```moxie
 name = "Ada"

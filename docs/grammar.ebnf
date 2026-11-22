@@ -86,7 +86,7 @@ literal : INT | FLOAT | STR | CHAR | DEC | 'true' | 'false' ;
 # ---------------------------------------------------------------- types
 type : type_atom { '|' type_atom } ;
 type_item : type | ident type | '...' [ type ] | ident '...' ;
-type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'static' type ;
+type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'readonly' type ;
 type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 

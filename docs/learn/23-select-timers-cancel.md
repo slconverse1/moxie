@@ -112,7 +112,7 @@ A daemon has one special property in GC-free moxie: memory used within a cycle i
 Here is a typical shape: wait for a message or a timeout, and leave the loop either way:
 
 ```moxie
-fiber fn feed(tx ChanW[String], msg static String) Unit
+fiber fn feed(tx ChanW[String], msg readonly String) Unit
   sleep(20ms)
   \write(tx, msg)
 rx, tx = Chan[String][1]()
@@ -135,7 +135,7 @@ daemon
 got: hello from a fiber
 ```
 
-The `else` arm keeps the loop turning, checking again a moment later. (`msg` is `static`, a string that lives for the whole program, because a text built at run time can't be passed to a fiber that outlives the call.)
+The `else` arm keeps the loop turning, checking again a moment later. (`msg` is `readonly`, a string that lives for the whole program, because a text built at run time can't be passed to a fiber that outlives the call.)
 
 ## Stopping a fiber politely: cancel
 

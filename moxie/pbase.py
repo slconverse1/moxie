@@ -205,7 +205,7 @@ class PBase:
                         break
                     continue
                 colon = self.colon_label_at(0, "a tuple type has no colon: write `(name String, age Int)`")
-                if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static") and self.type_follows(1))):
+                if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static", "readonly") and self.type_follows(1))):
                     label = self.next().val
                     if colon:
                         self.next()
@@ -235,9 +235,11 @@ class PBase:
                     self.next()                                  # any A + B: a value that implements both
                     also.append(self.parse_type_prim())
                 return TAny(first, also, line=line)
-            if t.val == "static":
+            if t.val == "readonly":
                 self.next()
                 return TStatic(self.parse_type_prim(), line=line)
+            if t.val == "static" and self.peek(1).kind == "NAME":
+                self.err("a string that lives for the whole program is `readonly String`; `static` marks a function or property that belongs to a type, not an instance")
             if t.val in HARD and t.val not in ("Self", "self"):
                 self.err(f"expected a type but found {self.describe(t)}")
             path = [self.next().val]
@@ -253,7 +255,7 @@ class PBase:
                     while True:
                         label = None
                         colon = self.colon_label_at(0, "a function type has no colon: write `(x Int) -> Int`")
-                        if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static") and self.type_follows(1))):
+                        if self.peek().kind == "NAME" and (colon or (self.peek().val not in ("any", "static", "readonly") and self.type_follows(1))):
                             label = self.next().val
                             if colon:
                                 self.next()

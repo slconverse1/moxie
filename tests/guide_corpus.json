@@ -1581,7 +1581,7 @@
  ],
  [
   3114,
-  "fiber fn feed(tx ChanW[String], msg static String) Unit\n  sleep(1s)\n  \\write(tx, msg)\nfn start_feed() ChanR[String]\n  rx, tx = Chan[String][1]()\n  go feed(tx, \"hello from a fiber\")\n  rx\ninbox = start_feed()\ntimeout = after(5s)\ncounter = 0\ndaemon\n  counter = select\n    msg = read(inbox) ->\n      text = \"got: $msg\"\n      println(text)\n      break daemon\n\n    read(timeout) ->\n      println(\"timed out\")\n      break daemon\n\n    else\n      sleep(100ms)\n      counter + 1\n",
+  "fiber fn feed(tx ChanW[String], msg readonly String) Unit\n  sleep(1s)\n  \\write(tx, msg)\nfn start_feed() ChanR[String]\n  rx, tx = Chan[String][1]()\n  go feed(tx, \"hello from a fiber\")\n  rx\ninbox = start_feed()\ntimeout = after(5s)\ncounter = 0\ndaemon\n  counter = select\n    msg = read(inbox) ->\n      text = \"got: $msg\"\n      println(text)\n      break daemon\n\n    read(timeout) ->\n      println(\"timed out\")\n      break daemon\n\n    else\n      sleep(100ms)\n      counter + 1\n",
   null
  ],
  [

@@ -646,7 +646,7 @@ class Parser(ExprParser):
             elif self.peek().kind == "STR":              # and so is a string: `"id" -> Int`
                 e = self.parse_atom()
                 pat = TExpr(e, line=e.line)
-            elif self.peek().kind == "NAME" and self.peek().val not in ("any", "static") and self.peek(1).kind == "NAME" \
+            elif self.peek().kind == "NAME" and self.peek().val not in ("any", "static", "readonly") and self.peek(1).kind == "NAME" \
                     and self.peek(1).val not in ("if",) \
                     or (self.peek().kind == "NAME" and self.peek(1).kind == "OP" and self.peek(1).val == ":" and self.peek(2).kind == "NAME"):
                 tk = self.next()                         # `X Show` or `X Show + Eq`, written like a bound `[T Show + Eq]`
@@ -1126,7 +1126,7 @@ class Parser(ExprParser):
         while not self.at_op(")"):
             ft = self.peek()
             colon = self.colon_label_at(0, "a case field has no colon: write `Circle(radius Float)`")
-            if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static") and self.type_follows(1))):
+            if ft.kind == "NAME" and (colon or (ft.val not in ("any", "static", "readonly") and self.type_follows(1))):
                 self.next()
                 if colon:
                     self.next()
@@ -1286,7 +1286,7 @@ class Parser(ExprParser):
             if iface and t.kind == "NAME":
                 # embedded interface or property
                 colon = self.colon_label_at(0, "an interface field has no colon: write the name and then its type")
-                if colon or (t.val not in ("any", "static") and self.type_follows(1)):
+                if colon or (t.val not in ("any", "static", "readonly") and self.type_follows(1)):
                     nm = self.next().val
                     if colon:
                         self.next()

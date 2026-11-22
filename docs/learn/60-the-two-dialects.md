@@ -9,7 +9,7 @@ title: "Moxie and moxie/gc side by side · Learning Guide moxie"
 You are reading the GC-free guide. moxie has a second dialect, moxie/gc, that keeps the same language and swaps the memory model: one shared heap with a generational collector instead of sizes worked out ahead of time. This lesson lists what changes, with a short example of each, so you can read code written for either dialect. Every example below also runs in moxie/gc, and the guide for that dialect shows the other column.
 
 
-Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes, and with it a good deal of what the language has to forbid. A program written for GC-free moxie that leans on `String[n]`, `static` strings, `copy`, fixed capacities, or pools needs edits to run in moxie/gc.
+Patterns, pipes, generics, interfaces, results, fibers, and channels are the same in both dialects. Only the memory model changes, and with it a good deal of what the language has to forbid. A program written for GC-free moxie that leans on `String[n]`, `readonly` strings, `copy`, fixed capacities, or pools needs edits to run in moxie/gc.
 
 ## Collections grow
 
@@ -50,7 +50,7 @@ List(1, 2, 3, 4)
 
 ## One kind of string
 
-Text in GC-free moxie comes in more than one form. A `String[n]` holds at most `n` bytes and lives wherever the value that holds it lives, and a `static` string lasts for the whole program:
+Text in GC-free moxie comes in more than one form. A `String[n]` holds at most `n` bytes and lives wherever the value that holds it lives, and a `readonly` string lasts for the whole program:
 
 ```moxie
 name String[8] = "Ada"

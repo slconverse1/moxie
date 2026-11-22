@@ -16,7 +16,7 @@ Only the memory model changes. Patterns, generics, interfaces, pipes, results, f
 | Memory | No garbage collector and no heap: S-space, T-space, resets, pools, and one fixed block | One shared heap, collected by a generational collector that works in bounded slices at safe points (section 3) |
 | Collection sizes | `List`, `Set`, and `Dict` have a declared fixed capacity | They grow as needed, and a size is an optional hint. `Array` and `MultiArray` keep their sizes as part of the type (section 7) |
 | Updates | In place when the old value is dead | `List`, `Dict`, and `Set` are persistent and share structure. An `Array` update copies (sections 3 and 7) |
-| Strings | `String[n]`, `static`, and runtime strings that last until a reset | One `String` type (section 5) |
+| Strings | `String[n]`, `readonly`, and runtime strings that last until a reset | One `String` type (section 5) |
 | Closures | Only plain functions can be stored. A closure's type includes what it captures, and a value holding one is transient | A function type is its signature alone, and a closure can go anywhere (section 11) |
 | Views and streams | Can't be returned, so helpers use `inline fn` | Can be returned, unless they borrow a resource (sections 7, 13, and 18) |
 | Resources | Counted by the compiler into pools, so they can't be made in loops | Made anywhere. Ownership, moves, and drop times are unchanged (sections 3 and 19) |
@@ -26,15 +26,15 @@ Only the memory model changes. Patterns, generics, interfaces, pipes, results, f
 | Variadics | A size parameter, specialized per argument count | An ordinary `List` (section 9) |
 | Recursive types | Nodes in S-space, with a bounded form for carrying them | Ordinary heap values (section 6) |
 | `any` | A tag and a payload sized at link time | A reference and a method table (section 12) |
-| `Error` message | `static String` | `String` (section 6) |
+| `Error` message | `readonly String` | `String` (section 6) |
 | Atoms and channels | Plain fixed-size data | Any value that isn't a resource (sections 16 and 17) |
 | Manifest | `[fibers]` has `memory`, and `[pools]` | `[memory]` has `heap` and `slice`, and there are no pools (section 4) |
 | Tooling | An in-place update report and a pool report | An allocation report (section 22) |
 | Guarantees | Constant memory in a loop, and no pauses | Short pauses, and memory that can leak through a structure that keeps growing (section 3) |
 
-Gone altogether: `String[n]`, `static` strings (the keyword survives only in `static fn`), S-space and T-space, daemon-safe values, transient closures, the bounded form of a recursive value, pool and fiber-slot tallies, the startup refusal, `copy` (a slice is already an owned value), and the in-place update guarantee.
+Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-safe values, transient closures, the bounded form of a recursive value, pool and fiber-slot tallies, the startup refusal, `copy` (a slice is already an owned value), and the in-place update guarantee.
 
-**Compatibility.** moxie/gc is not designed to run GC-free moxie programs unchanged, and there is no compatibility mode. The differences above are the whole list. Code that uses `String[n]`, `static` strings, `copy`, a sized `List`, `Set`, or `Dict` declaration written as a fixed capacity, `[pools]` or `[fibers] memory` in the manifest, or the `Result` from `put` needs editing. Going the other way, a program that stores a closure in a collection or returns a stream is not valid GC-free moxie.
+**Compatibility.** moxie/gc is not designed to run GC-free moxie programs unchanged, and there is no compatibility mode. The differences above are the whole list. Code that uses `String[n]`, `readonly` strings, `copy`, a sized `List`, `Set`, or `Dict` declaration written as a fixed capacity, `[pools]` or `[fibers] memory` in the manifest, or the `Result` from `put` needs editing. Going the other way, a program that stores a closure in a collection or returns a stream is not valid GC-free moxie.
 
 
 **0. Principles**
@@ -207,7 +207,7 @@ How the heap behaves:
 - **Byte literals**: `b"GET /"` is an `Array[Byte]` of known size, and `b'\x7F'` is a `Byte`. Allowed escapes are `\xNN`, `\n`, `\r`, `\t`, `\\`, and the quote. A non-ASCII character in a byte literal is an error.
 - **Lengths.** `len(s)` counts bytes. `char_count(s)` counts Unicode scalars (a scan, O(n)). `chars(s)` is a stream of `Char`, so `s |> chars() |> count()` also works. Scalars are not grapheme clusters: a letter with a combining accent, a flag, or a family emoji is several scalars and one thing to the eye. `graphemes(s)` is a stream of `String`, one per extended grapheme cluster (Unicode UAX #29, without the Indic conjunct rule), and `grapheme_count(s)` counts them. A cluster is a `String`, not a `Char`, because it can hold many scalars. `len`, `char_count`, and slicing are unchanged.
 - **Slices**: strings slice with parentheses, like arrays. `s(2..)`, `s(..<3)`, `s(..3)`, and `s(..)` give, for `"Python"`, `thon`, `Pyt`, `Pyth`, and `Python`. Offsets are bytes. A cut inside a multi-byte character aborts (a compile error for constant offsets). **[gc]** A slice is an ordinary `String` and may share its parent's storage.
-- **[gc] One `String` type.** moxie/gc has no `String[n]` and no `static` strings. Every string is an immutable `String`, and literals are shared. (`static` survives only as the keyword in `static fn`.)
+- **[gc] One `String` type.** moxie/gc has no `String[n]` and no `readonly` strings. Every string is an immutable `String`, and literals are shared. (`static` survives only as the keyword in `static fn`.)
 
 **Format specs in interpolation**
 - `${expr:spec}` with `spec` = `[[fill]align][sign][#][0][width][,][.precision][type]`.
@@ -958,7 +958,7 @@ literal : INT | FLOAT | STR | CHAR | DEC | 'true' | 'false' ;
 # ---------------------------------------------------------------- types
 type : type_atom { '|' type_atom } ;
 type_item : type | ident type | '...' [ type ] | ident '...' ;
-type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'static' type ;
+type_atom : '[' tparam { ',' tparam } ']' '->' type | '(' type ')' '[' type_args ']' | ident { '.' ident } [ '[' type_args ']' ] { '[' type_args ']' } | '(' [ type_item { ',' type_item } [ ',' ] ] ')' [ '->' type ] | type_atom '.' '(' [ type_item { ',' type_item } ] ')' '->' type | 'any' ident { '+' ident } | 'readonly' type ;
 type_args : type_arg { ',' type_arg } ;
 type_arg : type | '_' | STR | INT [ ( '..' | '..=' ) INT ] | unitexpr | '1' '/' unitexpr | '(' unitexpr ')' '^' INT ;
 

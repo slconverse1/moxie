@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+`readonly String` replaces `static String`. A string that lives for the whole program is now written `readonly String` (it lives in read-only program data); `static` keeps one meaning, a function or property that belongs to a type, and `static String` is a syntax error that says so. Spec, intros, lessons and the guide corpus are updated.
+
 The `io` package. `io.Reader` and `io.Writer` are the byte-stream interface pair (`read(ref self, n)`, `write(ref self, bytes)`), implemented for files and sockets, `stdin`/`stdout`/`stderr`, and an in-memory `io.Buffer`, with `io.say`, `io.copy` and `io.read_all` generic over them. `write_bytes` now works on `stdout` and `stderr`, and `ref r.read(n)?` parses. Lesson 63 is new (byte streams) and the later lessons moved down one. `tests/run_io.py` covers both dialects.
 
 Backtick infix removed. ``a `f` b`` is gone (the lexer says so and points to `f(a, b)` or `a |> f(b)`); it came from Haskell and a call or a pipe says the same thing. The grammar, both specs, both intros, and lessons 21 and 50 are updated.
