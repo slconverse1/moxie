@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+`NonEmpty` now works as the Spec says: the prelude functions `len`, `min`, `max`, and `map` use a tuple or enum type's own method of the same name, and a piped call inside a method is no longer taken for the method itself. Atoms print as `Atom(10)` and timers as `Timer()`.
+
 Reading aids: both Specs have numbered headings with anchors (`#s9c`) and a sidebar outline, the Mixer’s Guide has a lesson sidebar, each lesson ends with an "In the Spec" line and each Spec section starts with an "In the Mixer’s Guide" line (from `lessons/_spec.txt`; `tools/link_spec.py`, `tests/run_links.py`). The Spec now also covers `lower`, `upper`, `replace_text`, and `unwrap`.
 
 `requires` and `ensures` are gone: a condition goes in the signature as `where`, after a parameter for a precondition and after the result type for a postcondition (`fn withdraw(a Account, amt Int where amt > 0) Account where result.balance == a.balance - amt`). Writing a `requires` or `ensures` line is a syntax error that says to write `where`. `invariant` stays for conditions between fields. An interface member carries its conditions the same way, `fn pick(self, n Int where n >= 0) Int`, and impls are held to them as before. The run-time messages now say "precondition failed" and "postcondition failed". Lesson 55, the Spec (9c), the intros and `moxie doc` follow. Also: the Spec's rule for blocks of children now says a condition loop is refused while `for x in xs` is allowed, and the dead `with` rule left the grammar.
