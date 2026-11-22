@@ -279,6 +279,8 @@ Reach for the tree when the program has to be inspected, stored, or rewritten (a
 - For languages with several kinds of value, make the interface over a type constructor `R[_]`.
 - A tree (`enum`) is one more interpreter, and `interpret` runs it through any other.
 
+*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12), [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← State, lenses, lazy sequences, and monoids](39-state-lenses-monoids.html) · [Contents](./) · [Data types that grow: the expression problem →](41-open-data-types.html)

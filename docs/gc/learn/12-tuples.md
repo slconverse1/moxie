@@ -247,6 +247,8 @@ The lesson on patterns shows every shape a pattern can take, in `when`, in funct
 
 A tuple that holds something that must be closed or handed over exactly once, such as a channel end, is itself such a resource. The lessons on resources and concurrency cover that.
 
+*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)*
+
 ---
 
 [← Generic functions](11-generics.html) · [Contents](./) · [Enums →](13-enums.html)

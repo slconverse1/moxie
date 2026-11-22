@@ -204,6 +204,8 @@ Choose by what you do with the program. Tagless final (lesson 49) runs the progr
 - The compiler checks that every node of a union has every operation you call on it.
 - `Has[Node]` lets one smart constructor build into any union that holds that node.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Tagless final: one program, many interpreters](40-tagless-final.html) · [Contents](./) · [Programs with effects as data: the freer monad →](42-freer-monad.html)

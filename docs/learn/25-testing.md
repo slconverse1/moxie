@@ -125,6 +125,8 @@ What it leaves alone is whatever depends on a value that only exists when the pr
 
 A typical function's life: you write it with a signature, `moxie check` proves the types agree, a `test` block shows an example, a `forall` states the general rule, and `moxie fmt` keeps the layout tidy. Types catch the mistakes that a type can express, and tests catch what is left.
 
+*In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)*
+
 ---
 
 [← Session types: a channel that remembers the conversation](52-session-types.html) · [Contents](./) · [Formatting and checking: `moxie fmt` and `moxie check` →](57-formatting-and-checking.html)

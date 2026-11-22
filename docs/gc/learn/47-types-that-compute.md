@@ -134,6 +134,8 @@ Nothing special is written: there's no keyword, and a function with a print or o
 - The checker limits type-level work (`type_fuel`), and all of it vanishes at run time.
 - A pure function whose arguments are constants is run by the compiler when a constant is needed, such as an array size.
 
+*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)*
+
 ---
 
 [← Typeclasses](46-typeclasses.html) · [Contents](./) · [Properties, field delegates, and proxies →](48-properties-delegates-proxies.html)

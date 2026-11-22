@@ -1,0 +1,68 @@
+// lesson file name: Spec section ids (the {#sN} anchors), comma-separated.  Read by tools/make_learn.py (a "Spec:" line at the end of each lesson)
+// and tools/link_spec.py (a "Guide:" line under each Spec heading).  tests/run_links.py checks that every lesson and every Spec section is mapped.
+01-run: s22
+02-first-program: s1
+03-values-and-names: s1, s2, s3
+58-for-imperative-programmers: s3, s18
+04-numbers: s5
+05-text: s5
+59-fmt-and-locales: s5, s19e
+06-truth-and-choices: s8, s10
+07-loops: s18, s18a
+08-functions: s9
+09-lambdas-and-closures: s11
+10-recursion-and-clauses: s8, s9
+11-generics: s9a
+12-tuples: s6
+13-enums: s6
+14-missing-and-failed: s15
+15-lists: s7
+16-arrays: s7
+56-mutable-blocks: s3
+17-dicts-and-sets: s7
+18-types-of-types: s6
+19-patterns: s8
+51-binary-patterns-and-type-tags: s8
+20-interfaces: s12
+21-streams-and-pipelines: s13
+61-more-stream-tools: s13
+50-pipe-slots-and-caching: s13, s14
+22-fibers-and-channels: s16, s17, s18
+23-select-timers-cancel: s17
+24-atoms-and-futures: s17
+52-session-types: s23e
+25-testing: s22
+57-formatting-and-checking: s22
+26-errors-in-larger-programs: s15
+53-limits-pools-memory: s3a, s19
+27-packages: s4
+28-input-output-files: s19b, s19c
+29-builders-and-blocks: s9b
+30-json: s23c
+31-regex: s23f
+32-statistics: s23a
+33-networking: s19c, s23b
+34-units: s23g
+35-sql: s21
+36-purity-and-composition: s14, s23
+37-functors-and-monads: s23
+38-for-comprehensions: s23
+39-state-lenses-monoids: s23
+40-tagless-final: s12, s23
+41-open-data-types: s23
+42-freer-monad: s23
+43-gadts-and-typestate: s6, s23
+62-reader-writer-continuations: s23
+63-transformers: s23
+45-receiver-blocks-and-mocks: s9b, s12
+46-typeclasses: s12
+47-types-that-compute: s6, s23d
+48-properties-delegates-proxies: s12
+49-refined-parameters: s9d
+55-contracts: s9c
+44-the-system-around-your-program: s19d, s19e, s20
+54-calling-c: s19a
+65-byte-streams: s19c
+60-the-two-dialects: s0, s24a
+66-the-rest-of-moxie: s24
+64-where-to-go-next: s25, s26

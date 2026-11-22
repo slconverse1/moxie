@@ -201,6 +201,8 @@ The first `go` takes the only slot, so `try_go` is refused. The last `go` waits 
 
 Because values never change and channel ends have a single owner, a moxie program has no data races to reason about. Two fibers can only affect each other by sending a message, and every message is a value. The next lessons add the tools for waiting on several things at once, for shared counters, and for stopping a fiber.
 
+*In the Spec: [16. Concurrency overview](../spec.html#s16), [17. Atoms, futures, channels, timers](../spec.html#s17), [18. Fibers, loops, streams](../spec.html#s18)*
+
 ---
 
 [← Pipe slots, `seq`, and doing work once](50-pipe-slots-and-caching.html) · [Contents](./) · [Waiting on several things: select, timers, and cancelling →](23-select-timers-cancel.html)

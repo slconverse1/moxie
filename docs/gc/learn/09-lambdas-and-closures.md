@@ -223,6 +223,8 @@ println(op.apply(21))
 
 A `Dict` of functions makes a dispatch table. Dictionaries have a lesson of their own, and the lesson on interfaces shows the more structured way to attach behavior to a type.
 
+*In the Spec: [11. Closures and first-class functions](../spec.html#s11)*
+
 ---
 
 [← Functions](08-functions.html) · [Contents](./) · [Recursion and function clauses →](10-recursion-and-clauses.html)

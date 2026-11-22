@@ -189,6 +189,8 @@ An index out of range, an arithmetic overflow, a division by zero, a failed asse
 | a form with many fields | `validate` |
 | a caller's bug | an abort, not a `Result` |
 
+*In the Spec: [15. Errors and Results](../spec.html#s15)*
+
 ---
 
 [← Formatting and checking: `moxie fmt` and `moxie check`](57-formatting-and-checking.html) · [Contents](./) · [Limits, pools, and the memory budget →](53-limits-pools-memory.html)

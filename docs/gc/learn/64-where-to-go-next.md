@@ -44,6 +44,8 @@ The commands you will use most are `run`, `test`, `check` (parse and type-check 
 
 That is the whole tour. Write something small, run it, and let it grow.
 
+*In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)*
+
 ---
 
 [← …moxie: the rest of the toolbox](66-the-rest-of-moxie.html) · [Contents](./)

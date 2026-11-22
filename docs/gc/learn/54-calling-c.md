@@ -163,6 +163,8 @@ A missing section, or a library the section doesn't list, is a compile-time erro
 - A `handle` is a move-only resource with a closing function.
 - A callback that C keeps becomes a channel (`Events`) or a handler fiber (`Handler`).
 
+*In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html#s19a)*
+
 ---
 
 [← The system around your program](44-the-system-around-your-program.html) · [Contents](./) · [Byte streams: Reader and Writer →](65-byte-streams.html)

@@ -151,6 +151,8 @@ In GC-free moxie the compiler works out ahead of time how many of each counted r
 
 In moxie/gc there is no memory budget to declare: the collector manages memory, so pools and budgets don't apply.
 
+*In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4)*
+
 ---
 
 [← Limits, pools, and the memory budget](53-limits-pools-memory.html) · [Contents](./) · [Input, output, and files →](28-input-output-files.html)

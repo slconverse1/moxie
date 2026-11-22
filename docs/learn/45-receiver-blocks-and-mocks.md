@@ -238,6 +238,8 @@ The other two styles are a `using` parameter for read-only services such as cloc
 - Extend a foreign type by implementing your own interface for it.
 - A mock is another `impl`; the caller picks it by type, and it costs nothing at run time.
 
+*In the Spec: [9b. Receiver blocks](../spec.html#s9b), [12. Interfaces and `impl` blocks](../spec.html#s12)*
+
 ---
 
 [← Transformers and the mtl classes](63-transformers.html) · [Contents](./) · [Typeclasses →](46-typeclasses.html)

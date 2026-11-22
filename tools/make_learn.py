@@ -64,6 +64,20 @@ def render(text, gc):
     return text
 
 
+def spec_lines():
+    """lesson slug -> [(section id, heading text)] from lessons/_spec.txt and the Spec's own headings"""
+    heads = {}
+    for m in re.finditer(r"^## (\S+)\. (.+?) \{#(s\w+)\}", open(os.path.join(ROOT, "docs", "spec.md"), encoding="utf-8").read(), re.M):
+        heads[m.group(3)] = (m.group(1), m.group(2))
+    out = {}
+    for l in open(os.path.join(SRC, "_spec.txt"), encoding="utf-8"):
+        l = l.strip()
+        if l and not l.startswith("//"):
+            k, v = l.split(":", 1)
+            out[k.strip()] = [(x.strip(), heads[x.strip()]) for x in v.split(",")]
+    return out
+
+
 def lessons():
     """[(part title, [(slug, title, source text)])]"""
     out = []
@@ -105,8 +119,12 @@ def build(gc):
             n += 1
             idx.append(f"{n}. [{t}]({s}.html)")
     open(os.path.join(base, "index.md"), "w", encoding="utf-8").write("\n".join(idx) + "\n")
+    sl = spec_lines()
     for i, (p, s, t, txt) in enumerate(flat):
         body = render(txt, gc)
+        if s in sl:
+            refs = ", ".join(f"[{h[0]}. {h[1]}](../spec.html#{sid})" for sid, h in sl[s])
+            body = body.rstrip() + f"\n\n*In the Spec: {refs}*\n"
         body = re.sub(r"^# (.+)$", lambda m: f"# {i + 1}. {m.group(1)}", body, 1, flags=re.M)
         nv = []
         if i > 0:

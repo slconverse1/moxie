@@ -201,6 +201,8 @@ Box.Full(5)
 Box.Full("five")
 ```
 
+*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)*
+
 ---
 
 [← Tuples](12-tuples.html) · [Contents](./) · [Missing values and failures: Option and Result →](14-missing-and-failed.html)

@@ -157,6 +157,8 @@ println(first)
 
 Most things in moxie produce a value, including `if`, `when`, `for`, and a block marked `do`. That is why you will see `label = if ...` and `area = do ...` throughout this course. The next lessons show each one.
 
+*In the Spec: [1. Source, blocks, bindings](../spec.html#s1), [2. Names and keywords](../spec.html#s2), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)*
+
 ---
 
 [← Your first program](02-first-program.html) · [Contents](./) · [Moxie for imperative programmers →](58-for-imperative-programmers.html)

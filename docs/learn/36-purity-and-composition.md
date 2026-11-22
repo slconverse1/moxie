@@ -158,6 +158,8 @@ List(11, 22, 33)
 - `curry(f)(a)` fixes the first argument; `uncurry[n]` goes the other way.
 - Capturing closures can be passed around, but not stored in data structures.
 
+*In the Spec: [14. Caching, memoization, and effects](../spec.html#s14), [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Databases with SQL](35-sql.html) · [Contents](./) · [Mapping, sequencing, and combining: functors, applicatives, and monads →](37-functors-and-monads.html)

@@ -215,6 +215,8 @@ Reach for the next recipe when the subproblems aren't visited in a fixed order: 
 - `seq` runs every arm that applies, in order, each seeing the previous result.
 - No hidden caching: use `lazy`, a bottom-up `reduce`, a `ref` Dict, or a cache fiber.
 
+*In the Spec: [13. Pipelines and streams](../spec.html#s13), [14. Caching, memoization, and effects](../spec.html#s14)*
+
 ---
 
 [← More stream tools: sources you build](61-more-stream-tools.html) · [Contents](./) · [Fibers and channels →](22-fibers-and-channels.html)

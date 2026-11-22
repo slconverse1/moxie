@@ -159,6 +159,8 @@ println(total(List()))
 
 Every recursive definition above stops because its argument gets smaller. If it doesn't, the program runs out of stack and the running fiber aborts with a "stack overflow" diagnostic. Tail calls avoid it; others are limited by the stack, which is large but finite.
 
+*In the Spec: [8. Patterns and `when`](../spec.html#s8), [9. Functions](../spec.html#s9)*
+
 ---
 
 [← Anonymous functions and closures](09-lambdas-and-closures.html) · [Contents](./) · [Generic functions →](11-generics.html)

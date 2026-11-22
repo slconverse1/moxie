@@ -72,6 +72,8 @@ Mistakes: keeping an old header after changing the program (it is refused as sta
 - `moxie pools` shows the counts; a pool header pins them for a build.
 - A memory budget in `Moxie.toml` needs a limit on every fiber function and a known size for every pool element.
 
+*In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)*
+
 ---
 
 [← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./) · [Packages and imports →](27-packages.html)

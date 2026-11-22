@@ -320,6 +320,8 @@ error: `n` is changed inside the loop (line 4) only for the loop's own condition
 
 Moxie has no `forEach`, `map` loop statement, or `do ... while`. A `for` with `continue` covers the first, streams cover the second, and a `for true` with a `break` covers the third. Streams and their pipelines get a lesson of their own.
 
+*In the Spec: [18. Fibers, loops, streams](../spec.html#s18), [18a. Labels and exits](../spec.html#s18a)*
+
 ---
 
 [← Truth and choices](06-truth-and-choices.html) · [Contents](./) · [Functions →](08-functions.html)

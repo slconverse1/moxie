@@ -293,6 +293,8 @@ Mistakes: `proxy` in an `impl` with no `for`, naming a field that doesn't exist 
 - A delegate (`delegate(Percent)`) shares one rule across many fields.
 - `impl I for T proxy(field)` forwards the whole interface to a field except what you write.
 
+*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)*
+
 ---
 
 [← Types that compute](47-types-that-compute.html) · [Contents](./) · [Refined parameters: proofs in the signature →](49-refined-parameters.html)

@@ -291,6 +291,8 @@ println(len(request))
 5
 ```
 
+*In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)*
+
 ---
 
 [← Numbers](04-numbers.html) · [Contents](./) · [Templates and locales →](59-fmt-and-locales.html)

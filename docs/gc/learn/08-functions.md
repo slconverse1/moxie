@@ -239,6 +239,8 @@ A function that calls itself is *recursive*, and the lesson on recursion shows h
 
 A function that only computes from its arguments is *pure*: given the same arguments it gives the same result, and it affects nothing else. A function that prints, reads a file, or talks to a network has effects. Moxie keeps the two apart at the type level: the compiler works out what a function does, and refuses to use an effectful function where a pure one is required, such as in a lambda written without `fn`, or in a constant evaluated at compile time. You will see that rule in the next lesson.
 
+*In the Spec: [9. Functions](../spec.html#s9)*
+
 ---
 
 [← Loops](07-loops.html) · [Contents](./) · [Anonymous functions and closures →](09-lambdas-and-closures.html)

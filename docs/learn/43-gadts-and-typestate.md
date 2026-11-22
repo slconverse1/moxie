@@ -164,6 +164,8 @@ The state costs nothing at run time. Use typestate for protocols with an order: 
 - A case variable that appears only in the payloads is an existential, shown as `A'` inside the arm.
 - Typestate: an unused type parameter naming the state; each function's signature says which states it takes and gives.
 
+*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Programs with effects as data: the freer monad](42-freer-monad.html) · [Contents](./) · [Reader, writer, and continuations →](62-reader-writer-continuations.html)

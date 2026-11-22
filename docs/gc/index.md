@@ -1981,7 +1981,7 @@ Output: `ada (1, "a", true) Array(1, 2) Ada Array(1, 2, 3, 4, 5)`. Change any of
 
 Scala does much of this with implicits and inline code, and C++ with templates. In moxie it is the same `when` you use on values, one pass, with the same error messages as the rest of the checker.
 
-## 28. Run-time metadata, only where it's needed
+## 28. Run-time metadata, only where it matters
 
 Moxie keeps type information at run time only for values whose type is chosen at run time. An enum is a one-byte tag plus its largest case, a union type is a tag plus its largest member, and an `any Interface` value is a tag plus a payload. Everything else, such as an `Int`, a `String`, or a tuple, carries nothing, because the compiler already knows its type. The tag is what lets `when` take a value apart by type, with an action for each:
 

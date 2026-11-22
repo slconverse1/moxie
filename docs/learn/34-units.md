@@ -169,6 +169,8 @@ A dictionary key of `Int[m]` works like any `Int`; a `Double[m]` is not hashable
 - `fn f[U](x Double[U])` works for any unit.
 - Units cost nothing at run time.
 
+*In the Spec: [23g. Units of measure](../spec.html#s23g)*
+
 ---
 
 [← Networking, deadlines, and parallel work](33-networking.html) · [Contents](./) · [Databases with SQL →](35-sql.html)

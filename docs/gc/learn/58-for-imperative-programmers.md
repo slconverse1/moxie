@@ -205,6 +205,8 @@ error: undefined name `null`
 - `a, b = b, a` swaps; `list += x` pushes; there is no `null`.
 - Recursive enums, `Dict`s of ids, and owning fibers replace pointers; `Result` and `?` replace exceptions.
 
+*In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [18. Fibers, loops, streams](../spec.html#s18)*
+
 ---
 
 [← Values and names](03-values-and-names.html) · [Contents](./) · [Numbers →](04-numbers.html)

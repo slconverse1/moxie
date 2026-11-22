@@ -182,6 +182,8 @@ Wherever the condition is written, the blame and the build modes are the same. T
 - An interface owns the contract of its members; impls can't add their own.
 - Conditions must be pure; release builds drop contracts unless the manifest keeps them.
 
+*In the Spec: [9c. Contracts](../spec.html#s9c)*
+
 ---
 
 [← Refined parameters: proofs in the signature](49-refined-parameters.html) · [Contents](./) · [The system around your program →](44-the-system-around-your-program.html)

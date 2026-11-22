@@ -195,6 +195,8 @@ false
 - The engine never backtracks: no back-references, no look-around, and no pattern can hang.
 - One small difference from Perl and Python: when the repeated part of a group may match nothing (`(a*)*`), a final empty repetition isn't recorded, so the group keeps its last non-empty text.
 
+*In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html#s23f)*
+
 ---
 
 [← JSON and data from outside](30-json.html) · [Contents](./) · [Statistics and prediction →](32-statistics.html)

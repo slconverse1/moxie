@@ -98,6 +98,8 @@ Ok((1, 7))
 
 Every transformer in `fp.trans` is a `MonadTrans`, and `lift[T, _, _](m)` lifts an action of the inner monad through any of them; the `_`s are inferred from `m`. There is no generic `lift` class over transformers beyond this, because a class over constructors of constructors is something moxie leaves out, which is why each transformer also has its own `lift_` function.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Reader, writer, and continuations](62-reader-writer-continuations.html) · [Contents](./) · [Receiver blocks, interface composition, and mocks →](45-receiver-blocks-and-mocks.html)

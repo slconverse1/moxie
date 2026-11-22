@@ -134,6 +134,8 @@ The slow forecast lags behind a series that is climbing, and that is the trade-o
 - Arrays that must pair up have to be the same length.
 - A prediction far outside the data is a guess; a high `r_squared` is not proof of cause.
 
+*In the Spec: [23a. Statistics and prediction (the `stats` package)](../spec.html#s23a)*
+
 ---
 
 [← Regular expressions](31-regex.html) · [Contents](./) · [Networking, deadlines, and parallel work →](33-networking.html)

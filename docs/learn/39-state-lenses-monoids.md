@@ -235,6 +235,8 @@ An empty input gives `empty()`, so name the type when nothing else says which on
 - Data paths compose with `~>` and update with `replace` and `modify`.
 - `Sum`, `Min`, and friends pick a monoid for numbers; `fold_all` and `fold_map` combine.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← `for` comprehensions](38-for-comprehensions.html) · [Contents](./) · [Tagless final: one program, many interpreters →](40-tagless-final.html)

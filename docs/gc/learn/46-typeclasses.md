@@ -266,6 +266,8 @@ The default is specialized for each implementing type.
 - `F[_]` stands for a type constructor; write code once for every monad.
 - `any Interface` holds a mixed collection when the set of types is open.
 
+*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)*
+
 ---
 
 [← Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html) · [Contents](./) · [Types that compute →](47-types-that-compute.html)

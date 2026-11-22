@@ -286,6 +286,8 @@ It keeps the main path of a function flat, with the unusual cases handled at the
 
 A `when` on an enum or union must cover every case, and the compiler checks nested patterns too. If `Some(Circle(r))`, `Some(Square(s))` and `None` are covered but `Some(Triangle(_))` isn't, it is an error that names the missing case. So adding a case to an enum finds, at compile time, every `when` that needs to learn about it.
 
+*In the Spec: [8. Patterns and `when`](../spec.html#s8)*
+
 ---
 
 [← Naming types: aliases, opaque types, and unions](18-types-of-types.html) · [Contents](./) · [Binary patterns, and taking a value apart by its type →](51-binary-patterns-and-type-tags.html)

@@ -261,6 +261,8 @@ println(dot(x, x))
 
 Use a `List` when the number of elements isn't known up front or changes as the program runs. Use an `Array` when it is part of the meaning of the data, or you want the compiler to enforce it. Both are immutable values, and both work with the same stream operations, so changing from one to the other later is usually small.
 
+*In the Spec: [7. Collections](../spec.html#s7)*
+
 ---
 
 [← Lists](15-lists.html) · [Contents](./) · [In-place algorithms: `mutable` blocks →](56-mutable-blocks.html)

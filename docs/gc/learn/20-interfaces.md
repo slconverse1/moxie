@@ -238,6 +238,8 @@ println(21.double())
 
 Because `x.f(y)` is `f(x, y)`, you can use methods in pipelines, pass them as functions, and give a method a second name with an alias (`fn bump = incremented`). The lesson on pipelines shows the payoff.
 
+*In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)*
+
 ---
 
 [← Binary patterns, and taking a value apart by its type](51-binary-patterns-and-type-tags.html) · [Contents](./) · [Streams and pipelines →](21-streams-and-pipelines.html)

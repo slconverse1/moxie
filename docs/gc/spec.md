@@ -39,6 +39,10 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 
 
 ## 0. Principles {#s0}
+
+<!-- guide -->
+*In the Learning Guide: [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
+<!-- /guide -->
 - **Everything is an expression.** Bindings, `if`, `when`, `select`, `seq`, `do`, `for` comprehensions, loops, and blocks all yield a value, and a block's value is its last expression. The only non-expressions are declarations (`fn`, `tuple`, `enum`, `interface`, `impl`, `type`, `forward fn`), `import` and `export`, `init` blocks, `test` blocks, `end` markers, and comments.
 - **Immutable values.** A value never changes. Updating means rebinding a name to a new value, and the only mutable state is the Atom (section 17). **[gc]** A new version of a collection shares most of its structure with the old one, so an update is cheap (section 3).
 - **No null and no zero values.** Every binding needs a value. Absence is an enum case of your own or a `T | ()`, and "might fail" is a `Result`.
@@ -52,6 +56,10 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 - **Left out on purpose:** macros, wildcard imports, automatic partial application (a placeholder call does the job), generator functions (use `unfold`), `!` as an operator (use `not`), `setenv`, exceptions, null, finalizers and weak references **[gc]**, reflection, run-time code loading, a generic `MonadTrans` class and type-level lambdas, and implicit conversions other than lossless widening and conversion into a union or an `any` value.
 
 ## 1. Source, blocks, bindings {#s1}
+
+<!-- guide -->
+*In the Learning Guide: [2. Your first program](learn/02-first-program.html), [3. Values and names](learn/03-values-and-names.html)*
+<!-- /guide -->
 - **Blocks.** A block is opened by a header (a line that starts an `if`, `elif`, `else`, `for`, `when`, `do`, a declaration such as `fn`, `tuple`, `enum`, `impl`, `interface`, and the other block keywords) and holds the lines indented below it. There is no colon: the keyword says a block may follow, and the indented lines are the block. A block header ends at the end of its line unless a bracket is open, so a long header is wrapped inside parentheses. Where a body fits on the header's line, a one-line form joins them with a word: `then` after an `if` or `elif` condition, `do` after a `for` header, `=` after a `fn` header, and `->` after a lambda's parameters. Indentation may differ between blocks but must be consistent within one. A deeper indent anywhere else is an error, and a dedent must match an indentation already on the stack. Every block is a scope, including each arm of `when`, `seq`, and `select`. An optional `end <keyword>` line may follow any block and must match it.
 - **Continuation.** A statement continues after a dangling operator or comma, inside open brackets, when the next line starts with `|>`, `|>>`, another user-defined operator, or a leading `.name`, or after a trailing `\`. Indentation is ignored on continuation lines, so a block can't open inside brackets.
 - **Comments and house style.** Comments are `//` to the end of the line and `/* */`, which nests, so a region that already holds block comments can be commented out. `///` above a declaration is documentation (section 22). The style used in the Learning Guide and the examples: `//` for nearly everything, saying why and not what; `///` for anything that documents a declaration; `/* */` for switching code off and for a rare multi-line header; and plain indentation, not a column of `*`, down the left of a block comment. `moxie fmt` follows from this: it moves a block comment as one unit with its text unchanged.
@@ -89,6 +97,10 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 - **`()`** is the sole value of the type `Unit`, and `Unit` is the empty tuple type.
 
 ## 2. Names and keywords {#s2}
+
+<!-- guide -->
+*In the Learning Guide: [3. Values and names](learn/03-values-and-names.html)*
+<!-- /guide -->
 - **Identifiers** follow Python: letters of any script, digits, and `_`, never starting with a digit. Names are normalized to NFKC, so look-alike forms compare equal.
 - **Case.** The compiler reports an error only where the parser needs case. Type names, generic parameters, and enum cases start with an uppercase letter. Variables, functions, methods, fields, and parameters start with a lowercase letter or `_`. A constant (a module-level binding whose value is known at compile time) is not a variable and may start with an uppercase letter.
 - **Style warnings.** Names should be `snake_case`. Types should be PascalCase without consecutive capitals (`HttpServer`, not `HTTPServer`). Constants should be `SCREAMING_SNAKE_CASE`, and enum cases are PascalCase or SCREAMING_SNAKE_CASE. Deriving names (`show`, `eq`, `ord`, `read`) are lowercase because they name generated functions.
@@ -103,6 +115,10 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 - Type names, prelude cases (`Ok`, `Err`), constants like `MAX`, `INF`, and `NAN`, and functions like `cast`, `fail`, `swap`, `assert`, and `dbg` are not keywords, and a local name can hide them.
 
 ## 3. Memory model: one heap, short pauses** **[gc: rewritten] {#s3}
+
+<!-- guide -->
+*In the Learning Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html)*
+<!-- /guide -->
 
 **Why this is different.** No-GC moxie has no garbage collector, so it plans memory in advance: capacities are declared, resources are counted before the program starts, and strings and temporaries are released in bulk at fixed points. moxie/gc gives that up. It spends a little speed, and accepts short pauses, so that a program never sizes a collection, counts a resource, or asks where a string lives.
 
@@ -127,6 +143,10 @@ How the heap behaves:
 - **Accumulation.** A loop may build a growing string or list by rebinding, as in `acc += x`. `reduce` is still the better style.
 
 ## 3a. The Moxie runtime** **[gc: changed] {#s3a}
+
+<!-- guide -->
+*In the Learning Guide: [35. Limits, pools, and the memory budget](learn/53-limits-pools-memory.html)*
+<!-- /guide -->
 - **Layout at start.** The static region (literals and constants), module storage, the heap, and the entry fiber's stack. Every other fiber gets a stack when it is created.
 - **Startup sequence.**
   1. The runtime reads the manifest limits.
@@ -142,6 +162,10 @@ How the heap behaves:
 - **Tuning** *(settled)*. The generation sizes and the slice budget's exact value belong to the runtime. A program can set a hard ceiling with `[memory] heap` and a pause budget with `[memory] slice`; an optional `nursery` key may be added if a real collector needs one. There is one young generation for the whole heap, since fibers share one thread and one heap. There is no per-fiber young generation, no per-fiber heap cap, and no multi-core scheduling.
 
 ## 4. Packages, modules, imports, exports, linking {#s4}
+
+<!-- guide -->
+*In the Learning Guide: [36. Packages and imports](learn/27-packages.html)*
+<!-- /guide -->
 - **Packages.** A package is a directory of `.mxi` files ordered in `Moxie.toml` (`name`, `files`). The entry package's manifest also holds `entry`, `[fibers]` (`limit`, an optional default cap per fiber function; `stack`), `[memory]` (`heap`, `slice`) **[gc]**, and `[database]` (`schema`, `driver`; section 21). Sizes like `"64KiB"` are 1024-based and `"64KB"` is 1000-based. Files carry no `package` line, since the manifest names the package. A lockfile in the manifest pins every dependency by version and content hash.
 - **Where a package's files come from.** `import a.b` looks beside the importing program for `a/b.mxi` (one file), then for `a/b/Moxie.toml` with `files = [...]` (those files, compiled in that order and sharing the package's names), then for `a/b/b.mxi`, and last in the packages that ship with the interpreter. A program's own files win. `internal` and file-local names are not visible to importers: `util.retry_limit` and `import util (retry_limit)` are compile errors, and a name that is not exported is reported as such. The same holds for a type written in a signature, as in `util.Secret`.
 - **Running without a manifest.** A single file runs with no `Moxie.toml`: `moxie run FILE` gives it every permission and the default limits, and `import util` finds `util.mxi` beside it. With no file named, `moxie run` (and `check`, `test`, `pools`, and `doc`) uses the manifest's `entry` in the current folder, else `main.mxi`; a first argument that is not a file name goes to the program. If neither exists, it says so.
@@ -167,6 +191,10 @@ How the heap behaves:
   - Foreign functions link to C libraries through a `[native]` manifest section (section 19a).
 
 ## 5. Scalars, numbers, text, ranges {#s5}
+
+<!-- guide -->
+*In the Learning Guide: [5. Numbers](learn/04-numbers.html), [6. Text](learn/05-text.html), [7. Templates and locales](learn/59-fmt-and-locales.html)*
+<!-- /guide -->
 
 **Types**
 - `Int` and `UInt` are native word width, `Int8` to `Int64` and `UInt8` to `UInt64` are fixed, `Byte` is `UInt8`, `Float` is 32-bit, `Double` is 64-bit, and `LongDouble` is native extended. `Bool` and `Unit` are built in. `Char` is a 4-byte Unicode scalar and not an integer.
@@ -228,6 +256,10 @@ How the heap behaves:
 - **Default step.** The step is inferred from direction only when both bounds are written as number literals: `1..<10` steps by 1, and `5..<1` and `-1..<-10` step by -1 (the compiler warns when a literal range flips direction by itself). In every other case the default step is 1, and a range is empty when `start` is past `limit`. **A written step is signed, and its sign decides the direction in every case**: `a..<b step s` counts up for a positive `s` and down for a negative one, so `10..<1 step -3` is `10, 7, 4` and `hi..<lo step -1` counts down with variable bounds. A step of 0 is an error. Where both bounds and the step are number literals, a step that disagrees with the direction (`10..<1 step 3`) is a compile error that says which sign to write; with variable bounds it gives an empty range, as an unstepped range does. `step` is a soft keyword, meaningful only directly after a range, and the only spelling of a step: `Range(a..<b, s)` is an error that points here.
 
 ## 6. Tuples, enums, aliases, unions {#s6}
+
+<!-- guide -->
+*In the Learning Guide: [14. Tuples](learn/12-tuples.html), [15. Enums](learn/13-enums.html), [21. Naming types: aliases, opaque types, and unions](learn/18-types-of-types.html), [52. GADTs and typestate](learn/43-gadts-and-typestate.html), [57. Types that compute](learn/47-types-that-compute.html)*
+<!-- /guide -->
 - **Tuples.** `(10, 20)` and `(age: 30, city: "NYC")`. All fields are positional or all are named. `(40)` is an expression, and the 1-tuple is `(:40)` (positional) or `(n: 40)` (named); `(:40)` is shorthand for `(0: 40)`, a tuple with the position label 0 (the name before the colon is left out, and nothing else can start with a colon there, because an expression cannot begin with `:`). Position labels are 0-based and not part of the type, and field names are. Lookup is `t(0)` or `t(name)` with a constant key, and a named field is also `t.name`.
 - **A field can hold any type:** numbers, strings, collections, enums, other tuples, resources, and functions. A tuple inherits the rules of its fields. One that holds a resource is itself a resource: it is moved and never copied, and an ordinary call borrows it for the call. **[gc]** No other kind of field restricts a tuple: strings, slices, and closures are ordinary values.
 - **Two ways to name a record.** Both are supported, and neither is second-class.
@@ -282,6 +314,10 @@ How the heap behaves:
 - **Prelude enums.** `Result` has cases `Ok(value)` and `Err(error)`, and `?` knows it. The future states are `Pending`, `Resolved(T)`, and `Rejected(Error)`, and a dropped write handle rejects with ABANDONED.
 
 ## 7. Collections** **[gc: rewritten] {#s7}
+
+<!-- guide -->
+*In the Learning Guide: [17. Lists](learn/15-lists.html), [18. Arrays and grids](learn/16-arrays.html), [20. Dicts and sets](learn/17-dicts-and-sets.html)*
+<!-- /guide -->
 - **Kinds.** `Array`, `List`, `Set`, `Dict`, and `MultiArray`, each holding one concrete element type. `Array` and `MultiArray` have a size that is part of the type, so "exactly N" is something the compiler can check. `List`, `Set`, and `Dict` grow as needed and carry no size. Access, slices, and updates use parentheses: `a(1)`, `a(1..3)`, `d(k) = v`. An update rebinds the name to a new value (section 3 gives the costs).
 - **Declarations:** `Dict[String, Int]()`, `List[Int]()`, `Array[Int][5]`. A second bracket on a `List`, `Set`, or `Dict` is an optional capacity hint: `Dict[String, Int][100]()` reserves room for 100 entries and changes nothing else, and the collection still grows past it. The size of an Array annotation may be left out when the value gives it: `x Array[Int] = (1, 2, 3)`. A MultiArray's shape is always written. `fill(value)` repeats one value over the declared shape. Element literals take the declared element type.
 - **MultiArray literals** are `(1, 2, 3 ; 4, 5, 6 ;; 7, 8, 9 ; 10, 11, 12)`, with `;` ending a row and `;;` a layer. Type and shape are mandatory and checked, and every cell is listed. Slices: a bare number drops that dimension, a range keeps it, and `..` means the whole axis. Generic functions can take any shape (`MultiArray[Int][R, C]`).
@@ -293,6 +329,10 @@ How the heap behaves:
 - **Passing by `ref`.** Collections can be passed by `ref` (section 9). Copy-in and copy-out pass references, so there is no size warning.
 
 ## 8. Patterns and `when` {#s8}
+
+<!-- guide -->
+*In the Learning Guide: [8. Truth and choices](learn/06-truth-and-choices.html), [12. Recursion and function clauses](learn/10-recursion-and-clauses.html), [22. Patterns](learn/19-patterns.html), [23. Binary patterns, and taking a value apart by its type](learn/51-binary-patterns-and-type-tags.html)*
+<!-- /guide -->
 - **`when value`** matches arms top to bottom. Patterns can be literals, constants, names (which bind), `_`, tuples, named tuples, declared tuples, enum cases, union members, list patterns, array patterns, Dict patterns, and pattern functions (`Num(n)` for a `pattern fn`, described below), nested to any depth. Alternatives are joined with `|` (`1 | 2 -> ...`, `Red | Blue -> ...`) and must bind the same names; a comma is never an alternative. Alternatives may be nested (`Some(1 | 2)`, `(0 | 1, x)`; the parser expands them into whole-pattern alternatives, at most 512) and may follow `is` (`x is A | B`, `x is not A | B`) when they bind no names; they are an error in a `let`, `for` or other pattern that cannot fail. A string literal with holes is a string pattern: `${name}` binds the matched text, `${n Int}` (or `Double`, `Bool`, `String`) binds it as that type and fails when the text does not read as one, `${_}` skips; literal text at the start or end anchors there, a hole between pieces of text takes the shortest match, and two holes need literal text between them; it may be an alternative and may follow `is`, and a `when` that uses one needs a `_` arm. A guarded arm does not count toward coverage, so a `when` on an `Int`, `String` or `Char` needs an unguarded `_`, name or `else`. `when a, b, c` matches several values at once: each arm gives one pattern for each value, separated by commas, and each of them may have `|` alternatives (`Member | Guest, true -> ...`, where `|` binds tighter than the comma), so no tuple parentheses are needed (whole combinations as alternatives are written as tuples: `(Some(x), None) | (None, Some(x)) -> ...`); a lone `_` or `else` takes any combination, and the checker's exhaustiveness check works on the combination. Every `when` must cover every case, and `else` is the fallback. Statements may be joined by `;` at the start of a line (`a = 1; b = 2`), and only there: lambdas, arms and `then`/`do`/`else` bodies take one statement or an indented block. `moxie fmt` keeps a `;` line as written and never adds one. Patterns that cover the whole range of a bounded integer need no `_`.
 - **List and array patterns.** `List(head, ...tail)` needs the exact count unless it ends in `...rest`, and `rest` is an ordinary slice **[gc]**. Array patterns work the same way: `Array(a, b, c)` and `Array(first, ...rest)`. Dict patterns match a subset of entries in any order, keys are literals, and only values bind. Set and MultiArray patterns are not supported.
 - **`else` arm.** `else body` may stand for `_ -> body` as the last arm of a `when`, with or without a scrutinee, and, in a `select`, `else body` for `_ -> body`. It is the same arm in each. In a `seq` stage list, whose arms each run when their test passes, `else stage` is a final stage that runs only when no earlier arm applied. An `else` arm followed by another arm is a syntax error.
@@ -307,6 +347,10 @@ How the heap behaves:
 - **Binary patterns**. A byte layout is matched with a `Bin(...)` pattern on an `Array[Byte]` (or a slice of one). Each element is `name: kind`, read left to right: `u8`, `i8`, `u16be`, `u16le`, `u32be`, `u32le`, `u64be`, `u64le` and the signed `i16be` to `i64le` (the endianness is always written), `bits(n)` for an `n`-bit unsigned field packed from the high bit (the bit fields in a run must add up to whole bytes, which is a syntax error otherwise), and `bytes(n)`, where `n` is a literal or an earlier field, for a slice. A final element with kind `bytes` and no size (`rest: bytes`) takes the remainder. A literal byte or byte string in place of a name must match exactly, and `_` as a name skips a field. Example: in a `when packet`, the arm `Bin(0xCA, version: bits(4), kind: bits(4), len: u16be, body: bytes(len), rest: bytes) -> ...`. A match that is too short, has a wrong literal, or leaves bytes that no element describes (when the pattern does not end in `rest: bytes`) does not abort: the arm simply fails and the next one is tried. Fields are ordinary bindings of the natural integer types (`bits(n)` gives the smallest unsigned type that holds `n` bits), so guards and pins work as usual, and `x is Bin(...)` is a Boolean test. In the reference interpreter a `bytes` field is a copy; in the compiler it borrows, like list-pattern `rest`. A `Bin(...)` can also build bytes. Written as an expression, each element is `value: kind` or a literal byte or byte string, and the result is an `Array[Byte]`: `Bin(0xCA, 2: bits(4), 1: bits(4), n: u16be, body: bytes, crc: u32le)`. The kinds are the same as in patterns, `bytes` takes the whole array (or `bytes(n)` insists on exactly n bytes), a value that does not fit its kind aborts, and the bit fields must add up to whole bytes. A `when` whose arms are all `Bin` patterns is checked by length: an arm with no literal, no guard, and no field-sized `bytes(n)` covers the byte lengths it can match (its fixed size, or that size and longer when it ends in `rest: bytes`), and the compiler reports the first length no arm covers, so `Bin()`, `Bin(a: u8)`, and `Bin(a: u8, b: u8, rest: bytes)` together need no `_` arm.
 
 ## 9. Functions {#s9}
+
+<!-- guide -->
+*In the Learning Guide: [10. Functions](learn/08-functions.html), [12. Recursion and function clauses](learn/10-recursion-and-clauses.html)*
+<!-- /guide -->
 - `fn name[T, N](params) RetType` takes generics first. `RetType` stands for the return type, so in `fn add(x Int, y Int) Int` it is `Int`. The return type is required: a function with none is a compile error, and a function that returns nothing says `Unit`. Every parameter that is a plain name has a type, too: `fn twice(f, x)` is a compile error, and `fn twice(f (Int) -> Int, x Int) Int` is the function. The clauses of a function written as several (see multi-definition functions) state the return type and the parameter types once, on the first clause. A lambda takes its types from context and needs none. Generic parameters are not tuples: they are type and size parameters resolved at each call site (section 9a). A bare interface name as a parameter type is sugar for an anonymous bounded generic: `fn announce(item Speaker) Unit`.
 - **Parameter lists are tuple-shaped.** Items are comma-separated with none after the last, written `name Type`, with no colon, as in Go. Defaults are trailing-only (`count UInt = 1000`), and `=` is not used in argument lists. `f(40)` passes an `Int` while `f((:40))` passes a 1-tuple. When many options travel together, a declared tuple with default fields (section 6) is often better than a long list of defaults.
 - **Calls** are all positional, all named, or positional arguments followed by named ones. Positional arguments fill the leading parameters, and named arguments fill the rest in any order. Each parameter is supplied exactly once (naming a parameter that is also filled positionally is an error), the arguments are evaluated in the order written, and the compiler reorders them to the declared layout. A positional argument after a named one is an error, which is why a bare name after a named argument can only be a pun: `User(name: who, age)` is `User(name: who, age: age)`. A bare name before any named argument is positional, as always, so `User(name, age)` still passes two values in order.
@@ -357,6 +401,10 @@ How the heap behaves:
   - The call site writes `using` where the value is injected: `send_request("u", using, cfg)`, or `ctx: using` in a named call. A caller may override by passing a value. Injecting a resource type is an error: a channel end, timer, or file has one owner, and a callee could consume or close it out of sight. An `Atom` may be injected, since copying it is already implicit and it has nothing to consume or close.
 
 ## 9a. Generics {#s9a}
+
+<!-- guide -->
+*In the Learning Guide: [13. Generic functions](learn/11-generics.html)*
+<!-- /guide -->
 - **What a generic is.** A generic declaration takes parameters in square brackets, which the compiler fills in at each use. Functions, `impl` blocks, declared tuples, enums, aliases, unions, and interfaces can all be generic.
 - **Two kinds of parameter.** A **type parameter** (`T`, `A`, `S`) stands for a type. A **size parameter** (`N`, `R`, `C`) stands for a number that sizes a collection, recognized by appearing in a size position such as `Array[T][N]`. **[gc]** Only `Array` and `MultiArray` carry sizes in their types, so size parameters are rarer here than in GC-free moxie. Generic parameters exist only at compile time.
 - **Bounds.** A type parameter may be bounded by an interface: `[T, S Speaker[T]]`. A type satisfies a bound only through a visible `impl` (section 12). The bound is checked wherever the argument supplies the `T`, including inside a collection: `total(List(1, 2))` is an error when `total[T Monoid](xs List[T])` needs a `Monoid` and `Int` has none. The body may use only what the bound provides, plus what every type allows: binding, passing, returning, and storing the value. A parameter with no bound is plain data. The body is checked once, where the function is defined, with `T` as a type of its own (so `x.m()` on a `T` needs a bound that provides `m`, or a function `m` that takes it): returning a `T` where an `Int` is declared, or a literal where a `T` is, is an error, whatever the function is later called with. `==` and `<` on a `T` need `Equatable` and `Ordered` bounds, and `+` and `-` need `Addable` and `Numeric`; the compiler reports a missing bound where the operator is used ("`<` on a `T` needs an `Ordered` bound"). Every argument for the same `T` has one type, so `pick(1, "x")` is an error and the result of `first("a", "b")` is a `String`. A generic type is written with as many type arguments as it has parameters (`Pair[Int]` for a two-parameter `Pair` is an error). A bound is checked when the function is defined, so a call fails with "`Dog` doesn't implement `Speaker[Int]`" at the call site. A parameter may have several bounds joined with `+`: `[T Equatable + Show]`. A combined requirement can also be named by an interface that embeds others (section 12).
@@ -378,6 +426,10 @@ How the heap behaves:
 - **Not in the language:** default type parameters, variance, and overloading by parameter.
 
 ## 9b. Receiver blocks {#s9b}
+
+<!-- guide -->
+*In the Learning Guide: [38. Builders: a DSL without macros](learn/29-builders-and-blocks.html), [55. Receiver blocks, interface composition, and mocks](learn/45-receiver-blocks-and-mocks.html)*
+<!-- /guide -->
 - **Receiver function types.** `Config.() -> Config` is a function that runs with a `Config` as its receiver. With parameters: `Config.(Int) -> Config`. A function literal for it is written `(n) -> body`, and the receiver comes from the expected type: `apply(base, () -> Config(...self, port: port + 1))`. There is no `fn Config.()` literal, and a literal with no expected receiver type has no receiver. It is the same mechanism as the body of an `impl` block: the receiver is `self`, and its fields and methods can be named without a prefix.
 - **Name lookup inside a receiver body:** locals first, then the receiver's fields and methods, then the module. `self` always means the innermost receiver. A local that hides a receiver member gets a shadow warning, and `self.name` reaches the member anyway. In a `fn (ref Self)` method, `self.n = v` rebuilds the receiver exactly as a bare `n = v` does; in any other method it is a compile error, because it would change only a local copy.
 - **Running a block on a value.** `x.do` runs the indented block with `x` as the receiver and gives the block's value. `x.update` runs the block to build a changed copy of `x`.
@@ -400,6 +452,10 @@ How the heap behaves:
   Nothing else is allowed in the block (`when`, a loop on a condition such as `for i < n`, `return`, and `break` are errors; `for x in xs` is allowed and adds the children of every iteration). A block of children is sugar for building the list with `+`, so the capacity rules of section 7 apply, and the children are checked against `T`. The block fills the `block` parameter, so passing that parameter in the parentheses as well is an error, and a function with no `block` parameter can't be called with a block.
 
 ## 9c. Contracts {#s9c}
+
+<!-- guide -->
+*In the Learning Guide: [60. Contracts: where and invariant](learn/55-contracts.html)*
+<!-- /guide -->
 - **One mechanism.** A contract and a refined parameter (section 9d) are one thing, a `where` condition, in one of three places: after a parameter (a precondition), after the result type (a postcondition), and after a field or in an `invariant` line (a condition on a value that is built). All of them are checked when the program runs, with the same blame and the same build modes. The solver of section 9d additionally tries to prove a `where` at each call, each exit and each construction, and a condition it can neither prove nor refute stays a run-time check. There are no `requires` or `ensures` lines: writing one is a syntax error that says to write `where`.
 - **What they are.** A contract states what a function needs and what it promises, in the code and not in a comment. A `where` after a parameter is a **precondition** that the caller must meet, a `where` after the result type is a **postcondition** that the function guarantees, and `invariant` is a condition that every value of a tuple type must satisfy. Contracts are for faults that are bugs; an expected failure still returns a `Result`.
 - **Where they go.** A condition goes in the signature:
@@ -414,6 +470,10 @@ How the heap behaves:
 - **With tests.** Because `moxie test` checks contracts, a property test (section 22) exercises them: the postconditions are the properties that its generated inputs try to break.
 
 ## 9d. Refined parameters {#s9d}
+
+<!-- guide -->
+*In the Learning Guide: [59. Refined parameters: proofs in the signature](learn/49-refined-parameters.html)*
+<!-- /guide -->
 - **Syntax.** A parameter may end with `where cond`, a Bool condition over integer parameters (and `len(...)` of an array, list, or string): `fn get(xs List[Int], i Int where i >= 0 and i < len(xs)) Int`. The condition may name any earlier parameter and the parameter it follows. `where` after a parameter is distinct from the `where` inside generic brackets (section 8), which constrains type or size parameters.
 - **Proof at the call.** Each call to a function with a refined parameter must satisfy the condition. The checker substitutes the arguments, collects the facts it holds, and asks a built-in solver whether they imply the condition. **Proved** compiles. **Refuted** (the facts contradict it) is an error: "`get` needs `...` for `i`, but here it can never be true". **Unknown** compiles with a note ("can't prove `...`; it is checked when the program runs"), and the condition, which is also a precondition, is checked when the call runs in a debug build, so a bad value is a caller bug. With `[contracts]` `prove = true` in the manifest, or `--prove`, unknown is an error instead, with the two ways out: checking first, or giving the caller the same `where`.
 - **The solver.** Integer linear arithmetic: `+`, `-`, a constant factor, `<`, `<=`, `>`, `>=`, `==`, `~=`, `and`, `or`, `not`, and `len(x)` as an unknown nonnegative integer. It is exact for these (Fourier-Motzkin elimination with integer tightening). A condition or fact with a product of two variables, a float, a string, a call, or anything else the solver doesn't read is left out of the facts, so the call is "unknown". The solver has size limits (256 disjuncts, 1,500 rows), and past them the answer is "unknown".
@@ -424,6 +484,10 @@ How the heap behaves:
 - **Not yet.** Refinements on values that are not parameters, results, or fields, and proof through a `when`, a rebuild, or a field of the result.
 
 ## 10. Operators {#s10}
+
+<!-- guide -->
+*In the Learning Guide: [8. Truth and choices](learn/06-truth-and-choices.html)*
+<!-- /guide -->
 - **Arithmetic and comparison:** `+ - * / %`, `== ~= < > <= >=`. A type defines only `==` and `<` (in an `impl`, below). The compiler derives `~=` as `not (x == y)`, and `>`, `<=`, `>=` from `<` and `==`; defining those four is an error. `==` on a type with no definition and no derived `eq` is an error.
 - **Numbers and generic arithmetic.** Built-in numbers have their operators built in, and the prelude also declares them through `Addable` and `Numeric` (section 12), so a generic `sum` is written `fn sum[T Addable](xs List[T]) T` **[gc]** with no `impl` of your own. Your own types (`Money`, `Vector`) join in by writing `impl Addable for Money`.
 - **Bitwise** works on integers only: `& | ^ ~ << >>`, with word forms `bit_and`, `bit_or`, `bit_xor`, `bit_not`, `shl`, `shr`, and compound forms `&= |= ^= <<= >>=`. `>>` is arithmetic on signed types and logical on unsigned types. A shift count at or above the type's width is a compile error when the count is a constant and aborts the fiber at runtime. `x=~y` lexes as `=` then `~y`.
@@ -455,6 +519,10 @@ How the heap behaves:
   - Operands should be named functions or typed literals, since placeholder literals don't infer here. `(inc ~> double)(5)` works. `>>>` and `<<<` are not used, because they would clash with the unsigned-shift spelling of Java and JavaScript.
 
 ## 11. Closures and first-class functions** **[gc: rewritten] {#s11}
+
+<!-- guide -->
+*In the Learning Guide: [11. Anonymous functions and closures](learn/09-lambdas-and-closures.html)*
+<!-- /guide -->
 - Functions are values. Named functions can be bound, passed, and returned.
 - **Closures are real.** A function literal may use the locals around it. The closure shares the captured values, which is safe because values never change. **[gc]** Any value may be captured except a one-owner resource. Atom handles may be captured.
 - **Typing.** **[gc]** A function type is its signature alone. Every named function, closure, and partial call with that signature has that type, and a written function type means the same thing everywhere: as a parameter, a return type, a tuple field, a collection element, a Dict value, a channel element, or a `go` argument. Two branches may return different closures, a list of callbacks is a `List[(Int) -> Int]`, and a closure can sit in an Atom. There is no "transient" value, and no `closure captures ...` error.
@@ -465,6 +533,10 @@ How the heap behaves:
 - **Currying.** Pipelines and placeholder calls cover partial application, and closures carry data. `curry(f)` turns a function of two or more parameters into a chain of one-argument functions, for any number of parameters: for `f (P1, ..., Pn) -> R` its type is `P1 -> ... -> Pn -> R`. It is the one compiler-known function with its own typing rule (the compiler reads `n` from the type of `f`, so no parameter packs are needed), as `cast[T]` has. A function with a `ref`, `lazy`, `using`, or variadic parameter does not match, by the function-type rule in section 9. `uncurry[n](g)` is the inverse: `g` is a function of one parameter that returns a function, `n` times over, and the result takes all `n` arguments at once, as in `zip_with(uncurry[2](add_c), xs, ys)`. The count is written in brackets, the way `round_to[n]` takes its scale, because from a type like `A -> B -> C` the compiler cannot tell whether `B -> C` is the rest of a chain or a function that a one-parameter function returns. `n` is a constant of 2 or more with no upper limit, and, like `curry`, `uncurry` has its own typing rule: for `g P1 -> ... -> Pn -> R` the result is `(P1, ..., Pn) -> R`. Most code does not need it, since an argument list and a tuple are already the same thing (section 9). `curry(+)` is out, because operators aren't values; write `curry(add)`. A section such as `(+ 1)` is a one-parameter function, so it needs no `curry`. One function name can't accept `f(x)`, `f(x)(y)`, and `f(x, y)` together, because a closure has one parameter shape: write one function per shape. There is no any-arity curry, since it would need parameter packs. `curry(+)` is out, because operators aren't values; write `curry(add)`. A section such as `(+ 1)` is a one-parameter function, so it needs no `curry`. One function name can't accept `f(x)`, `f(x)(y)`, and `f(x, y)` together, because a closure has one parameter shape: write one function per shape. There is no any-arity curry, since it would need parameter packs.
 
 ## 12. Interfaces and `impl` blocks {#s12}
+
+<!-- guide -->
+*In the Learning Guide: [24. Methods and interfaces](learn/20-interfaces.html), [49. Tagless final: one program, many interpreters](learn/40-tagless-final.html), [55. Receiver blocks, interface composition, and mocks](learn/45-receiver-blocks-and-mocks.html), [56. Typeclasses](learn/46-typeclasses.html), [58. Properties, field delegates, and proxies](learn/48-properties-delegates-proxies.html)*
+<!-- /guide -->
 - **All methods live in `impl` blocks.** `impl` is a hard keyword. There is no `fn (Dog) speak()` receiver form; free functions stay `fn name(...)`.
 - **Block kinds:**
   - **Inherent:** `impl Dog` adds methods to your own declared tuple or enum, in the same package.
@@ -509,6 +581,10 @@ How the heap behaves:
 - **Library interfaces:** `Functor`, `Applicative`, and `Monad` are ordinary interfaces in the prelude with impls for `Result`, `Stream`, `ListM` **[gc]**, and `Array[_][N]`, not special language forms (section 23).
 
 ## 13. Pipelines and streams {#s13}
+
+<!-- guide -->
+*In the Learning Guide: [25. Streams and pipelines](learn/21-streams-and-pipelines.html), [26. More stream tools: sources you build](learn/61-more-stream-tools.html), [27. Pipe slots, `seq`, and doing work once](learn/50-pipe-slots-and-caching.html)*
+<!-- /guide -->
 - **Pipe `|>`** inserts the left value into a call: `x |> f(a)`. The candidates are the first and the last mandatory parameters. The compiler places `x` in each candidate, fills the other parameters from the explicit arguments in order, and keeps the placements that type-check. One match is used, two matches are an ambiguity error that asks for `&`, and none is a type error. A middle slot needs `&`, and `&` skips inference: `10 |> subtract(&, 3)` is `subtract(10, 3)` and `10 |> subtract(3, &)` is `subtract(3, 10)`. A stage is always a call (`5 |> double` is not a stage, but `5 |> (inc ~> double)()` is). A trailing lambda fills the last parameter left after the pipe has taken its slot (section 9). There is no partial application. **Tuples in pipes:** when a stage has no explicit arguments and the piped value is a tuple that fits the stage's whole parameter list (by position, or by name for a named tuple), the stage is the call `f(tuple)`, which section 9 already allows, so `(1.0, 2.0, 3.0) |> velocity()` fills `velocity(x, y, z)`. An extra field, or a stage written without parentheses, is not accepted.
 - **`seq`** is a pipeline stage block. It runs every arm whose condition holds, in order, and each arm sees the previous result. A condition is a predicate applied to the current value, each arm returns the type it receives, and the block needs a piped input and has no default arm.
 - **Layout.** A line beginning with `|>` or `|>>` continues the statement, and so does a line beginning with another user-defined operator. A leading `.name` line continues too.
@@ -520,10 +596,14 @@ How the heap behaves:
 - **Combinators** in the prelude: `identity`, `const`, `flip`, and the stream sources `repeat`, `iterate`, and `cycle`. More stages: `distinct()` (drops repeats, keeping the first of each), `intersperse(sep)`, `flatten()` (a stream of streams or lists becomes one stream), `zip_with(f, a, b)`, `reduce_right(start, f)` (a right fold that calls `f(x, acc)`), `min_by(key)` and `max_by(key)` (each gives a `Result`, MISSING when the stream is empty), `span(pred)` (splits at the first element that fails `pred`), and `split_at(n)`; the last two give a pair of Lists. More: `distinct_by(key)`, `zip3(a, b, c)`, `frequencies()` and `count_by(key)` (each a `Dict` of counts), and `transpose()` (rows of any lengths to columns). For `Result`s: `validate(f, xs)` and `collect_errors(rs)` give `Ok` of all the values or `Err` of *all* the errors (where `traverse` and `sequence` stop at the first), `partition_results(rs)` gives `(oks, errs)`, `map_all(f, r1, ..., rN)` or `map_all((r1, ..., rN), f)`, which pipes as `(r1, ..., rN) |> map_all(f)` (two to six `Result`s with one error type `E`, and `f` with N parameters), gives `Ok(f(values))` or `Err` of every error as a `List[E]` in argument order, `recover(r, f)` makes an `Err` an `Ok`, `tap(x, f)` calls `f(x)` and gives `x` back, and `retry(n, delay, f)` calls `f` again only after an `Err`, at most `n` times in all, waiting `delay` between tries and not repeating `NOT_FOUND`, `DENIED`, `BAD_ENCODING`, `OUT_OF_RANGE`, `MISSING`, `TOO_LONG`, or `TOO_SHORT` unless `when: pred` says to. `distinct`, `flatten`, `cycle`, and `intersperse` are lazy, and `cycle` remembers its source's elements, so the source must be finite.
 - **`collect()`** **[gc]** picks its container from the declared type. A `List`, `Set`, or `Dict` always has room. An `Array` needs a provable exact count; otherwise declare a `Result` type that can say TOO_LONG or TOO_SHORT.
 - **Streams can be returned** **[gc]**. A stream holds its source, and the collector keeps the source alive. The exception is a stream that borrows a resource (a channel end or a database connection): it can't outlive the borrow, so a helper that returns one must be an `inline fn`.
-- **`|>>` for `Result`:** `r |>> f` applies `f` to an `Ok` and passes an `Err` along. It is one instance of the generic `|>>` for every `Monad` (section 10). The helpers are `map_ok(r, f)`, `map_err(r, f)`, `or_else(r, f)`, `is_ok(r)`, and `is_err(r)`. `?` and Result field forwarding are unchanged (section 15).
+- **`|>>` for `Result`:** `r |>> f` applies `f` to an `Ok` and passes an `Err` along. It is one instance of the generic `|>>` for every `Monad` (section 10). The helpers are `map_ok(r, f)`, `map_err(r, f)`, `or_else(r, f)`, `is_ok(r)`, and `is_err(r)`, and `unwrap(r)`, which gives the value of an `Ok` and aborts on an `Err` (for a test or a case that cannot fail; `?`, `when`, and `or_else` handle the rest). `?` and Result field forwarding are unchanged (section 15).
 - **Comprehensions.** `List(x for x in s if cond)` is the container form (section 18). The monadic block form is `for` with `yield` (section 23). `Stream` is a `Monad`, so `for` over streams gives nested generators; the result is a stream and can be returned **[gc]**.
 
 ## 14. Caching, memoization, and effects {#s14}
+
+<!-- guide -->
+*In the Learning Guide: [27. Pipe slots, `seq`, and doing work once](learn/50-pipe-slots-and-caching.html), [45. Values, purity, and composing functions](learn/36-purity-and-composition.html)*
+<!-- /guide -->
 Nothing is cached behind your back. Four recipes cover the need:
 - **Single value:** compute once, bind, reuse.
 - **Bottom-up reduce**: build the result from the base case up, with `reduce` carrying only what the next step needs (the last two values for Fibonacci, the previous row for a grid or a longest common subsequence). Memory is the size of the carried part, not the whole table. The Learning Guide has the worked examples.
@@ -540,6 +620,10 @@ Nothing is cached behind your back. Four recipes cover the need:
 - **Compile-time evaluation.** A pure function whose arguments are constants can be evaluated by the compiler in a constant context (a size, a constant binding), for example `KILOBYTE = pow(2, 10)`, giving `1024`. Overflow or a division by zero there is a compile error. Beyond constant arithmetic, the compiler also runs a pure function of the program (one with no effects, declared above its use) on constant arguments wherever a constant is needed: in a size (`Array[Int][fib(10)]`), in a type-level number, and in a top-level binding (`N = fib(10)`, which a later size may use). It does this in a sandbox with no permissions, so it cannot touch files or the network. A call that aborts there is a compile error at the call (`port = parse_port("99999")` fails to compile), and a call that runs longer than the step limit (`eval_fuel` in `[program]`, default 200000) or nests calls more than 1000 deep is an error too. A pure function of an imported package works the same way, written `mathx.big(N)` or, after `import mathx (big)`, `big(N)`. A call with an argument that is not constant is left for run time. A top-level constant whose call always gives an `Err` is a warning. The pure built-ins `abs`, `min`, `max`, `clamp`, `pow` (integers, exponent 0 to 64), `len` (of a text), `floor`, `ceil` and `sqrt` (of a float) are folded the same way when every argument is a literal and the program does not define a function of that name, so `6 / abs(0)` is "division by a constant zero" and `Array[Int][abs(-3)]` is an array of 3. Nothing is folded from a variable.
 
 ## 15. Errors and Results {#s15}
+
+<!-- guide -->
+*In the Learning Guide: [16. Missing values and failures: Option and Result](learn/14-missing-and-failed.html), [34. Errors in larger programs](learn/26-errors-in-larger-programs.html)*
+<!-- /guide -->
 - **Errors are values.** Moxie has no exceptions: "There is no try." An operation that can fail returns a `Result[T, E]`, where `E` can be any type (the default is `Error`).
 - **`?` after an expression** must follow a `Result` (or an `Option`, below), and the enclosing function must return a `Result` whose error type is the same, or one that has a visible `From` impl (section 12) for it. On `Ok` it yields the value, and on `Err` it returns from the function, after converting the error with `From` if the types differ. The conversion makes **one hop** only; there are no chains of conversions. In the entry file, before `daemon`, `?` on an `Err` prints the error's diagnostic and exits with a non-zero status. It is a compile error in an inline fiber (`go fn`, which has no return type to carry the error), in a daemon cycle, and in a function whose return type can't carry the error.
   - `?` is an exit path, with the same rules as `return` (section 1): copy-out for `ref` parameters, and resource moves only on exiting paths.
@@ -560,6 +644,10 @@ Nothing is cached behind your back. Four recipes cover the need:
 - **Numeric rules** (summary, details in section 2): integer arithmetic aborts on overflow; `wrapping_*`, `saturating_*`, and `checked_*` give the other behaviors; floats follow IEEE (`INF`, `NAN`, `is_nan`, `is_inf`, `is_finite`, `finite(x)` returns a `Result`), and `==` on floats gets a warning.
 
 ## 16. Concurrency overview {#s16}
+
+<!-- guide -->
+*In the Learning Guide: [28. Fibers and channels](learn/22-fibers-and-channels.html)*
+<!-- /guide -->
 Moxie's concurrency is Go-style: fibers that communicate over channels, scheduled cooperatively on one thread (section 3a). Sections 17 and 18 give the full rules.
 - **Fibers** are started with `go f(args)`, switch only at `read`, `write`, `sleep`, `select`, and queries, and share nothing but atoms and channels.
 - **Channels** connect fibers. Closing an end is observable (CLOSED). **[gc]** Elements are any value that is not a resource.
@@ -570,6 +658,10 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Structured concurrency and cancellation.** `Cancel()` makes a cancel token (a handle that copies like an `Atom`, tallied in the pools, never released). `cancel(c)` sets it, `is_cancelled(c)` reads it without parking, and `cancelled(c) ->` is a `select` arm that fires once it is set. Cancellation is cooperative: a fiber ends only by noticing the token, never in the middle of a statement, and a fiber parked in a plain `read` or `sleep` does not see it. `wait` (or `wait token`, which binds the name `token` to the block's own `Cancel`) is a statement block that waits for every fiber started inside it, directly or through other fibers, before it ends, and it has the value of its body. Leaving it early (`return`, `break`, `continue`, or `?`) cancels its token first and then waits. Reaching its end normally cancels nothing. A `wait` block parks, so it follows the effect rules for parking, and an abort in any fiber still ends the program. **`race` and `with_timeout`.** `race(f, g)` takes two functions of type `(Cancel) -> T`, runs each in a fiber of an implicit `wait` block, and gives the first result to finish (an `Err` included); then it sets the scope's token and waits for the other, so it returns only when both have ended. `with_timeout(d, f)` takes `f (Cancel) -> Result[T, Error]`, runs it in a fiber of an implicit `wait` block, and gives its result, or `Err(TIMED_OUT)` if `d` passes first (it then sets the token and waits for `f`). Neither can stop a function that ignores its token. Each call site counts as 2 fibers (`race`) or 1 (`with_timeout`) in the program's fiber total and in the pool header. **`par_map` and `par_traverse`.** `par_map(f, xs, limit: n)` runs `f` on every item, at most `n` at once, each in a fiber of an implicit `wait` block, and gives a `List` of the results in input order; `par_traverse` takes an `f` that gives `Result[U, E]` and gives `Ok` of the values in input order, or the `Err` of the earliest failing item (a failure stops new items from starting and the running ones finish; items start in input order, so every earlier item has run). `limit:` is required and must be a constant of 1 or more (a literal or a top-level constant), and each call site adds `n` fibers to the program's total. **`par_map_all`.** `par_map_all(f, c1, ..., cN, limit: n)` (two to six checks) is `map_all` for slow checks: each `ci` is a function of no parameters that gives a `Result`, all with one error type; they run in fibers of an implicit `wait` block, at most `n` at once, none is stopped by another's failure, and the result is `Ok(f(values))` or `Err` with the list of every error in argument order. `limit:` follows the same rule as `par_map`.
 
 ## 17. Atoms, futures, channels, timers {#s17}
+
+<!-- guide -->
+*In the Learning Guide: [28. Fibers and channels](learn/22-fibers-and-channels.html), [29. Waiting on several things: select, timers, and cancelling](learn/23-select-timers-cancel.html), [30. Atoms and futures](learn/24-atoms-and-futures.html)*
+<!-- /guide -->
 - **Atoms.** `counter = Atom[Int](0)`. `@counter` copies a snapshot. The signature is `swap[T](a Atom[T], f (T) -> T) T`: it applies `f` to the old value, stores the result, and **returns the new value**. `f` must not park (effect inference, section 14), and it can be any function expression, so a placeholder call with extra arguments works: `swap(counter, add(_, 5))` or `swap(counter, my_func(_, 5, 9, -1))`. `reset(counter, 0)` sets it. **Validator.** `Atom[T](v, valid: f)` takes a pure, non-parking `f (T) -> Bool` that every new value must pass, the initial one included, before it is stored and before observers fire. `swap` and `reset` abort the fiber on a rejected value and leave the Atom unchanged; `try_swap(a, f)` and `try_reset(a, v)` return `Result[T, Error]` (`Err` has code `OUT_OF_RANGE`) instead. `swap_vals(a, f)` and `reset_vals(a, v)` return `(old, new)`. `on_change(a, handler)` (two arguments) watches the whole value: `handler(old, new)` runs after a write that changes it, never for a rejected one, and `off_change(a, token)` removes it. **[gc]** An Atom may hold any value that is not a resource, including closures and other Atoms. Atoms are ordinary heap objects, collected when nothing can reach them, and cycles are harmless.
 - **Bounded history** **[gc]**. A collector cannot free what a program still holds, so the prelude gives a standard way to keep only recent items. `take_last(n)` is a vertical stream stage that yields the last `n` elements, and `Ring[T](n)` is an immutable bounded buffer. `r + x` returns a new ring with `x` added and, when the ring is full, the oldest item dropped. `len(r)` counts the items, `r(i)` reads the item `i` places from the oldest, and `to_stream(r)` yields oldest to newest. `n` is any `Int` expression and must be at least 1. A common use is an Atom that holds a ring instead of an ever-growing list: `log = Atom[Ring[String]](Ring[String](100))` and `swap(log, _ + msg)`. *(planned)*
 - **Futures.** `r, w = Future[T]()`. The two ends have the types `FutureR[T]` (read: inspect only) and `FutureW[T]` (write: `resolve` or `reject`), mirroring `ChanR` and `ChanW`, so using the wrong end is a compile error. `resolve(w, v)` or `reject(w, error)` consumes `w`. A future leaves `Pending` once, and a dropped `w` rejects with ABANDONED. Inspection never blocks and is idempotent. There is no `await`.
@@ -579,6 +671,10 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Timers.** `Timer()` has `arm`, `arm_every`, `disarm`, and `read`. Arming clears an unread fire. A Timer has one owner and never goes to `go`. `after(d)` creates and arms one, and `sleep(d)` uses no timer. Durations are literals such as `5s` or `250ms`.
 
 ## 18. Fibers, loops, streams {#s18}
+
+<!-- guide -->
+*In the Learning Guide: [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [9. Loops](learn/07-loops.html), [28. Fibers and channels](learn/22-fibers-and-channels.html)*
+<!-- /guide -->
 - **Named fibers** are declared `fiber[3] fn feed(...) Unit` (the limit is optional) and started with `\go feed(tx, msg)`. `go` on a function that isn't declared `fiber` is a compile error. A fiber function may return a value and may use `?` (it ends the fiber at the first failure), but nothing receives the returned value, as with a Go goroutine.
   - **Fiber caps** **[gc]**. Fibers are created on demand, with no slot reserved in advance. A fiber function may declare a cap, `fiber[n]`, the most instances of it that can be alive at once, and the manifest's `[fibers] limit` is an optional default cap for functions that declare none. With no cap, `go` always succeeds. With a cap whose slots are all alive, `go` waits for one to free and `try_go` returns NO_SLOT. A cap protects against a runaway program and has nothing to do with planning memory.
 - **The `go` keyword.** `go` starts a fiber, and the name is deliberate: it is Go's `go`, kept as moxie's acknowledgment of Go's contribution of cheap spawned routines. Like Go's, it takes a call (or an inline `go fn (...)`) with its arguments evaluated at the call, and the new routine talks to the rest of the program over channels. Unlike Go's it waits when a `fiber[n]` function has all its slots in use (Go has no such limit), moves resource arguments, and schedules fibers cooperatively on one OS thread. `try_go` is the same call that returns `Result[Unit, Error]` at once (`NO_SLOT` when full) instead of waiting.
@@ -599,6 +695,10 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
   - **[gc]** A stream over a collection holds a reference to it, so it can be returned, carried through a loop, and passed to `go`. A channel stream borrows its end for the loop and ends when the channel closes, so it can't be returned (a helper that builds one must be an `inline fn`).
 
 ## 18a. Labels and exits {#s18a}
+
+<!-- guide -->
+*In the Learning Guide: [9. Loops](learn/07-loops.html)*
+<!-- /guide -->
 - **Defining a label.** A label is a keyword literal written before a `for` or `do` on the same line: `#outer for row in rows`. The `#` is required at the definition and at every use. There are no implicit labels, and the entry loop is reached with `break daemon`.
 - **Uses.** `break #name` exits the labeled construct with value `()`, and `break #name(value)` exits it with a value. `continue #name` starts the next iteration of the labeled loop with the top-level bindings as they stand, and applies to loops only. `break(x)` is a value and `break #x` is a label, so they never mix.
 - **Types.** Each labeled construct has its own type. A value-carrying exit needs a matching `else` of the same type (or the value is `()`), and an inner loop that only exits through `break #outer(x)` has no value of its own.
@@ -608,6 +708,10 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Resources.** `break`, `continue`, and the labeled forms follow the usual rule: a resource may be moved only on an exiting path, and the end-of-body check applies at `continue`.
 
 ## 19. Resources and packages** **[gc] {#s19}
+
+<!-- guide -->
+*In the Learning Guide: [35. Limits, pools, and the memory budget](learn/53-limits-pools-memory.html)*
+<!-- /guide -->
 - **Resources** **[gc]**. Channel ends, write handles, Timers, and connections are one-owner values that move and are never copied unless explicitly cloned. They can be created anywhere, in loops and in recursion, because nothing is counted in advance, and there is no pool report. The collector reclaims their memory but never closes them: a handle is dropped at a known point (when its owner goes out of scope, or on an abort), and that is when a channel closes or a write handle rejects with ABANDONED.
 - **Manifest.** `Moxie.toml` holds `name` and the ordered `files`. The entry package's manifest also holds `entry`, `[fibers]` (`limit`, `stack`), `[memory]` (`heap`, `slice`) **[gc]**, and `[database]` (`schema`, `driver`; section 21). Sizes like `"64KiB"` are 1024-based and `"64KB"` is 1000-based.
 - **Packages.** A package is a directory of `.mxi` files. Imports sit at the top, must all be used, and have no blank form. Cycles are an error. An import compiles the package when it is encountered, and exports are reached as `config.domain`. The entry file's body is `main`, so there is no `main` function.
@@ -619,6 +723,10 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **No ambient authority.** A package can reach files, the network, or a database only through values it is handed (a connection, a handle), never through globals, so the arguments to a function say what it can touch. Permissions are in section 19d; `Secret[T]` keeps a token out of logs (section 5).
 
 ## 19a. Foreign functions and `moxie bindgen` {#s19a}
+
+<!-- guide -->
+*In the Learning Guide: [62. Calling C](learn/54-calling-c.html)*
+<!-- /guide -->
 
 *(design; a first version runs in the reference interpreter)*
 
@@ -666,6 +774,10 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 
 ## 19b. Standard input and output {#s19b}
 
+<!-- guide -->
+*In the Learning Guide: [37. Input, output, and files](learn/28-input-output-files.html)*
+<!-- /guide -->
+
 A program reaches the terminal, a pipe, or a file redirected to it through three runtime-owned values. They are ambient, as `print` is, so a package that prints can also read input; limiting this belongs to the parked permissions design.
 
 - **`stdin`, `stdout`, `stderr`** are values the runtime owns. They are borrowed and never owned by your code: they need no `move`, copying one leaves the original usable, and `close` on one is an error (closing `stdout` would silence every later `println`). They may be used from any fiber and passed to functions, so code that takes an output parameter can be tested with a different one.
@@ -675,6 +787,10 @@ A program reaches the terminal, a pipe, or a file redirected to it through three
 - **Testing.** `with_stdin(text, f)` runs `f()` with `text` as standard input, so tests and doctests can feed input.
 
 ## 19c. Files and sockets {#s19c}
+
+<!-- guide -->
+*In the Learning Guide: [37. Input, output, and files](learn/28-input-output-files.html), [42. Networking, deadlines, and parallel work](learn/33-networking.html), [63. Byte streams: Reader and Writer](learn/65-byte-streams.html)*
+<!-- /guide -->
 
 Files and network connections are resources of one type, `Io`, so code that reads or writes does not care which it was given. `stdin` and `stdout` are also `Io` values; they differ only in that the runtime owns them (section 19b).
 
@@ -693,6 +809,10 @@ Files and network connections are resources of one type, `Io`, so code that read
 - **Authority.** `open_file`, `connect`, and `listen` are ambient in the source, as `println` is: no signature changes. What a program may actually do is set when it is run (section 19d), and a function that is handed an `Io` can reach only that.
 
 ## 19d. Permissions {#s19d}
+
+<!-- guide -->
+*In the Learning Guide: [61. The system around your program](learn/44-the-system-around-your-program.html)*
+<!-- /guide -->
 - **Kinds.** A program's reach outside its own memory is divided into: `fs.read` and `fs.write` (path prefixes), `net.connect` (`host:port` patterns), `net.listen` (ports), `ffi` (native library names), `process` (program names), `stdin`, and `env`. Writing to `stdout` and `stderr`, and reading `args`, are always allowed. Each kind takes a list of what is granted, or `true` for everything of that kind.
 - **Where they are granted.** In `Moxie.toml`: `[permissions]` with `fs.read = ["data/"]`, `fs.write = ["out/"]`, `net.connect = ["example.com:443", "*.internal:*"]`, `net.listen = ["8080", "9000-9010"]`, `ffi = ["z"]`, `process = ["git"]`, `stdin = true`, `env = true`; `fs = true` and `net = true` grant both halves. On the command line: `--allow-read[=PATHS]`, `--allow-write[=PATHS]`, `--allow-connect[=HOST:PORT]`, `--allow-listen[=PORTS]`, `--allow-ffi[=LIBS]`, `--allow-run[=PROGRAMS]`, `--allow-stdin`, `--allow-env` (a flag with no value grants all of that kind), `--allow-all`, and `--deny-all`. Flags come before the file name; arguments after it belong to the program. Relative paths are relative to the manifest's directory, or to the current directory for a flag.
 - **Defaults.** A program run with no flags and no `[permissions]` table is unrestricted, as a script is; that keeps a single file and every existing package working. A `Moxie.toml` with a `[permissions]` table, even an empty one, restricts the program to what it grants, and any `--allow-*` or `--deny-all` flag restricts it to what the flags grant and replaces the manifest's table, so the person running a program has the last word. An unknown permission or a value of the wrong shape is an error before the program runs.
@@ -705,6 +825,10 @@ Files and network connections are resources of one type, `Io`, so code that read
 - **Blocking.** A read from stdin, a file, or a socket, `connect`, and `accept` park only the calling fiber: the reference interpreter runs the system call on an OS helper thread (as it does for a `parks` foreign function, section 19a) while the other fibers go on. Moxie code still runs on one thread at a time. Virtual time (`sleep`, `Timer`) does not advance while a helper-thread call is in flight, so a program that waits on the outside world is paced by it, and a call that never returns is not reported as a deadlock. Timeouts are `select` with a `Timer`.
 
 ## 19e. The system: clock, random numbers, exit, signals, and the host {#s19e}
+
+<!-- guide -->
+*In the Learning Guide: [7. Templates and locales](learn/59-fmt-and-locales.html), [61. The system around your program](learn/44-the-system-around-your-program.html)*
+<!-- /guide -->
 
 *(first version)*
 
@@ -725,12 +849,20 @@ Files and network connections are resources of one type, `Io`, so code that read
 - **Raw terminal input.** `raw_terminal()` returns `Ok(Terminal)` and puts the terminal in raw mode, or `Err` with `MISSING` when standard input is not a terminal (it is piped, comes from `with_stdin`, or the platform is the browser) and `DENIED` without `stdin`. In raw mode nothing is echoed, a key arrives the moment it is pressed with no Enter, and there is no line editing; Ctrl-C and Ctrl-Z arrive as keys, not as signals, and output is unchanged, so `\n` still ends a line. `read_key(t)` returns `Ok(Key)` and parks only its fiber, or `Err` with `CLOSED` when the input ends. `Key` is a prelude enum: `Typed(c Char)` for any character (accented and other non-ASCII characters too), `Ctrl(c Char)` for a Ctrl combination (`c` is the lowercase letter), `Alt(c Char)`, `Fn(n Int)` for F1 to F12, and `Enter`, `Tab`, `Backspace`, `Delete`, `Escape`, `Up`, `Down`, `Left`, `Right`, `Home`, `End`, `PageUp`, `PageDown`, `Insert`, and `Other` for a sequence moxie does not know. Terminals send some pairs as the same byte, so Ctrl-I is `Tab`, Ctrl-M is `Enter`, and Ctrl-H is `Backspace`; Shift, Ctrl, and Alt on an arrow key are not reported. A lone Escape is told from the start of a longer key by waiting 50 milliseconds. A `Terminal` is a resource: `close(t)` restores the terminal, and so does the program ending, even by an abort. Only one can be open at a time. It uses the system, so `pure` code and `forall` bodies cannot open one, and it needs the `stdin` permission.
 
 ## 20. Program arguments and environment {#s20}
+
+<!-- guide -->
+*In the Learning Guide: [61. The system around your program](learn/44-the-system-around-your-program.html)*
+<!-- /guide -->
 - **`args`** is an unboxed array of the program's arguments. `args(0)` out of range aborts, so check the count or use `get(args, 0)`, which returns a `Result`.
 - **`env`** is an immutable `Dict[String, String]` snapshot taken at start. `env("HOME")` returns a `Result` (MISSING when absent), `.get_or("vi")` supplies a default, and `items(env)` iterates. There is no `set_env`.
 - **Arguments are text.** Every argument is a `String`. Convert one with `read[T]`, as in `port = read[Int](args(1))?`, and use `get(args, i)` for an argument that may be absent. There is no typed argument parsing and no flag parser in the language: a mixer who wants `--flag` handling writes or imports a package on top of `args`.
 - Launching processes is in section 19e; the child receives this `env` snapshot unless `env:` is given.
 
 ## 21. Database access {#s21}
+
+<!-- guide -->
+*In the Learning Guide: [44. Databases with SQL](learn/35-sql.html)*
+<!-- /guide -->
 - **The `sql(conn):` block.** It opens a block whose body is raw SQL text. Moxie reads only the indentation, `$name`, and `${expr}`. `$name` is a bound parameter, so there is no injection, and identifiers (table or column names) can't be parameters.
 - **Schema checking.** The compiler reads the schema file named in the manifest's `[database]` table (`schema`, `driver`) and checks tables, columns, and types at compile time. The SQL accepted is a restricted subset: SELECT with WHERE, JOIN, GROUP BY, the aggregates COUNT, SUM, MIN, and MAX, ORDER BY, LIMIT, and OFFSET, plus INSERT, UPDATE, and DELETE. Anything else is rejected. The reference interpreter checks the subset and that every table and column named exists (with a suggestion for a near miss); working out column types and row types is still to do.
 - **Rows.** A row is a named tuple of the selected columns. Column mapping: INTEGER→Int, BIGINT→Int64, SMALLINT→Int16, REAL→Float, DOUBLE→Double, BOOLEAN→Bool, TEXT→String, VARCHAR(n)→String. A nullable column becomes `T | ()`.
@@ -742,6 +874,10 @@ Files and network connections are resources of one type, `Io`, so code that read
 - **Transactions.** `transaction(conn, f)` is a prelude function that calls the named function `f(tx)`, which returns a `Result`; a partial call supplies the rest, `transaction(conn, move_funds(_, from_id, to_id, amount))`. `Ok` commits, and `Err` (including `?`) rolls back. `tx` is a borrow valid only inside `f`. An abort closes the connection, and the database rolls back. Transactions don't nest (savepoints later). The function can capture any value except a resource **[gc]**, so no channels. An optional named argument picks the isolation level: `isolation: #serializable`.
 
 ## 22. Tooling, tests, and checks {#s22}
+
+<!-- guide -->
+*In the Learning Guide: [1. Running moxie](learn/01-run.html), [32. Testing, assertions, and checking](learn/25-testing.html), [33. Formatting and checking: `moxie fmt` and `moxie check`](learn/57-formatting-and-checking.html)*
+<!-- /guide -->
 - **Commands.** `moxie build`, `moxie run`, `moxie test`, with `--release` for the release profile and `moxie build --report` for the allocation report (below) **[gc]**. `moxie run` prints the compiler's warnings on stderr before the program starts, in the form `file:line: warning: message`, and they never change the exit code. `--quiet` and `--release` leave them out, and `moxie check` prints them with no run.
 - **`moxie fmt`** *(a first version runs in the reference interpreter)*. The formatter rewrites a file into one canonical layout and has no layout options (`--check` only reports, and `--stdout` prints). It never changes meaning, running it twice changes nothing, and it keeps comments. Blocks are already opened by their header and two-space indentation, so the layout rules are few. The first version enforces the ones about lines: two-space indentation (a block indented four spaces, or three, is rewritten to two per level), a continuation line keeps its offset from the statement it continues, a multi-line string, SQL body, or block comment moves as one unit with its text unchanged, a comment takes the level of the code it belongs to, no trailing spaces, no tabs in indentation, at most two blank lines before a top-level line and one inside a block, none at the start or end of the file, and one newline at the end. Before it writes a file it lexes the result and checks that the tokens are the same, that every comment is still there with the same text and in the same order, and that a second run changes nothing; if either fails, the file is left alone. `moxie fmt PATH...` takes files or directories (`.mxi` and `.mx`), and `--check` exits 1 when a file would change. It also puts one space around the operators that are always binary (`=`, `==`, `~=`, `<=`, `>=`, `->`, `|>`, the compound updates, and the pipe-like operators) and around `+ - * / %` when a value comes before them, none before a comma and one after it, and a blank line before a top-level declaration that follows a block or a one-line declaration followed by a block (not after a comment). A name written after `fn` (an operator method) is left as it is. A `fn` followed by `(` (an inline fiber) gets one space, `go fn (tx)(out)`, and a lambda has no space before its colon and one after it, `(x) -> x + 1`. Spacing is applied only when parsing the result gives the same program as parsing the original; otherwise the file gets the layout rules alone. A line longer than 80 columns is broken at its outermost bracket group that reaches past column 80: the opening bracket ends the first line, each item (split at the commas of that group) gets its own line two spaces deeper, and the closing bracket starts a line at the original level, so `f(a, b, c)` becomes `f(`, the items, and `)`. Items and the closing line that are still too long are broken again in the same way. No comma is added or removed, so a one-item group can't turn into a tuple. A line is left alone when it has a comment on it, ends in a backslash, lies inside a multi-line token, has no bracket group to break, or would not get shorter. The width is fixed and is not an option.
 - **Doctests**. A `///` comment directly above a declaration may hold examples. A line starting `/// >` is an expression, and the `///` lines after it are its expected `show` output. `moxie test` runs every example in its own fiber, and a mismatch is a failure that names the declaration.
@@ -759,6 +895,10 @@ Files and network connections are resources of one type, `Io`, so code that read
 - **Warnings** worth knowing: a `ref` parameter never rebound, a shadowed binding in a deeper block, a `when` arm that can never run (it follows an arm that matches everything, or repeats a literal or an enum case), a non-tail recursive call, float `==`, `todo`, a redundant last-line `return`, and a stream used by two terminals.
 
 ## 23. Functional programming support {#s23}
+
+<!-- guide -->
+*In the Learning Guide: [45. Values, purity, and composing functions](learn/36-purity-and-composition.html), [46. Mapping, sequencing, and combining: functors, applicatives, and monads](learn/37-functors-and-monads.html), [47. `for` comprehensions](learn/38-for-comprehensions.html), [48. State, lenses, lazy sequences, and monoids](learn/39-state-lenses-monoids.html), [49. Tagless final: one program, many interpreters](learn/40-tagless-final.html), [50. Data types that grow: the expression problem](learn/41-open-data-types.html), [51. Programs with effects as data: the freer monad](learn/42-freer-monad.html), [52. GADTs and typestate](learn/43-gadts-and-typestate.html), [53. Reader, writer, and continuations](learn/62-reader-writer-continuations.html), [54. Transformers and the mtl classes](learn/63-transformers.html)*
+<!-- /guide -->
 
 (in the prelude; no separate package)
 - **Interfaces** (section 12). `Functor[F[_]]` has `fn fmap[A, B](self F[A], f (A) -> B) F[B]`. `Applicative[F[_]]` embeds `Functor` and adds `static fn pure[A](a A) F[A]` and `fn ap[A, B](self F[(A) -> B], x F[A]) F[B]`. `Monad[F[_]]` embeds `Applicative` and adds `fn flat_map[A, B](self F[A], f (A) -> F[B]) F[B]`. The compiler does not check the laws.
@@ -779,6 +919,10 @@ Files and network connections are resources of one type, `Io`, so code that read
 
 ## 23a. Statistics and prediction (the `stats` package) {#s23a}
 
+<!-- guide -->
+*In the Learning Guide: [41. Statistics and prediction](learn/32-statistics.html)*
+<!-- /guide -->
+
 (a built-in package written in moxie, `moxie/std/stats.mxi`; `import stats`)
 A small library for learning statistics and simple prediction, in both dialects. It is for teaching, so each function is a few readable lines, and it is not a numeric toolkit. Every function takes an `Array[Double][N]`.
 - **One list:** `total(xs)`, `mean(xs)`, `variance(xs)` and `stddev(xs)` (population, divide by `n`), `sample_variance(xs)` and `sample_stddev(xs)` (divide by `n - 1`), `median(xs)`, `quantile(xs, q) Result[Double, Error]` (`q` from 0.0 to 1.0, interpolating, an `Err` outside that), and `z_scores(xs) Result[Array[Double][N], Error]` (an `Err` when the values do not vary). Averages need at least one value, and the spread of a single value is 0.
@@ -790,6 +934,10 @@ A small library for learning statistics and simple prediction, in both dialects.
 
 ## 23b. HTTP (the `http` package) {#s23b}
 
+<!-- guide -->
+*In the Learning Guide: [42. Networking, deadlines, and parallel work](learn/33-networking.html)*
+<!-- /guide -->
+
 (a built-in package written in moxie, `moxie/std/http.mxi`; `import http`)
 A small HTTP/1.1 client and server over the language's own sockets, in both dialects. It is for plain jobs: text bodies, one request per connection (`Connection: close`), and `Content-Length` framing. There is no TLS, no chunked encoding, no redirects, and no keep-alive. A client call needs the `net.connect` permission and a server needs `net.listen`, and neither runs on the browser platform.
 - **Types:** `Header(name, value)`, `Request(method, path, headers, body)` (the path includes any query), and `Response(status, headers, body)`. Headers are a `List[Header]`.
@@ -799,6 +947,10 @@ A small HTTP/1.1 client and server over the language's own sockets, in both dial
 - **Bodies are text.** A body is a `String` in UTF-8, and `Content-Length` counts bytes, not characters. Binary bodies are not supported yet.
 
 ## 23c. JSON and data from outside (the `json` package) {#s23c}
+
+<!-- guide -->
+*In the Learning Guide: [39. JSON and data from outside](learn/30-json.html)*
+<!-- /guide -->
 
 (a built-in package written in moxie, `moxie/std/json.mxi`; `import json`)
 A closed data type for data whose shape is not known until it arrives, in both dialects. It needs no reflection: `Dyn` is an ordinary enum.
@@ -810,6 +962,10 @@ A closed data type for data whose shape is not known until it arrives, in both d
 
 ## 23d. `dynamic fn` and `unsafe fn` {#s23d}
 
+<!-- guide -->
+*In the Learning Guide: [57. Types that compute](learn/47-types-that-compute.html)*
+<!-- /guide -->
+
 *(built)*
 Two declared markers, written before `fn` like an effect, that say where compile-time guarantees stop. They are soft keywords (a variable may be called `dynamic` or `unsafe`).
 - **`dynamic fn`** is required of a function that, in its own body (a lambda counts as part of the enclosing function), calls `field`, `at`, `as_bool`, `as_int`, `as_float`, `as_text` or `as_list` on a `Dyn`, or calls `from_dyn`. Top-level statements are not functions and need no marker.
@@ -819,6 +975,10 @@ Two declared markers, written before `fn` like an effect, that say where compile
 
 ## 23e. Session types (the `session` package) {#s23e}
 
+<!-- guide -->
+*In the Learning Guide: [31. Session types: a channel that remembers the conversation](learn/52-session-types.html)*
+<!-- /guide -->
+
 *(built)* (a built-in package written in moxie, `moxie/std/session.mxi`; `import session`)
 - **What it is.** A conversation between two fibers whose type says what is sent and received, in order. Types: `Send[T, S]` (send a `T`, go on as `S`), `Recv[T, S]`, `Pick[A, B]` (this side chooses), `Offer[A, B]` (the other side chooses), `End`, and the endpoint `Endpoint[S]`. `Peer[S]` is the dual of `S`: `Send` and `Recv` swap, `Pick` and `Offer` swap, `End` stays. `connect[S]()` returns `(Endpoint[S], Endpoint[Peer[S]])`.
 - **Steps.** `send(e, x)`, `recv(e)`, `pick_left(e)`, `pick_right(e)`, `offer(e)` (a `Branch[A, B]` with cases `Left` and `Right`), and `finish(e)`. Each returns a `Result` and, except `finish`, the endpoint for the next state. A cycle in the conversation is a type alias that names itself (`type Echo = Recv[Int, Send[Int, Echo]]`). An endpoint may be sent as a payload (delegation).
@@ -826,6 +986,10 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Runtime.** An endpoint holds one channel for each direction (capacity one), so the protocol types cost nothing at run time. If the other end is gone, a step returns `Err` (CLOSED). A program that does not import `session` pays nothing. Two parties only; no timeouts or labels beyond the two branches of `Pick` and `Offer`.
 
 ## 23f. Regular expressions (the `regex` package) {#s23f}
+
+<!-- guide -->
+*In the Learning Guide: [40. Regular expressions](learn/31-regex.html)*
+<!-- /guide -->
 
 (a built-in package written in moxie, `moxie/std/regex.mxi`; `import regex`)
 - **Engine.** `compile(source)` gives `Result[Regex, Error]` (`must(source)` stops on `Err`). Matching is a Pike VM: one pass over the text with every thread of the pattern alive at once, so time is proportional to the text and no pattern backtracks. Back-references and look-around are refused with an error. Leftmost match, first branch wins, `*?`-style lazy repeats; `^`/`$` (and `\A`/`\z`) are the ends of the text; positions count characters.
@@ -835,6 +999,10 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Not done.** A regex built at run time cannot have typed names (its payload is the `Cap` list). When the repeated part of a group may match nothing (`(a*)*`), the final empty repetition is not recorded: the group keeps the text of its last non-empty repetition where Perl and Python give an empty string. The match itself is the same.
 
 ## 23g. Units of measure {#s23g}
+
+<!-- guide -->
+*In the Learning Guide: [43. Units of measure](learn/34-units.html)*
+<!-- /guide -->
 
 (checker only; units are erased at run time)
 - **Declarations.** `unit m` declares a base unit; `unit N = kg * m / s^2` a unit derived from earlier ones; `unit km = 1000 m` (a number, then units) a scaled unit, a multiple of units declared before it. Each unit has a dimension, a set of base units with whole exponents; a derived unit is the same type as its definition. A unit declared twice, or defined from an undeclared unit, is an error.
@@ -847,10 +1015,14 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Not yet.** Nothing is planned beyond this.
 
 ## 24. Prelude reference {#s24}
+
+<!-- guide -->
+*In the Learning Guide: [65. …moxie: the rest of the toolbox](learn/66-the-rest-of-moxie.html)*
+<!-- /guide -->
 Signatures only, grouped. Names with an asterisk are planned.
 - **Numbers:** `abs`, `min`, `max`, `pow`, `sqrt`, `cast[T]`, `try_cast[T]`, `wrap_to[T]`, `checked_add/sub/mul/div`, `wrapping_*`, `saturating_*`, `is_nan`, `is_inf`, `is_finite`, `finite(x)`, `round_to[n](x, mode)`, `div(a, b, scale, mode)` (Decimal), `parse_number`.
 - **Secrets:** `secret`, `reveal`, `secret_eq`.
-- **Text:** `len` (bytes), `char_count`, `chars`, `graphemes`, `grapheme_count`, `pad_left`, `pad_right`, `fmt`, `try_fmt`, `split`, `split_once` (`Option[(String, String)]`, at the first separator), `join`, `trim`, `strip_prefix` and `strip_suffix` (`Option[String]`), `starts_with`, `ends_with`, `contains`, `show`, `read[T]`, `println`, `print`.
+- **Text:** `len` (bytes), `char_count`, `chars`, `graphemes`, `grapheme_count`, `pad_left`, `pad_right`, `fmt`, `try_fmt`, `split`, `split_once` (`Option[(String, String)]`, at the first separator), `join`, `trim`, `strip_prefix` and `strip_suffix` (`Option[String]`), `starts_with`, `ends_with`, `contains`, `lower` and `upper` (case change), `replace_text(s, old, new)` (every occurrence of `old`), `show`, `read[T]`, `println`, `print`.
 - **Collections:** `get`, `get_or`, `put`, `clear`, `keys`, `values`, `items`, `replace`, `modify`, `to_stream`, `NonEmpty`, `non_empty`, and, in moxie/gc **[gc]**, `Ring*`.
 - **`NonEmpty[T]`** is an ordinary prelude tuple, `tuple NonEmpty[T]` with the fields `head T` and `tail List[T]`, with no compiler support. A `List` still holds one element type; `NonEmpty` is a separate type. `non_empty(list)` returns `Ok(NonEmpty)` or `Err(MISSING)`, `to_list` gives the list back, and `map`, `min`, `max`, `reduce1`, `len`, and `to_stream` work on it, so `min` and `max` return a value, not a Result. The tail has the capacity of any other `List`.
 - **Streams and combinators:** section 13, plus `identity`, `const`, `flip`, `distinct`, `intersperse`, `flatten`, `cycle`, `zip_with`, `reduce_right`, `min_by`, `max_by`, `span`, `split_at`, `take_last*` **[gc]**, `curry`, `uncurry[n]`, `map`, `flat_map`, `pure`, `ap`, `map_ok`, `map_err`, `or_else`, `is_ok`, `is_err`, `ensure`, `guard`, `traverse`, `sequence`.
@@ -859,6 +1031,10 @@ Signatures only, grouped. Names with an asterisk are planned.
 - **Interfaces and operators:** `Equatable`, `Ordered`, `Hashable`, `Show`, `Read`, `Addable`, `Numeric`, `From[E]`, `Functor`, `Applicative`, `Monad`, `|>`, `|>>`, `~>`, `<$>`, `<*>`.
 
 ## 24a. Departures from compile-time type safety {#s24a}
+
+<!-- guide -->
+*In the Learning Guide: [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
+<!-- /guide -->
 Moxie's rule is that a type error is a compile error. There are two kinds of exception, and both are written down here.
 - **Checks on values, by design.** A failure that depends on a value and not on a type aborts at run time: an index out of range, integer overflow, division by zero, a shift at or past the width, `cast[T]` to a type that can't hold the value, a full Dict given a new key, a failed `assert` or contract, a deadlock, and stack overflow (section 15, "Aborts"). A function that can fail on valid input returns a `Result` instead.
 - **Warnings and backstops.** Where the compiler can't verify a type, it warns and says how to make the spot checkable, as in "give `x` a sized type such as `x Array[Int][3]` to check this at compile time instead of runtime". Every such spot is also checked when the program runs, so a mismatch ends the fiber with a message that names the call and the parameter. It is never silent and never a crash of the runtime itself (a crash means a compiler bug).
@@ -872,6 +1048,10 @@ Moxie's rule is that a type error is a compile error. There are two kinds of exc
   6. **Ownership through containers and type parameters** is built. A generic tuple holding a resource (`Box[ChanW[Int]]`) is a resource; a resource copied into a tuple literal needs `move`; a generic function called with a resource for a type parameter is checked as written for that type (so `fn dup[A](x A) (A, A)` with a channel end is an error, as is `F[_]` code that maps a resource container twice); and a function or method that passes its resource parameter, or a field of it, to a function-typed parameter (`f(self.value)`) is assumed to hand it over, since the checker cannot see what `f` does, so the caller writes `move` and the value is gone afterward. A body that only reads a field through a function parameter needs the mixer to say so with `move`; there is no borrow marker yet.
 
 ## 25. Still open {#s25}
+
+<!-- guide -->
+*In the Learning Guide: [66. Where to go next](learn/64-where-to-go-next.html)*
+<!-- /guide -->
 Everything else in this Spec is settled, including every call that earlier drafts marked *(proposed)* or *(assumption)*. What remains open:
 1. **Settled:** child collection for DSLs is the `block` parameter (section 9b). The REPL parked after the 2026-11-02 survey is now built (section 22). Units of measure (section 23g) and active patterns, written `pattern fn` (section 8), were dropped after the survey and have since been built.
 2a. **Foreign functions (section 19a):** the names `CString` and `cstr`, and callbacks that take other pointers or must answer C from a foreign thread are open. The bindgen tool handles clean library headers and not the most tangled ones.
@@ -889,6 +1069,10 @@ Everything else in this Spec is settled, including every call that earlier draft
 11. **No per-fiber heap cap [gc].** An abort ends the program, so a cap that ended only one fiber would not fit. The heap limit is for the whole program.
 
 ## 26. Grammar {#s26}
+
+<!-- guide -->
+*In the Learning Guide: [66. Where to go next](learn/64-where-to-go-next.html)*
+<!-- /guide -->
 
 The grammar below is written over the token stream of the lexer, not over characters: by the time the parser runs, the lexer has joined continuation lines (a line that starts with `|>` or another binary operator, and everything inside brackets), turned indentation into `INDENT` and `DEDENT`, and ended each statement with `NL`. `NAME`, `INT`, `FLOAT`, `STR`, `CHAR`, `DEC`, `DUR`, `BYTES`, `SQL`, `HASH` and `BTICK` are token kinds; a quoted word is a token with that text (a keyword is a `NAME`). `ident` is a `NAME` that is not one of the reserved words in the `%reserved` line. The notation is EBNF: `|` chooses, `( )` groups, `[ ]` is optional, `{ }` repeats zero or more times, and `+` repeats one or more.
 

@@ -256,6 +256,8 @@ Use `Option` when absence is ordinary and needs no explanation: a lookup that ma
 
 A fault that can't be recovered, such as an index past the end of an array, an arithmetic overflow, or a failed `assert`, *aborts* the running fiber with a diagnostic instead. That is reserved for bugs, not for conditions a program should expect. A function that can fail on valid input returns a `Result`.
 
+*In the Spec: [15. Errors and Results](../spec.html#s15)*
+
 ---
 
 [← Enums](13-enums.html) · [Contents](./) · [Lists →](15-lists.html)

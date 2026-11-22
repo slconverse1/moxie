@@ -273,6 +273,8 @@ B
 
 The last expression of a function is its result, so the final `if` needs no `return`. A `return` on the last line is redundant, and the compiler warns about it. The lesson on functions comes soon.
 
+*In the Spec: [8. Patterns and `when`](../spec.html#s8), [10. Operators](../spec.html#s10)*
+
 ---
 
 [← Templates and locales](59-fmt-and-locales.html) · [Contents](./) · [Loops →](07-loops.html)

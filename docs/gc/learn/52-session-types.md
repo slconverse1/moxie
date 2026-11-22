@@ -201,6 +201,8 @@ Mistakes: forgetting `finish` at the end, using the old name after a step (write
 - `Pick` chooses, `Offer` waits and branches; a repeating conversation names itself.
 - Wrong order, wrong type, a dropped conversation, and the wrong end are compile errors.
 
+*In the Spec: [23e. Session types (the `session` package)](../spec.html#s23e)*
+
 ---
 
 [← Atoms and futures](24-atoms-and-futures.html) · [Contents](./) · [Testing, assertions, and checking →](25-testing.html)

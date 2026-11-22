@@ -34,6 +34,8 @@ println(read(rx)?)
 
 - `fiber[n]` limits how many copies of a fiber run at once; `go` waits for a slot, `try_go` gives `Err(NO_SLOT)`.
 
+*In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)*
+
 ---
 
 [← Errors in larger programs](26-errors-in-larger-programs.html) · [Contents](./) · [Packages and imports →](27-packages.html)

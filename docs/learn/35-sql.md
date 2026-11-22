@@ -221,6 +221,8 @@ With a schema in `Moxie.toml`, many mistakes never reach this point: an unknown 
 - Don't nest transactions, send a transaction's connection to a channel, or open a `Connection` inside a loop.
 - `sql` is not allowed at module level or in `init`; read configuration in the entry file before `daemon`.
 
+*In the Spec: [21. Database access](../spec.html#s21)*
+
 ---
 
 [← Units of measure](34-units.html) · [Contents](./) · [Values, purity, and composing functions →](36-purity-and-composition.html)

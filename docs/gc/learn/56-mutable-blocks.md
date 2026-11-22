@@ -157,6 +157,8 @@ The call must say `ref`, and `ref` on a method that does not take `ref self` is 
 - `import algo` has ready-made in-place algorithms behind pure signatures.
 - A method that takes `ref self` rebinds its receiver, and the call is written `ref c.hit(2)`.
 
+*In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3)*
+
 ---
 
 [← Arrays and grids](16-arrays.html) · [Contents](./) · [Dicts and sets →](17-dicts-and-sets.html)

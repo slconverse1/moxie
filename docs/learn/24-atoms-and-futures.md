@@ -163,6 +163,8 @@ result 144
 | a counter or setting several fibers share | `Atom` |
 | to wait for the first of several events | `select` |
 
+*In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)*
+
 ---
 
 [← Waiting on several things: select, timers, and cancelling](23-select-timers-cancel.html) · [Contents](./) · [Session types: a channel that remembers the conversation →](52-session-types.html)

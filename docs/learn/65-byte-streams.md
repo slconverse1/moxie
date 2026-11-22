@@ -142,6 +142,8 @@ Counting(bytes: 13)
 - A read returns an empty array at the end.
 - Write your own functions with a `Reader` or `Writer` bound, and your own types with `impl io.Writer for ...`.
 
+*In the Spec: [19c. Files and sockets](../spec.html#s19c)*
+
 ---
 
 [← Calling C](54-calling-c.html) · [Contents](./) · [Moxie and moxie/gc side by side →](60-the-two-dialects.html)

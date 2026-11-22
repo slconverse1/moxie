@@ -109,6 +109,8 @@ Donnerstag, 05. November 2026
 - The `n` format type and the names in dates come from the `Locale` found by `using`.
 - `parse_number(text, locale)` and `parse_time` read what a locale writes.
 
+*In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e)*
+
 ---
 
 [← Text](05-text.html) · [Contents](./) · [Truth and choices →](06-truth-and-choices.html)

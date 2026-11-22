@@ -148,6 +148,8 @@ Moxie programs are linked statically, from source, and code that can never run i
 
 In GC-free moxie the compiler works out ahead of time how many of each counted resource a program can have: channels, timers, atoms, files and sockets, and fibers. `moxie pools file.mxi` prints the counts, and the manifest can set memory budgets (`[fibers] memory`, `[program] memory`). That is covered in the Spec; it is what lets a moxie program say, before it starts, how much memory it will use.
 
+*In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4)*
+
 ---
 
 [← Limits, pools, and the memory budget](53-limits-pools-memory.html) · [Contents](./) · [Input, output, and files →](28-input-output-files.html)

@@ -124,6 +124,8 @@ syntax error: expected ')' to close the argument list
 
 The message is the reference interpreter's. Reading it is a skill worth building early: it names the line and column, and says what it expected to find.
 
+*In the Spec: [1. Source, blocks, bindings](../spec.html#s1)*
+
 ---
 
 [← Running moxie](01-run.html) · [Contents](./) · [Values and names →](03-values-and-names.html)

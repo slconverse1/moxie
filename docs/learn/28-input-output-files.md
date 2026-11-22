@@ -273,6 +273,8 @@ Reading a file or directory needs the `fs.read` permission and changing one need
 - Files are `Io` values. Open them, close them, and expect an `Err`.
 - Path functions on text never fail; functions that touch the disk always return a `Result`.
 
+*In the Spec: [19b. Standard input and output](../spec.html#s19b), [19c. Files and sockets](../spec.html#s19c)*
+
 ---
 
 [← Packages and imports](27-packages.html) · [Contents](./) · [Builders: a DSL without macros →](29-builders-and-blocks.html)

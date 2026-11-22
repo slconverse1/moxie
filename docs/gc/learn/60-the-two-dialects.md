@@ -107,6 +107,8 @@ The collector works in short slices, so pauses are short, not zero. A full heap 
 
 Reach for GC-free moxie when you need a program whose worst case is known before it runs: firmware, a service with a fixed budget, anything where a pause is a bug. Reach for moxie/gc when you want the language without the bookkeeping. Both read the same, and a program that avoids the features above runs in both.
 
+*In the Spec: [0. Principles](../spec.html#s0), [24a. Departures from compile-time type safety](../spec.html#s24a)*
+
 ---
 
 [← Byte streams: Reader and Writer](65-byte-streams.html) · [Contents](./) · […moxie: the rest of the toolbox →](66-the-rest-of-moxie.html)

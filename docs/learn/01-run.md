@@ -77,6 +77,8 @@ Unix is the main platform for moxie (macOS, Linux and similar). Check `python3 -
 
 Any text editor works. A [VS Code extension](https://github.com/slconverse1/moxie/tree/main/tools/editor/vscode-moxie) and a [vim syntax file](https://github.com/slconverse1/moxie/tree/main/tools/editor/vim) give colors and 2-space indentation. Indentation matters in moxie: a block is written by indenting its lines two spaces, as you will see in a few lessons.
 
+*In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)*
+
 ---
 
 [Contents](./) · [Your first program →](02-first-program.html)

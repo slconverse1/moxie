@@ -296,6 +296,8 @@ In raw mode Ctrl-C is just a key, so a program must choose to quit on it. Call `
 - Run other programs with a list of arguments, never a command string; check `r.code`.
 - A `DateTime` has no zone; convert through a moment to do arithmetic.
 
+*In the Spec: [19d. Permissions](../spec.html#s19d), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e), [20. Program arguments and environment](../spec.html#s20)*
+
 ---
 
 [← Contracts: where and invariant](55-contracts.html) · [Contents](./) · [Calling C →](54-calling-c.html)

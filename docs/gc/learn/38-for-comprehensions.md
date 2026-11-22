@@ -181,6 +181,8 @@ For more than one generator, use the block form with `yield`, which is the gener
 - `List(x for x in xs if cond)` builds a collection in one line; its size comes from the declared type.
 - Choose `?` for a short function, `for` when you have a chain of steps and the shape reads better, `traverse` for a list.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Mapping, sequencing, and combining: functors, applicatives, and monads](37-functors-and-monads.html) · [Contents](./) · [State, lenses, lazy sequences, and monoids →](39-state-lenses-monoids.html)

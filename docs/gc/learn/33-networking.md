@@ -202,6 +202,8 @@ The order of any output the calls themselves print is up to the scheduler, but t
 - `race` and `with_timeout` stop work by *asking*, through a `Cancel` token.
 - `par_map` and `par_traverse` give results in input order, with a compile-time `limit:`.
 
+*In the Spec: [19c. Files and sockets](../spec.html#s19c), [23b. HTTP (the `http` package)](../spec.html#s23b)*
+
 ---
 
 [← Statistics and prediction](32-statistics.html) · [Contents](./) · [Units of measure →](34-units.html)

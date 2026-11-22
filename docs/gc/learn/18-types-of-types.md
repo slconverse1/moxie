@@ -230,6 +230,8 @@ User(id: 1, firm: Firm(name: "Initech Ltd", floor: 2))
 | "exactly one of these named cases" | `enum` |
 | "a value that could be an `Int` or a `String`" | `union type` |
 
+*In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)*
+
 ---
 
 [← Dicts and sets](17-dicts-and-sets.html) · [Contents](./) · [Patterns →](19-patterns.html)

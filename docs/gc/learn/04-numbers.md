@@ -304,6 +304,8 @@ println(0.10d + 0.20d)
 
 A `Decimal` prints with exactly its scale, and compares exactly. The ordinary `Double` sum above shows why money is better in `Decimal`.
 
+*In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)*
+
 ---
 
 [← Moxie for imperative programmers](58-for-imperative-programmers.html) · [Contents](./) · [Text →](05-text.html)

@@ -180,6 +180,8 @@ Leaving a `wait` block early, with `?`, `return`, `break`, or `continue`, cancel
 
 A fiber parked in a plain `read` or `sleep` can't notice a cancel, so a fiber that has to stop promptly waits inside a `select` that has a `cancelled` arm, and uses `after(d)` for a sleep that can be cut short.
 
+*In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)*
+
 ---
 
 [← Fibers and channels](22-fibers-and-channels.html) · [Contents](./) · [Atoms and futures →](24-atoms-and-futures.html)

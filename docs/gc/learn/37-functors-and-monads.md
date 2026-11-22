@@ -233,6 +233,8 @@ The checks run one after another. When each one is slow, `par_map_all(f, c1, c2,
 - Your own types join in with `impl Monad[Box]`, no `for`.
 - Write `Box.pure(42)`, not `pure(42)`, and parenthesize `<$>` and `<*>`.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Values, purity, and composing functions](36-purity-and-composition.html) · [Contents](./) · [`for` comprehensions →](38-for-comprehensions.html)

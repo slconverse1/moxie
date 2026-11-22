@@ -257,6 +257,8 @@ Each terminal re-runs the recipe from the source. If you need the values twice, 
 
 A loop says *how*: keep a counter, update a total, remember to stop. A pipeline says *what*: keep the evens, multiply, sum. The pipeline can't forget to reset an accumulator, and each stage is small enough to name and test. A `for` loop is still the right tool when the body has effects or when the iteration is genuinely stateful.
 
+*In the Spec: [13. Pipelines and streams](../spec.html#s13)*
+
 ---
 
 [← Methods and interfaces](20-interfaces.html) · [Contents](./) · [More stream tools: sources you build →](61-more-stream-tools.html)

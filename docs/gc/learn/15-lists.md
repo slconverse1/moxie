@@ -254,6 +254,8 @@ just 7
 7 and 2 more
 ```
 
+*In the Spec: [7. Collections](../spec.html#s7)*
+
 ---
 
 [← Missing values and failures: Option and Result](14-missing-and-failed.html) · [Contents](./) · [Arrays and grids →](16-arrays.html)

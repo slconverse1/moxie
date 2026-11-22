@@ -126,6 +126,8 @@ Most of the built-in functions you have used are generic: `println` takes any `T
 
 A type parameter can also be a *size*, a number that sizes a fixed-size collection. The lesson on arrays shows that; the point to remember here is that a size in brackets is read as an `Int` inside the function, and a `where` clause can limit it (`N where N > 0`).
 
+*In the Spec: [9a. Generics](../spec.html#s9a)*
+
 ---
 
 [← Recursion and function clauses](10-recursion-and-clauses.html) · [Contents](./) · [Tuples →](12-tuples.html)

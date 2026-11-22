@@ -243,6 +243,8 @@ List("a", "b", "c")
 Dict(1 -> List(1, 4), 2 -> List(2, 5), 0 -> List(3, 6))
 ```
 
+*In the Spec: [7. Collections](../spec.html#s7)*
+
 ---
 
 [← In-place algorithms: `mutable` blocks](56-mutable-blocks.html) · [Contents](./) · [Naming types: aliases, opaque types, and unions →](18-types-of-types.html)

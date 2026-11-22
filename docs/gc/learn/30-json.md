@@ -180,6 +180,8 @@ By default only the function that does the thing is marked, so a wrapper that ch
 - Functions that read a `Dyn` are written `dynamic fn`.
 - Don't expect a map's keys to come out sorted, or `\u` escapes in strings (not supported yet).
 
+*In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html#s23c)*
+
 ---
 
 [← Builders: a DSL without macros](29-builders-and-blocks.html) · [Contents](./) · [Regular expressions →](31-regex.html)

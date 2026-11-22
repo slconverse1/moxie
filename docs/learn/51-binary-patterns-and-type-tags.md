@@ -155,6 +155,8 @@ Mistakes: writing `Int(n)` for a scalar (use `n@Int`), and expecting `Dog(d)` to
 - `Bin` as an expression builds bytes.
 - `n@Int` takes a union or `any` value apart by type and gives `n` the narrowed type.
 
+*In the Spec: [8. Patterns and `when`](../spec.html#s8)*
+
 ---
 
 [← Patterns](19-patterns.html) · [Contents](./) · [Methods and interfaces →](20-interfaces.html)

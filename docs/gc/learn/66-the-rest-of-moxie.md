@@ -316,6 +316,8 @@ The Spec has the rest, section by section.
 - A range is a value with `first`, `last`, and `step`.
 - Use `seeded(n)` for reproducible random values and `random_bytes(n)` for secrets.
 
+*In the Spec: [24. Prelude reference](../spec.html#s24)*
+
 ---
 
 [← Moxie and moxie/gc side by side](60-the-two-dialects.html) · [Contents](./) · [Where to go next →](64-where-to-go-next.html)

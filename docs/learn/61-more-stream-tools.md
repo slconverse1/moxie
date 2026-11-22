@@ -154,6 +154,8 @@ Packet(id: 1)
 Packet(id: 2)
 ```
 
+*In the Spec: [13. Pipelines and streams](../spec.html#s13)*
+
 ---
 
 [← Streams and pipelines](21-streams-and-pipelines.html) · [Contents](./) · [Pipe slots, `seq`, and doing work once →](50-pipe-slots-and-caching.html)

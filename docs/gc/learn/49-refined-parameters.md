@@ -156,6 +156,8 @@ Account(balance: 40, name: "ann")
 - The condition is kept as a run-time precondition, so calls through function values are still checked at run time.
 - `type Pos = Int where self > 0` names a condition; parameters, bindings, results, and fields declared with it are all checked.
 
+*In the Spec: [9d. Refined parameters](../spec.html#s9d)*
+
 ---
 
 [← Properties, field delegates, and proxies](48-properties-delegates-proxies.html) · [Contents](./) · [Contracts: where and invariant →](55-contracts.html)

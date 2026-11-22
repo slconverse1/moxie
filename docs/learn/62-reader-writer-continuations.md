@@ -15,6 +15,8 @@ The monads in this lesson and the next are packages that need closures of one ty
 
 Lesson 46 and lesson 49 cover the monads that do exist in GC-free moxie.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← GADTs and typestate](43-gadts-and-typestate.html) · [Contents](./) · [Transformers and the mtl classes →](63-transformers.html)

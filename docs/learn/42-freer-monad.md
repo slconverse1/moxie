@@ -126,6 +126,8 @@ Handlers that run for a long program should be `tailrec fn`: a `tailrec fn` runs
 - `fp.freer` gives `Prog`, `send`, `done`, and a `Monad` for any command type.
 - A handler that removes some commands and passes the rest on composes with others.
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← Data types that grow: the expression problem](41-open-data-types.html) · [Contents](./) · [GADTs and typestate →](43-gadts-and-typestate.html)

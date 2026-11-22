@@ -135,6 +135,8 @@ An `Option` is a source too, of zero or one element: `for x in maybe` runs once 
 
 In moxie/gc a function can return a stream freely, unless the stream borrows a resource such as an open file. Nothing like `inline fn` is needed.
 
+*In the Spec: [13. Pipelines and streams](../spec.html#s13)*
+
 ---
 
 [← Streams and pipelines](21-streams-and-pipelines.html) · [Contents](./) · [Pipe slots, `seq`, and doing work once →](50-pipe-slots-and-caching.html)

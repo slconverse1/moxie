@@ -88,6 +88,8 @@ Anything that depends on a value at run time (a `Dict` key that is present, an i
 - `moxie check` proves types, names, capabilities, ownership, sizes, effects, and permissions before anything runs.
 - It reports only what it can prove; what depends on run-time values is caught when the code runs.
 
+*In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)*
+
 ---
 
 [← Testing, assertions, and checking](25-testing.html) · [Contents](./) · [Errors in larger programs →](26-errors-in-larger-programs.html)

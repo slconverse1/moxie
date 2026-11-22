@@ -69,6 +69,8 @@ println("${cont.eval_cont(safe_div(10, 2))} ${cont.eval_cont(safe_div(1, 0))}")
 
 Most programs reach for `?` or `break(value)` before this, since they do the same job in plain code. Continuations earn their place when a generic function written for any monad needs an early exit (see the next lesson).
 
+*In the Spec: [23. Functional programming support](../spec.html#s23)*
+
 ---
 
 [← GADTs and typestate](43-gadts-and-typestate.html) · [Contents](./) · [Transformers and the mtl classes →](63-transformers.html)
