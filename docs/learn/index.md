@@ -74,3 +74,5 @@ You don't need to know any functional programming. If you do, the lessons point 
 
 36. [Values, purity, and composing functions](36-purity-and-composition.html)
 37. [Mapping, sequencing, and combining: functors, applicatives, and monads](37-functors-and-monads.html)
+38. [`for` comprehensions](38-for-comprehensions.html)
+39. [State, lenses, lazy sequences, and monoids](39-state-lenses-monoids.html)

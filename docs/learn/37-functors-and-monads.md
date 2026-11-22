@@ -233,4 +233,4 @@ The checks run one after another. When each one is slow, `par_map_all(f, c1, c2,
 
 ---
 
-[← Values, purity, and composing functions](36-purity-and-composition.html) · [Contents](./)
+[← Values, purity, and composing functions](36-purity-and-composition.html) · [Contents](./) · [`for` comprehensions →](38-for-comprehensions.html)

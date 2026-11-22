@@ -50,3 +50,5 @@
 # Functional programming
 36-purity-and-composition
 37-functors-and-monads
+38-for-comprehensions
+39-state-lenses-monoids
