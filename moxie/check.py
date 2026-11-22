@@ -8155,7 +8155,7 @@ class Checker(RefineMixin):
             if any(b not in VALUE_IFACES for b in names):
                 continue          # a user interface may embed what is needed; the checker cannot tell
             if not set(names) & need[0]:
-                self.err(n.line, f"`{n.op}` on a `{tp.name}` needs a `{need[1]}` bound: write `{tp.name}: {need[1]}`")
+                self.err(n.line, f"`{n.op}` on a `{tp.name}` needs {'an' if need[1][0] in 'AEIOU' else 'a'} `{need[1]}` bound: write `[{tp.name} {need[1]}]` in the function's type parameters")
                 return
 
     def embedded_names(self, names):
@@ -8380,7 +8380,7 @@ class Checker(RefineMixin):
             if tp is not None and not getattr(tp, "where", None):
                 bn = [_tn(x) for x in getattr(tp, "bounds", None) or []]
                 if "Hashable" not in bn and all(x in VALUE_IFACES for x in bn):
-                    self.err(line, f"`{tp.name}` is used as {'a Dict key' if t.path == ['Dict'] else 'a Set element'}, so it needs a `Hashable` bound: write `{tp.name}: Hashable`")
+                    self.err(line, f"`{tp.name}` is used as {'a Dict key' if t.path == ['Dict'] else 'a Set element'}, so it needs a `Hashable` bound: write `[{tp.name} Hashable]` in the function's type parameters")
             if k.__class__ is TAny and self.any_names(k) and "Hashable" not in self.embedded_names(self.any_names(k)):
                 self.err(line, f"`any {' + '.join(self.any_names(k))}` is used as {'a Dict key' if t.path == ['Dict'] else 'a Set element'}, so the interface must embed `Hashable`")
             if k.__class__ is TName and len(k.path) == 1 and (k.path[0] in self.tuples or k.path[0] in self.enums) and not k.groups:

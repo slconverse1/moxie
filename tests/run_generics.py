@@ -3,9 +3,9 @@ import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 BAD = [
- ("< on an unbounded T", 'fn smaller[T](a T, b T) Bool\n  a < b\nprintln(smaller(1, 2))\n', "needs a `Ordered` bound"),
- ("== on an unbounded T", 'fn same[T](a T, b T) Bool\n  a == b\nprintln(same(1, 2))\n', "needs a `Equatable` bound"),
- ("+ on a T that is only Ordered", 'fn add[T Ordered](a T, b T) T\n  a + b\nprintln(add(1, 2))\n', "needs a `Addable` bound"),
+ ("< on an unbounded T", 'fn smaller[T](a T, b T) Bool\n  a < b\nprintln(smaller(1, 2))\n', "needs an `Ordered` bound"),
+ ("== on an unbounded T", 'fn same[T](a T, b T) Bool\n  a == b\nprintln(same(1, 2))\n', "needs an `Equatable` bound"),
+ ("+ on a T that is only Ordered", 'fn add[T Ordered](a T, b T) T\n  a + b\nprintln(add(1, 2))\n', "needs an `Addable` bound"),
  ("* on a T that is only Addable", 'fn dbl[T Addable](a T) T\n  a * a\nprintln(dbl(2))\n', "needs a `Numeric` bound"),
  ("one T bound to two types", 'fn pick[T](a T, b T) T = a\nprintln(pick(1, "x"))\n', "needs one type for `T`"),
  ("a result type that follows T", 'fn first[T](a T, b T) T = a\nx Int = first("a", "b")\nprintln(x)\n', "expected"),

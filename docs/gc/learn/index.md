@@ -21,3 +21,19 @@ You don't need to know any functional programming. If you do, the lessons point 
 5. [Text](05-text.html)
 6. [Truth and choices](06-truth-and-choices.html)
 7. [Loops](07-loops.html)
+
+## Functions
+
+8. [Functions](08-functions.html)
+9. [Anonymous functions and closures](09-lambdas-and-closures.html)
+10. [Recursion and function clauses](10-recursion-and-clauses.html)
+11. [Generic functions](11-generics.html)
+
+## Data
+
+12. [Tuples](12-tuples.html)
+13. [Enums](13-enums.html)
+14. [Missing values and failures: Option and Result](14-missing-and-failed.html)
+15. [Lists](15-lists.html)
+16. [Arrays and grids](16-arrays.html)
+17. [Dicts and sets](17-dicts-and-sets.html)

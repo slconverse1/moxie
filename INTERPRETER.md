@@ -12,6 +12,10 @@ A pure-Python interpreter for the frozen Moxie language. No C extensions, no thr
 
 Exit codes: 0 ok, 1 runtime abort or failed test, 2 syntax or compile error.
 
+## Known limits of the reference interpreter
+
+- **Tail calls do not reuse the frame.** The language specifies that a call in tail position (and, for `tailrec fn`, every self-call) runs in constant stack. The interpreter evaluates with nested Python generators, so a tail-recursive function of depth n takes time that grows faster than n (about 0.5 s at 2,000 deep, 9 s at 8,000), and a very deep recursion can hit the Python stack. Loops (`for`, `while`) are not affected. Fixing it means a trampoline in the call path.
+
 ## What it does
 * Runs everything in the Spec and Guide that is not marked "not designed": declarations, enums, patterns, generics,
   interfaces and impls, `F[_]` constructor classes, pipes, `for` comprehensions, streams, data paths, fixed-capacity

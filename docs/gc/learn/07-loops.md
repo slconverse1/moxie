@@ -296,4 +296,4 @@ Moxie has no `forEach`, `map` loop statement, or `do ... while`. A `for` with `c
 
 ---
 
-[← Truth and choices](06-truth-and-choices.html) · [Contents](./)
+[← Truth and choices](06-truth-and-choices.html) · [Contents](./) · [Functions →](08-functions.html)

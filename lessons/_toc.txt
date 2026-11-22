@@ -6,3 +6,15 @@
 05-text
 06-truth-and-choices
 07-loops
+# Functions
+08-functions
+09-lambdas-and-closures
+10-recursion-and-clauses
+11-generics
+# Data
+12-tuples
+13-enums
+14-missing-and-failed
+15-lists
+16-arrays
+17-dicts-and-sets

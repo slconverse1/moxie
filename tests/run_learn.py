@@ -62,8 +62,10 @@ def fill(args):
         for slug, _, txt in ls:
             if args and not any(slug.startswith(a) for a in args):
                 continue
-            lines, i, changed = txt.split("\n"), 0, False
+            lines, i, changed, ingc = txt.split("\n"), 0, False, False
             while i < len(lines):
+                if lines[i].strip() in ("@gc", "@nogc", "@end"):
+                    ingc = lines[i].strip() == "@gc"
                 if lines[i].strip() == "```moxie":
                     j = i + 1
                     while lines[j].strip() != "```":
@@ -78,7 +80,7 @@ def fill(args):
                             p = os.path.join(d, "main.mxi")
                             open(p, "w").write(src)
                             stdin = "\n".join(re.findall(r"^//! stdin: ?(.*)$", src, re.M))
-                            r = subprocess.run([sys.executable, "-m", "moxie", "run", p], cwd=ROOT, input=stdin + "\n", capture_output=True, text=True, timeout=60)
+                            r = subprocess.run([sys.executable, "-m", "moxie"] + (["--gc"] if ingc else []) + ["run", p], cwd=ROOT, input=stdin + "\n", capture_output=True, text=True, timeout=60)
                         got = r.stdout.rstrip("\n") if lines[k].strip() == "```output" else re.sub(r"^main\.mxi:\d+(:\d+)?: ", "", (r.stderr + r.stdout).strip(), flags=re.M)
                         lines[k + 1:k + 1] = got.split("\n")
                         changed = True
