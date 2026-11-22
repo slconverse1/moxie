@@ -36,6 +36,7 @@
 # Quality and larger programs
 25-testing
 26-errors-in-larger-programs
+53-limits-pools-memory
 
 # Packages
 27-packages
@@ -71,3 +72,4 @@
 
 # Your program and its machine
 44-the-system-around-your-program
+54-calling-c
