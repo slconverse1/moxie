@@ -355,53 +355,6 @@ impl[M[_] Monad + MonadReader[Q], R, Q] MonadReader[ContT[M, R, _], Q]
   static fn local[A](f (Q) -> Q, m ContT[M, R, A]) ContT[M, R, A]
     ContT(run: (k) -> M.ask().flat_map((q) -> M.local(f, m.run((a) -> M.local((q2) -> q, k(a))))))
 
-// ---------------------------------------------------------------- FreeT and MonadFree
-
-forward tuple FreeT[F[_], M[_], A]
-
-/// One step of a `FreeT`: a finished value, or an instruction of `F` that holds the rest.
-export enum FreeStep[F[_], M[_], A]
-  FtDone(A)
-  FtMore(F[FreeT[F, M, A]])
-
-/// A program of `F` instructions whose steps run in the monad `M`.
-export tuple FreeT[F[_], M[_], A]
-  run M[FreeStep[F, M, A]]
-
-impl[F[_] Functor, M[_] Monad] Monad[FreeT[F, M, _]]
-  fn fmap[A, B](self FreeT[F, M, A], f (A) -> B) FreeT[F, M, B]
-    self.flat_map((a) -> FreeT(run: M.pure(FtDone(f(a)))))
-  static fn pure[A](a A) FreeT[F, M, A]
-    FreeT(run: M.pure(FtDone(a)))
-  fn ap[A, B](self FreeT[F, M, (A) -> B], x FreeT[F, M, A]) FreeT[F, M, B]
-    self.flat_map((g) -> x.fmap(g))
-  fn flat_map[A, B](self FreeT[F, M, A], f (A) -> FreeT[F, M, B]) FreeT[F, M, B]
-    next = (st) -> when st
-      FtDone(a) -> f(a).run
-      FtMore(fa) -> M.pure(FtMore(fa.fmap((n) -> n.flat_map(f))))
-    FreeT(run: self.run.flat_map(next))
-
-/// A monad that can issue the instructions of a functor `F`.
-export interface MonadFree[M[_], F[_]]
-  static fn wrap[A](fa F[A]) M[A]
-
-impl[F[_] Functor, M[_] Monad] MonadFree[FreeT[F, M, _], F]
-  static fn wrap[A](fa F[A]) FreeT[F, M, A]
-    fn leaf(a A) FreeT[F, M, A]
-      FreeT(run: M.pure(FtDone(a)))
-    FreeT(run: M.pure(FtMore(fa.fmap(leaf))))
-
-/// Run an action of the inner monad `m` inside a `FreeT`.
-export fn lift_free_t[F[_] Functor, M[_] Monad, A](m M[A]) FreeT[F, M, A]
-  FreeT(run: m.fmap((a) -> FtDone(a)))
-
-/// Interpret a program: `on_done` handles the final value, `step` one instruction whose rest has been interpreted; both work in `M`.
-export fn fold_free_t[F[_] Functor, M[_] Monad, A, B](m FreeT[F, M, A], on_done (A) -> M[B], step (F[M[B]]) -> M[B]) M[B]
-  next = (st) -> when st
-    FtDone(a) -> on_done(a)
-    FtMore(fa) -> step(fa.fmap((n) -> fold_free_t(n, on_done, step)))
-  m.run.flat_map(next)
-
 // ---------------------------------------------------------------- MonadTrans
 
 /// A transformer `T`: a constructor that takes a monad and gives a monad, with `lift` to bring an inner action in.
@@ -428,10 +381,6 @@ impl[E] MonadTrans[[M[_], A] -> ExceptT[M, E, A]]
 impl[R] MonadTrans[[M[_], A] -> ContT[M, R, A]]
   static fn lift[M[_] Monad, A](m M[A]) ContT[M, R, A]
     lift_cont_t(m)
-
-impl[F[_] Functor] MonadTrans[[M[_], A] -> FreeT[F, M, A]]
-  static fn lift[M[_] Monad, A](m M[A]) FreeT[F, M, A]
-    lift_free_t(m)
 
 /// Lift an action of `M` through the transformer `T`: `lift[[M[_], A] -> StateT[M, Int, A], _, _](Ok(1))`.
 export fn lift[T[_[_], _] MonadTrans, M[_] Monad, A](m M[A]) T[M, A]

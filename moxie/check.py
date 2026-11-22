@@ -1205,7 +1205,7 @@ class Checker(RefineMixin):
     def interface_known(self, name):
         """True when `name` (written without a package) is an interface the program, the prelude or the checker knows."""
         from .decls import PRELUDE_IFACES
-        if name in self.iface_decls or name in PRELUDE_IFACES or name in self.builtin_ifaces() or name in ("Has", "Monoid", "Semigroup", "Dynable", "MonadCont", "MonadError", "MonadFree", "MonadReader", "MonadState",
+        if name in self.iface_decls or name in PRELUDE_IFACES or name in self.builtin_ifaces() or name in ("Has", "Monoid", "Semigroup", "Dynable", "MonadCont", "MonadError", "MonadReader", "MonadState",
                                                                                        "MonadTrans", "MonadWriter"):
             return True
         return name in self.aliases or name in self.tuples or name in self.enums          # a bound may also name a type alias

@@ -129,31 +129,6 @@ fn begin() (Int, Int)
 println(begin())
 """, 0, "(5, 5)")
 
-FREE = """enum Cmd[Next] deriving show
-  Say(String, Next)
-  Ask((String) -> Next)
-impl Functor[Cmd]
-  fn fmap[A, B](self Cmd[A], f (A) -> B) Cmd[B]
-    when self
-      Say(s, n) -> Say(s, f(n))
-      Ask(k) -> Ask((x) -> f(k(x)))
-fn dialog[M[_] Monad + MonadFree[Cmd]]() M[String]
-  M.wrap(Say("name?", ())).flat_map((u) -> M.wrap(Ask((x) -> x))).flat_map((n) -> M.wrap(Say("hi ${n}", ())).map((u) -> n))
-"""
-chk("FreeT over Result: a program interpreted with effects of the inner monad", IMP + FREE + """prog = dialog[trans.FreeT[Cmd, Result[_, Error], _]]()
-step = (c Cmd[Result[List[String], Error]]) -> when c
-  Say(s, rest) -> map_ok(rest, (l) -> List(s) + l)
-  Ask(k) -> k("sam")
-println(trans.fold_free_t(prog, (n) -> Ok(List("done ${n}")), step))
-""", 0, 'Ok(List("name?", "hi sam", "done sam"))')
-
-chk("FreeT: an inner failure stops the interpreter", IMP + FREE + """prog = dialog[trans.FreeT[Cmd, Result[_, Error], _]]()
-step = (c Cmd[Result[List[String], Error]]) -> when c
-  Say(s, rest) -> map_ok(rest, (l) -> List(s) + l)
-  Ask(k) -> Err(Error(MISSING, "no input"))
-println(is_err(trans.fold_free_t(prog, (n) -> Ok(List("done")), step)))
-""", 0, "true")
-
 chk("these packages are moxie/gc only", "import fp.trans\nprintln(1)\n", 2, "only in moxie/gc", flags=())
 
 print(f"{len(fails)} failed")

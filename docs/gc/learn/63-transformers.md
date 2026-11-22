@@ -67,9 +67,7 @@ println("${begin(2)} ${begin(9)}")
 200 -1
 ```
 
-`FreeT[F, M, A]` is a free program whose steps run in the monad `M`, and `MonadFree[F]` gives a stack `M.wrap(instruction)` to issue one. `fold_free_t(program, on_done, step)` folds a program: `on_done` receives the final value and `step` is called once per instruction, and both return actions of `M`, so an interpreter can fail or log as it goes.
-
-Build values through `M.pure`, `M.wrap`, the class members, and the `lift_` functions, or inside a function that names its return type. A bare constructor in a lambda (`ContT(run: ...)`, `FreeT(run: ...)`) does not know its stack's types.
+Build values through `M.pure`, the class members, and the `lift_` functions, or inside a function that names its return type. A bare constructor in a lambda (`ContT(run: ...)`) does not know its stack's types.
 
 ## Naming a stack, and lifting
 
