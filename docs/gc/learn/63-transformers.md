@@ -15,6 +15,8 @@ A **transformer** adds one capability to any monad underneath it. `import fp.tra
 - `MonadWriter[W]`: `tell`, `listen`, `censor`
 - `MonadError[E]`: `throw_error`, `catch_error`
 
+The plain monads of the earlier lessons are these transformers with nothing underneath: `fp.state`'s `State[S, A]` wraps `StateT[Identity, S, A]`, and `fp.reader`, `fp.writer`, and `fp.cont` do the same with `ReaderT`, `WriterT`, and `ContT`. They keep their own names and the plain results, such as the `(result, state)` pair from `run`, so a program that needs no other effect never writes `Identity`.
+
 ## Write once, pick the stack later
 
 You write the program once, calling the class members on `M`, and choose the stack where you call it. Here is a counter that fails when it passes a limit, run on two different stacks:

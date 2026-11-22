@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+`State`, `Reader`, `Writer`, and `Cont` are transformers over `Identity`. `fp.state`, `fp.reader`, `fp.writer`, and `fp.cont` now delegate to `StateT`, `ReaderT`, `WriterT`, and `ContT` from `fp.trans` (one implementation of each monad), and keep their names and plain results: `State.run(s)` still gives `(result, state)`. New constructors `state`, `reader`, `writer`, and `cont` build one from a plain function, and `Writer`'s `value` and `log` are now methods. Lesson 63 says so.
+
 `readonly String` replaces `static String`. A string that lives for the whole program is now written `readonly String` (it lives in read-only program data); `static` keeps one meaning, a function or property that belongs to a type, and `static String` is a syntax error that says so. Spec, intros, lessons and the guide corpus are updated.
 
 The `io` package. `io.Reader` and `io.Writer` are the byte-stream interface pair (`read(ref self, n)`, `write(ref self, bytes)`), implemented for files and sockets, `stdin`/`stdout`/`stderr`, and an in-memory `io.Buffer`, with `io.say`, `io.copy` and `io.read_all` generic over them. `write_bytes` now works on `stdout` and `stderr`, and `ref r.read(n)?` parses. Lesson 63 is new (byte streams) and the later lessons moved down one. `tests/run_io.py` covers both dialects.

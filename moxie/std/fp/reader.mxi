@@ -1,30 +1,40 @@
-//! Reader: a computation that reads a shared environment `R`.
+//! Reader: a computation that reads a shared environment `R`. It is `ReaderT` from `fp.trans` over `Identity`.
+import fp.trans (ReaderT, Identity, run_identity)
 
 /// A computation that, given an environment `R`, produces an `A`.
 export tuple Reader[R, A]
-  run (R) -> A
+  inner ReaderT[Identity, R, A]
+
+/// A `Reader` from a function of the environment.
+export fn reader[R, A](f (R) -> A) Reader[R, A]
+  Reader(inner: ReaderT(run: (r R) -> Identity(value: f(r))))
+
+impl[R, A] Reader[R, A]
+  /// Runs the computation in the environment `r`.
+  fn run(self, r R) A
+    run_identity(self.inner.run(r))
 
 impl[R] Monad[Reader[R, _]]
   fn fmap[A, B](self Reader[R, A], f (A) -> B) Reader[R, B]
-    Reader(run: (r) -> f(self.run(r)))
+    Reader(inner: self.inner.fmap(f))
   static fn pure[A](a A) Reader[R, A]
-    Reader(run: (r) -> a)
+    Reader(inner: ReaderT(run: (r R) -> Identity(value: a)))
   fn ap[A, B](self Reader[R, (A) -> B], x Reader[R, A]) Reader[R, B]
     self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self Reader[R, A], f (A) -> Reader[R, B]) Reader[R, B]
-    Reader(run: (r) -> f(self.run(r)).run(r))
+    Reader(inner: self.inner.flat_map((a) -> f(a).inner))
 
 /// The environment itself.
 export fn ask[R]() Reader[R, R]
-  Reader(run: (r R) -> r)
+  reader((r R) -> r)
 
 /// A function of the environment.
 export fn asks[R, A](f (R) -> A) Reader[R, A]
-  Reader(run: (r R) -> f(r))
+  reader((r R) -> f(r))
 
 /// Run `m` with the environment changed by `f`.
 export fn local[R, A](f (R) -> R, m Reader[R, A]) Reader[R, A]
-  Reader(run: (r R) -> m.run(f(r)))
+  reader((r R) -> m.run(f(r)))
 
 /// Run a Reader in an environment.
 export fn run_reader[R, A](m Reader[R, A], r R) A

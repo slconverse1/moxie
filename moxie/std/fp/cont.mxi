@@ -1,22 +1,32 @@
-//! Cont: continuation-passing computations, with `call_cc` for early exit.
+//! Cont: continuation-passing computations, with `call_cc` for early exit. It is `ContT` from `fp.trans` over `Identity`.
+import fp.trans (ContT, Identity, run_identity)
 
 /// A computation that hands its result to a continuation and returns whatever the continuation returns.
 export tuple Cont[R, A]
-  run ((A) -> R) -> R
+  inner ContT[Identity, R, A]
+
+/// A `Cont` from a function of the continuation.
+export fn cont[R, A](f ((A) -> R) -> R) Cont[R, A]
+  Cont(inner: ContT(run: (k (A) -> Identity[R]) -> Identity(value: f((a) -> run_identity(k(a))))))
+
+impl[R, A] Cont[R, A]
+  /// Runs the computation with the final continuation `k`.
+  fn run(self, k (A) -> R) R
+    run_identity(self.inner.run((a) -> Identity(value: k(a))))
 
 impl[R] Monad[Cont[R, _]]
   fn fmap[A, B](self Cont[R, A], f (A) -> B) Cont[R, B]
-    Cont(run: (k) -> self.run((a) -> k(f(a))))
+    Cont(inner: self.inner.fmap(f))
   static fn pure[A](a A) Cont[R, A]
-    Cont(run: (k) -> k(a))
+    Cont(inner: ContT(run: (k (A) -> Identity[R]) -> k(a)))
   fn ap[A, B](self Cont[R, (A) -> B], x Cont[R, A]) Cont[R, B]
     self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self Cont[R, A], f (A) -> Cont[R, B]) Cont[R, B]
-    Cont(run: (k) -> self.run((a) -> f(a).run(k)))
+    Cont(inner: self.inner.flat_map((a) -> f(a).inner))
 
 /// Call `f` with the current continuation as an escape function: calling it abandons the rest of `f`.
 export fn call_cc[R, A, B](f ((A) -> Cont[R, B]) -> Cont[R, A]) Cont[R, A]
-  Cont(run: (k) -> f((a) -> Cont(run: (ignored) -> k(a))).run(k))
+  cont((k (A) -> R) -> f((a) -> cont((ignored (B) -> R) -> k(a))).run(k))
 
 /// Run with a final continuation.
 export fn run_cont[R, A](m Cont[R, A], k (A) -> R) R

@@ -1,41 +1,52 @@
-//! Writer: a computation that produces a value and appends to a log.
+//! Writer: a computation that produces a value and appends to a log. It is `WriterT` from `fp.trans` over `Identity`.
+import fp.trans (WriterT, Identity, run_identity)
 
 /// A value and the entries logged while computing it.
 export tuple Writer[W, A]
-  value A
-  log List[W]
+  inner WriterT[Identity, W, A]
+
+/// A `Writer` from a value and its log.
+export fn writer[W, A](value A, log List[W]) Writer[W, A]
+  Writer(inner: WriterT(run: Identity(value: (value, log))))
+
+impl[W, A] Writer[W, A]
+  /// The result.
+  fn value(self) A
+    run_identity(self.inner.run)(0)
+  /// The entries logged so far.
+  fn log(self) List[W]
+    run_identity(self.inner.run)(1)
 
 impl[W] Monad[Writer[W, _]]
   fn fmap[A, B](self Writer[W, A], f (A) -> B) Writer[W, B]
-    Writer(value: f(self.value), log: self.log)
+    Writer(inner: self.inner.fmap(f))
   static fn pure[A](a A) Writer[W, A]
-    Writer(value: a, log: List())
+    writer(a, List())
   fn ap[A, B](self Writer[W, (A) -> B], x Writer[W, A]) Writer[W, B]
     self.flat_map((g) -> x.fmap(g))
   fn flat_map[A, B](self Writer[W, A], f (A) -> Writer[W, B]) Writer[W, B]
-    next = f(self.value)
-    Writer(value: next.value, log: self.log + next.log)
+    Writer(inner: self.inner.flat_map((a) -> f(a).inner))
 
 /// Log one entry.
 export fn tell[W](entry W) Writer[W, Unit]
-  Writer(value: (), log: List(entry))
+  writer((), List(entry))
 
 /// Log several entries.
 export fn tell_all[W](entries List[W]) Writer[W, Unit]
-  Writer(value: (), log: entries)
+  writer((), entries)
 
 /// A value with its log, as the pair `(value, log)`.
 export fn listen[W, A](m Writer[W, A]) Writer[W, (A, List[W])]
-  Writer(value: (m.value, m.log), log: m.log)
+  writer((m.value(), m.log()), m.log())
 
 /// Change every entry of a computation's log.
 export fn censor[W, A](f (List[W]) -> List[W], m Writer[W, A]) Writer[W, A]
-  Writer(value: m.value, log: f(m.log))
+  writer(m.value(), f(m.log()))
 
 /// The result and the log, as a pair.
 export fn run_writer[W, A](m Writer[W, A]) (A, List[W])
-  (m.value, m.log)
+  (m.value(), m.log())
 
 /// Just the log.
 export fn exec_writer[W, A](m Writer[W, A]) List[W]
-  m.log
+  m.log()
