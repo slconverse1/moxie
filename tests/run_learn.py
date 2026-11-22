@@ -11,7 +11,7 @@ import make_learn
 
 def dialect_blocks(txt, gc):
     t = make_learn.dialect_text(txt, gc)
-    lines, out, i = t.split("\n"), [], 0
+    lines, out, i, files = t.split("\n"), [], 0, {}
     while i < len(lines):
         if lines[i].strip() == "```moxie":
             j = i + 1
@@ -29,17 +29,25 @@ def dialect_blocks(txt, gc):
                     e += 1
                 want = "\n".join(lines[k + 1:e])
                 j = e
-            out.append((i + 1, src, kind, want))
+            m = re.match(r"//! file: (\S+)\n", src)
+            if m:                                     # a supporting file: it belongs to the next program
+                files[m.group(1)] = src[m.end():]
+            else:
+                out.append((i + 1, src, kind, want, dict(files)))
+                files.clear()
             i = j + 1
         else:
             i += 1
     return out
 
 def run(job):
-    name, line, src, kind, want, gc = job
+    name, line, src, kind, want, gc, files = job
     stdin = "\n".join(re.findall(r"^//! stdin: ?(.*)$", src, re.M))
     with tempfile.TemporaryDirectory() as d:
         p = os.path.join(d, "main.mxi")
+        for fname, ftext in files.items():
+            os.makedirs(os.path.dirname(os.path.join(d, fname)) or d, exist_ok=True)
+            open(os.path.join(d, fname), "w").write(ftext)
         verb = (re.findall(r"^//! command: (\w+)", src, re.M) or ["run"])[0]
         open(p, "w").write(re.sub(r"^//! .*\n", "", src, flags=re.M))      # what the reader sees is what runs, line numbers included
         cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + [verb, p]
@@ -63,7 +71,7 @@ def fill(args):
         for slug, _, txt in ls:
             if args and not any(slug.startswith(a) for a in args):
                 continue
-            lines, i, changed, ingc = txt.split("\n"), 0, False, False
+            lines, i, changed, ingc, sup = txt.split("\n"), 0, False, False, {}
             while i < len(lines):
                 if lines[i].strip() in ("@gc", "@nogc", "@end"):
                     ingc = lines[i].strip() == "@gc"
@@ -74,11 +82,15 @@ def fill(args):
                     k = j + 1
                     while k < len(lines) and lines[k].strip() == "":
                         k += 1
-                    if k + 1 < len(lines) and lines[k].strip() in ("```output", "```error") and lines[k + 1].strip() == "```":
-                        src = "\n".join(lines[i + 1:j]) + "\n"
-                        _, msg = run((slug, i, src, None, None, False))
+                    src = "\n".join(lines[i + 1:j]) + "\n"
+                    if src.startswith("//! file: "):
+                        sup[re.match(r"//! file: (\S+)\n", src).group(1)] = src[src.index("\n") + 1:]
+                    elif k + 1 < len(lines) and lines[k].strip() in ("```output", "```error") and lines[k + 1].strip() == "```":
                         with tempfile.TemporaryDirectory() as d:
                             p = os.path.join(d, "main.mxi")
+                            for fname, ftext in sup.items():
+                                os.makedirs(os.path.dirname(os.path.join(d, fname)) or d, exist_ok=True)
+                                open(os.path.join(d, fname), "w").write(ftext)
                             open(p, "w").write(re.sub(r"^//! .*\n", "", src, flags=re.M))
                             stdin = "\n".join(re.findall(r"^//! stdin: ?(.*)$", src, re.M))
                             verb = (re.findall(r"^//! command: (\w+)", src, re.M) or ["run"])[0]
@@ -86,6 +98,8 @@ def fill(args):
                         got = r.stdout.rstrip("\n") if lines[k].strip() == "```output" else re.sub(r"^main\.mxi:\d+(:\d+)?: ", "", r.stderr.strip(), flags=re.M)
                         lines[k + 1:k + 1] = got.split("\n")
                         changed = True
+                    if not src.startswith("//! file: "):
+                        sup.clear()
                     i = j + 1
                 else:
                     i += 1
@@ -104,8 +118,8 @@ if __name__ == "__main__":
             if args and not any(slug.startswith(a) for a in args):
                 continue
             for gc in (False, True):
-                for line, src, kind, want in dialect_blocks(txt, gc):
-                    jobs.append((slug, line, src, kind, want, gc))
+                for line, src, kind, want, files in dialect_blocks(txt, gc):
+                    jobs.append((slug, line, src, kind, want, gc, files))
     with ThreadPoolExecutor(8) as ex:
         res = list(ex.map(run, jobs))
     bad = [m for g, m in res if not g]

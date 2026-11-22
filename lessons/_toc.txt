@@ -21,9 +21,18 @@
 18-types-of-types
 19-patterns
 20-interfaces
+
+# Streams and pipelines
 21-streams-and-pipelines
+
+# Concurrency
 22-fibers-and-channels
 23-select-timers-cancel
 24-atoms-and-futures
+
+# Quality and larger programs
 25-testing
 26-errors-in-larger-programs
+
+# Packages
+27-packages

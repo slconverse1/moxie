@@ -244,4 +244,4 @@ Dict(1 -> List(1, 4), 2 -> List(2, 5), 0 -> List(3, 6))
 
 ---
 
-[← Arrays and grids](16-arrays.html) · [Contents](./)
+[← Arrays and grids](16-arrays.html) · [Contents](./) · [Naming types: aliases, opaque types, and unions →](18-types-of-types.html)

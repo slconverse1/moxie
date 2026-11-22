@@ -36,3 +36,25 @@ You don't need to know any functional programming. If you do, the lessons point 
 15. [Lists](15-lists.html)
 16. [Arrays and grids](16-arrays.html)
 17. [Dicts and sets](17-dicts-and-sets.html)
+18. [Naming types: aliases, opaque types, and unions](18-types-of-types.html)
+19. [Patterns](19-patterns.html)
+20. [Methods and interfaces](20-interfaces.html)
+
+## Streams and pipelines
+
+21. [Streams and pipelines](21-streams-and-pipelines.html)
+
+## Concurrency
+
+22. [Fibers and channels](22-fibers-and-channels.html)
+23. [Waiting on several things: select, timers, and cancelling](23-select-timers-cancel.html)
+24. [Atoms and futures](24-atoms-and-futures.html)
+
+## Quality and larger programs
+
+25. [Testing, assertions, and checking](25-testing.html)
+26. [Errors in larger programs](26-errors-in-larger-programs.html)
+
+## Packages
+
+27. [Packages and imports](27-packages.html)

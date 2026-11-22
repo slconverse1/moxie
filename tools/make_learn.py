@@ -56,6 +56,7 @@ def title_of(text):
 
 def render(text, gc):
     text = dialect_text(text, gc)
+    text = re.sub(r"^```moxie\n//! file: (\S+)\n", lambda mm: f"**`{mm.group(1)}`**\n\n```moxie\n", text, flags=re.M)   # a supporting file is shown with its name
     text = re.sub(r"^//! .*\n", "", text, flags=re.M)             # directives for the test runner
     text = re.sub(r"^```moxie-nocheck$", "```moxie", text, flags=re.M)
     text = re.sub(r"^```output$", "**Output:**\n\n```", text, flags=re.M)
