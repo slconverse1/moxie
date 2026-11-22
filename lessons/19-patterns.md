@@ -234,7 +234,7 @@ missing
 A binding with a pattern that can fail takes an `else`. If the pattern matches, the names are bound and the function continues. If not, the `else` value is what the whole function returns:
 
 ```moxie
-enum Reading
+enum Reading deriving show
   Value(n Int)
   Missing
 fn times_ten(r Reading) Reading

@@ -2485,8 +2485,39 @@ class Checker(RefineMixin):
                 text = None
         return "String", ("".join(text) if text is not None else None)
 
+    def no_show(self, t, depth=0):
+        """The name of a declared tuple or enum inside type `t` that cannot be printed (no `deriving show`, no `impl Show`, no method `show`), else None.
+        A type the checker cannot work out is never reported."""
+        if depth > 6 or t.__class__ is not tuple or not t:
+            return None
+        if t[0] in ("named", "app") and len(t) > 1 and isinstance(t[1], str):
+            nm = t[1]
+            decl = self.tuples.get(nm) or self.enums.get(nm)
+            if decl is not None and "." not in nm and nm not in self.prelude_type_names() and getattr(decl, "kind", None) != "opaque":
+                if "show" in (decl.derivs or []) or "Show" in self.impls.get(nm, ()) or (nm, "show") in self.methods:
+                    return None
+                return nm
+            if t[0] == "app" and len(t) > 2 and t[2].__class__ is tuple and nm in ("List", "Array", "Option", "Result", "Dict", "Set", "Ring"):
+                for a in t[2]:
+                    r = self.no_show(self.base(a) if a is not None else None, depth + 1)
+                    if r:
+                        return r
+            return None
+        if t[0] == "tup" and len(t) > 1 and t[1].__class__ is tuple:
+            for a in t[1]:
+                r = self.no_show(self.base(a) if a is not None else None, depth + 1)
+                if r:
+                    return r
+        return None
+
+    def check_showable(self, t, line):
+        nm = self.no_show(t)
+        if nm:
+            self.err(line, f"`{nm}` has no text form: add `deriving show` to its declaration (or write `impl Show for {nm}`) to print it")
+
     def e_Interp(self, n, sc):
         t = self.ev(n.expr, sc)[0]
+        self.check_showable(t, n.line if getattr(n, "line", 0) else self.cur_line)
         msg = self.late_method(t, "show", n.line if getattr(n, "line", 0) else self.cur_line)
         if msg:
             self.err(n.line if getattr(n, "line", 0) else self.cur_line, msg)
@@ -6702,6 +6733,8 @@ class Checker(RefineMixin):
                 at = None
             if at.__class__ is tuple and at[0] == "app" and at[1] == "Stream":
                 self.err(n.line, "a Stream has no text form: `collect()` it first")
+            elif at is not None:
+                self.check_showable(at, n.line)
             if len(n.args or []) == 1 and not extra and n.args[0].expr.__class__ in (Binary, Unary):
                 cv = self.const_int(n.args[0].expr)          # printing a constant: it is an `Int`
                 if cv is not None and not -2**63 <= cv <= 2**63 - 1 and -2**63 <= cv <= 2**64 - 1:
@@ -8922,8 +8955,7 @@ class Checker(RefineMixin):
             t, c = self.ev(n.body, inner)
             self.check_tail(n.body, inner)
             self.tag_tails(n)
-            if "tailrec" in (n.flags or ()):
-                self.check_tailrec(n)
+            self.check_tailrec(n, "tailrec" in (n.flags or ()))        # any function: a self-call in tail position runs as a loop
         if SESS["on"]:
             self.check_endpoints_finished(n, sess_start)
         self.fn_ret, self.fn_tparams, self.loop_depth, self.exit_ctx, self.moved, self.tp_vars = saved
@@ -9108,8 +9140,11 @@ class Checker(RefineMixin):
                 self.when_tails(a.body, out)
         return out
 
-    def check_tailrec(self, n):
-        """`tailrec fn`: every call to the function itself must be in tail position."""
+    def check_tailrec(self, n, strict=True):
+        """`tailrec fn`: every call to the function itself must be in tail position.  Any other function gets the same loop for the
+        self-calls that are in tail position (the language runs a tail call in constant stack), and no error for the rest."""
+        if not strict and ("fiber" in (n.flags or ()) or getattr(n, "name", None) is None):
+            return
         ok = set()
 
         def mark(e):
@@ -9157,9 +9192,10 @@ class Checker(RefineMixin):
                 for y in x:
                     walk(y)
         walk(n.body)
-        for b in bad:
-            self.err(b.line or n.line, f"`{n.name}` is marked `tailrec`, but this recursive call is not in tail position")
-        if not bad and not getattr(n, "contracts", None):
+        if strict:
+            for b in bad:
+                self.err(b.line or n.line, f"`{n.name}` is marked `tailrec`, but this recursive call is not in tail position")
+        if (not bad or not strict) and not getattr(n, "contracts", None):
             from .values import TAILSELF
             for call in selfcalls:
                 if id(call) in ok:
