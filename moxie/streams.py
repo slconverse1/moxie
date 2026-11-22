@@ -88,7 +88,7 @@ class RangeIter:
     def __init__(self, r):
         self.r = r
         s = r.start
-        if isinstance(s, str) or isinstance(r.limit, str):
+        if (isinstance(s, str) and not isinstance(s, Char)) or (isinstance(r.limit, str) and not isinstance(r.limit, Char)):
             raise Abort("a range of strings cannot be walked: it only works with `in`")
         self.ch = isinstance(s, Char)
         self.cur = ord(s) if self.ch else (s if s is not None else 0)

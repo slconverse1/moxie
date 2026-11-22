@@ -10,7 +10,7 @@ USAGE = """usage: moxie [--gc] [--release] [--quiet] [--pools] run [FILE] [args.
        moxie test [--seed N] [--cases N] FILE [name]
                                     run the test blocks (the entry body does not run); forall runs N cases (default 100)
        moxie check FILE             parse and check without running
-       moxie repl                   an interactive session: expressions print their value and type (res1, res2, it)
+       moxie repl                   an interactive session: expressions print their value and type (the newest result is $res1, then $res2, ...)
        moxie pools [FILE] [--header OUT]  the static pool tally: how many of each counted resource the program creates
        moxie --header=FILE run FILE     start with a pool header: refuse a stale one, hold the program to its counts
        moxie bindgen HEADER (-o FILE | --package NAME) [--lib LIB] [--check]

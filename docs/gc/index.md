@@ -41,7 +41,7 @@ $ python3 -m moxie --gc run hello.mxi
 Welcome to Moxie 101
 ```
 
-`python3 -m moxie --gc check hello.mxi` checks a program without running it, and `test` runs its `test` blocks. `python3 -m moxie --gc repl` opens an interactive session: type an expression and see its value and type, and refer to earlier results as `res1`, `res2`, or `it`.
+`python3 -m moxie --gc check hello.mxi` checks a program without running it, and `test` runs its `test` blocks. `python3 -m moxie --gc repl` opens an interactive session: type an expression and see its value and type; the result is kept as `$res1` (older ones move up to `$res2`, and so on) so the next line can use it.
 
 **3. Clone the repository.** `git clone https://github.com/slconverse1/moxie` also gets you the examples and the interpreter's own tests, and `python3 -m moxie run examples/gradebook.mxi` runs a sample.
 

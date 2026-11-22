@@ -1,0 +1,8 @@
+# Getting started
+01-run
+02-first-program
+03-values-and-names
+04-numbers
+05-text
+06-truth-and-choices
+07-loops
