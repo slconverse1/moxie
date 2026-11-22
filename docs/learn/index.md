@@ -102,7 +102,7 @@ You don't need to know any functional programming. If you do, the lessons point 
 
 58. [Properties, field delegates, and proxies](48-properties-delegates-proxies.html)
 59. [Refined parameters: proofs in the signature](49-refined-parameters.html)
-60. [Contracts: requires, ensures, invariant](55-contracts.html)
+60. [Contracts: where and invariant](55-contracts.html)
 
 ## Your program and its machine
 

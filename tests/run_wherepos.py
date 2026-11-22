@@ -1,10 +1,10 @@
-"""`where` after a result type is an `ensures`, and `where` after a tuple field is an `invariant`.  Run: python3 tests/run_wherepos.py"""
+"""`where` after a result type is a postcondition, and `where` after a tuple field is an `invariant`.  Run: python3 tests/run_wherepos.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ABS = "fn abs(n Int) Int where result >= 0\n  if n < 0\n    0 - n\n  else\n    n\n"
 CASES = [
  ("a result where holds", ABS + "println(abs(-4))\n", 0, "4"),
- ("a result where is an ensures", "fn bad(n Int) Int where result >= 0\n  n\nprintln(bad(-1))\n", 1, "ensures failed in bad: result >= 0 (supplier bug)"),
+ ("a result where is a postcondition", "fn bad(n Int) Int where result >= 0\n  n\nprintln(bad(-1))\n", 1, "postcondition failed in bad: result >= 0 (supplier bug)"),
  ("a field where holds", "tuple Account deriving show\n  balance Int where balance >= 0\nprintln(Account(balance: 5))\n", 0, "Account(balance: 5)"),
  ("a field where is an invariant", "tuple Account deriving show\n  balance Int where balance >= 0\nprintln(Account(balance: 0 - len(List(1))))\n", 1, "invariant of Account failed: balance >= 0"),
  ("a header field where is an invariant", "tuple Box(w Int where w > 0, h Int) deriving show\nprintln(Box(len(List()), 3))\n", 1, "invariant of Box failed: w > 0"),

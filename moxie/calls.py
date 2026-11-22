@@ -1235,7 +1235,7 @@ class CallsMixin:
                 if kw == "requires":
                     ok = yield from self.ev(expr, cenv0.child())
                     if ok is not True:
-                        raise Abort(f"requires failed in {node.name}: {text} (caller bug)", line)
+                        raise Abort(f"precondition failed in {node.name}: {text} (caller bug)", line)
         if self.heap_limit is not None:
             heap.tick(self)
         depth = self.depth = getattr(self, "depth", 0) + 1
@@ -1268,7 +1268,7 @@ class CallsMixin:
                 if kw == "ensures":
                     ok = yield from self.ev(expr, cenv2)
                     if ok is not True:
-                        raise Abort(f"ensures failed in {node.name}: {text} (supplier bug)", line)
+                        raise Abort(f"postcondition failed in {node.name}: {text} (supplier bug)", line)
         if refspec and cenv is not None:
             params = node.params or []
             for key, cname in refspec.items():

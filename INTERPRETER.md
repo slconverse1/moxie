@@ -72,7 +72,7 @@ See FIXLIST.md for the problems found in the Spec and Guide.
 
 Builds documentation from `///` comments (`//!` for module docs). It shows each
 exported item's signature (all items if none are exported, or with `--private`),
-doc text, contract lines (`requires` / `ensures` / `invariant`), implementors of
+doc text, contract lines (`invariant`; `where` conditions stay in the signature), implementors of
 interfaces, and the `> expr` / expected-output examples, which are run as
 doctests. `--check` exits nonzero on a failing example or a broken
 ``[`name`]`` link and warns about undocumented exports. `moxie test FILE` also
@@ -81,14 +81,15 @@ cross-module pages. Contracts are enforced by the interpreter (see below). See `
 
 ## Contracts (first prototype)
 
-`requires` and `ensures` lines may start a function body; `invariant` lines may
-appear among a tuple's fields. `ensures` sees the return value as `result`.
-A failing `requires` aborts with "caller bug"; a failing `ensures` or
+A `where` after a parameter is a precondition and a `where` after the result type
+is a postcondition (it sees the return value as `result`); `invariant` lines may
+appear among a tuple's fields. `requires` and `ensures` lines are a syntax error.
+A failing precondition aborts with "caller bug"; a failing postcondition or
 `invariant` aborts with "supplier bug". Invariants are checked when a tuple is
 constructed. Contracts on interface members are checked whenever an
 implementation of that member runs (the interface's parameter names are mapped
 onto the implementation's). `moxie --release run FILE` turns all checks off. Not
-yet built: a compile error for constant arguments that fail `requires`,
+yet built: a compile error for constant arguments that fail a precondition,
 or the manifest key that keeps contracts in release builds. An `impl` of an
 interface that adds its own contracts is a compile error. See
 `tests/run_contracts.py`.

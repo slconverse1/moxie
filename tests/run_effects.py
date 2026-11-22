@@ -32,7 +32,7 @@ CASES = [
  ("dbg is exempt", 'pure fn f(x Int) Int = dbg(x)\n', True, ""),
  ("trace is exempt", 'pure fn f(x Int) Int\n  trace("in f")\n  x\n', True, ""),
  ("read[T] parses and does not park", 'pure fn f(s String) Result[Int, Error] = read[Int](s)\n', True, ""),
- ("contract conditions must be pure", 'fn f(x Int) Int\n  requires println("a") == ()\n  x\n', False, "must be pure"),
+ ("contract conditions must be pure", 'fn f(x Int where println("a") == ()) Int\n  x\n', False, "must be pure"),
  ("declared prints, does print", 'prints fn f(s String) Unit = println(s)\n', True, ""),
  ("declared prints through a callee (no propagation needed in callers)", 'fn g(s String) Unit = println(s)\nprints fn f(s String) Unit = g(s)\nfn h() Unit = f("x")\nh()\n', True, ""),
  ("undeclared extra effect", 'prints fn f() Unit\n  ch = Chan[Int](1)\n  println("a")\n  read(ch)\n', False, "not declared parks"),

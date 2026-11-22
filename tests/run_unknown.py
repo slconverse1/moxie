@@ -8,7 +8,7 @@ PROVED = GET + "fn pick(xs List[Int], i Int) Int\n  if i >= 0 and i < len(xs)\n 
 REFUTED = GET + "println(get(List(1, 2, 3), -1))\n"
 CASES = [
  ("unknown compiles with a note", UNKNOWN, ["check"], None, 0, "checked when the program runs"),
- ("unknown is checked at run time", UNKNOWN, ["run"], None, 1, "requires failed in get"),
+ ("unknown is checked at run time", UNKNOWN, ["run"], None, 1, "precondition failed in get"),
  ("--prove makes unknown an error", UNKNOWN, ["--prove", "check"], None, 2, "can't prove"),
  ("[contracts] prove = true makes unknown an error", UNKNOWN, ["check"], "[contracts]\nprove = true\n", 2, "can't prove"),
  ("a proved call has no note", PROVED, ["check"], None, 0, "main.mxi: ok"),

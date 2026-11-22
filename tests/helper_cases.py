@@ -73,15 +73,13 @@ f = curry(inc)
 fn add(a Int, b Int) Int = a + b
 f = uncurry[1](curry(add))
 ''', [], 2),
-("a constant failing requires is a compile error", '''
-fn half(n Int) Int
-  requires n > 0
+("a constant failing precondition is a compile error", '''
+fn half(n Int where n > 0) Int
   n / 2
 println(half(0))
 ''', [], 2),
-("a requires that holds is fine, and a variable argument is checked when it runs", '''
-fn half(n Int) Int
-  requires n > 0
+("a precondition that holds is fine, and a variable argument is checked when it runs", '''
+fn half(n Int where n > 0) Int
   n / 2
 x = 0
 println(half(8))

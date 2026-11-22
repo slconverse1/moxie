@@ -297,4 +297,4 @@ In raw mode Ctrl-C is just a key, so a program must choose to quit on it. Call `
 
 ---
 
-[← Contracts: requires, ensures, invariant](55-contracts.html) · [Contents](./) · [Calling C →](54-calling-c.html)
+[← Contracts: where and invariant](55-contracts.html) · [Contents](./) · [Calling C →](54-calling-c.html)

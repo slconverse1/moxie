@@ -1,6 +1,6 @@
 # Refined parameters: proofs in the signature
 
-A `requires` line says what a function needs, and a bad call fails when it runs. A **refined parameter** says it in the signature, and a bad call fails when you *compile*. Write `where` and a condition after the parameter's type:
+A condition on a parameter says what a function needs. A **refined parameter** says it in the signature, so a bad call can fail when you *compile*, and one the compiler can't judge is checked when the program runs. Write `where` and a condition after the parameter's type:
 
 ```moxie
 fn get(xs List[Int], i Int where i >= 0 and i < len(xs)) Int
@@ -57,7 +57,7 @@ println(pct_half(50))
 
 The bounded type `Int[1..100]` already says `p > 0`, so `pct_half` needs no test. Rebinding a name forgets what was known about it, and so does `+=`, a `ref` argument, or a `ref` method on it.
 
-The condition is also kept as a `requires`, so a call the compiler can't see, such as one through a function value, is still checked when it runs:
+The condition is also kept as a run-time precondition, so a call the compiler can't see, such as one through a function value, is still checked when it runs:
 
 ```moxie
 fn pick(xs List[Int], i Int where i >= 0 and i < len(xs)) Int
@@ -69,7 +69,7 @@ println(f(List(1, 2), 1))
 2
 ```
 
-A call `f(List(1, 2), 5)` here would abort with `requires failed in pick`, naming the caller as the bug.
+A call `f(List(1, 2), 5)` here would abort with `precondition failed in pick`, naming the caller as the bug.
 
 Mistakes: calling a refined function with no test in front of it, testing only half of a condition (`i >= 0` for `i >= 0 and i < len(xs)`), changing the name between the test and the call (`i = 7`), putting a float or a string in a `where` the solver can't read (only integer comparisons are proved), and expecting a `where` on a `ref` parameter (it is checked at run time only).
 
@@ -99,7 +99,7 @@ println(describe(40))
 A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every call has to prove `n > 0`, and `twice_half` can call `half(m)` because `m` is a `Pos`. The alias is the same type as `Int`, but the condition is enforced wherever you declare it.
 
 - A binding `x Pos = v` is proved like a call: `x Pos = 0` is a compile error, and `x Pos = n` needs a test of `n` first (`if n > 0 then`). After it, `x` is known to be positive, so `half(x)` is accepted.
-- A function declared to return `Pos` is checked as it returns (it means `ensures result > 0`), and a field declared `Pos` is checked whenever the tuple is built (it means `invariant balance > 0`); an abort in either names the function or tuple that broke the promise.
+- A function declared to return `Pos` is checked as it returns (it means `where result > 0` after the result type), and a field declared `Pos` is checked whenever the tuple is built (it means `balance Int where balance > 0`); an abort in either names the function or tuple that broke the promise.
 - A binding from a function that returns `Pos` needs no further proof.
 - A `List[Pos]` (or `Array`, `Set`, `Dict` values) is checked element by element when the program runs; that check is not proved at compile time.
 - An alias can be exported from a package (`export type Pos = Int where self > 0`) and used as `lib.Pos` after `import lib`, or as `Pos` after `import lib(Pos)`, provided its condition uses only `self` and literals.
@@ -133,5 +133,5 @@ Account(balance: 40, name: "ann")
 
 - `fn f(x Int where x > 0)` puts a condition in the signature; every call must prove it, or fail to compile.
 - The checker proves what it can from tests, ranges, and bounded types; unknown compiles with a note and is checked at run time, unless `prove = true` makes it an error.
-- The condition is kept as a `requires`, so calls through function values are still checked at run time.
+- The condition is kept as a run-time precondition, so calls through function values are still checked at run time.
 - `type Pos = Int where self > 0` names a condition; parameters, bindings, results, and fields declared with it are all checked.

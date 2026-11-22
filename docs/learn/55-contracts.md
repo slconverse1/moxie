@@ -1,25 +1,23 @@
 ---
 layout: default
-title: "Contracts: requires, ensures, invariant · Learning Guide moxie"
+title: "Contracts: where and invariant · Learning Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 
-# 60. Contracts: requires, ensures, invariant
+# 60. Contracts: where and invariant
 
 A contract states what a function needs and what it promises, in the code and not in a comment. It is for faults that are *bugs*: an expected failure, such as a missing file, still returns a `Result` (lesson 16). A contract failure ends the program with a message that says whose fault it was.
 
-- `requires` is a **precondition** that the caller must meet.
-- `ensures` is a **postcondition** that the function guarantees.
-- `invariant` is a condition that every value of a tuple type must satisfy.
+- A `where` after a parameter is a **precondition** that the caller must meet.
+- A `where` after the result type is a **postcondition** that the function guarantees.
+- An `invariant` is a condition that every value of a tuple type must satisfy.
 
-## `requires` and `ensures`
+## `where` on parameters and results
 
-A function body may begin with `requires` and `ensures` lines, one condition per line. An `ensures` condition may name `result`:
+A condition goes in the signature, next to the thing it constrains. It may mention the parameters before it, and several conditions are joined with `and`. A condition after the result type may name `result`:
 
 ```moxie
-fn inc(x Int) Int
-  requires x > 0
-  ensures result > x
+fn inc(x Int where x > 0) Int where result > x
   x + 1
 
 println(inc(1))
@@ -30,16 +28,14 @@ println(inc(1))
 2
 ```
 
-Arguments never change, so an `ensures` can also refer to the arguments as they were. There is no `old`. For a `ref` parameter it sees the final value.
+Arguments never change, so a postcondition can also refer to the arguments as they were. There is no `old`. For a `ref` parameter it sees the final value. (Older code may have written these as `requires` and `ensures` lines in the body; those are now a syntax error that says to write `where`.)
 
 ### Who is to blame
 
-A call checks the `requires` conditions, runs the body, checks the invariants of any value it built, and then checks the `ensures` conditions. A failed `requires` is a **caller bug**, and a failed `invariant` or `ensures` is a **supplier bug**. The message says which, and names the condition, the function, and the line:
+A call checks the preconditions, runs the body, checks the invariants of any value it built, and then checks the postconditions. A failed precondition is a **caller bug**, and a failed `invariant` or postcondition is a **supplier bug**. The message says which, and names the condition, the function, and the line:
 
 ```moxie
-fn inc(x Int) Int
-  requires x > 0
-  ensures result > x
+fn inc(x Int where x > 0) Int where result > x
   x + 1
 
 z = 0
@@ -48,14 +44,13 @@ println(inc(z))
 **The compiler says:**
 
 ```
-abort in fiber main (line 7): requires failed in inc: x > 0 (caller bug)
+abort in fiber main (line 5): precondition failed in inc: x > 0 (caller bug)
 ```
 
-Here the function was given a value it said it couldn't take. When the *function* is wrong, it's an `ensures` that fails. This body is arithmetic the checker can't follow, so the failure shows up when the program runs:
+Here the function was given a value it said it couldn't take. When the *function* is wrong, it's a postcondition that fails. This body is arithmetic the checker can't follow, so the failure shows up when the program runs:
 
 ```moxie
-fn bad(x Int) Int
-  ensures result > x
+fn bad(x Int) Int where result > x
   x * x - x * x
 
 println(bad(5))
@@ -63,14 +58,13 @@ println(bad(5))
 **The compiler says:**
 
 ```
-abort in fiber main (line 5): ensures failed in bad: result > x (supplier bug)
+abort in fiber main (line 4): postcondition failed in bad: result > x (supplier bug)
 ```
 
 When the checker *can* follow the body, it catches the broken promise before the program runs:
 
 ```moxie
-fn worse(x Int) Int
-  ensures result > x
+fn worse(x Int) Int where result > x
   x - 1
 
 println(worse(5))
@@ -81,11 +75,10 @@ println(worse(5))
 error: `worse` promises `result > x`, but the value returned here can never satisfy it
 ```
 
-A `requires` whose arguments are all constants and that fails is a compile error, as a constant index out of range is:
+A precondition whose arguments are all constants and that fails is a compile error, as a constant index out of range is:
 
 ```moxie
-fn inc(x Int) Int
-  requires x > 0
+fn inc(x Int where x > 0) Int
   x + 1
 
 println(inc(0))
@@ -121,12 +114,11 @@ The second construction would break the rule, so the program stops at the line t
 
 ## Contracts on interfaces
 
-The contract of an interface member belongs to the interface, so every `impl` obeys it, and an `impl` may not add contracts of its own (that's a compile error). Generic code bounded by the interface gets the contract through it. The contract lines go in the member's block, and a member with no body has no default:
+The contract of an interface member belongs to the interface, so every `impl` obeys it, and an `impl` may not add contracts of its own (that's a compile error). Generic code bounded by the interface gets the contract through it. An interface member has no body, so its signature carries the condition, and a member with no body has no default:
 
 ```moxie
 interface Named
-  fn name(self) String
-    ensures len(result) > 0
+  fn name(self) String where len(result) > 0
 
 tuple Cat deriving show
   nm String
@@ -140,7 +132,7 @@ println(Cat(nm: "").name())
 **The compiler says:**
 
 ```
-abort in fiber main (line 12): ensures failed in name: len(result) > 0 (supplier bug)
+abort in fiber main (line 11): postcondition failed in name: len(result) > 0 (supplier bug)
 ```
 
 The first line prints `tom`; the second `Cat` breaks the interface's promise, and the failure is blamed on the supplier.
@@ -149,11 +141,11 @@ The first line prints `tom`; the second `Cat` breaks the interface's promise, an
 
 A condition may call only pure functions (lesson 45), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
 
-Because `moxie test` checks contracts, a property test (lesson 32) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
+Because `moxie test` checks contracts, a property test (lesson 32) exercises them: the postconditions are the properties that its generated inputs try to break.
 
-## One condition, two spellings
+## Conditions on fields, and between fields
 
-`requires`, `ensures`, and `invariant` are one idea, a condition, in three places: before the body, after it, and on a value that is built. `where` is the same condition written next to the thing it constrains:
+A condition about one field goes after the field, and a condition that relates several fields is an `invariant` line:
 
 ```moxie
 fn abs(n Int) Int where result >= 0
@@ -164,25 +156,27 @@ fn abs(n Int) Int where result >= 0
 
 tuple Account deriving show
   balance Int where balance >= 0
+  limit Int
+  invariant limit >= 0 - balance
 
 println(abs(-4))
-println(Account(balance: 5))
+println(Account(balance: 5, limit: 2))
 ```
 **Output:**
 
 ```
 4
-Account(balance: 5)
+Account(balance: 5, limit: 2)
 ```
 
-`i Int where i >= 0` is a `requires`, `Int where result >= 0` after the result type is an `ensures`, and `balance Int where balance >= 0` after a field is an `invariant`. Use whichever reads better; a condition with several lines or a name for the old state belongs in a `requires` or `ensures` line.
+`i Int where i >= 0` is a precondition, `Int where result >= 0` after the result type is a postcondition, `balance Int where balance >= 0` after a field is a condition on that field, and an `invariant` line says something about the fields together. A condition that is long can continue on the next line.
 
-Whatever the spelling, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 49 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, quietly for a result or a field and with a note for a parameter, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
+Wherever the condition is written, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 49 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, quietly for a result or a field and with a note for a parameter, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
 
 ## What to remember
 
-- `requires` is the caller's promise, `ensures` is the function's, `invariant` is the type's.
-- A failed `requires` blames the caller; a failed `ensures` or `invariant` blames the supplier.
+- A `where` after a parameter is the caller's promise, a `where` after the result type is the function's, and `invariant` is the type's.
+- A failed precondition blames the caller; a failed postcondition or `invariant` blames the supplier.
 - Invariants are checked wherever a value is built.
 - An interface owns the contract of its members; impls can't add their own.
 - Conditions must be pure; release builds drop contracts unless the manifest keeps them.

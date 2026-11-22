@@ -1,7 +1,7 @@
 """moxie doc: documentation generator.
 
 Reads `///` doc comments (and `//!` module comments), the contract lines
-(`requires` / `ensures` / `invariant`), and checks the `> expr` examples in the
+(`invariant` lines; `where` conditions stay in the signature), and checks the `> expr` examples in the
 doc text as doctests.  Output is static HTML (default) or Markdown.
 
 The interpreter does not parse or enforce contracts yet, so the contract lines
@@ -13,7 +13,7 @@ import re
 
 from .parser import parse_program
 
-CONTRACT = re.compile(r"^(\s*)(requires|ensures|invariant)\b\s*(.*)$")
+CONTRACT = re.compile(r"^(\s*)(invariant)\b\s*(.*)$")
 ITEM_NODES = ("FnDecl", "FnGroup", "TupleDecl", "EnumDecl", "IfaceDecl", "AliasDecl", "ImplDecl", "Assign")
 KIND = {"FnDecl": "fn", "FnGroup": "fn", "TupleDecl": "tuple", "EnumDecl": "enum",
         "IfaceDecl": "interface", "AliasDecl": "alias", "ImplDecl": "impl", "Assign": "value"}

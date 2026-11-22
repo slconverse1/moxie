@@ -1890,7 +1890,7 @@ Effects say what code *does*. Permissions (superpower 23) say what a program is 
 
 ## 26. Contracts
 
-A contract states what a function needs and what it promises, in the code instead of a comment. `requires` is a precondition the caller must meet, `ensures` is a postcondition the function guarantees (it may name `result`), and `invariant` is a condition every value of a tuple type must satisfy:
+A contract states what a function needs and what it promises, in the code instead of a comment. a `where` after a parameter is a precondition the caller must meet, a `where` after the result type is a postcondition the function guarantees (it may name `result`), and `invariant` is a condition every value of a tuple type must satisfy:
 
 ```
 tuple Account
@@ -1898,9 +1898,7 @@ tuple Account
   balance Int
   invariant balance >= 0
 
-fn withdraw(a Account, amt Int) Account
-  requires amt > 0
-  ensures result.balance == a.balance - amt
+fn withdraw(a Account, amt Int where amt > 0) Account where result.balance == a.balance - amt
   Account(owner: a.owner, balance: a.balance - amt)
 
 acct = Account(owner: "ada", balance: 50)
@@ -1917,17 +1915,17 @@ println(withdraw(acct, 80).balance)
 // abort: invariant of Account failed: balance >= 0 (supplier bug)
 
 begin(0)    // where go calls withdraw(acct, n) with n = 0 at run time
-// abort: requires failed in withdraw: amt > 0 (caller bug)
+// abort: precondition failed in withdraw: amt > 0 (caller bug)
 ```
 
-- **Blame.** A failed `requires` is a caller bug. A failed `ensures` or `invariant` is a supplier bug.
-- **Caught early when it can be.** A `requires` whose arguments are all constants and that fails is a compile error, the same way a constant index out of range is.
+- **Blame.** A failed precondition is a caller bug. A failed postcondition or `invariant` is a supplier bug.
+- **Caught early when it can be.** A precondition whose arguments are all constants and that fails is a compile error, the same way a constant index out of range is.
 - **Debug and release.** Contracts are checked in debug builds and in `moxie test`, and `moxie build --release` removes them (as it does `debug_assert`) unless the manifest keeps them: put `keep_in_release = true` under `[contracts]` in `Moxie.toml` to leave them on in a release build.
 - **Sizes are contracts the compiler can prove.** A `where` clause inside the brackets constrains the size of an array: `fn first_of[T, N where N > 0](a Array[T][N]) T` asks for a non-empty array, and a call that gives `N` the size 0 is a compile error ("this call to `first_of` gives `N` the size 0, which fails its `where` constraint"). When the size isn't known until the program runs, the compiler warns and suggests a sized type, such as `e Array[Int][3]`, so the check can happen at compile time instead.
 - **Interfaces own the contract.** A contract on an interface member binds every impl, and an impl may not add contracts of its own, so generic code gets the promise through the interface.
-- **Refined parameters and aliases.** A `where` after a parameter's type (`i Int where i >= 0 and i < len(xs)`) is a precondition the compiler tries to *prove* at every call, from the tests and bindings it can see; a call it can show is wrong is a compile error, and one it can neither prove nor refute is checked when the program runs (`prove = true` in `Moxie.toml` makes that an error too). A condition you reuse can be named with a refined alias, `type Pos = Int where self > 0`, and then used on parameters (`n Pos`), annotated bindings (`x Pos = n`), results (`ensures` on `result`, or `where` after the result type), and fields (an `invariant` on the field, or `where` after it). Results are proved at each exit and fields wherever a value is built, with the same rule for what can't be proved. Anything the compiler can't see is still checked when the program runs.
+- **Refined parameters and aliases.** A `where` after a parameter's type (`i Int where i >= 0 and i < len(xs)`) is a precondition the compiler tries to *prove* at every call, from the tests and bindings it can see; a call it can show is wrong is a compile error, and one it can neither prove nor refute is checked when the program runs (`prove = true` in `Moxie.toml` makes that an error too). A condition you reuse can be named with a refined alias, `type Pos = Int where self > 0`, and then used on parameters (`n Pos`), annotated bindings (`x Pos = n`), results (`where` after the result type), and fields (`where` after the field). Results are proved at each exit and fields wherever a value is built, with the same rule for what can't be proved. Anything the compiler can't see is still checked when the program runs.
 - **Conditions are pure.** A condition may call only pure functions, which is the previous section at work.
-- **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your `ensures` lines.
+- **With property tests.** `moxie test` checks contracts, so a `forall` block that generates inputs is trying to break your postconditions.
 
 Eiffel made contracts famous. In moxie they sit beside the types, and the checker uses what it can see at compile time before the run-time check ever has to fire.
 

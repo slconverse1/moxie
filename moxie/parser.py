@@ -798,7 +798,7 @@ class Parser(ExprParser):
                 self.expect_dedent()
                 body = Block(stmts, line=bline)
         for prm in params:
-            if getattr(prm, "where", None) is not None and prm.name and body is not None:
+            if getattr(prm, "where", None) is not None and prm.name and (body is not None or getattr(self, "in_iface", False)):
                 contracts = [("requires", prm.where, prm.line, prm.wtext)] + list(contracts)      # also checked on entry, for a function used as a value
         if rwhere is not None:
             contracts = list(contracts) + [rwhere]
@@ -857,6 +857,9 @@ class Parser(ExprParser):
             nxt = self.peek(1)
             if t.kind == "NAME" and t.val in kws and not (nxt.kind == "OP" and nxt.val in ("=", ".", ":")) \
                     and nxt.kind not in ("NL", "EOF"):
+                if t.val in ("requires", "ensures"):
+                    self.err("`requires` and `ensures` are not used: write `where` after a parameter (`n Int where n > 0`) "
+                             "or after the result type (`Int where result >= 0`)")
                 self.next()
                 start = self.p
                 e = self.parse_expr()
@@ -1251,10 +1254,12 @@ class Parser(ExprParser):
 
     def parse_members(self, iface):
         self.member_depth = getattr(self, "member_depth", 0) + 1
+        prev_iface, self.in_iface = getattr(self, "in_iface", False), iface
         try:
             return self._parse_members(iface)
         finally:
             self.member_depth -= 1
+            self.in_iface = prev_iface
 
     def _parse_members(self, iface):
         members = []
