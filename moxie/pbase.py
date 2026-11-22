@@ -29,6 +29,9 @@ def edit_row(row, edits):
     return row
 
 
+PRESET_UNITS = [None]     # units of the other files of the package being read: a package's files share its units
+
+
 class PBase:
     def __init__(self, toks, file="<input>"):
         self.toks = toks
@@ -36,7 +39,7 @@ class PBase:
         self.file = file
         self.no_trailing = False
         self.nl_stop = False
-        self.units = {}             # unit name -> its factor to the base unit, for the units declared so far in this file (`unit m`): a number then a unit is a quantity
+        self.units = dict(PRESET_UNITS[0] or {})             # unit name -> its factor to the base unit, for the units declared so far in this file (`unit m`): a number then a unit is a quantity
 
     # ---------------------------------------------------------------- tokens
     def peek(self, k=0):

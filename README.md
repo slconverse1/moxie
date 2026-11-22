@@ -18,6 +18,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Small unit leftovers. The files of a multi-file package now share its units (a unit declared in one file is in scope in the others; a derived unit comes after its base in the manifest's order). Scaled conversions are rounded to 12 significant digits, so `2.01 km in m` prints `2010.0` instead of `2009.9999999999998`. `run_wrappedif.py` error cases now expect the `block` message. Cases in `run_unitpkg.py` and `run_units.py`.
+
 Blocks of children, the last design item. A function marks its last parameter `block` (`fn ul(class String, block items List[Li]) Ul`), and a call followed by an indented block fills it: each line is a child, `if`/`elif`/`else` and `for` add children conditionally or per element, `...list` adds a list, and a binding adds nothing. The block is rewritten by the parser into list concatenations, so the existing typing and capacity rules apply (`tests/run_block.py`, 38 cases). Spec 9b and section 25, and Guide chapter 21 (gc: 22).
 
 Set algebra, from the F# and Swift survey. `Set` had `+` (union); it now has `-` (difference, or one element removed), `&` (intersection), `^` (symmetric difference), and `is_subset`, `is_superset`, `is_disjoint`. The survey (F# 9 and 10, Swift 6 to 6.3) found nothing else moxie lacks except a block form that collects children for DSLs, the open item in Spec section 25.

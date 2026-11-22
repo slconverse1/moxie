@@ -478,12 +478,12 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
         r = getattr(self, "ev_" + n.num.__class__.__name__)(n.num, env)         # units are erased: `5.0 m` is 5.0
         if n.scale is not None and n.scale != 1:
             v = r.v if hasattr(r, "v") else r              # a scaled unit is stored in its base unit: `5.0 km` is 5000.0
-            return Done(v * n.scale)
+            return Done(float(f"{v * n.scale:.12g}"))   # 12 digits: `2.01 km` is 2010.0, not 2009.9999999999998
         return r
 
     def ev_QtyIn(self, n, env):
         v = yield from self.ev(n.e, env)
-        return v if n.scale == 1 else v / n.scale          # a quantity is stored in its base unit; `d in km` divides by the factor
+        return v if n.scale == 1 else float(f"{v / n.scale:.12g}")          # a quantity is stored in its base unit; `d in km` divides by the factor
 
     def ev_UnitDecl(self, n, env):
         return Done(UNIT)

@@ -84,6 +84,8 @@ CASES = [
  ("membership with in still works", SC + "if 2 in List(1, 2)\n  println(\"yes\")\n", "yes"),
  ("a range with in still works", SC + "for x in 1..2\n  println(x)\n", "1\n2"),
  ("in a different kind of unit", SC + "d = 5.0 km\nbad = d in s\n", "they are not the same kind of quantity"),
+ ("a scaled literal has no rounding noise", SC + "println(2.01 km in m)\n", "2010.0"),
+ ("a conversion back has no rounding noise", SC + "println(2010.0 m in km)\n", "2.01"),
  ("in on a plain number", SC + "bad = 3.0 in km\n", "needs a quantity on its left"),
 ]
 fails = []

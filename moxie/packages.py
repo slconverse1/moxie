@@ -54,7 +54,8 @@ def parse_package(paths):
     for p in paths:
         src = open(p, encoding="utf-8").read()
         srcs.append(src)
-        one = parse_program(src, p).stmts
+        with unit_preset(paths):
+            one = parse_program(src, p).stmts
         for f in getattr(one, "fwd", ()):
             fwd.append(f[:4] + (f[4] + len(stmts),))          # a `forward` signature's position moves by the files before it
         stmts.extend(one)
@@ -63,3 +64,38 @@ def parse_package(paths):
     stmts.fwd = tuple(fwd)
     stmts.multi = len(paths) > 1                      # lines of different files are not comparable
     return "\n".join(srcs), Block(stmts, line=1)
+
+
+import contextlib
+import re as _re
+_UNIT_LINE = _re.compile(r"^[ \t]*(?:(?:export|internal)[ \t]+)?unit[ \t]+([A-Za-z_][A-Za-z_0-9]*)(?:[ \t]*=[ \t]*(.+?))?[ \t]*$", _re.M)
+
+
+def package_unit_scales(paths):
+    """{unit: factor} for every `unit` declared in the files of one package, in order, so that each file knows the units of the others
+    (a quick scan of the text; the real declarations are parsed with the file)."""
+    from . import units as units_mod
+    out = {}
+    for path in paths:
+        try:
+            src = open(path, encoding="utf-8").read()
+        except OSError:
+            continue
+        for m in _UNIT_LINE.finditer(src):
+            try:
+                out[m.group(1)] = units_mod.decl_scale(m.group(2), out)
+            except Exception:
+                pass
+    return out
+
+
+@contextlib.contextmanager
+def unit_preset(paths):
+    """While the files of a package are parsed, they all see the package's units."""
+    from . import pbase
+    saved = pbase.PRESET_UNITS[0]
+    pbase.PRESET_UNITS[0] = package_unit_scales(paths) if len(paths) > 1 else None
+    try:
+        yield
+    finally:
+        pbase.PRESET_UNITS[0] = saved

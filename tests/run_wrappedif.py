@@ -23,12 +23,12 @@ OK = [
  ("a return with fail", 'fn f(n Int) Result[Int, Error]\n  return fail(1, "negative")\n    if n < 0\n  Ok(n)\nprintln("${f(-1)} ${f(2)}")\n', 'Err(Error(code: 1, message: "negative")) Ok(2)\n'),
 ]
 ERR = [
- ("a body under the if", 'n = 1\nprintln("x")\n  if n > 3\n    println("y")\n', "holds one `if cond` line"),
+ ("a body under the if", 'n = 1\nprintln("x")\n  if n > 3\n    println("y")\n', "has no `block` parameter"),
  ("an elif", 'n = 1\nprintln("x")\n  if n > 3\n  elif n > 1\n', "holds one `if cond` line"),
  ("an else with no value", 'fn f(n Int) Int\n  println("x") if n > 3 else\n  1\n', "value on the same line"),
  ("an else block", 'fn f(n Int) Int\n  println("x")\n    if n > 3\n    else\n      0\n  1\n', "value on the same line"),
  ("a binding cannot be guarded", 'n = 1\nm = 5\n  if n > 3\n', "unexpected indent"),
- ("only an if may follow", 'n = 1\nprintln("x")\n  println("y")\n', "unexpected indent"),
+ ("only an if may follow", 'n = 1\nprintln("x")\n  println("y")\n', "has no `block` parameter"),
 ]
 fails = []
 for name, src, want in OK:

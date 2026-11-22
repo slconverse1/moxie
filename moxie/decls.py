@@ -470,7 +470,11 @@ class DeclsMixin:
         if folder is not None:                 # a package folder may carry its own Moxie.toml
             from .manifest import package_native
             self.pkg_native[key] = package_native(folder)
-        progs = [self.load_source(open(path, encoding="utf-8").read(), path) for path in paths]
+        from .packages import unit_preset
+        progs = []
+        for path in paths:
+            with unit_preset(paths):
+                progs.append(self.load_source(open(path, encoding="utf-8").read(), path))
         from .withs import expand_withs
         every = [s for prog in progs for s in prog.stmts]
         for prog, path in zip(progs, paths):   # a `with` may name an enum declared in another file of the package

@@ -10,9 +10,16 @@ unit hidden
 export fn speed(d Double[m], t Double[s]) Double[m/s] = d / t
 export fn twice[U](x Double[U]) Double[U] = x + x
 """
+MULTI = {"Moxie.toml": 'files = ["a.mxi", "b.mxi"]\n', "a.mxi": "export unit m\nexport unit s\n",
+         "b.mxi": "export unit km = 1000 m\nexport fn dist(x Double[km]) Double[m] = x\nexport fn sp(d Double[m], t Double[s]) Double[m/s] = d / t\n"}
 def run(main, gc=False):
     with tempfile.TemporaryDirectory() as d:
-        open(os.path.join(d, "phys.mxi"), "w").write(PHYS)
+        if main.startswith("import multi"):
+            os.mkdir(os.path.join(d, "multi"))
+            for k, v in MULTI.items():
+                open(os.path.join(d, "multi", k), "w").write(v)
+        else:
+            open(os.path.join(d, "phys.mxi"), "w").write(PHYS)
         p = os.path.join(d, "main.mxi")
         open(p, "w").write(main)
         cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["run", p]
@@ -29,6 +36,9 @@ CASES = [
  ("a unit-generic package function", "import phys\nx Double[m] = phys.twice(2.0 m)\nprintln(x)\n", "4.0"),
  ("an import list works too", "import phys(speed)\nprintln(speed(9.0 m, 3.0 s))\n", "3.0"),
  ("a unit not exported is not a literal", "import phys\nbad = 2.0 hidden\n", "syntax error"),
+ ("units of a many-file package: one file uses another's unit", "import multi\nprintln(multi.dist(2.0 km))\n", "2000.0"),
+ ("units of a many-file package: functions across files", "import multi\nprintln(multi.sp(10.0 m, 2.0 s))\n", "5.0"),
+ ("units of a many-file package: a scaled unit converts", "import multi\nprintln(2.5 km in m)\n", "2500.0"),
  ("a local unit still works beside imported ones", "import phys\nunit kg\nw = 2.0 kg\nprintln(w * 2.0)\n", "4.0"),
 ]
 fails = []

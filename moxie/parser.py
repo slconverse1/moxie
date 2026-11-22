@@ -480,7 +480,7 @@ class Parser(ExprParser):
         """The units a local package exports (`export unit m`) are in scope here, so `5.0 m` and `d in km` parse.  The scale of each
         comes from the package's own declarations, in order."""
         import os
-        from .packages import package_files
+        from .packages import package_files, unit_preset
         if self.file is None or self.file.startswith("<"):
             base = "."
         else:
@@ -497,17 +497,18 @@ class Parser(ExprParser):
                 break
         if not found:
             return
+        local = {}
         for path in found[0]:
             if path in UNIT_SCAN:
                 continue
             UNIT_SCAN.add(path)
             try:
-                prog = parse_program(open(path, encoding="utf-8").read(), path)
+                with unit_preset(found[0]):
+                    prog = parse_program(open(path, encoding="utf-8").read(), path)
             except Exception:
                 continue
             finally:
                 UNIT_SCAN.discard(path)
-            local = {}
             for st in prog.stmts:
                 if st.__class__ is UnitDecl:
                     local[st.name] = units_mod.decl_scale(st.text, local)
