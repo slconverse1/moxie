@@ -111,6 +111,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, DSL block syntax, in the spirit of result builders (a function marks its last parameter `block`, and an indented block of children fills it: `ul(class: "menu")` followed by indented `li(...)` lines), the idea that a function parameter has a name for the body and a label for the call, and regex literals with typed captures, `(?<y:Int>\\d{4})`, whose names get the types the groups declare (the `regex` package's `Matches("...", (y, m))`).
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
+- **Liquid Haskell:** refinement types: a `where` condition on a parameter, a result or a field, as in `type Pos = Int where self > 0`, which the checker proves at compile time when it can (linear integer arithmetic and `len`) and checks at run time when it can't.
 - **C#:** multi-cast delegation.
 
 By synthesizing these features and others into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
