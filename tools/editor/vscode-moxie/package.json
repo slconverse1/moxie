@@ -1,23 +1,63 @@
 {
   "name": "moxie",
   "displayName": "Moxie",
-  "description": "Syntax highlighting for the moxie design language (.mxi)",
+  "description": "Syntax highlighting and a language server (diagnostics, formatting, outline) for the moxie design language (.mxi)",
   "version": "0.1.0",
   "publisher": "slconverse1",
   "license": "MIT",
-  "engines": { "vscode": "^1.60.0" },
-  "categories": ["Programming Languages"],
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
   "contributes": {
-    "languages": [{
-      "id": "moxie",
-      "aliases": ["Moxie", "moxie"],
-      "extensions": [".mxi"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "moxie",
-      "scopeName": "source.moxie",
-      "path": "./syntaxes/moxie.tmLanguage.json"
-    }]
+    "languages": [
+      {
+        "id": "moxie",
+        "aliases": [
+          "Moxie",
+          "moxie"
+        ],
+        "extensions": [
+          ".mxi"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "moxie",
+        "scopeName": "source.moxie",
+        "path": "./syntaxes/moxie.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Moxie",
+      "properties": {
+        "moxie.command": {
+          "type": "string",
+          "default": "python3",
+          "description": "Python used to run the language server (python3 -m moxie lsp)."
+        },
+        "moxie.cwd": {
+          "type": "string",
+          "default": "",
+          "description": "Folder that contains the moxie package, if moxie is not installed (the repository root)."
+        },
+        "moxie.gc": {
+          "type": "boolean",
+          "default": false,
+          "description": "Check with the moxie/gc rules."
+        }
+      }
+    }
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:moxie"
+  ],
+  "dependencies": {
+    "vscode-languageclient": "^8.1.0"
   }
 }

@@ -21,6 +21,7 @@ USAGE = """usage: moxie [--gc] [--release] [--quiet] [--pools] run [FILE] [args.
                                     rewrite files with canonical layout (2-space indentation, blank lines, no trailing spaces)
        moxie --platform=browser check|run FILE
                                     check or run as Try moxie would: no network or ffi, and calls the browser lacks (signals) are errors
+       moxie lsp                    a language server for editors (LSP over stdio): diagnostics, formatting, outline (--gc before lsp for moxie/gc)
        moxie -e 'code'              run a snippet
 """
 
@@ -138,6 +139,9 @@ def main(argv=None):
     if not argv or argv[0] in ("-h", "--help", "help"):
         sys.stdout.write(USAGE)
         return 0 if argv else 2
+    if argv[0] == "lsp":
+        from .lsp import main as lsp_main
+        return lsp_main([])
     if argv[0] == "-e":
         I = make_interp(None, [])
         return I.run_source(argv[1], "<-e>")
