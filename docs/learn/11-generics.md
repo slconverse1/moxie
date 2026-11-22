@@ -5,7 +5,7 @@ title: "Generic functions · Mixer’s Guide moxie"
 ---
 # 13. Generic functions
 
-<div class='specref' markdown='1'>In the Spec: [9a. Generics](../spec.html#s9a)</div>
+<div class='specref' markdown='1'>In the Spec: [9a. Generics](../spec.html#s9a), [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
 
 A function that works the same way whatever the type of its argument can be written once. Such a function is *generic*, and it lists *type parameters* in square brackets after its name.
 

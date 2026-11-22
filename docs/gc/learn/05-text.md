@@ -6,7 +6,7 @@ title: "Text · Mixer’s Guide moxie/gc"
 ---
 # 6. Text
 
-<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5)</div>
+<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [24. Prelude reference](../spec.html#s24)</div>
 
 Text in moxie is a `String`: a sequence of Unicode characters stored as UTF-8. You have already used strings for printing. This lesson covers what else you can do with them.
 

@@ -6,7 +6,7 @@ title: "Input, output, and files · Mixer’s Guide moxie/gc"
 ---
 # 37. Input, output, and files
 
-<div class='specref' markdown='1'>In the Spec: [19b. Standard input and output](../spec.html#s19b), [19c. Files and sockets](../spec.html#s19c)</div>
+<div class='specref' markdown='1'>In the Spec: [19b. Standard input and output](../spec.html#s19b), [19c. Files and sockets](../spec.html#s19c), [19. Resources, pools, packages](../spec.html#s19)</div>
 
 A program that only prints is a calculator. This lesson is about talking to the outside world: the arguments a program is started with, its environment, standard input and output, and files and directories on disk.
 

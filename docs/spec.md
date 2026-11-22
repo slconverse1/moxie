@@ -90,7 +90,7 @@ The reference for the moxie language, a design language (a specification and a r
 ## 3. Memory model: S-space, T-space, and resets {#s3}
 
 <!-- guide -->
-*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html), [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
+*In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [17. Lists](learn/15-lists.html), [18. Arrays and grids](learn/16-arrays.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html), [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
 <!-- /guide -->
 
 **Why this exists.** A daemon is expected to run indefinitely. With no garbage collector, the strings a program builds at runtime and the temporaries of its functional transformations would grow without bound, and the program would eventually crash. S-space and T-space solve that: two stacks per fiber, released in bulk at fixed points, so a loop that runs forever uses a fixed amount of memory.
@@ -172,7 +172,7 @@ How S-space and T-space behave:
 ## 5. Scalars, numbers, text, ranges {#s5}
 
 <!-- guide -->
-*In the Mixer’s Guide: [5. Numbers](learn/04-numbers.html), [6. Text](learn/05-text.html), [7. Templates and locales](learn/59-fmt-and-locales.html)*
+*In the Mixer’s Guide: [5. Numbers](learn/04-numbers.html), [6. Text](learn/05-text.html), [7. Templates and locales](learn/59-fmt-and-locales.html), [9. Loops](learn/07-loops.html)*
 <!-- /guide -->
 
 **Types**
@@ -237,7 +237,7 @@ How S-space and T-space behave:
 ## 6. Tuples, enums, aliases, unions {#s6}
 
 <!-- guide -->
-*In the Mixer’s Guide: [14. Tuples](learn/12-tuples.html), [15. Enums](learn/13-enums.html), [21. Naming types: aliases, opaque types, and unions](learn/18-types-of-types.html), [52. GADTs and typestate](learn/43-gadts-and-typestate.html), [57. Types that compute](learn/47-types-that-compute.html)*
+*In the Mixer’s Guide: [14. Tuples](learn/12-tuples.html), [15. Enums](learn/13-enums.html), [16. Missing values and failures: Option and Result](learn/14-missing-and-failed.html), [21. Naming types: aliases, opaque types, and unions](learn/18-types-of-types.html), [22. Patterns](learn/19-patterns.html), [52. GADTs and typestate](learn/43-gadts-and-typestate.html), [57. Types that compute](learn/47-types-that-compute.html)*
 <!-- /guide -->
 
 - **Tuples.** `(10, 20)` and `(age: 30, city: "NYC")`. All fields are positional or all are named. `(40)` is an expression, and the 1-tuple is `(:40)` (positional) or `(n: 40)` (named); `(:40)` is shorthand for `(0: 40)`, a tuple with the position label 0 (the name before the colon is left out, and nothing else can start with a colon there, because an expression cannot begin with `:`). Position labels are 0-based and not part of the type, and field names are. Lookup is `t(0)` or `t(name)` with a constant key, and a named field is also `t.name`.
@@ -313,7 +313,7 @@ How S-space and T-space behave:
 ## 8. Patterns and `when` {#s8}
 
 <!-- guide -->
-*In the Mixer’s Guide: [8. Truth and choices](learn/06-truth-and-choices.html), [12. Recursion and function clauses](learn/10-recursion-and-clauses.html), [22. Patterns](learn/19-patterns.html), [23. Binary patterns, and taking a value apart by its type](learn/51-binary-patterns-and-type-tags.html)*
+*In the Mixer’s Guide: [8. Truth and choices](learn/06-truth-and-choices.html), [12. Recursion and function clauses](learn/10-recursion-and-clauses.html), [14. Tuples](learn/12-tuples.html), [22. Patterns](learn/19-patterns.html), [23. Binary patterns, and taking a value apart by its type](learn/51-binary-patterns-and-type-tags.html)*
 <!-- /guide -->
 
 - **`when value`** matches arms top to bottom. Patterns can be literals, constants, names (which bind), `_`, tuples, named tuples, declared tuples, enum cases, union members, list patterns, array patterns, Dict patterns, and pattern functions (`Num(n)` for a `pattern fn`, described below), nested to any depth. Alternatives are joined with `|` (`1 | 2 -> ...`, `Red | Blue -> ...`) and must bind the same names; a comma is never an alternative. Alternatives may be nested (`Some(1 | 2)`, `(0 | 1, x)`; the parser expands them into whole-pattern alternatives, at most 512) and may follow `is` (`x is A | B`, `x is not A | B`) when they bind no names; they are an error in a `let`, `for` or other pattern that cannot fail. A string literal with holes is a string pattern: `${name}` binds the matched text, `${n Int}` (or `Double`, `Bool`, `String`) binds it as that type and fails when the text does not read as one, `${_}` skips; literal text at the start or end anchors there, a hole between pieces of text takes the shortest match, and two holes need literal text between them; it may be an alternative and may follow `is`, and a `when` that uses one needs a `_` arm. A guarded arm does not count toward coverage, so a `when` on an `Int`, `String` or `Char` needs an unguarded `_`, name or `else`. `when a, b, c` matches several values at once: each arm gives one pattern for each value, separated by commas, and each of them may have `|` alternatives (`Member | Guest, true -> ...`, where `|` binds tighter than the comma), so no tuple parentheses are needed (whole combinations as alternatives are written as tuples: `(Some(x), None) | (None, Some(x)) -> ...`); a lone `_` or `else` takes any combination, and the checker's exhaustiveness check works on the combination. Every `when` must cover every case, and `else` is the fallback. Statements may be joined by `;` at the start of a line (`a = 1; b = 2`), and only there: lambdas, arms and `then`/`do`/`else` bodies take one statement or an indented block. `moxie fmt` keeps a `;` line as written and never adds one. Patterns that cover the whole range of a bounded integer need no `_`.
@@ -387,7 +387,7 @@ How S-space and T-space behave:
 ## 9a. Generics {#s9a}
 
 <!-- guide -->
-*In the Mixer’s Guide: [13. Generic functions](learn/11-generics.html)*
+*In the Mixer’s Guide: [13. Generic functions](learn/11-generics.html), [24. Methods and interfaces](learn/20-interfaces.html)*
 <!-- /guide -->
 
 - **What a generic is.** A generic declaration takes parameters in square brackets, which the compiler fills in at each use. Functions, `impl` blocks, declared tuples, enums, aliases, unions, and interfaces can all be generic.
@@ -441,7 +441,7 @@ How S-space and T-space behave:
 ## 9c. Contracts {#s9c}
 
 <!-- guide -->
-*In the Mixer’s Guide: [60. Contracts: where and invariant](learn/55-contracts.html)*
+*In the Mixer’s Guide: [32. Testing, assertions, and checking](learn/25-testing.html), [60. Contracts: where and invariant](learn/55-contracts.html)*
 <!-- /guide -->
 
 - **One mechanism.** A contract and a refined parameter (section 9d) are one thing, a `where` condition, in one of three places: after a parameter (a precondition), after the result type (a postcondition), and after a field or in an `invariant` line (a condition on a value that is built). All of them are checked when the program runs, with the same blame and the same build modes. The solver of section 9d additionally tries to prove a `where` at each call, each exit and each construction, and a condition it can neither prove nor refute stays a run-time check. There are no `requires` or `ensures` lines: writing one is a syntax error that says to write `where`.
@@ -475,7 +475,7 @@ How S-space and T-space behave:
 ## 10. Operators {#s10}
 
 <!-- guide -->
-*In the Mixer’s Guide: [8. Truth and choices](learn/06-truth-and-choices.html)*
+*In the Mixer’s Guide: [5. Numbers](learn/04-numbers.html), [8. Truth and choices](learn/06-truth-and-choices.html), [20. Dicts and sets](learn/17-dicts-and-sets.html)*
 <!-- /guide -->
 
 - **Arithmetic and comparison:** `+ - * / %`, `== ~= < > <= >=`. A type defines only `==` and `<` (in an `impl`, below). The compiler derives `~=` as `not (x == y)`, and `>`, `<=`, `>=` from `<` and `==`; defining those four is an error. `==` on a type with no definition and no derived `eq` is an error.
@@ -511,7 +511,7 @@ How S-space and T-space behave:
 ## 11. Closures and first-class functions {#s11}
 
 <!-- guide -->
-*In the Mixer’s Guide: [11. Anonymous functions and closures](learn/09-lambdas-and-closures.html)*
+*In the Mixer’s Guide: [10. Functions](learn/08-functions.html), [11. Anonymous functions and closures](learn/09-lambdas-and-closures.html)*
 <!-- /guide -->
 
 - Functions are values. Named functions can be bound, passed, and returned.
@@ -532,7 +532,7 @@ How S-space and T-space behave:
 ## 12. Interfaces and `impl` blocks {#s12}
 
 <!-- guide -->
-*In the Mixer’s Guide: [24. Methods and interfaces](learn/20-interfaces.html), [49. Tagless final: one program, many interpreters](learn/40-tagless-final.html), [55. Receiver blocks, interface composition, and mocks](learn/45-receiver-blocks-and-mocks.html), [56. Typeclasses](learn/46-typeclasses.html), [58. Properties, field delegates, and proxies](learn/48-properties-delegates-proxies.html)*
+*In the Mixer’s Guide: [13. Generic functions](learn/11-generics.html), [24. Methods and interfaces](learn/20-interfaces.html), [49. Tagless final: one program, many interpreters](learn/40-tagless-final.html), [55. Receiver blocks, interface composition, and mocks](learn/45-receiver-blocks-and-mocks.html), [56. Typeclasses](learn/46-typeclasses.html), [58. Properties, field delegates, and proxies](learn/48-properties-delegates-proxies.html)*
 <!-- /guide -->
 
 - **All methods live in `impl` blocks.** `impl` is a hard keyword. There is no `fn (Dog) speak()` receiver form; free functions stay `fn name(...)`.
@@ -581,7 +581,7 @@ How S-space and T-space behave:
 ## 13. Pipelines and streams {#s13}
 
 <!-- guide -->
-*In the Mixer’s Guide: [25. Streams and pipelines](learn/21-streams-and-pipelines.html), [26. More stream tools: sources you build](learn/61-more-stream-tools.html), [27. Pipe slots, `seq`, and doing work once](learn/50-pipe-slots-and-caching.html)*
+*In the Mixer’s Guide: [9. Loops](learn/07-loops.html), [25. Streams and pipelines](learn/21-streams-and-pipelines.html), [26. More stream tools: sources you build](learn/61-more-stream-tools.html), [27. Pipe slots, `seq`, and doing work once](learn/50-pipe-slots-and-caching.html)*
 <!-- /guide -->
 
 - **Pipe `|>`** inserts the left value into a call: `x |> f(a)`. The candidates are the first and the last mandatory parameters. The compiler places `x` in each candidate, fills the other parameters from the explicit arguments in order, and keeps the placements that type-check. One match is used, two matches are an ambiguity error that asks for `&`, and none is a type error. A middle slot needs `&`, and `&` skips inference: `10 |> subtract(&, 3)` is `subtract(10, 3)` and `10 |> subtract(3, &)` is `subtract(3, 10)`. A stage is always a call (`5 |> double` is not a stage, but `5 |> (inc ~> double)()` is). A trailing lambda fills the last parameter left after the pipe has taken its slot (section 9). There is no partial application. **Tuples in pipes:** when a stage has no explicit arguments and the piped value is a tuple that fits the stage's whole parameter list (by position, or by name for a named tuple), the stage is the call `f(tuple)`, which section 9 already allows, so `(1.0, 2.0, 3.0) |> velocity()` fills `velocity(x, y, z)`. An extra field, or a stage written without parentheses, is not accepted.
@@ -622,7 +622,7 @@ Nothing is cached behind your back. Four recipes cover the need:
 ## 15. Errors and Results {#s15}
 
 <!-- guide -->
-*In the Mixer’s Guide: [16. Missing values and failures: Option and Result](learn/14-missing-and-failed.html), [34. Errors in larger programs](learn/26-errors-in-larger-programs.html)*
+*In the Mixer’s Guide: [16. Missing values and failures: Option and Result](learn/14-missing-and-failed.html), [34. Errors in larger programs](learn/26-errors-in-larger-programs.html), [39. JSON and data from outside](learn/30-json.html)*
 <!-- /guide -->
 
 - **Errors are values.** Moxie has no exceptions: "There is no try." An operation that can fail returns a `Result[T, E]`, where `E` can be any type (the default is `Error`).
@@ -675,7 +675,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 ## 18. Fibers, loops, streams {#s18}
 
 <!-- guide -->
-*In the Mixer’s Guide: [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [9. Loops](learn/07-loops.html), [28. Fibers and channels](learn/22-fibers-and-channels.html)*
+*In the Mixer’s Guide: [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [9. Loops](learn/07-loops.html), [25. Streams and pipelines](learn/21-streams-and-pipelines.html), [28. Fibers and channels](learn/22-fibers-and-channels.html)*
 <!-- /guide -->
 
 - **Named fibers** are declared `fiber[3] fn feed(...) Unit` (the limit is optional) and started with `\go feed(tx, msg)`. `go` on a function that isn't declared `fiber` is a compile error. A fiber function may return a value and may use `?` (it ends the fiber at the first failure), but nothing receives the returned value, as with a Go goroutine.
@@ -715,7 +715,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 ## 19. Resources, pools, packages {#s19}
 
 <!-- guide -->
-*In the Mixer’s Guide: [35. Limits, pools, and the memory budget](learn/53-limits-pools-memory.html)*
+*In the Mixer’s Guide: [35. Limits, pools, and the memory budget](learn/53-limits-pools-memory.html), [36. Packages and imports](learn/27-packages.html), [37. Input, output, and files](learn/28-input-output-files.html)*
 <!-- /guide -->
 
 - **Pools.** The compiler tallies the atoms, channels, timers, futures, connections, files and sockets (`Io`, with a `Udp` counted as an `Io` socket), listeners, and foreign handles each function creates by size class, including those from callees, and writes a pool header. Each call to `open_file`, `connect`, `listen`, `accept`, or a foreign function that returns a handle counts as one creation. A foreign handle type is its own size class (one word). The standard streams are not counted, because the runtime owns them. The runtime allocates every pool before the first line runs, so creation never fails and only `go` can fail. Resources in fiber code count once per possible live fiber, or `fiber[n]` for a limit. The compiler prints a pool report and warns about unannotated fibers that create resources. In the reference interpreter `moxie pools FILE` prints the first version of this tally. It follows calls into imported packages (`lib.f(...)`, or `f(...)` after `import lib (f)`), counts what a package's top level creates once the package is imported, and counts the fibers that a function started by `go` anywhere in the call chain, including a helper function or a package. Because `x.f(a)` is `f(x, a)` (section 12), a call written either way reaches the same function: `x.name(...)` counts the functions of that name in the file, the one brought in by `import lib (name)`, and the `impl` methods of that name in any imported package, so the tally can be larger than the real count but never smaller. A kept resource that a package function creates and the program calls in a loop is an error that names the package.
@@ -818,7 +818,7 @@ Files and network connections are resources of one type, `Io`, so code that read
 ## 19d. Permissions {#s19d}
 
 <!-- guide -->
-*In the Mixer’s Guide: [61. The system around your program](learn/44-the-system-around-your-program.html)*
+*In the Mixer’s Guide: [44. Databases with SQL](learn/35-sql.html), [61. The system around your program](learn/44-the-system-around-your-program.html)*
 <!-- /guide -->
 
 - **Kinds.** A program's reach outside its own memory is divided into: `fs.read` and `fs.write` (path prefixes), `net.connect` (`host:port` patterns), `net.listen` (ports), `ffi` (native library names), `process` (program names), `stdin`, and `env`. Writing to `stdout` and `stderr`, and reading `args`, are always allowed. Each kind takes a list of what is granted, or `true` for everything of that kind.
@@ -859,7 +859,7 @@ Files and network connections are resources of one type, `Io`, so code that read
 ## 20. Program arguments and environment {#s20}
 
 <!-- guide -->
-*In the Mixer’s Guide: [61. The system around your program](learn/44-the-system-around-your-program.html)*
+*In the Mixer’s Guide: [1. Running moxie](learn/01-run.html), [61. The system around your program](learn/44-the-system-around-your-program.html)*
 <!-- /guide -->
 
 - **`args`** is an unboxed array of the program's arguments. `args(0)` out of range aborts, so check the count or use `get(args, 0)`, which returns a `Result`.
@@ -1027,7 +1027,7 @@ Two declared markers, written before `fn` like an effect, that say where compile
 ## 24. Prelude reference {#s24}
 
 <!-- guide -->
-*In the Mixer’s Guide: [65. …moxie: the rest of the moxie toolbox](learn/66-the-rest-of-moxie.html)*
+*In the Mixer’s Guide: [5. Numbers](learn/04-numbers.html), [6. Text](learn/05-text.html), [65. …moxie: the rest of the moxie toolbox](learn/66-the-rest-of-moxie.html)*
 <!-- /guide -->
 
 Signatures only, grouped. Names with an asterisk are planned.

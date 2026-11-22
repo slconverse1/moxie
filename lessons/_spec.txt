@@ -1,49 +1,49 @@
 // lesson file name: Spec section ids (the {#sN} anchors), comma-separated.  Read by tools/make_learn.py (a "Spec:" line at the end of each lesson)
 // and tools/link_spec.py (a "Guide:" line under each Spec heading).  tests/run_links.py checks that every lesson and every Spec section is mapped.
-01-run: s22
+01-run: s22, s20
 02-first-program: s1
 03-values-and-names: s0, s1, s2, s3
 58-for-imperative-programmers: s3, s18
-04-numbers: s5
-05-text: s5
+04-numbers: s5, s10, s24
+05-text: s5, s24
 59-fmt-and-locales: s5, s19e
 06-truth-and-choices: s8, s10
-07-loops: s18, s18a
-08-functions: s9
+07-loops: s18, s18a, s5, s13
+08-functions: s9, s11
 09-lambdas-and-closures: s11
 10-recursion-and-clauses: s8, s9
-11-generics: s9a
-12-tuples: s6
+11-generics: s9a, s12
+12-tuples: s6, s8
 13-enums: s6
-14-missing-and-failed: s0, s15
-15-lists: s7
-16-arrays: s7
+14-missing-and-failed: s0, s15, s6
+15-lists: s7, s3
+16-arrays: s7, s3
 56-mutable-blocks: s3
-17-dicts-and-sets: s7
+17-dicts-and-sets: s7, s10
 18-types-of-types: s6
-19-patterns: s8
+19-patterns: s8, s6
 51-binary-patterns-and-type-tags: s8
-20-interfaces: s0, s12
-21-streams-and-pipelines: s13
+20-interfaces: s0, s12, s9a
+21-streams-and-pipelines: s13, s18
 61-more-stream-tools: s13
 50-pipe-slots-and-caching: s13, s14
 22-fibers-and-channels: s16, s17, s18
 23-select-timers-cancel: s17
 24-atoms-and-futures: s17
 52-session-types: s23e
-25-testing: s22
+25-testing: s22, s9c
 57-formatting-and-checking: s22
 26-errors-in-larger-programs: s15
 53-limits-pools-memory: s3a, s19
-27-packages: s4
-28-input-output-files: s19b, s19c
+27-packages: s4, s19
+28-input-output-files: s19b, s19c, s19
 29-builders-and-blocks: s9b
-30-json: s23c
+30-json: s23c, s15
 31-regex: s23f
 32-statistics: s23a
 33-networking: s19c, s23b
 34-units: s23g
-35-sql: s21
+35-sql: s21, s19d
 36-purity-and-composition: s14, s23
 37-functors-and-monads: s23
 38-for-comprehensions: s23

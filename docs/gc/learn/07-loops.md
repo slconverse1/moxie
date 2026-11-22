@@ -6,7 +6,7 @@ title: "Loops · Mixer’s Guide moxie/gc"
 ---
 # 9. Loops
 
-<div class='specref' markdown='1'>In the Spec: [18. Fibers, loops, streams](../spec.html#s18), [18a. Labels and exits](../spec.html#s18a)</div>
+<div class='specref' markdown='1'>In the Spec: [18. Fibers, loops, streams](../spec.html#s18), [18a. Labels and exits](../spec.html#s18a), [5. Scalars, numbers, text, ranges](../spec.html#s5), [13. Pipelines and streams](../spec.html#s13)</div>
 
 To do something many times, use a loop. Moxie has one loop keyword, `for`. It walks over a collection or a range, and it repeats until a condition fails. A loop is an expression, so a loop can produce a value, which this lesson gets to after the basics.
 
