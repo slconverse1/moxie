@@ -60,3 +60,8 @@ You don't need to know any functional programming. If you do, the lessons point 
 27. [Packages and imports](27-packages.html)
 28. [Input, output, and files](28-input-output-files.html)
 29. [Builders: a DSL without macros](29-builders-and-blocks.html)
+
+## Data from outside
+
+30. [JSON and data from outside](30-json.html)
+31. [Regular expressions](31-regex.html)

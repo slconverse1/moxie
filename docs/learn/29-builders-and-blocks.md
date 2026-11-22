@@ -251,4 +251,4 @@ Every level is a function, every list is typed, and the whole page is a value yo
 
 ---
 
-[← Input, output, and files](28-input-output-files.html) · [Contents](./)
+[← Input, output, and files](28-input-output-files.html) · [Contents](./) · [JSON and data from outside →](30-json.html)

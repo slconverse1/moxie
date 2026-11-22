@@ -38,3 +38,7 @@
 27-packages
 28-input-output-files
 29-builders-and-blocks
+
+# Data from outside
+30-json
+31-regex
