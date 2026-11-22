@@ -46,7 +46,7 @@ whenstmt : 'when' [ expr { ',' expr } ] NL INDENT arm+ DEDENT ;
 arm : arm_head '->' ( simple NL | block | when_b ) | 'else' ( simple NL | block ) ;
 arm_head : pattern_alts { ',' pattern_alts } [ 'if' expr ] | ident '=' expr | expr | 'else' ;
 pattern_alts : pattern { '|' pattern } ;
-forstmt : 'for' pattern 'in' expr ( block | 'then' simple NL ) [ 'else' ( simple NL | block ) ] ;
+forstmt : 'for' ( pattern 'in' expr | expr ) ( block | 'then' simple NL ) [ 'else' ( simple NL | block ) ] ;
 whilestmt : 'while' [ expr ] block [ 'else' ( simple NL | block ) ] ;
 mutable_block : 'mutable' block ;
 

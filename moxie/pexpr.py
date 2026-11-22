@@ -1761,6 +1761,11 @@ class ExprParser(PBase):
         line = self.next().line
         if self.peek().kind == "NL":
             return self.parse_for_monad(line)
+        if self.for_is_condition():
+            cond = self.parse_header_expr()              # `for i < n` and `for read_line() is Ok(line)`: a loop on a condition, as in Go
+            body = self.parse_body("do", "a `for`")
+            else_ = self.parse_loop_else()
+            return WhileE(cond, body, else_, None, line=line)
         pats = [self.parse_pattern()]
         while self.eat_op(","):
             pats.append(self.parse_pattern())
@@ -1770,6 +1775,25 @@ class ExprParser(PBase):
         body = self.parse_body("do", "a `for`")
         else_ = self.parse_loop_else()
         return ForE(pat, it, body, else_, None, line=line)
+
+    def for_is_condition(self):
+        """After `for`: is the header a condition (no `in` at the top level before the body starts)?  `for x in xs` is the
+        iteration form; a membership test as a condition is written with `while`."""
+        depth, i = 0, 0
+        while True:
+            t = self.peek(i)
+            if t.kind in ("NL", "EOF", "INDENT", "DEDENT"):
+                return True
+            if t.kind == "OP" and t.val in ("(", "[", "{"):
+                depth += 1
+            elif t.kind == "OP" and t.val in (")", "]", "}"):
+                depth -= 1
+            elif depth == 0 and t.kind == "NAME":
+                if t.val == "in":
+                    return False
+                if t.val == "do":
+                    return True
+            i += 1
 
     def parse_loop_else(self):
         if self.at_name("else"):

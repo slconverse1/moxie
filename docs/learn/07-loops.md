@@ -110,6 +110,32 @@ while n < 100
 
 Look at what happened to `n`. Inside the loop, `n = n * 3` is a new binding of `n` for the next pass, and the loop carries it forward the way a function call carries its arguments. So a `while` loop counts as you'd hope. What it doesn't do is change the `n` that exists *after* the loop: that one is still `1`, and the compiler tells you so if you read it there. The loop's value (below) and `name@1` (also below) are the two ways to get a result out. A `while` with no condition at all loops until something breaks out of it.
 
+If you come from Go, you can write the same loop with `for` and a condition. `for` with no `in` is a loop on a condition, and it means exactly what `while` means:
+
+```moxie
+n = 1
+for n < 50
+  println(n)
+  n = n * 3
+```
+**Output:**
+
+```
+1
+3
+9
+27
+```
+
+A condition that is a test on a pattern ends a loop at the end of a stream of input. `read_line()` gives `Err` at end of file, so this reads every line:
+
+```moxie
+for read_line() is Ok(line)
+  println("got ${line}")
+```
+
+`for x in xs` still walks a collection, so a condition that is itself a membership test (`n in allowed`) is written with `while`, where there is no ambiguity.
+
 ## break and continue
 
 `break` leaves the loop, and `continue` skips to the next pass:

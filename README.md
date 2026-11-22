@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+`for cond` is a loop on a condition, as in Go. `for i < n` and `for read_line() is Ok(line)` mean what `while` means; `while` stays, and `for x in xs` is unchanged (a header with an `in` at its top level is the iteration form, so a membership condition is written with `while`). It is the same `WhileE` node, so everything about `while` (`else`, `break`, `continue`, loop values) applies. Lesson 7 shows it, with the end-of-file loop. `tests/run_forcond.py` covers it.
+
 Results and fields are proved at compile time. A linear `ensures` (or `where` after the result type) is proved at every exit of a function, branches and `return` included, and a linear `invariant` (or `where` after a field) at every construction of the tuple, from the same facts as a call. A condition that can never hold there is a compile error; an unknown one says nothing (the run-time check stays) unless `prove = true` makes it an error; only parameters get a note. Tests that built a bad value on purpose to see the run-time abort now hide the value from the checker. `tests/run_proveexit.py` covers it.
 
 `io.Buffer` can rewind and seek (`ref b.rewind()`, `ref b.seek(n)`, and `io.position(b)`), so what was written can be read back. Lesson 62 now says that Reader, Writer and Cont are the transformers over `Identity`, and the intros no longer say an unprovable `where` is a compile error.
