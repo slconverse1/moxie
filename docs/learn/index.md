@@ -69,3 +69,8 @@ You don't need to know any functional programming. If you do, the lessons point 
 33. [Networking, deadlines, and parallel work](33-networking.html)
 34. [Units of measure](34-units.html)
 35. [Databases with SQL](35-sql.html)
+
+## Functional programming
+
+36. [Values, purity, and composing functions](36-purity-and-composition.html)
+37. [Mapping, sequencing, and combining: functors, applicatives, and monads](37-functors-and-monads.html)

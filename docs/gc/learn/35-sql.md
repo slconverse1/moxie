@@ -223,4 +223,4 @@ With a schema in `Moxie.toml`, many mistakes never reach this point: an unknown 
 
 ---
 
-[← Units of measure](34-units.html) · [Contents](./)
+[← Units of measure](34-units.html) · [Contents](./) · [Values, purity, and composing functions →](36-purity-and-composition.html)

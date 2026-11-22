@@ -46,3 +46,7 @@
 33-networking
 34-units
 35-sql
+
+# Functional programming
+36-purity-and-composition
+37-functors-and-monads

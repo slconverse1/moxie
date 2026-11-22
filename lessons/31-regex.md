@@ -14,7 +14,7 @@ The syntax is the usual one:
 | `\d \w \s` (`\D \W \S`) | digit, word character, space (and their opposites) |
 | `\b` | a word boundary |
 | `^` `$` | the start and end of the text |
-| `a|b` | either |
+| `a\|b` | either |
 | `( )`, `(?: )`, `(?<name> )` | a group, a group that only groups, a named capture |
 | `* + ? {n} {n,} {n,m}` | repeats |
 | `*?` `+?` | lazy repeats |
