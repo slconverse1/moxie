@@ -422,7 +422,7 @@ class CallsMixin:
                 # a receiver method found by bare name: if the call has more args than it takes,
                 # the name means an outer/prelude function instead
                 ps = [p for p in callee.node.params if p.name != "self" and p.mod != "using"]
-                if len(n.args) > len(ps):
+                if len(n.args) + (piped is not NOPIPE) > len(ps):
                     alt = env.lookup(fnn.name, None)
                     if alt is MISSING:
                         alt = self.prelude.lookup(fnn.name)
@@ -905,6 +905,12 @@ class CallsMixin:
         if k is Closure:
             return self.call_closure(f, pos, named, refspec, env, targs, line)
         if k is Builtin:
+            if pos and self.impls:
+                k0 = pos[0].__class__
+                if k0 is TupleV or k0 is EnumV:              # a type's own method of that name wins over the prelude function
+                    m = self.find_method_for(pos[0], f.name, env)
+                    if m is not None and m.node.params and m.node.params[0].name == "self":
+                        return self.apply(m, pos, named, refspec, env, targs, spreads, line, hint)
             self.call_env = env
             return self.call_builtin(f, pos, named, targs, line)
         if k.__name__ == "ForeignFn":
