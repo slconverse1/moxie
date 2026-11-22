@@ -52,3 +52,4 @@
 37-functors-and-monads
 38-for-comprehensions
 39-state-lenses-monoids
+40-tagless-final
