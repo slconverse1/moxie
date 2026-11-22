@@ -15,7 +15,6 @@ CASES = [
  ("(+ 1) is not a function", 'ys = List(1, 2).map((+ 1))\n', "an operator on its own is not a function"),
  ("(10 -) is not a function", 'ys = List(1, 2).map((10 -))\n', "an operator on its own is not a function"),
  ("(in allowed) is not a function", 'allowed = Set(1)\nys = List(1, 3).filter((in allowed))\n', "an operator on its own is not a function"),
- ("(`div_by` 2) is not a function", 'fn div_by(a Int, b Int) Int = a / b\nys = List(8).map((`div_by` 2))\n', "an operator on its own is not a function"),
  ("(- 4) with a space is not a function", 'ys = List(1).map((- 4))\n', "an operator on its own is not a function"),
  ("(-4) is negation", "println((-4))\n", None),
 ]

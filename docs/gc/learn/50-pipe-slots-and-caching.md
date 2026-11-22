@@ -80,22 +80,6 @@ println("${a} ${b}")
 12 12
 ```
 
-### Infix functions
-
-A two-argument function can be written between its arguments with backticks:
-
-```moxie
-fn calculate_yield(base Int, factor Int) Int
-  base * factor
-
-println(100 `calculate_yield` 5)
-```
-**Output:**
-
-```
-500
-```
-
 ### Tuples flow through stages
 
 A stage with no explicit arguments takes a tuple that fits its whole parameter list, so results flow from one stage to the next:
