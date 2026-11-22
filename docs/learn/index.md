@@ -111,5 +111,5 @@ You don't need to know any functional programming. If you do, the lessons point 
 62. [Calling C](54-calling-c.html)
 63. [Byte streams: Reader and Writer](65-byte-streams.html)
 64. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
-65. […moxie: the rest of its toolbox](66-the-rest-of-moxie.html)
+65. […moxie: the rest of the moxie toolbox](66-the-rest-of-moxie.html)
 66. [Where to go next](64-where-to-go-next.html)

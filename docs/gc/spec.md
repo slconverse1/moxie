@@ -1045,7 +1045,7 @@ Two declared markers, written before `fn` like an effect, that say where compile
 ## 24. Prelude reference {#s24}
 
 <!-- guide -->
-*In the Mixer’s Guide: [65. …moxie: the rest of its toolbox](learn/66-the-rest-of-moxie.html)*
+*In the Mixer’s Guide: [65. …moxie: the rest of the moxie toolbox](learn/66-the-rest-of-moxie.html)*
 <!-- /guide -->
 
 Signatures only, grouped. Names with an asterisk are planned.

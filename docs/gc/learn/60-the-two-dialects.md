@@ -111,4 +111,4 @@ Reach for GC-free moxie when you need a program whose worst case is known before
 
 ---
 
-[← Byte streams: Reader and Writer](65-byte-streams.html) · [Contents](./) · […moxie: the rest of its toolbox →](66-the-rest-of-moxie.html)
+[← Byte streams: Reader and Writer](65-byte-streams.html) · [Contents](./) · […moxie: the rest of the moxie toolbox →](66-the-rest-of-moxie.html)

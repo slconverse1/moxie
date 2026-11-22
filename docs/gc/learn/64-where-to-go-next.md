@@ -48,4 +48,4 @@ That is the whole tour. Write something small, run it, and let it grow.
 
 ---
 
-[← …moxie: the rest of its toolbox](66-the-rest-of-moxie.html) · [Contents](./)
+[← …moxie: the rest of the moxie toolbox](66-the-rest-of-moxie.html) · [Contents](./)
