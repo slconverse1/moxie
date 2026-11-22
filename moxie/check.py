@@ -8685,6 +8685,13 @@ class Checker(RefineMixin):
         if any(a.mod == "spread" or a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")):
             return self.ret_of(fd), None
         if any(p.variadic for p in params) or any(self.has_ph(a.expr) for a in args):
+            vi = next((j for j, q in enumerate(params) if q.variadic), None)
+            if vi is not None and vi == len(params) - 1 and not extra and n.trailing is None \
+                    and not any(a.label or a.mod for a in args) and all(q.mod is None for q in params):
+                for i, (a, (t, c)) in enumerate(zip(args, ats)):          # each argument must fit its parameter, or the variadic's element type
+                    q = params[min(i, vi)]
+                    if q.type is not None and not self.has_ph(a.expr):
+                        self.compat(self.ty_of_type(q.type), t, c, n.line)
             return self.ret_of(fd), None
         given = len(args) + extra + (1 if n.trailing is not None else 0)
         required = [p for p in params if p.default is None]
