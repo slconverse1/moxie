@@ -4773,6 +4773,10 @@ class Checker(RefineMixin):
             self.err(n.line, "this `for` pattern does not fit every element, so the loop would abort at the first one that doesn't match: "
                              "bind the element and test it inside (`for o in os`, then `if o is Some(x)`), or use a `for:` comprehension, "
                              "which skips the elements that don't match")
+        if n.pat.__class__ is PBind and n.pat.name[:1].islower() and not n.pat.name.startswith("_") and sc.find(n.pat.name) is not None:
+            nm = n.pat.name                                 # `for n in allowed` walks `allowed` with a new `n`; it does not test the `n` that exists
+            self.diags.append(Diag(n.line, f"`for {nm} in ...` binds a new `{nm}` for each element and hides the existing `{nm}`: "
+                                           f"to test whether `{nm}` is in the collection, write the condition in brackets, `for ({nm} in ...)`", "warning"))
         self.bind_pat(n.pat, inner, el)
         dn = self.decl_node(n.iter, sc)
         if n.pat.__class__ is PBind and dn.__class__ is TName and dn.path[-1] in ("List", "Array", "Ring", "Set") and dn.groups \

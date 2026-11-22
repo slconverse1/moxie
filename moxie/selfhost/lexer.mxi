@@ -125,7 +125,7 @@ fn scan_number(cs List[Char], st Lx) Lx
 // A backslash skips the character after it, so `\"` and `\'` do not end the token.
 fn scan_quoted(cs List[Char], st Lx, open Int, quote Char, kind String) Lx
   j = st.i + open
-  end = while j < len(cs) and cs(j) ~= quote
+  end = for j < len(cs) and cs(j) ~= quote
     j = if cs(j) == '\\' then j + 2 else j + 1
   else
     j
@@ -142,7 +142,7 @@ fn raw_closes(cs List[Char], k Int, h Int) Bool
 
 fn scan_raw(cs List[Char], st Lx, h Int) Lx
   j = st.i + 2 + h
-  end = while j < len(cs) and not raw_closes(cs, j, h)
+  end = for j < len(cs) and not raw_closes(cs, j, h)
     j = j + 1
   else
     j
@@ -171,7 +171,7 @@ fn comment_step(cs List[Char], c Cm) Cm
 
 fn skip_block_comment(cs List[Char], st Lx) Lx
   c = Cm(k: st.i + 2, depth: 1, line: st.line, ls: st.line_start)
-  done = while c.k < len(cs) and c.depth > 0
+  done = for c.k < len(cs) and c.depth > 0
     c = comment_step(cs, c)
   else
     c
@@ -223,7 +223,7 @@ fn step(cs List[Char], st Lx) Lx
 export fn lex(src String) List[Token]
   cs = chars(src) |> collect()
   st = Lx(i: 0, line: 1, line_start: 0, out: List[Token]())
-  done = while st.i < len(cs)
+  done = for st.i < len(cs)
     st = step(cs, st)
   else
     st
@@ -261,7 +261,7 @@ fn group_step(g Gp, t Token) Gp
 fn group_lines(toks List[Token]) List[List[Token]]
   g = Gp(rows: List[List[Token]](), cur: List[Token]())
   i = 0
-  done = while i < len(toks)
+  done = for i < len(toks)
     g = group_step(g, toks(i))
     i = i + 1
   else
@@ -286,7 +286,7 @@ fn top_of(stack List[Int]) Int
 // Pops indentation levels deeper than `target`, giving a DEDENT for each.
 fn dedent_to(sx Sx, target Int, line Int) Sx
   st = sx
-  done = while len(st.stack) > 1 and top_of(st.stack) > target
+  done = for len(st.stack) > 1 and top_of(st.stack) > target
     st = Sx(...st, stack: drop_last(st.stack), out: st.out + mk("DEDENT", line))
   else
     st
@@ -342,7 +342,7 @@ export fn structure(toks List[Token], last_line Int) List[Token]
   rows = group_lines(toks)
   sx = Sx(stack: List(0), depth: 0, stmt_indent: 0, prev: List[Token](), have_line: false, opens: false, out: List[Token]())
   i = 0
-  fin = while i < len(rows)
+  fin = for i < len(rows)
     sx = step_line(sx, rows(i))
     i = i + 1
   else

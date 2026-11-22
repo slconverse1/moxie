@@ -243,7 +243,7 @@ All of these are pure except `to_local`, which depends on the computer it runs o
 init
   t = raw_terminal()?
   println("press keys; Escape quits")
-  while
+  for true
     when read_key(t)?
       Typed(c) -> println("typed ${c}")
       Ctrl(c) -> println("ctrl-${c}")

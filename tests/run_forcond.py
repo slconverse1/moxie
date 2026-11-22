@@ -4,7 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CASES = [
  ("for on a counter", "n = 0\nfor n < 3\n  n = n + 1\n  println(n)\n", "", 0, "1\n2\n3"),
  ("for on an end-of-file test", "for read_line() is Ok(line)\n  println(\"got ${line}\")\n", "a\nb\n", 0, "got a\ngot b"),
- ("while on the same test", "while read_line() is Ok(line)\n  println(\"got ${line}\")\n", "a\nb\n", 0, "got a\ngot b"),
+ ("for on the same test", "for read_line() is Ok(line)\n  println(\"got ${line}\")\n", "a\nb\n", 0, "got a\ngot b"),
  ("for x in xs is still iteration", "for x in List(7, 8)\n  println(x)\n", "", 0, "7\n8"),
  ("break and continue in a condition loop", "n = 0\nfor n < 10\n  n = n + 1\n  continue if n == 2\n  break if n > 4\n  println(n)\n", "", 0, "1\n3\n4"),
  ("a bracketed in does not make it iteration", "n = 0\nfor (n < 2)\n  n = n + 1\n  println(n)\n", "", 0, "1\n2"),

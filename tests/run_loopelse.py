@@ -11,7 +11,7 @@ def run(src, cmd="run"):
 OK = [
  ("for with an else", 'xs = List(4, 8, 15, 16)\nfound = for x in xs\n  if x > 10\n    break(x)\nelse\n  -1\nprintln("$found")\n', "15\n"),
  ("for that runs out", 'xs = List(1, 2)\nfound = for x in xs\n  if x > 10\n    break(x)\nelse\n  -1\nprintln("$found")\n', "-1\n"),
- ("while with an else", 'n = 0\nr = while n < 10\n  if n * n > 30\n    break(n)\n  n = n + 1\nelse\n  -1\nprintln("$r")\n', "6\n"),
+ ("for with an else", 'n = 0\nr = while n < 10\n  if n * n > 30\n    break(n)\n  n = n + 1\nelse\n  -1\nprintln("$r")\n', "6\n"),
  ("a bare break needs no else", 'for x in List(1, 2, 3)\n  if x == 2\n    break\n  println("$x")\n', "1\n"),
  ("a labeled do gives a value without else", 'xs = List(4, 8, 15)\nfound = #search do\n  for x in xs\n    if x > 10\n      break #search(x)\n  -1\nprintln("$found")\n', "15\n"),
  ("an inner loop with its own else", 'rows = List(List(1, 20), List(3, 4))\nfor row in rows\n  big = for c in row\n    if c > 10\n      break(c)\n  else\n    0\n  println("$big")\n', "20\n0\n"),

@@ -4,7 +4,7 @@ import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 WORKER = '''fiber fn worker(id Int, out ChanW[String], stop Cancel) Unit
-  while true
+  for true
     select
       cancelled(stop) ->
         \\write(out, "worker ${id} stopping")

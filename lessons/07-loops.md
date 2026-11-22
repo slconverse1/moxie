@@ -78,7 +78,7 @@ for i, name in List("Ann", "Bo").enumerate()
 
 ```moxie
 n = 1
-while n < 100
+for n < 100
   println(n)
   n = n * 3
 ```
@@ -253,7 +253,7 @@ A function that loops and returns the result is just a loop whose value is the f
 ```moxie
 fn first_square_over(limit Int) Int
   n = 1
-  while n * n <= limit
+  for n * n <= limit
     n = n + 1
   else
     n * n
@@ -268,7 +268,7 @@ Reading `n` after the loop, instead of in the `else`, is the mistake the compile
 ```moxie
 fn first_square_over(limit Int) Int
   n = 1
-  while n * n <= limit
+  for n * n <= limit
     n = n + 1
   n * n
 println(first_square_over(50))

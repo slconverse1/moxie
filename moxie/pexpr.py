@@ -1778,7 +1778,7 @@ class ExprParser(PBase):
 
     def for_is_condition(self):
         """After `for`: is the header a condition (no `in` at the top level before the body starts)?  `for x in xs` is the
-        iteration form; a membership test as a condition is written with `while`."""
+        iteration form; a membership test as a condition is written in brackets, `for (n in allowed)`."""
         depth, i = 0, 0
         while True:
             t = self.peek(i)
@@ -1803,13 +1803,7 @@ class ExprParser(PBase):
         return None
 
     def parse_while(self):
-        line = self.next().line
-        cond = None
-        if self.peek().kind != "NL":
-            cond = self.parse_header_expr()
-        body = self.parse_body("do", "a `while`")
-        else_ = self.parse_loop_else()
-        return WhileE(cond, body, else_, None, line=line)
+        self.err("`while` is not used: write `for` (`for i < n`, `for read_line() is Ok(line)`, or `for true` to loop until a `break`)")
 
     def parse_for_monad(self, line):
         self.expect_nl_indent()

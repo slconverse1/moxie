@@ -182,7 +182,7 @@ fn str_step(cs List[Char], st Ps) Ps
 
 fn read_string(cs List[Char], i Int) Result[(String, Int), Error]
   st0 = Ps(i: i, esc: false, acc: List(), stop: false)
-  st = while not st0.stop and st0.i < len(cs)
+  st = for not st0.stop and st0.i < len(cs)
     st0 = str_step(cs, st0)
   else
     st0

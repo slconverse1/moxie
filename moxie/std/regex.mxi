@@ -530,7 +530,7 @@ fn vm_step(prog List[Inst], ncaps Int, cs List[Char], v Vm, from Int, anchored B
       return Vm(i: v.i, ad: ad1, matched: v.matched, done: true)
     return Vm(i: v.i + 1, ad: Ad(seen: List(), out: List()), matched: v.matched, done: false)
   s0 = Stp(k: 0, nxt: Ad(seen: List(), out: List()), matched: v.matched, stop: false)
-  s = while not s0.stop and s0.k < len(ad1.out)
+  s = for not s0.stop and s0.k < len(ad1.out)
     s0 = step_one(prog, cs, v.i, ad1.out, s0)
   else
     s0
@@ -542,7 +542,7 @@ fn vm_step(prog List[Inst], ncaps Int, cs List[Char], v Vm, from Int, anchored B
 // The capture positions of the best match that starts at or after `from` (only at `from` when `anchored`), or an empty list.
 fn run(prog List[Inst], ncaps Int, cs List[Char], from Int, anchored Bool) List[Int]
   v0 = Vm(i: from, ad: Ad(seen: List(), out: List()), matched: List(), done: false)
-  r = while not v0.done
+  r = for not v0.done
     v0 = vm_step(prog, ncaps, cs, v0, from, anchored)
   else
     v0
@@ -641,7 +641,7 @@ tuple Fa
 export fn find_all(re Regex, s String) List[Match]
   n = len(s)
   f0 = Fa(from: 0, found: List(), done: false)
-  f = while not f0.done
+  f = for not f0.done
     f0 = when find_from(re, s, f0.from)
       Some(m) ->
         nxt = if m.end > m.start then m.end else m.end + 1

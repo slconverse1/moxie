@@ -116,7 +116,7 @@ BAD = [
  ('Bool arithmetic', 'x = true + 1\n'),
  ('compare Int to String', 'x = 1 == "a"\n'),
  ('if cond Int', 'if 1\n  println(1)\n'),
- ('while cond String', 'while "a"\n  println(1)\n'),
+ ('for cond String', 'for "a"\n  println(1)\n'),
  ('not on Int', 'x = not 5\n'),
  ('undefined name', 'println(nope)\n'),
  ('undefined fn', 'x = nope(1)\n'),
