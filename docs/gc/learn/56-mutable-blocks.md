@@ -123,12 +123,38 @@ println("")
 2 3 5 7 11 
 ```
 
+## Methods that change their receiver
+
+Object-style code often wants a method that updates the thing it is called on. Declare the receiver `ref self`, rebind `self` in the body, and write `ref` at the call, just as for a `ref` parameter:
+
+```moxie
+tuple Counter deriving show
+  hits Int
+
+impl Counter
+  fn hit(ref self, n Int) Unit
+    self = Counter(hits: self.hits + n)
+
+c = Counter(hits: 0)
+ref c.hit(2)
+ref c.hit(3)
+println(c)
+```
+**Output:**
+
+```
+Counter(hits: 5)
+```
+
+The call must say `ref`, and `ref` on a method that does not take `ref self` is an error, so a reader can always see which calls change a variable. An `interface` can require such a method too.
+
 ## What to remember
 
 - `mutable` makes `x = e` declare or assign, and `x(i) = e` write in place, from any depth of loops and branches.
 - Values enter by copy and leave as plain immutable values, so the block is pure from outside.
 - Use it for sorting, sieves, and other loops that write arrays; use streams and `reduce` for everything else.
 - `import algo` has ready-made in-place algorithms behind pure signatures.
+- A method that takes `ref self` rebinds its receiver, and the call is written `ref c.hit(2)`.
 
 ---
 

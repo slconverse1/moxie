@@ -340,6 +340,13 @@ class ExprParser(PBase):
     def parse_unary(self):
         t = self.peek()
         line = t.line
+        if t.kind == "NAME" and t.val == "ref" and self.peek(1).kind == "NAME" and self.at_op(".", 2):
+            self.next()                                           # `ref m.add(1)`: a method that changes its receiver
+            e = self.parse_postfix()
+            if e.__class__ is not Call or e.fn.__class__ is not Field or e.fn.obj.__class__ is not Name:
+                self.err("`ref` before a method call goes with a call on a name: `ref m.add(1)`", t)
+            e.ref_recv = True
+            return e
         if t.kind == "NAME" and t.val == "not":
             if not (self.peek(1).kind == "NAME" and self.peek(1).val == "in"):
                 self.next()
@@ -768,6 +775,9 @@ class ExprParser(PBase):
             self.next()
             label = ("str", label)
         t = self.peek()
+        if t.kind == "NAME" and t.val == "ref" and self.peek(1).kind == "NAME" and self.at_op(".", 2) \
+                and self.peek(3).kind == "NAME" and self.at_op("(", 4) and not self.peek(4).sp:
+            return Arg(label, self.parse_expr(), None, line=line)       # `ref m.add(1)` is a method call, not a `ref` argument
         if t.kind == "NAME" and t.val in ("ref", "move", "using") :
             nt = self.peek(1)
             if t.val == "using" and (nt.kind == "OP" and nt.val in (",", ")")):

@@ -7953,6 +7953,12 @@ class Checker(RefineMixin):
             self.check_builtin_method(n, sc, ("app", tn, ()))
             return
         md0 = self.methods.get((tn, nm))
+        if md0 is not None and md0.__class__ is FnDecl and md0.params and md0.params[0].name == "self":
+            selfref, rr = md0.params[0].mod == "ref", getattr(n, "ref_recv", None)
+            if selfref and not rr:
+                self.err(n.line, f"`{nm}` changes its receiver: write `ref {n.fn.obj.name if n.fn.obj.__class__ is Name else 'x'}.{nm}(...)`")
+            elif rr and not selfref:
+                self.err(n.line, f"`{nm}` does not take `ref self`; drop the `ref`")
         if md0 is not None and self.order_lines and id(md0) in self.local_methods and "generated" not in (md0.flags or ()) \
                 and self.first_line.get((tn, nm), md0.line) > n.line and not (((tn, nm) in self.fwd_methods) and self.fwd_methods[(tn, nm)] <= n.line):
             self.err(n.line, f"`{tn}.{nm}` is declared below this use (line {md0.line}): a method must be declared above the code that calls it, or announced with `forward fn {nm}(...)` in its `impl`")
@@ -8715,6 +8721,12 @@ class Checker(RefineMixin):
 
     def check_call(self, fd, n, args, ats, extra):
         params = list(fd.params or [])
+        if extra and params and params[0].name == "self" and n.fn.__class__ is Field:
+            rr = getattr(n, "ref_recv", None)
+            if params[0].mod == "ref" and not rr:
+                self.err(n.line, f"`{fd.name}` changes its receiver: write `ref {self.arg_name(n.fn.obj) if hasattr(self, 'arg_name') else 'x'}.{fd.name}(...)`")
+            elif rr and params[0].mod != "ref":
+                self.err(n.line, f"`{fd.name}` does not take `ref self`; drop the `ref`")
         if id(fd) in self.foreign_ids:
             params = [p for p in params if not self.hidden_foreign_param(p)]
         if any(p.mod == "using" for p in params):

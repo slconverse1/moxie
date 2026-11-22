@@ -59,7 +59,7 @@ def _defs():
         # compound
         "TupleE": "items",         # items: list of (label, expr, spread)
         "MArr": "rows",
-        "Call": "fn args trailing chain block",  # args: list of Arg
+        "Call": "fn args trailing chain block ref_recv",  # args: list of Arg
         "Arg": "label expr mod",   # mod: None 'ref' 'using' 'spread' 'move'
         "GenApp": "base groups",
         "Field": "obj name",

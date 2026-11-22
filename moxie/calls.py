@@ -460,6 +460,14 @@ class CallsMixin:
             pos.insert(0, selfv)
             refspec = {(i + 1 if isinstance(i, int) else i): v for i, v in refspec.items()}
             spreads = [(i + 1, s) for i, s in spreads]
+            if k is Closure and isinstance(callee.node, FnDecl) and callee.node.params and callee.node.params[0].name == "self":
+                selfref = callee.node.params[0].mod == "ref"
+                if selfref and not n.ref_recv:
+                    raise Abort(f"the method `{callee.node.name}` changes its receiver: call it as `ref name.{callee.node.name}(...)`", n.line)
+                if n.ref_recv and not selfref:
+                    raise Abort(f"the method `{callee.node.name}` does not take `ref self`: drop the `ref`", n.line)
+                if selfref:
+                    refspec[0] = fnn.obj.name
         # pipe insertion
         if piped is not NOPIPE:
             pos = self.insert_piped(callee, pos, piped, n.trailing is not None)
