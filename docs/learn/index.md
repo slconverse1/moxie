@@ -81,6 +81,11 @@ You don't need to know any functional programming. If you do, the lessons point 
 42. [Programs with effects as data: the freer monad](42-freer-monad.html)
 43. [GADTs and typestate](43-gadts-and-typestate.html)
 
+## Designing with interfaces
+
+44. [Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html)
+45. [Typeclasses](46-typeclasses.html)
+
 ## Your program and its machine
 
-44. [The system around your program](44-the-system-around-your-program.html)
+46. [The system around your program](44-the-system-around-your-program.html)

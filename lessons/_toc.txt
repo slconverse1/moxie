@@ -57,5 +57,9 @@
 42-freer-monad
 43-gadts-and-typestate
 
+# Designing with interfaces
+45-receiver-blocks-and-mocks
+46-typeclasses
+
 # Your program and its machine
 44-the-system-around-your-program
