@@ -60,6 +60,7 @@
 # Designing with interfaces
 45-receiver-blocks-and-mocks
 46-typeclasses
+47-types-that-compute
 
 # Your program and its machine
 44-the-system-around-your-program
