@@ -86,7 +86,13 @@ You don't need to know any functional programming. If you do, the lessons point 
 
 44. [Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html)
 45. [Typeclasses](46-typeclasses.html)
+46. [Types that compute](47-types-that-compute.html)
+
+## Fields and promises
+
+47. [Properties, field delegates, and proxies](48-properties-delegates-proxies.html)
+48. [Refined parameters: proofs in the signature](49-refined-parameters.html)
 
 ## Your program and its machine
 
-46. [The system around your program](44-the-system-around-your-program.html)
+49. [The system around your program](44-the-system-around-your-program.html)

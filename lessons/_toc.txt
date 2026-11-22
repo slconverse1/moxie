@@ -62,5 +62,9 @@
 46-typeclasses
 47-types-that-compute
 
+# Fields and promises
+48-properties-delegates-proxies
+49-refined-parameters
+
 # Your program and its machine
 44-the-system-around-your-program

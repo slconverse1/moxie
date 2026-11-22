@@ -266,4 +266,4 @@ The default is specialized for each implementing type.
 
 ---
 
-[← Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html) · [Contents](./) · [The system around your program →](44-the-system-around-your-program.html)
+[← Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html) · [Contents](./) · [Types that compute →](47-types-that-compute.html)
