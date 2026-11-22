@@ -80,3 +80,7 @@ You don't need to know any functional programming. If you do, the lessons point 
 41. [Data types that grow: the expression problem](41-open-data-types.html)
 42. [Programs with effects as data: the freer monad](42-freer-monad.html)
 43. [GADTs and typestate](43-gadts-and-typestate.html)
+
+## Your program and its machine
+
+44. [The system around your program](44-the-system-around-your-program.html)
