@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Truth and choices · Learner’s Guide moxie/gc"
+title: "Truth and choices · Mixer’s Guide moxie/gc"
 ---
 <p><small>Getting started</small></p>
 

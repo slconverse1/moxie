@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "The system around your program · Learner’s Guide moxie"
+title: "The system around your program · Mixer’s Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 

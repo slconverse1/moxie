@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Input, output, and files · Learner’s Guide moxie"
+title: "Input, output, and files · Mixer’s Guide moxie"
 ---
 <p><small>Packages</small></p>
 

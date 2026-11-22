@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Enums · Learner’s Guide moxie"
+title: "Enums · Mixer’s Guide moxie"
 ---
 <p><small>Data</small></p>
 

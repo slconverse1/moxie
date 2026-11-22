@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "More stream tools: sources you build · Learner’s Guide moxie"
+title: "More stream tools: sources you build · Mixer’s Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>
 

@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Recursion and function clauses · Learner’s Guide moxie/gc"
+title: "Recursion and function clauses · Mixer’s Guide moxie/gc"
 ---
 <p><small>Functions</small></p>
 

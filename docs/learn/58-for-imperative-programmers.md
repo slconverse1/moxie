@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Moxie for imperative programmers · Learner’s Guide moxie"
+title: "Moxie for imperative programmers · Mixer’s Guide moxie"
 ---
 <p><small>Getting started</small></p>
 

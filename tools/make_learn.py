@@ -1,4 +1,4 @@
-"""Builds the teaching guide ("Learner’s Guide") for both dialects from one source, lessons/.
+"""Builds the teaching guide ("Mixer’s Guide") for both dialects from one source, lessons/.
 
 lessons/_toc.txt lists the course:  a line `# Part title` starts a part; every other non-blank line is a lesson file name
 (without .md).  A lesson starts with `# Title`.  In a lesson:
@@ -110,7 +110,7 @@ def build(gc):
     inc = os.path.join(ROOT, "docs", "_includes")
     os.makedirs(inc, exist_ok=True)
     open(os.path.join(inc, "learn-nav-gc.html" if gc else "learn-nav.html"), "w", encoding="utf-8").write("\n".join(nav) + "\n")
-    idx = [f"---\nlayout: default\n{dia}title: \"Learner’s Guide {name}\"\n---\n# LEARNER’S GUIDE {name.upper()}\n"]
+    idx = [f"---\nlayout: default\n{dia}title: \"Mixer’s Guide {name}\"\n---\n# MIXER’S GUIDE {name.upper()}\n"]
     idx.append(open(os.path.join(SRC, "_intro.md"), encoding="utf-8").read().strip().replace("{{name}}", name) + "\n")
     n = 0
     for p, ls in parts:
@@ -132,7 +132,7 @@ def build(gc):
         nv.append("[Contents](./)")
         if i + 1 < len(flat):
             nv.append(f"[{flat[i + 1][2]} →]({flat[i + 1][1]}.html)")
-        page = f"---\nlayout: default\n{dia}title: \"{t} · Learner’s Guide {name}\"\n---\n<p><small>{p}</small></p>\n\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
+        page = f"---\nlayout: default\n{dia}title: \"{t} · Mixer’s Guide {name}\"\n---\n<p><small>{p}</small></p>\n\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
         open(os.path.join(base, s + ".md"), "w", encoding="utf-8").write(page)
     return len(flat)
 

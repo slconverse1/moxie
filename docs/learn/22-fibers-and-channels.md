@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Fibers and channels · Learner’s Guide moxie"
+title: "Fibers and channels · Mixer’s Guide moxie"
 ---
 <p><small>Concurrency</small></p>
 

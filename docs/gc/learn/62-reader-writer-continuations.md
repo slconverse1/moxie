@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Reader, writer, and continuations · Learner’s Guide moxie/gc"
+title: "Reader, writer, and continuations · Mixer’s Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

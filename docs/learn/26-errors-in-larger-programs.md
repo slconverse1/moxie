@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Errors in larger programs · Learner’s Guide moxie"
+title: "Errors in larger programs · Mixer’s Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
 

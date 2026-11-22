@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Anonymous functions and closures · Learner’s Guide moxie"
+title: "Anonymous functions and closures · Mixer’s Guide moxie"
 ---
 <p><small>Functions</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Pipe slots, `seq`, and doing work once · Learner’s Guide moxie"
+title: "Pipe slots, `seq`, and doing work once · Mixer’s Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>
 

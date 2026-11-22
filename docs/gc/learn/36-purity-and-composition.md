@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Values, purity, and composing functions · Learner’s Guide moxie/gc"
+title: "Values, purity, and composing functions · Mixer’s Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 

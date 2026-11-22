@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Properties, field delegates, and proxies · Learner’s Guide moxie"
+title: "Properties, field delegates, and proxies · Mixer’s Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 

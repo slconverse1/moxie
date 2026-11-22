@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Programs with effects as data: the freer monad · Learner’s Guide moxie"
+title: "Programs with effects as data: the freer monad · Mixer’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Units of measure · Learner’s Guide moxie"
+title: "Units of measure · Mixer’s Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Limits, pools, and the memory budget · Learner’s Guide moxie/gc"
+title: "Limits, pools, and the memory budget · Mixer’s Guide moxie/gc"
 ---
 <p><small>Quality and larger programs</small></p>
 

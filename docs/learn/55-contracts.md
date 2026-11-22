@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Contracts: where and invariant · Learner’s Guide moxie"
+title: "Contracts: where and invariant · Mixer’s Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "…moxie: the rest of its toolbox · Learner’s Guide moxie"
+title: "…moxie: the rest of its toolbox · Mixer’s Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 

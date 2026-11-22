@@ -46,7 +46,7 @@ def run():
             if not slugs:
                 return mm.group(0)
             links = ", ".join(f"[{nums[s][0]}. {nums[s][1]}](learn/{s}.html)" for s in slugs)
-            return f"{mm.group(0)}\n<!-- guide -->\n*In the Learner’s Guide: {links}*\n<!-- /guide -->\n"
+            return f"{mm.group(0)}\n<!-- guide -->\n*In the Mixer’s Guide: {links}*\n<!-- /guide -->\n"
         t = re.sub(r"^(## \S+\. .+? \{#(s\w+)\})\n", lambda mm: add(mm) , t, flags=re.M)
         open(path, "w", encoding="utf-8").write(t)
 

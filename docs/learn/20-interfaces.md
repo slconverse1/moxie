@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Methods and interfaces · Learner’s Guide moxie"
+title: "Methods and interfaces · Mixer’s Guide moxie"
 ---
 <p><small>Data</small></p>
 

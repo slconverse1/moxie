@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Contracts: where and invariant · Learner’s Guide moxie/gc"
+title: "Contracts: where and invariant · Mixer’s Guide moxie/gc"
 ---
 <p><small>Fields and promises</small></p>
 

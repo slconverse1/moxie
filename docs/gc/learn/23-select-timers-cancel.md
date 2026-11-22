@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Waiting on several things: select, timers, and cancelling · Learner’s Guide moxie/gc"
+title: "Waiting on several things: select, timers, and cancelling · Mixer’s Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>
 

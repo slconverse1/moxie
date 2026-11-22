@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Moxie and moxie/gc side by side · Learner’s Guide moxie"
+title: "Moxie and moxie/gc side by side · Mixer’s Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>
 

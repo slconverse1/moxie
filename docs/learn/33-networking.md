@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Networking, deadlines, and parallel work · Learner’s Guide moxie"
+title: "Networking, deadlines, and parallel work · Mixer’s Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

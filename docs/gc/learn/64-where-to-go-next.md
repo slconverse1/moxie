@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Where to go next · Learner’s Guide moxie/gc"
+title: "Where to go next · Mixer’s Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 

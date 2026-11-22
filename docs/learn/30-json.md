@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "JSON and data from outside · Learner’s Guide moxie"
+title: "JSON and data from outside · Mixer’s Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

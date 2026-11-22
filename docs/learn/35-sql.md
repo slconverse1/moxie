@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Databases with SQL · Learner’s Guide moxie"
+title: "Databases with SQL · Mixer’s Guide moxie"
 ---
 <p><small>Data from outside</small></p>
 

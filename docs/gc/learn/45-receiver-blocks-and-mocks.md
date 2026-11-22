@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Receiver blocks, interface composition, and mocks · Learner’s Guide moxie/gc"
+title: "Receiver blocks, interface composition, and mocks · Mixer’s Guide moxie/gc"
 ---
 <p><small>Designing with interfaces</small></p>
 

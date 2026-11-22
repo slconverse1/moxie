@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Arrays and grids · Learner’s Guide moxie"
+title: "Arrays and grids · Mixer’s Guide moxie"
 ---
 <p><small>Data</small></p>
 

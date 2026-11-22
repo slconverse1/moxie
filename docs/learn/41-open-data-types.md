@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Data types that grow: the expression problem · Learner’s Guide moxie"
+title: "Data types that grow: the expression problem · Mixer’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

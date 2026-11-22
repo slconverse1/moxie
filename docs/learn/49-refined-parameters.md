@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Refined parameters: proofs in the signature · Learner’s Guide moxie"
+title: "Refined parameters: proofs in the signature · Mixer’s Guide moxie"
 ---
 <p><small>Fields and promises</small></p>
 

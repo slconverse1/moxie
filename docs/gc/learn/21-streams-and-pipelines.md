@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Streams and pipelines · Learner’s Guide moxie/gc"
+title: "Streams and pipelines · Mixer’s Guide moxie/gc"
 ---
 <p><small>Streams and pipelines</small></p>
 

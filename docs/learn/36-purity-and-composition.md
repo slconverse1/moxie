@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Values, purity, and composing functions · Learner’s Guide moxie"
+title: "Values, purity, and composing functions · Mixer’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

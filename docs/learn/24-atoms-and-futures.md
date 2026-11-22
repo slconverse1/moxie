@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Atoms and futures · Learner’s Guide moxie"
+title: "Atoms and futures · Mixer’s Guide moxie"
 ---
 <p><small>Concurrency</small></p>
 

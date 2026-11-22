@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "GADTs and typestate · Learner’s Guide moxie"
+title: "GADTs and typestate · Mixer’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

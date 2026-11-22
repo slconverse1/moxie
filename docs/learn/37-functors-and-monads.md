@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Learner’s Guide moxie"
+title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Mixer’s Guide moxie"
 ---
 <p><small>Functional programming</small></p>
 

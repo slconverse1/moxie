@@ -1,7 +1,7 @@
 ---
 layout: default
 learn: true
-title: "Generic functions · Learner’s Guide moxie"
+title: "Generic functions · Mixer’s Guide moxie"
 ---
 <p><small>Functions</small></p>
 

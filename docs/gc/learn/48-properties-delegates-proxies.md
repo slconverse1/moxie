@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Properties, field delegates, and proxies · Learner’s Guide moxie/gc"
+title: "Properties, field delegates, and proxies · Mixer’s Guide moxie/gc"
 ---
 <p><small>Fields and promises</small></p>
 

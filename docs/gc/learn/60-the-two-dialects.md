@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Moxie and moxie/gc side by side · Learner’s Guide moxie/gc"
+title: "Moxie and moxie/gc side by side · Mixer’s Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>
 

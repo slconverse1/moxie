@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "Numbers · Learner’s Guide moxie/gc"
+title: "Numbers · Mixer’s Guide moxie/gc"
 ---
 <p><small>Getting started</small></p>
 

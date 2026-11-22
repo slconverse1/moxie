@@ -2,7 +2,7 @@
 layout: default
 dialect: gc
 learn: true
-title: "GADTs and typestate · Learner’s Guide moxie/gc"
+title: "GADTs and typestate · Mixer’s Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>
 
