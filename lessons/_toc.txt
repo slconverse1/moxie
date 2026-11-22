@@ -20,6 +20,7 @@
 17-dicts-and-sets
 18-types-of-types
 19-patterns
+51-binary-patterns-and-type-tags
 20-interfaces
 
 # Streams and pipelines
