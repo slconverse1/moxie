@@ -31,6 +31,7 @@
 22-fibers-and-channels
 23-select-timers-cancel
 24-atoms-and-futures
+52-session-types
 
 # Quality and larger programs
 25-testing
