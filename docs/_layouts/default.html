@@ -30,7 +30,8 @@ nav a.here:hover{text-decoration:none}
 #toc li.sub a,#toc-small li.sub a{padding-left:1.4em}
 #toc li.back a{font-weight:600}
 #toc li.back{margin-bottom:2px}
-#toc li.gap{margin-top:10px;border-top:1px solid var(--line)}
+#toc li.gap{margin-top:10px;border-top:1px solid var(--line)}#to-top{position:fixed;right:16px;bottom:16px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.15);opacity:0;pointer-events:none;transition:opacity .15s}
+#to-top.show{opacity:1;pointer-events:auto}
 .page{display:block}
 #toc{display:none}
 #toc ul{list-style:none;margin:0;padding:0}
@@ -74,7 +75,16 @@ nav a.here:hover{text-decoration:none}
 {{ content }}
 </main>
 </div>
-{% if page.toc or page.learn %}<script>
+{% if page.toc or page.learn %}<a id="to-top" href="#" aria-label="Back to top">↑ Top</a>
+<script>
+(function () {
+  var top = document.getElementById('to-top');
+  if (top) {
+    top.addEventListener('click', function (e) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+    var onscroll = function () { top.classList.toggle('show', window.scrollY > 900); };
+    window.addEventListener('scroll', onscroll, { passive: true }); onscroll();
+  }
+})();
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
   if (!side || !small) return;

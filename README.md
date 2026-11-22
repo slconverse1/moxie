@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Pages with an outline get a floating "↑ Top" link once you scroll; two gc lessons no longer carry GC-free-only sentences (the `par_map` `limit:` rule and the "full collection" remark).
+
 The Spec's dated design notes now live on their own pages (`docs/design-notes.md`, `docs/gc/design-notes.md`), linked from the end of the Spec, so the Spec holds only the language as it is.
 
 `NonEmpty` now works as the Spec says: the prelude functions `len`, `min`, `max`, and `map` use a tuple or enum type's own method of the same name, and a piped call inside a method is no longer taken for the method itself. Atoms print as `Atom(10)` and timers as `Timer()`.

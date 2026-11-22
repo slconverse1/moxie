@@ -219,7 +219,7 @@ Stats(count: 0, total: 0)
 
 An empty input gives `empty()`, so name the type when nothing else says which one: `fold_all[Stats](List())`.
 
-`Dict` and `Set` have no instance, because a merge has to say which side wins and whether a full collection refuses; use `union`, `merge`, and `merge_with`, or write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there's no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
+`Dict` and `Set` have no instance, because a merge has to say which side wins; use `union`, `merge`, and `merge_with`, or write the `impl` you mean for your own wrapper. `a.combine(b)` is the only spelling: there's no operator for it, since `+` already covers strings and lists, and `Addable` covers numbers.
 
 ## What moxie leaves out, on purpose
 
