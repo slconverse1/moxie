@@ -100,7 +100,7 @@ rc, out, lf = run_pty('init\n  t = raw_terminal()?\n  close(t)\n  println(read_k
 check("reading a closed Terminal is a compile error", rc != 0 and "use of moved value `t`" in out, (rc, out))
 
 import re
-_g = open(os.path.join(ROOT, "docs", "guide.md")).read()
+_g = open(os.path.join(ROOT, "archive", "mixers-guide.md")).read()
 _k = _g.index("**20h. Reading single keys**")
 GUIDE = re.search(r"```\n(.*?)```", _g[_k:], re.S).group(1).replace("\\$", "$")
 rc, out, lf = run_pty(GUIDE, [b"a", b"\x03", b"\x1b[A", b"\x1bOQ", b"\x1b"])

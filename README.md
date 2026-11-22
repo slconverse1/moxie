@@ -2,9 +2,10 @@
 
 Moxie is a design language, a language-design exercise: (mostly) compile-time type-safe, immutable, practical functional programming, Go-style channels and fibers, and, in the plain dialect, no garbage collector and no heap. A second dialect, moxie/gc, adds a collector; the two are kept apart because they make different promises. This repository holds the language documents and a reference interpreter written in plain Python 3.
 
-- **Site:** https://slconverse1.github.io/moxie/ (the Site Intro, Tutorial, Mixer's Guide, Spec, and an in-browser "Try moxie" page)
-- **`docs/`** the documents, as the site's source: `index.md` (Site Intro), `tutorial.md`, `guide.md`, `spec.md`, and `gc/` for moxie/gc, the garbage-collected dialect (its Site Intro, Spec, and Guide)
+- **Site:** https://slconverse1.github.io/moxie/ (the Site Intro, Tutorial, Learning Guide, Spec, and an in-browser "Try moxie" page)
+- **`docs/`** the documents, as the site's source: `index.md` (Site Intro), `tutorial.md`, `spec.md`, `learn/` (the Learning Guide, built from `lessons/`), and `gc/` for moxie/gc, the garbage-collected dialect (its Site Intro, Spec, and Learning Guide)
 - **`moxie/`** the reference interpreter (standard library only)
+- **`archive/`** the retired Mixer's Guides (`mixers-guide.md`, `mixers-guide-gc.md`), kept for reference and not published; the Learning Guide replaced them. Their code blocks still back `tests/run_guide.py` and `run_gc_guide.py` through frozen corpora.
 - **`examples/`**, **`tests/`**, **`INTERPRETER.md`**, **`FIXLIST.md`** the interpreter's samples, tests, notes, and a list of problems found in the Spec and Guide
 
 ## Run a program
@@ -17,6 +18,8 @@ Moxie is a design language, a language-design exercise: (mostly) compile-time ty
 The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and nothing else. `INTERPRETER.md` lists what it checks and what it doesn't yet.
 
 ## Changes
+
+The Mixer's Guides are retired. They moved to `archive/` and are no longer published or linked; the Learning Guide is the teaching guide, the Spec and the Tutorial point to it, and the nav of both sites lists it in their place.
 
 Tail calls, `deriving show`, and the Learning Guide's 60 lessons. A call in tail position of a function that calls itself now runs as a loop in constant stack (it was only for `tailrec fn`; `tailrec` still makes a non-tail self-call an error), and a runaway recursion stops with a "stack overflow" diagnostic instead of a Python traceback. Deep tail recursion used to slow down quadratically (a finished `Done` raised StopIteration, which costs the depth of the generator stack); it is now linear. Printing or interpolating a declared tuple or enum without `deriving show`, `impl Show`, or a `show` method is a compile error that says what to add (package and prelude types are exempt); about 80 test files and four intro examples got `deriving show`. Variadic arguments are now type-checked one by one. `3 km` stays an Int when the unit scale is whole (`3 km in m` prints `3000`). The Learning Guide now has 60 lessons: input and files, builders, JSON, regex, statistics, networking, units, SQL, the functional-programming sequence (functors and monads, for comprehensions, state and lenses, tagless final, open data types, the free monad, GADTs and typestate), receiver blocks, typeclasses, types that compute, properties and delegates, refined parameters, contracts, mutable blocks, session types, pools and memory, calling C, `fmt` and locales, a lesson for imperative programmers, and a side-by-side of the two dialects. Lesson cross-references use the numbers on the pages, which is the position in `lessons/_toc.txt`; if you insert a lesson, renumber them.
 

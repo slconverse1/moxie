@@ -7,7 +7,7 @@ backticks). A block with no such sentence has None.
 A block that is already in the old corpus keeps its old expected lines (those were checked by hand), so a rebuild only adds
 or changes entries for blocks that are new or were edited.
 
-Run: python3 tools/make_guide_corpus.py docs/guide.md tests/guide_corpus.json   (or docs/gc/guide.md tests/gc_guide_corpus.json)
+Run: python3 tools/make_guide_corpus.py archive/mixers-guide.md tests/guide_corpus.json   (or archive/mixers-guide-gc.md tests/gc_guide_corpus.json)
 The output file, if it exists, is the old corpus.
 """
 import json, os, re, sys
