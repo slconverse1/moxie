@@ -25,3 +25,5 @@
 22-fibers-and-channels
 23-select-timers-cancel
 24-atoms-and-futures
+25-testing
+26-errors-in-larger-programs

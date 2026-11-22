@@ -2,7 +2,7 @@
 
 An example is a ```moxie block.  If a ```output block follows it, the program's whole standard output must equal it; if an ```error block
 follows it, the program must fail and its message must contain the text; with neither, the program must run and print nothing.
-```moxie-nocheck blocks are skipped.  A block may start with `//! stdin: text` lines to feed its input."""
+```moxie-nocheck blocks are skipped.  A block may carry `//! stdin: text` lines to feed its input, and `//! command: test` (or `check`) to run that command instead of `run`."""
 import os, re, subprocess, sys, tempfile
 from concurrent.futures import ThreadPoolExecutor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -40,8 +40,9 @@ def run(job):
     stdin = "\n".join(re.findall(r"^//! stdin: ?(.*)$", src, re.M))
     with tempfile.TemporaryDirectory() as d:
         p = os.path.join(d, "main.mxi")
-        open(p, "w").write(src)
-        cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + ["run", p]
+        verb = (re.findall(r"^//! command: (\w+)", src, re.M) or ["run"])[0]
+        open(p, "w").write(re.sub(r"^//! .*\n", "", src, flags=re.M))      # what the reader sees is what runs, line numbers included
+        cmd = [sys.executable, "-m", "moxie"] + (["--gc"] if gc else []) + [verb, p]
         try:
             r = subprocess.run(cmd, cwd=ROOT, input=stdin + ("\n" if stdin else ""), capture_output=True, text=True, timeout=60)
             rc, out, err = r.returncode, r.stdout, r.stderr
@@ -50,7 +51,7 @@ def run(job):
     if kind == "error":
         good = rc != 0 and want.strip() in (out + err)
     elif kind == "output":
-        good = rc == 0 and out.rstrip("\n") == want.rstrip("\n")
+        good = (rc == 0 or verb == "test") and out.rstrip("\n") == want.rstrip("\n")
     else:
         good = rc == 0 and out.strip() == ""
     why = "" if good else f"  -> rc={rc} out={out.strip()[:300]!r} err={err.strip()[:300]!r} want={want!r}"
@@ -78,10 +79,11 @@ def fill(args):
                         _, msg = run((slug, i, src, None, None, False))
                         with tempfile.TemporaryDirectory() as d:
                             p = os.path.join(d, "main.mxi")
-                            open(p, "w").write(src)
+                            open(p, "w").write(re.sub(r"^//! .*\n", "", src, flags=re.M))
                             stdin = "\n".join(re.findall(r"^//! stdin: ?(.*)$", src, re.M))
-                            r = subprocess.run([sys.executable, "-m", "moxie"] + (["--gc"] if ingc else []) + ["run", p], cwd=ROOT, input=stdin + "\n", capture_output=True, text=True, timeout=60)
-                        got = r.stdout.rstrip("\n") if lines[k].strip() == "```output" else re.sub(r"^main\.mxi:\d+(:\d+)?: ", "", (r.stderr + r.stdout).strip(), flags=re.M)
+                            verb = (re.findall(r"^//! command: (\w+)", src, re.M) or ["run"])[0]
+                            r = subprocess.run([sys.executable, "-m", "moxie"] + (["--gc"] if ingc else []) + [verb, p], cwd=ROOT, input=stdin + "\n", capture_output=True, text=True, timeout=60)
+                        got = r.stdout.rstrip("\n") if lines[k].strip() == "```output" else re.sub(r"^main\.mxi:\d+(:\d+)?: ", "", r.stderr.strip(), flags=re.M)
                         lines[k + 1:k + 1] = got.split("\n")
                         changed = True
                     i = j + 1

@@ -56,6 +56,7 @@ def title_of(text):
 
 def render(text, gc):
     text = dialect_text(text, gc)
+    text = re.sub(r"^//! .*\n", "", text, flags=re.M)             # directives for the test runner
     text = re.sub(r"^```moxie-nocheck$", "```moxie", text, flags=re.M)
     text = re.sub(r"^```output$", "**Output:**\n\n```", text, flags=re.M)
     text = re.sub(r"^```error$", "**The compiler says:**\n\n```", text, flags=re.M)
