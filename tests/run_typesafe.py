@@ -127,7 +127,7 @@ CASES = [
     ('top-value-before-bind', 'R', 'println(w)\nw = 1\n'),
     ('top-value-order-ok', 'A', 'a = 1\nb = a + 1\nprintln(b)\n'),
     ('type-used-before-decl', 'R', 'tuple A deriving show\n  b B\ntuple B deriving show\n  n Int\nprintln(A(b: B(n: 1)))\n'),
-    ('forward-type-mutual-ok', 'A', 'forward enum Tree deriving show\ntuple Node deriving show\n  kids List[Tree]\nenum Tree deriving show\n  Leaf\n  Branch(n Node)\nprintln(Node(kids: List(Leaf)))\n'),
+    ('forward-type-mutual-ok', 'A', 'forward enum Tree\ntuple Node deriving show\n  kids List[Tree]\nenum Tree deriving show\n  Leaf\n  Branch(n Node)\nprintln(Node(kids: List(Leaf)))\n'),
     ('forward-type-never-defined', 'R', 'forward tuple Q deriving show\nprintln(1)\n'),
     ('forward-type-wrong-kind', 'R', 'forward tuple T deriving show\nenum T deriving show\n  A\nprintln(1)\n'),
     ('forward-type-wrong-arity', 'R', 'forward enum T[X] deriving show\nenum T deriving show\n  A\nprintln(1)\n'),

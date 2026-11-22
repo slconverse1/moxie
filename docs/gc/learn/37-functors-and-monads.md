@@ -7,7 +7,7 @@ title: "Mapping, sequencing, and combining: functors, applicatives, and monads Â
 
 # 45. Mapping, sequencing, and combining: functors, applicatives, and monads
 
-Lesson 14 chained steps that might fail with `?` and `|>>`. This lesson names the idea behind them. Three small interfaces, over *type constructors* such as `Result[_, E]` or `List[_]`, describe three ways of working with a value inside a container: change it, combine several, or chain steps that each produce a new container. They have the names Haskell programmers expect.
+Lesson 16 chained steps that might fail with `?` and `|>>`. This lesson names the idea behind them. Three small interfaces, over *type constructors* such as `Result[_, E]` or `List[_]`, describe three ways of working with a value inside a container: change it, combine several, or chain steps that each produce a new container. They have the names Haskell programmers expect.
 
 You don't have to know the names to use any of it; `map`, `?`, and `|>>` work without them. They matter when you want to write code that works for *every* container, or to give your own type the same abilities.
 

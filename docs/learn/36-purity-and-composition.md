@@ -124,7 +124,7 @@ println("${add5(1)} ${make_adder(10)(1)}")
 6 11
 ```
 
-A closure that captures data can be passed and returned, but not stored in a data structure (lesson 9).
+A closure that captures data can be passed and returned, but not stored in a data structure (lesson 11).
 
 ### `uncurry[n]`
 

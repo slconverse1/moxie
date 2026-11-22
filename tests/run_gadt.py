@@ -62,7 +62,7 @@ impl Show for Int
   fn show(self) String = "int ${self}"
 impl Show for Bool
   fn show(self) String = "bool ${self}"
-tuple Plain(x Int) deriving show
+tuple Plain(x Int)
 enum Item[T] deriving show
   Shown[A Show](v A) Item[String]
   Pair[Left, Right](a Left, b Right) Item[(Left, Right)]

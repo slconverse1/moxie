@@ -11,7 +11,7 @@ Moxie values never change, and a loop's rebindings don't leave the loop. For mos
 
 ## The problem it solves
 
-Lesson 7 showed that a name bound inside a loop body is a new name that ends with the body, and that `x@1` reaches the name outside. For an algorithm with many updates to several names, writing `@1` everywhere gets noisy. A `mutable` block drops the bookkeeping altogether.
+Lesson 9 showed that a name bound inside a loop body is a new name that ends with the body, and that `x@1` reaches the name outside. For an algorithm with many updates to several names, writing `@1` everywhere gets noisy. A `mutable` block drops the bookkeeping altogether.
 
 ## A mutable block
 

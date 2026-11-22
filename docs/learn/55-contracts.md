@@ -6,7 +6,7 @@ title: "Contracts: requires, ensures, invariant · Learn moxie"
 
 # 57. Contracts: requires, ensures, invariant
 
-A contract states what a function needs and what it promises, in the code and not in a comment. It is for faults that are *bugs*: an expected failure, such as a missing file, still returns a `Result` (lesson 14). A contract failure ends the program with a message that says whose fault it was.
+A contract states what a function needs and what it promises, in the code and not in a comment. It is for faults that are *bugs*: an expected failure, such as a missing file, still returns a `Result` (lesson 16). A contract failure ends the program with a message that says whose fault it was.
 
 - `requires` is a **precondition** that the caller must meet.
 - `ensures` is a **postcondition** that the function guarantees.
@@ -132,13 +132,13 @@ The first line prints `tom`; the second `Cat` breaks the interface's promise, an
 
 ## Conditions are pure
 
-A condition may call only pure functions (lesson 36), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
+A condition may call only pure functions (lesson 44), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
 
-Because `moxie test` checks contracts, a property test (lesson 25) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
+Because `moxie test` checks contracts, a property test (lesson 31) exercises them: the `ensures` lines are the properties that its generated inputs try to break.
 
 ## Contracts or refined parameters?
 
-Lesson 49 showed `where` on a parameter, which is *proved* at compile time. A `requires` is checked at run time (or at compile time only when the arguments are constants). Use a refined parameter when the condition is about integers and lengths and you want the compiler to insist; use a contract for anything else, including conditions on results (`ensures`) and on values you build (`invariant`).
+Lesson 56 showed `where` on a parameter, which is *proved* at compile time. A `requires` is checked at run time (or at compile time only when the arguments are constants). Use a refined parameter when the condition is about integers and lengths and you want the compiler to insist; use a contract for anything else, including conditions on results (`ensures`) and on values you build (`invariant`).
 
 ## What to remember
 

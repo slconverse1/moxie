@@ -208,7 +208,7 @@ null
 ],
 [
 378,
-"forward enum Tree\ntuple Node\n  kids List[Tree]\nenum Tree\n  Leaf\n  Branch(n Node)\nprintln(Node(kids: List(Leaf)))\nprintln(Branch(Node(kids: List(Leaf, Leaf))))\n",
+"forward enum Tree\ntuple Node deriving show\n  kids List[Tree]\nenum Tree deriving show\n  Leaf\n  Branch(n Node)\nprintln(Node(kids: List(Leaf)))\nprintln(Branch(Node(kids: List(Leaf, Leaf))))\n",
 [
 "Node(kids: List(Tree.Leaf))",
 "Tree.Branch(Node(kids: List(Tree.Leaf, Tree.Leaf)))"
@@ -385,7 +385,7 @@ null
 ],
 [
 683,
-"user = (name: \"Alice\", age: 30)\nadmin = (...user, role: \"Admin\")\ntuple Employee\n  name String\n  age Int\n  salary Int\nfn greet(u (name String, ...)) String = \"hi ${u.name}\"\nfn tag(u (name String, age Int, ...)) String = \"${u.name} is ${u.age + 1} next year\"\nprintln(admin)\nprintln(greet(user))\nprintln(greet(Employee(name: \"Bo\", age: 40, salary: 9)))\nprintln(tag(admin))\nfn birthday[T (age Int, ...)](u T) T = u.update\n  age: u.age + 1\nprintln(birthday(user))\nprintln(birthday(Employee(name: \"Bo\", age: 40, salary: 9)))\n",
+"user = (name: \"Alice\", age: 30)\nadmin = (...user, role: \"Admin\")\ntuple Employee deriving show\n  name String\n  age Int\n  salary Int\nfn greet(u (name String, ...)) String = \"hi ${u.name}\"\nfn tag(u (name String, age Int, ...)) String = \"${u.name} is ${u.age + 1} next year\"\nprintln(admin)\nprintln(greet(user))\nprintln(greet(Employee(name: \"Bo\", age: 40, salary: 9)))\nprintln(tag(admin))\nfn birthday[T (age Int, ...)](u T) T = u.update\n  age: u.age + 1\nprintln(birthday(user))\nprintln(birthday(Employee(name: \"Bo\", age: 40, salary: 9)))\n",
 [
 "(name: \"Alice\", age: 30, role: \"Admin\")",
 "hi Alice",
@@ -1054,7 +1054,7 @@ null
 ],
 [
 2092,
-"tuple Rect\n  width Int,\n  height Int,\n  property area Int\n    get\n      width * height\n    set(value)\n      width = value / height\nr = Rect(width: 3, height: 4)\nprintln(\"${r.area} ${r}\")\nr.area = 24\nprintln(\"${r.width} ${r.area}\")\n",
+"tuple Rect deriving show\n  width Int,\n  height Int,\n  property area Int\n    get\n      width * height\n    set(value)\n      width = value / height\nr = Rect(width: 3, height: 4)\nprintln(\"${r.area} ${r}\")\nr.area = 24\nprintln(\"${r.width} ${r.area}\")\n",
 [
 "12 Rect(width: 3, height: 4)",
 "6 24"
@@ -1122,7 +1122,7 @@ null
 ],
 [
 2239,
-"type Pos = Int where self > 0\ntuple Account\n  balance Pos\n  name String\nfn half(n Pos) Int\n  n / 2\nfn open_amount(n Int) Int\n  if n > 0 then\n    x Pos = n\n    half(x) * 2\n  else\n    0\nprintln(open_amount(9))\nprintln(Account(balance: 40, name: \"ann\"))\n",
+"type Pos = Int where self > 0\ntuple Account deriving show\n  balance Pos\n  name String\nfn half(n Pos) Int\n  n / 2\nfn open_amount(n Int) Int\n  if n > 0 then\n    x Pos = n\n    half(x) * 2\n  else\n    0\nprintln(open_amount(9))\nprintln(Account(balance: 40, name: \"ann\"))\n",
 [
 "8",
 "Account(balance: 40, name: \"ann\")"
@@ -1265,7 +1265,7 @@ null
 ],
 [
 2503,
-"enum Reading\n  Value(n Int)\n  Missing\nfn show_reading(r Reading) String\n  if r is Value(n) then \"value $n\" else \"missing\"\nprintln(\"${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}\")\n",
+"enum Reading deriving show\n  Value(n Int)\n  Missing\nfn show_reading(r Reading) String\n  if r is Value(n) then \"value $n\" else \"missing\"\nprintln(\"${show_reading(Reading.Value(7))} ${show_reading(Reading.Missing)}\")\n",
 [
 "value 7 missing"
 ]
@@ -2135,7 +2135,7 @@ null
 ],
 [
 4389,
-"tuple User\n  name String\n  email String\n\nfn check_name(s String) Result[String, String]\n  when s == \"\"\n    true -> Err(\"name is empty\")\n    false -> Ok(s)\n\nfn check_email(s String) Result[String, String]\n  when s.contains(\"@\")\n    true -> Ok(s)\n    false -> Err(\"bad email: ${s}\")\n\nfn create(name String, email String) Result[User, List[String]]\n  map_all(User, check_name(name), check_email(email))\n\nprintln(create(\"ann\", \"ann@x.org\"))\nprintln(create(\"\", \"nope\"))\n",
+"tuple User deriving show\n  name String\n  email String\n\nfn check_name(s String) Result[String, String]\n  when s == \"\"\n    true -> Err(\"name is empty\")\n    false -> Ok(s)\n\nfn check_email(s String) Result[String, String]\n  when s.contains(\"@\")\n    true -> Ok(s)\n    false -> Err(\"bad email: ${s}\")\n\nfn create(name String, email String) Result[User, List[String]]\n  map_all(User, check_name(name), check_email(email))\n\nprintln(create(\"ann\", \"ann@x.org\"))\nprintln(create(\"\", \"nope\"))\n",
 [
 "Ok(User(name: \"ann\", email: \"ann@x.org\"))",
 "Err(List(\"name is empty\", \"bad email: nope\"))"

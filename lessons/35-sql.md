@@ -14,7 +14,7 @@ The examples in this lesson use a throwaway in-memory database, `Connection.memo
 
 ## Writing and reading
 
-A statement that changes data returns a `Result` with the number of rows affected. A `SELECT` returns a `Result` holding a *stream* of rows (lesson 21), and each row is a named tuple of the selected columns:
+A statement that changes data returns a `Result` with the number of rows affected. A `SELECT` returns a `Result` holding a *stream* of rows (lesson 25), and each row is a named tuple of the selected columns:
 
 ```moxie
 conn = Connection.memory()?
@@ -115,7 +115,7 @@ level = 3
 
 ## Rows and open types
 
-The rows of a query are labeled tuples, so a function written for an open type (lesson 12) takes them directly, whatever else the query selected:
+The rows of a query are labeled tuples, so a function written for an open type (lesson 14) takes them directly, whatever else the query selected:
 
 ```moxie
 fn adult(r (age Int, ...)) Bool = r.age >= 18

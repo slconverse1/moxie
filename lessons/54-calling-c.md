@@ -19,7 +19,7 @@ println(pow(2.0, 10.0))
 1024.0
 ```
 
-The string names the library (`"m"` is the math library, `"c"` the C library). The program needs the `ffi` permission (lesson 44).
+The string names the library (`"m"` is the math library, `"c"` the C library). The program needs the `ffi` permission (lesson 58).
 
 ## Out-parameters
 
@@ -78,7 +78,7 @@ The answer is 6, because `é` is two bytes in UTF-8.
 
 ## Handles
 
-A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too (lesson 53). A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL.
+A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too (lesson 34). A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL.
 
 This needs a library to call, so it is shown but not run:
 

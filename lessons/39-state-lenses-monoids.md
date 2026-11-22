@@ -120,7 +120,7 @@ The first is 9 + 36 + 81 + 144; the second counts the squares 1, 4, 9, 16, 25, 3
 
 ## Lenses: data paths
 
-A data path (lesson 18) is an ordinary function, so paths compose, pass, and combine with `modify`:
+A data path (lesson 21) is an ordinary function, so paths compose, pass, and combine with `modify`:
 
 ```moxie
 tuple Firm deriving show

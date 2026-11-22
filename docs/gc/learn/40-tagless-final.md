@@ -9,7 +9,7 @@ title: "Tagless final: one program, many interpreters · Learn moxie/gc"
 
 Suppose you are writing a tiny language of sums (numbers, `+`, negation) and want to run it, print it, and later do more with it. The usual way is a data type (an `enum`) and one function per job that takes it apart with `when`. **Tagless final** turns that around: you write the language as an *interface*, and a program in it is a generic function that builds its result using the interface's functions. An interpreter is a type that implements the interface, so choosing the interpreter is choosing a type argument, and no tree is built at all.
 
-This is an advanced lesson. It uses interfaces (lesson 20) and generics (lesson 11) together, and it shows that a language with no macros can still describe a program once and run it in many ways.
+This is an advanced lesson. It uses interfaces (lesson 24) and generics (lesson 13) together, and it shows that a language with no macros can still describe a program once and run it in many ways.
 
 ## One program, two interpreters
 
@@ -155,7 +155,7 @@ Name the pair type when you call (`total[Both[Eval, Pretty]]`): a result type is
 
 ## Keeping the types straight
 
-The language above has one kind of value. When it has two (numbers and booleans, with `if` and `<=`), the interface has to say which is which, or `add(lit(1), bool(true))` would be meaningless. Make the representation a type constructor, as in the constructor interfaces of lesson 37 (`R[_]`), and give each operation a precise type:
+The language above has one kind of value. When it has two (numbers and booleans, with `if` and `<=`), the interface has to say which is which, or `add(lit(1), bool(true))` would be meaningless. Make the representation a type constructor, as in the constructor interfaces of lesson 45 (`R[_]`), and give each operation a precise type:
 
 ```moxie
 interface Sym[R[_]]
@@ -206,7 +206,7 @@ println(prog[Show]().text)
 if (1 <= 2) then (10 + 5) else 0
 ```
 
-`cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type, lesson 42); in the tagless style the interface carries the types.
+`cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type, lesson 50); in the tagless style the interface carries the types.
 
 The body of a generic program is checked against those signatures too: `R.add(R.lit(1), R.bool(true))` is a compile error, and so is a number as the test of `cond`.
 

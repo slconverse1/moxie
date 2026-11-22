@@ -68,7 +68,7 @@ Err(Error(code: 1, message: "not an Int"))
 {"name":"Al","scores":[90,85.5],"admin":false}
 ```
 
-Each `flat_map` step passes an `Err` along unchanged, so a chain of lookups fails at the first step that can't be done, and the `?` at the end hands that `Err` to the caller (lesson 14).
+Each `flat_map` step passes an `Err` along unchanged, so a chain of lookups fails at the first step that can't be done, and the `?` at the end hands that `Err` to the caller (lesson 16).
 
 A map keeps its entries in the order they were written, so `to_json()` prints them in that order. A number with a `.` or an exponent is a `DFloat`, not an `Int`, so read it with `as_float`.
 

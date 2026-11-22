@@ -7,7 +7,7 @@ title: "GADTs and typestate · Learn moxie/gc"
 
 # 51. GADTs and typestate
 
-Lesson 40 got a typed evaluator by making the interpreters types, and lesson 41 got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own *result type* after its parameters. That is a GADT, a generalized algebraic data type.
+Lesson 48 got a typed evaluator by making the interpreters types, and lesson 49 got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own *result type* after its parameters. That is a GADT, a generalized algebraic data type.
 
 ## A typed evaluator
 
@@ -99,7 +99,7 @@ A lambda whose parameter types aren't written takes them from the case once the 
 - **Declared case variables, with bounds.** Write a case's own variables in brackets after its name, which allows longer names and interface bounds: `Shown[A Show](v A) Item[String]`. Building one checks the bound, and in its `when` arm `v` is an `A'` that is known to be `Show`, so `v.show()` works and `v.shout()` does not. This is the usual "any showable thing" existential, with the interface named.
 - **Methods.** In `impl[T] Value[T]`, `when self` refines `T` the same way a `when` on a parameter does.
 - **`is`.** In `if v is Num(n)`, the then-branch knows `T` is `Int`.
-- **Header enums.** A header enum (lesson 13) may give its cases result types and payloads. A constant case writes its result type after the header values, `Low(rank: 1) Level[Cold]`. A case with a payload writes the header values first and the payload second, `Num(line: 1)(n Int) Value[Int]`; building it takes only the payload, and the header values are fixed by the case. The header fields are on every case (`v.line`), and a positional pattern (`Num(n)`) sees the payload only.
+- **Header enums.** A header enum (lesson 15) may give its cases result types and payloads. A constant case writes its result type after the header values, `Low(rank: 1) Level[Cold]`. A case with a payload writes the header values first and the payload second, `Num(line: 1)(n Int) Value[Int]`; building it takes only the payload, and the header values are fixed by the case. The header fields are on every case (`v.line`), and a positional pattern (`Num(n)`) sees the payload only.
 
 ```moxie
 enum Value[T](line Int)
@@ -124,7 +124,7 @@ println(Flag(true).line)
 
 ## Which of the three?
 
-Use **tagless final** (lesson 40) when you only run the program and never look inside it. Use **open data types** (lesson 41) when you need to inspect and rewrite the data and also add cases without editing existing code. Use a **GADT** when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
+Use **tagless final** (lesson 48) when you only run the program and never look inside it. Use **open data types** (lesson 49) when you need to inspect and rewrite the data and also add cases without editing existing code. Use a **GADT** when the set of cases is fixed, you want one closed `when`, and you want the type to rule out ill-typed combinations. A GADT is closed like any enum: a new case means editing the enum.
 
 Haskell and Scala 3 have GADTs with a general type-equality solver, so a case may refine several parameters at once and a pattern match can introduce new type variables. Kotlin and Rust have no GADTs; the usual workaround is a sealed class or enum with an unchecked cast in each arm, which the compiler can't verify. Moxie's version is smaller: a case's result type names each parameter either as a plain type or as the enum's own parameter, and a `when` arm records one equation per parameter.
 

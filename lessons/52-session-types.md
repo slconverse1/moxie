@@ -1,6 +1,6 @@
 # Session types: a channel that remembers the conversation
 
-When two fibers talk in a fixed pattern ("you send a request, I send a reply"), an ordinary channel can't tell you if someone gets the order wrong. A **session** is a pair of channel ends whose *type* is the conversation, so the compiler checks that each side follows it. You write the conversation once, as a type. This lesson builds on channels and fibers (lesson 22) and uses the standard `session` package.
+When two fibers talk in a fixed pattern ("you send a request, I send a reply"), an ordinary channel can't tell you if someone gets the order wrong. A **session** is a pair of channel ends whose *type* is the conversation, so the compiler checks that each side follows it. You write the conversation once, as a type. This lesson builds on channels and fibers (lesson 27) and uses the standard `session` package.
 
 ## A request and a reply
 

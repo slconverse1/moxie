@@ -116,7 +116,7 @@ Weekly: 15 15
 200
 ```
 
-The expression of a `lazy` property or binding must be pure, because it runs whenever the first read happens, so the compiler rejects one that prints or reads a channel. The result is kept in the value you hold, and `r.data = ...` builds a new value whose cache is empty, which is why the second `r.total` is recomputed. This is different from a `lazy` parameter (lesson 8), which re-runs its argument on every read. A static property is read-only: it takes an `= value` or a `get` body, and shared state that changes belongs in an Atom.
+The expression of a `lazy` property or binding must be pure, because it runs whenever the first read happens, so the compiler rejects one that prints or reads a channel. The result is kept in the value you hold, and `r.data = ...` builds a new value whose cache is empty, which is why the second `r.total` is recomputed. This is different from a `lazy` parameter (lesson 10), which re-runs its argument on every read. A static property is read-only: it takes an `= value` or a `get` body, and shared state that changes belongs in an Atom.
 
 ### Properties in interfaces
 
@@ -151,7 +151,7 @@ Hello, Ada Lovelace
 
 ### Watching a property
 
-When the tuple is held in an Atom (lesson 24), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
+When the tuple is held in an Atom (lesson 29), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
 
 ```moxie
 tuple Account deriving show

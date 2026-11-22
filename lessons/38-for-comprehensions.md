@@ -1,6 +1,6 @@
 # `for` comprehensions
 
-Lesson 37 chained dependent steps with `|>>`. When there are several steps, the chain gets hard to read, and a `for` block does the same job in a shape that reads top to bottom. A `for` block is a chain of *generators* ending in `yield`, and it works for any type that has a `Monad` instance: `Result`, `List`, `Stream`, and your own types.
+Lesson 45 chained dependent steps with `|>>`. When there are several steps, the chain gets hard to read, and a `for` block does the same job in a shape that reads top to bottom. A `for` block is a chain of *generators* ending in `yield`, and it works for any type that has a `Monad` instance: `Result`, `List`, `Stream`, and your own types.
 
 ## The block form
 
@@ -54,7 +54,7 @@ Inside the block, three kinds of line are allowed:
 
 - `name in expr` takes a value out of a container;
 - `name = expr` binds a plain value, with no container;
-- a **refutable** binding, `Active(_, rank) = user else Err(...)`, takes a value apart and gives a failure when the pattern doesn't fit (lesson 19's let-else).
+- a **refutable** binding, `Active(_, rank) = user else Err(...)`, takes a value apart and gives a failure when the pattern doesn't fit (lesson 22's let-else).
 
 ## An example: paying people
 

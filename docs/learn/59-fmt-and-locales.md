@@ -6,7 +6,7 @@ title: "Templates and locales · Learn moxie"
 
 # 7. Templates and locales
 
-Lesson 5 introduced format specs inside interpolation, `${price:.2f}`. This lesson covers the other ways to put values into text: a template written apart from its values, a template loaded at run time, and numbers and dates written the way a particular place writes them.
+Lesson 6 introduced format specs inside interpolation, `${price:.2f}`. This lesson covers the other ways to put values into text: a template written apart from its values, a template loaded at run time, and numbers and dates written the way a particular place writes them.
 
 ## A template with `fmt`
 
@@ -56,7 +56,7 @@ Err(Error(code: 13, message: "the template has more fields than arguments"))
 
 ## Locales
 
-The format type `n` writes a number the way a place writes it, using the `Locale` that `using` finds in scope (lesson 8's `using` parameters, here as a top-level declaration):
+The format type `n` writes a number the way a place writes it, using the `Locale` that `using` finds in scope (lesson 10's `using` parameters, here as a top-level declaration):
 
 ```moxie
 using locale = Locale.de_de

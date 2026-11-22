@@ -376,9 +376,9 @@ Types follow the same rule, and two types that refer to each other need `forward
 
 ```
 forward enum Tree
-tuple Node
+tuple Node deriving show
   kids List[Tree]
-enum Tree
+enum Tree deriving show
   Leaf
   Branch(n Node)
 println(Node(kids: List(Leaf)))
@@ -682,7 +682,7 @@ Output: `payload.bin -> production.server:4000 retries 5`, then `backup.tar -> l
 ```
 user = (name: "Alice", age: 30)
 admin = (...user, role: "Admin")
-tuple Employee
+tuple Employee deriving show
   name String
   age Int
   salary Int
@@ -2089,7 +2089,7 @@ Output: `rejected, still 5`, then `9, was 5`. The original is never touched, as 
 A property that stores nothing is a computed one:
 
 ```
-tuple Rect
+tuple Rect deriving show
   width Int,
   height Int,
   property area Int
@@ -2237,7 +2237,7 @@ Output: `8`, `3`, `40 percent`. A parameter declared `n Pos` means `n Int where 
 
 ```
 type Pos = Int where self > 0
-tuple Account
+tuple Account deriving show
   balance Pos
   name String
 fn half(n Pos) Int
@@ -2500,7 +2500,7 @@ println("$x $y")
 Output: `1.5 2.0`. `value is Pattern` is a Boolean test, and its names are visible in the `then` branch (and after `and`, but not under `or` or `not`):
 
 ```
-enum Reading
+enum Reading deriving show
   Value(n Int)
   Missing
 fn show_reading(r Reading) String
@@ -4386,7 +4386,7 @@ Output: `Err(List("bad -1", "bad -3"))`, `List(5, 7) List("bad -1", "bad -3")`, 
 **Different checks, one result.** `validate` needs one function over many items. A form is usually the other shape: several independent checks of different types, combined by one function. `map_all(f, r1, r2, ...)` takes two to six `Result`s that share an error type and a function with one parameter for each. If all are `Ok`, you get `Ok(f(values))`; otherwise `Err` with the list of *every* error, in argument order, so the mixer sees all the problems at once.
 
 ```
-tuple User
+tuple User deriving show
   name String
   email String
 

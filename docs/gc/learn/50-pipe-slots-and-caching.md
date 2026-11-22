@@ -7,7 +7,7 @@ title: "Pipe slots, `seq`, and doing work once · Learn moxie/gc"
 
 # 26. Pipe slots, `seq`, and doing work once
 
-Lesson 21 used `|>` to run values through stages. This lesson looks at how a pipe decides where the value goes, adds the `seq` block, and then turns to the opposite problem: doing an expensive step only once. Moxie never caches behind your back, so each way of reusing work is something you write on purpose.
+Lesson 25 used `|>` to run values through stages. This lesson looks at how a pipe decides where the value goes, adds the `seq` block, and then turns to the opposite problem: doing an expensive step only once. Moxie never caches behind your back, so each way of reusing work is something you write on purpose.
 
 ## Where does the piped value go?
 
@@ -152,7 +152,7 @@ println(shrunk)
 
 Nothing is memoized, and nothing is cached behind your back. Caching is something you write on purpose, and moxie gives you these ways:
 
-- `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 48);
+- `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 55);
 - a `lazy` parameter (call by need) evaluates its argument once, only if the body reads it;
 - a bottom-up `reduce`, below, carries only what the next step needs;
 - a `Dict` threaded through a recursion as a `ref` parameter lets calls share work;

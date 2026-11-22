@@ -105,3 +105,4 @@ You don't need to know any functional programming. If you do, the lessons point 
 
 58. [The system around your program](44-the-system-around-your-program.html)
 59. [Calling C](54-calling-c.html)
+60. [Moxie and moxie/gc side by side](60-the-two-dialects.html)

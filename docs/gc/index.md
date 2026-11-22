@@ -1353,7 +1353,7 @@ A generic declaration lists its type parameters in square brackets, ahead of the
 fn bigger[T Ordered](a T, b T) T
   if a < b then b else a
 
-tuple Pair[A, B]
+tuple Pair[A, B] deriving show
   first A,
   second B
 
@@ -1410,7 +1410,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 **Higher-kinded types.** `List[Int]` is a type. `List` by itself is a *type constructor*: give it a type and it makes a type. Most languages let you write a function over any type. Moxie also lets you write one over any type constructor, by writing the constructor as a parameter, `F[_]`:
 
 ```
-tuple Box[A]
+tuple Box[A] deriving show
   value A
 
 impl Functor[Box]

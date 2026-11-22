@@ -4,7 +4,7 @@ If you come from C, Java, Python, or JavaScript, most habits carry over, and a f
 
 ## Accumulate in a loop
 
-A loop's rebindings don't leave it (lesson 7), so fold with a stream:
+A loop's rebindings don't leave it (lesson 9), so fold with a stream:
 
 ```moxie
 xs = List(1, 2, 3)
@@ -102,7 +102,7 @@ Err(Error(code: 4, message: "no such element"))
 
 ## An outer variable from a nested block
 
-`x@1 += 1` reaches the name one block out (lesson 7):
+`x@1 += 1` reaches the name one block out (lesson 9):
 
 ```moxie
 count = 0
@@ -137,7 +137,7 @@ println(total(c))
 
 ## Exceptions
 
-Return a `Result` and use `?` (lesson 14). There is no `try`.
+Return a `Result` and use `?` (lesson 16). There is no `try`.
 
 ## The compiler teaches as it goes
 
@@ -172,7 +172,7 @@ error: undefined name `null`
 
 ## What to remember
 
-- Accumulate with `reduce`, or use `name@1` / `mutable` (lesson 56) when a loop must write outward.
+- Accumulate with `reduce`, or use `name@1` / `mutable` (lesson 19) when a loop must write outward.
 - `p.field += 1` and `p.update` rebuild a tuple; `ref` lets a function change its caller's variable.
 - `a, b = b, a` swaps; `list += x` pushes; there is no `null`.
 - Recursive enums, `Dict`s of ids, and owning fibers replace pointers; `Result` and `?` replace exceptions.
