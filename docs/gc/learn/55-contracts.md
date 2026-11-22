@@ -178,7 +178,7 @@ Account(balance: 5)
 
 `i Int where i >= 0` is a `requires`, `Int where result >= 0` after the result type is an `ensures`, and `balance Int where balance >= 0` after a field is an `invariant`. Use whichever reads better; a condition with several lines or a name for the old state belongs in a `requires` or `ensures` line.
 
-Whatever the spelling, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 49 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it proves costs nothing to rely on, what it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
+Whatever the spelling, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 49 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, quietly for a result or a field and with a note for a parameter, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
 
 ## What to remember
 

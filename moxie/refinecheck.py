@@ -308,8 +308,8 @@ class RefineMixin:
             if r == "no":
                 self.err(line, f"`{fd.name}` promises `{text}`, but the value returned here can never satisfy it")
             elif r == "unknown":
-                self.rf_unknown(line, f"can't prove `{text}` for the result of `{fd.name}`",
-                                "test the value before returning it, or loosen the promise")
+                self.rf_unproved(line, f"can't prove `{text}` for the result of `{fd.name}`",
+                                 "test the value before returning it, or loosen the promise")
 
     # ------------------------------------------------------------ fields: an `invariant`, proved where a tuple is built
     def rf_check_construct(self, n, sc):
@@ -350,7 +350,14 @@ class RefineMixin:
             if r == "no":
                 self.err(line, f"`{td.name}` needs `{text}`, but the values given here can never satisfy it")
             elif r == "unknown":
-                self.rf_unknown(line, f"can't prove `{text}` for `{td.name}`", "check the values first, or loosen the invariant")
+                self.rf_unproved(line, f"can't prove `{text}` for `{td.name}`", "check the values first, or loosen the invariant")
+
+    def rf_unproved(self, line, what, ways):
+        """A result or a field the solver could neither prove nor refute.  Unlike a call, this says nothing by default (the run-time
+        check stays, and a note on most constructions would only be noise); with `[contracts] prove = true` it is an error."""
+        from .check import PROVE_ALL
+        if PROVE_ALL[0]:
+            self.err(line, f"{what}: {ways}")
 
     # ------------------------------------------------------------ calls
     def rf_callee(self, n, sc, extra):

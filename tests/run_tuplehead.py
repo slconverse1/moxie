@@ -11,7 +11,7 @@ CASES = [
  ("a function-typed field", 'tuple Op(name String, f (Int) -> Int)\no = Op("inc", (n) -> n + 1)\nprintln(o.f(1))\n', 0, "2"),
  ("a one-field tuple", 'tuple Q(a Int) deriving show\nprintln(Q(1))\n', 0, "Q(a: 1)"),
  ("export", 'export tuple Q(a Int) deriving show\nprintln(Q(1))\n', 0, "Q(a: 1)"),
- ("an invariant in the body", 'tuple Pos(x Int, y Int) deriving show\n  invariant x >= 0\nprintln(Pos(1, 2).x)\nprintln(Pos(-1, 2))\n', 1, "invariant"),
+ ("an invariant in the body", 'tuple Pos(x Int, y Int) deriving show\n  invariant x >= 0\nprintln(Pos(1, 2).x)\nprintln(Pos(0 - len(List(1)), 2))\n', 1, "invariant"),
  ("a pattern over it", 'tuple P(x Int, y Int) deriving show\nP(a, b) = P(3, 4)\nprintln(a * b)\n', 0, "12"),
  ("fields in both places is an error", 'tuple P(x Int) deriving show\n  y Int\n', 2, "write the fields in one place"),
  ("a missing type is an error", 'tuple P(x Int, y) deriving show\n', 2, ""),
