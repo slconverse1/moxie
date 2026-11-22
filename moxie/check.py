@@ -2783,6 +2783,9 @@ class Checker(RefineMixin):
             return t, None
         if n.op == "-" and c is not None and isinstance(c, (int, float)) and not isinstance(c, bool):
             return t, -c
+        if n.op == "~" and t is not None and ((t.__class__ is str and t not in INTS) or (t.__class__ is tuple and t[0] in ("fn", "tup"))):
+            self.err(n.line, f"`~` needs an integer, found `{tshow(t)}` (`~` is bitwise not; function composition is `~>`)")
+            return None, None
         if n.op == "not" or n.op == "!":
             if t is not None and t != "Bool":
                 self.err(n.line, f"`not` needs a `Bool`, found `{tshow(t)}`")

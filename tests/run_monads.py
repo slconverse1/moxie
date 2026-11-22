@@ -1,4 +1,4 @@
-"""List, fp.reader, fp.writer, fp.cont, fp.free (moxie/gc only).  Run: python3 tests/run_monads.py"""
+"""List, fp.reader, fp.writer, fp.cont (moxie/gc only).  Run: python3 tests/run_monads.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -110,31 +110,6 @@ chk("Cont: run_cont with a continuation, and flat_map order", """import fp.cont
 m = cont.Cont.pure(2).flat_map((a) -> cont.Cont.pure(a + 3)).map((a) -> a * 2)
 println(cont.run_cont(m, (a Int) -> "got ${a}"))
 """, 0, "got 10")
-
-DSL = """import fp.free
-enum Cmd[Next] deriving show
-  Say(String, Next)
-  Ask((String) -> Next)
-impl Functor[Cmd]
-  fn fmap[A, B](self Cmd[A], f (A) -> B) Cmd[B]
-    when self
-      Say(s, n) -> Say(s, f(n))
-      Ask(k) -> Ask((x) -> f(k(x)))
-say = (s String) -> free.lift_f(Say(s, ()))
-ask = free.lift_f(Ask((x) -> x))
-"""
-chk("Free: a program is data, interpreted by fold_free", DSL + """prog = say("name?").flat_map((u) -> ask.flat_map((n) -> say("hello ${n}")))
-step = (c Cmd[List[String]]) -> when c
-  Say(s, rest) -> List(s) + rest
-  Ask(k) -> k("sam")
-println(free.fold_free(prog, (u) -> List(), step))
-""", 0, 'List("name?", "hello sam")')
-chk("Free: the same program under a second interpreter", DSL + """prog = say("a").flat_map((u) -> say("b")).flat_map((u) -> say("c"))
-count = (c Cmd[Int]) -> when c
-  Say(s, rest) -> rest + 1
-  Ask(k) -> k("")
-println(free.fold_free(prog, (u) -> 0, count))
-""", 0, "3")
 
 chk("these packages are moxie/gc only", "import fp.reader\nprintln(1)\n", 2, "only in moxie/gc", flags=())
 

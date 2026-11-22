@@ -2063,7 +2063,7 @@ These aren't forced on us, and each can be argued with. Here's the reasoning beh
 
 - **No orphan impls.** An impl lives with the type or the interface, so it's never ambiguous which one applies.
 - **One hole in partial type application.** `Result[_, E]` is plenty, and it keeps type inference simple.
-- **Operators aren't values, but they have sections.** `(+ 1)` and `(10 -)` are functions, and `(- 4)` with a space is "subtract 4" (`(-4)` is the number). There is no `curry(+)`: write `curry(add)`.
+- **Operators aren't values, and have no sections.** `_ + 1` and `10 - _` are the functions, and `(+ 1)` is an error. There is no `curry(+)`: write `curry(add)`.
 - **No mixing `_` and `_1` in one partial call.** The two numbering schemes together read like a puzzle.
 - **Unused imports and module-level rebinding are errors.** The link report stays honest, and a program's top-level names stay stable.
 - **A fiber abort still ends the whole program.** `wait` waits for and cancels fibers, but it doesn't contain a fault, so one bad fiber isn't quietly dropped.

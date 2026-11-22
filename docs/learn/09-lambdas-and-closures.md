@@ -92,12 +92,12 @@ println(List(1, 2, 3, 4).reduce(0, _1 + _2))
 10
 ```
 
-An operator with one side missing is also a function of the other side: `(+ 1)` adds one, `(* 2)` doubles, `(> 2)` asks "is it above two":
+A placeholder can sit on either side of an operator, so `_ + 1` adds one, `_ * 2` doubles, `_ > 4` asks "is it above four", and `10 - _` subtracts from ten. There is no separate syntax for an operator with one side missing: `(+ 1)` is an error, and the message points to the placeholder form.
 
 ```moxie
-println(List(1, 2, 3).map((+ 1)).collect())
-println(List(1, 2, 3).map((10 -)).collect())
-println(List(1, 5, 9).filter((> 4)).collect())
+println(List(1, 2, 3).map(_ + 1).collect())
+println(List(1, 2, 3).map(10 - _).collect())
+println(List(1, 5, 9).filter(_ > 4).collect())
 ```
 **Output:**
 
@@ -106,8 +106,6 @@ List(2, 3, 4)
 List(9, 8, 7)
 List(5, 9)
 ```
-
-`(- 1)` with a space subtracts one from its argument. `(-1)` without one is just the number negative one.
 
 A lambda can also be written *after* a call, with its own parameter list, when that reads better than putting it inside the parentheses. That form, and the pipe `|>` that makes it natural, are in the lesson on pipelines.
 
@@ -188,21 +186,19 @@ log_error("disk full")
 
 ## Composing functions
 
-`~>` joins two functions left to right, and `<~` right to left:
+`~>` joins two functions, left to right:
 
 ```moxie
 fn inc(x Int) Int = x + 1
 fn twice(x Int) Int = x * 2
 println((inc ~> twice)(5))
 println((twice ~> inc)(5))
-println((twice <~ inc)(5))
 ```
 **Output:**
 
 ```
 12
 11
-12
 ```
 
 `(inc ~> twice)(5)` does `inc` first, then `twice`: (5 + 1) * 2 is 12. `(twice ~> inc)(5)` is 5 * 2 + 1.

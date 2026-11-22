@@ -824,7 +824,7 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             if op == "<=":
                 return not lt(r, l)
             return not lt(l, r)
-        if op in ("|>>", "<$>", "<*>", "~>", "<~"):
+        if op in ("|>>", "<$>", "<*>", "~>"):
             return (yield from self.functor_op(op, l, r))
         if op == "+":
             if isinstance(l, str) and isinstance(r, str):
@@ -919,8 +919,6 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             raise Abort("'<*>' needs an Applicative on the left")
         if op == "~>":
             return ComposeV([l, r])
-        if op == "<~":
-            return ComposeV([r, l])
         raise Abort(f"bad operator {op}")
 
     def ev_Tick(self, n, env):

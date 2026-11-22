@@ -682,7 +682,7 @@ Inside a generic function, a parameter typed exactly `T` is recorded in `tp_vars
 
 ## List monad, monad packages, and type arguments at run time (mxprelude.GC_SRC, std/fp/*.mxi, calls.py)
 
-`mxprelude.GC_SRC` adds `impl Monad[List[_]]` when running moxie/gc, so list methods and `for` give lists (an impl method wins over the stream stage of the same name). `fp.reader`, `fp.writer`, `fp.cont`, `fp.free`, and `fp.trans` are written in moxie under `moxie/std/fp/` and are gc-only (`stdpkg.GC_ONLY`).
+`mxprelude.GC_SRC` adds `impl Monad[List[_]]` when running moxie/gc, so list methods and `for` give lists (an impl method wins over the stream stage of the same name). `fp.reader`, `fp.writer`, `fp.cont`, and `fp.trans` are written in moxie under `moxie/std/fp/` and are gc-only (`stdpkg.GC_ONLY`).
 
 Transformers need the inner monad's `pure`, which the interpreter cannot guess from a value, so type arguments travel at run time:
 - A type value keeps its arguments (`TypeV.args`, from `targ_value`; a bound type parameter such as `M` is looked up in the environment).

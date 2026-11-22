@@ -2,16 +2,22 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
 CASES = [
- ("(+ 1) on Strings", 'xs List[String] = List("a")\nys = xs.map((+ 1))\n', "cannot apply `+` to `String` and `Int`"),
- ("(* 2) on Strings", 'xs List[String] = List("a")\nys = xs.map((* 2))\n', "cannot apply `*` to `String` and `Int`"),
  ("_ + 1 on Strings", 'xs List[String] = List("a")\nys = xs.map(_ + 1)\n', "cannot apply `+` to `String` and `Int`"),
- ("(> \"x\") on Ints", 'ys = List(1, 2).filter((> "x"))\n', "cannot compare `Int` and `String`"),
- ("(and true) on Ints", 'ys = List(1, 2).filter((and true))\n', "`and` needs `Bool` operands"),
- ("(- 1) fits Ints", "ys = List(1, 2).fmap((- 1))\nprintln(ys)\n", None),
- ("(+ \"z\") fits Strings", 'ys = List("a").fmap((+ "z"))\nprintln(ys)\n', None),
- ("(* 2) fits Floats", "ys = List(1.5).fmap((* 2))\nprintln(ys)\n", None),
- ("(and true) fits Bools", "ys = List(true, false).filter((and true)).collect()\nprintln(ys)\n", None),
- ("(in allowed) fits", "allowed = Set(1, 2)\nys = List(1, 3).filter((in allowed)).collect()\nprintln(ys)\n", None),
+ ("_ * 2 on Strings", 'xs List[String] = List("a")\nys = xs.map(_ * 2)\n', "cannot apply `*` to `String` and `Int`"),
+ ("_ > \"x\" on Ints", 'ys = List(1, 2).filter(_ > "x")\n', "cannot compare `Int` and `String`"),
+ ("_ and true on Ints", 'ys = List(1, 2).filter(_ and true)\n', "`and` needs `Bool` operands"),
+ ("_ - 1 fits Ints", "ys = List(1, 2).fmap(_ - 1)\nprintln(ys)\n", None),
+ ("_ + \"z\" fits Strings", 'ys = List("a").fmap(_ + "z")\nprintln(ys)\n', None),
+ ("_ * 2 fits Floats", "ys = List(1.5).fmap(_ * 2)\nprintln(ys)\n", None),
+ ("_ and true fits Bools", "ys = List(true, false).filter(_ and true).collect()\nprintln(ys)\n", None),
+ ("_ in allowed fits", "allowed = Set(1, 2)\nys = List(1, 3).filter(_ in allowed).collect()\nprintln(ys)\n", None),
+ ("10 - _ fits Ints", "ys = List(1, 2).fmap(10 - _)\nprintln(ys)\n", None),
+ ("(+ 1) is not a function", 'ys = List(1, 2).map((+ 1))\n', "an operator on its own is not a function"),
+ ("(10 -) is not a function", 'ys = List(1, 2).map((10 -))\n', "an operator on its own is not a function"),
+ ("(in allowed) is not a function", 'allowed = Set(1)\nys = List(1, 3).filter((in allowed))\n', "an operator on its own is not a function"),
+ ("(`div_by` 2) is not a function", 'fn div_by(a Int, b Int) Int = a / b\nys = List(8).map((`div_by` 2))\n', "an operator on its own is not a function"),
+ ("(- 4) with a space is not a function", 'ys = List(1).map((- 4))\n', "an operator on its own is not a function"),
+ ("(-4) is negation", "println((-4))\n", None),
 ]
 fails = []
 for name, src, word in CASES:

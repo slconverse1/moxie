@@ -7,7 +7,7 @@ MUT_RE = set()      # ids of `Assign` nodes that assign to a `mutable` block's n
 
 T_PIPE, T_OR, T_AND, T_COMP, T_RANGE, T_BT, T_BOR, T_BXOR, T_BAND, T_SHIFT, T_ADD, T_MUL, T_OTHER = range(13)
 
-COMP_OPS = {"==", "~=", "<", ">", "<=", ">=", "<$>", "<*>", "<~"}
+COMP_OPS = {"==", "~=", "<", ">", "<=", ">=", "<$>", "<*>"}
 ORDER_OPS = ("<", ">", "<=", ">=", "==")      # the operators that chain (`~=` does not: `a ~= b ~= c` would only say neighbors differ)
 BINTIER = {
     "|": T_BOR, "|>>": T_BOR, "^": T_BXOR, "&": T_BAND, "<<": T_SHIFT, ">>": T_SHIFT,
@@ -1172,29 +1172,11 @@ class ExprParser(PBase):
         self.skip_nl()
         o, nt = self.peek(), self.peek(1)
         word = o.kind == "NAME" and o.val in self.WORD_SECT and not (nt.kind == "OP" and nt.val == ")")
-        if word or self.section_op(o, nt):                                   # `(+ 1)`, `(`div` 2)`, `(and ok)`, `(in xs)`
-            self.next()
-            right = self._climb((self._tier_of(o) if word else BINTIER.get(o.val) if o.kind == "OP" else T_BT) + 1)
-            self.skip_nl()
-            self.expect_op(")", "to close the section")
-            self.no_trailing, self.stop_bol = save
-            if contains_ph(right):
-                self.err("a section already has its hole: write `(+ 1)`, not `(+ _)`", o)
-            return ph_lambda(self.sect_body(o, PH(1, line=o.line), right), line)
+        if word or self.section_op(o, nt):                                   # `(+ 1)`, `(`div` 2)`, `(and ok)`, `(in xs)`: not moxie
+            self.err("an operator on its own is not a function: write a placeholder, as in `_ + 1`, `10 - _`, `_ in xs`, or a lambda `(x) -> x + 1`", o)
         end = self.left_section_end()
-        if end is not None:                                                   # `(10 -)`
-            op = self.peek(end - 1)
-            fake = (op.kind, op.val)
-            op.kind, op.val = "OP", ")"
-            left = self.parse_expr()
-            self.skip_nl()
-            self.expect_op(")")
-            op.kind, op.val = fake
-            self.next()
-            self.no_trailing, self.stop_bol = save
-            if contains_ph(left):
-                self.err("a section already has its hole: write `(10 -)`, not `(_ -)`", op)
-            return ph_lambda(self.sect_body(op, left, PH(1, line=op.line)), line)
+        if end is not None:                                                   # `(10 -)`: not moxie either
+            self.err("an operator on its own is not a function: write a placeholder, as in `10 - _`, or a lambda `(x) -> 10 - x`", self.peek(end - 1))
         if self.eat_op(")"):
             self.no_trailing, self.stop_bol = save
             return UnitLit(line=line)

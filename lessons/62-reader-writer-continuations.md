@@ -11,7 +11,7 @@ Lesson 46 and lesson 49 cover the monads that do exist in GC-free moxie.
 @end
 
 @gc
-Lesson 46 introduced the `Monad` interface and what `flat_map` means. Four packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), a **continuation** monad (a step can jump out early), and the free monad (lesson 51). This lesson covers the first three. They need closures with one type per signature, so GC-free moxie does not have them.
+Lesson 46 introduced the `Monad` interface and what `flat_map` means. Three packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), and a **continuation** monad (a step can jump out early). The free monad is covered in lesson 51. They need closures with one type per signature, so GC-free moxie does not have them.
 
 ## Reader
 
