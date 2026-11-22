@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "…moxie: the rest of the toolbox · Learning Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>

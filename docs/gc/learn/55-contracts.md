@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Contracts: where and invariant · Learning Guide moxie/gc"
 ---
 <p><small>Fields and promises</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Networking, deadlines, and parallel work · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>

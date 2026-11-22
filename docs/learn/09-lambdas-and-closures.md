@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Anonymous functions and closures · Learning Guide moxie"
 ---
 <p><small>Functions</small></p>

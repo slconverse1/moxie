@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Values, purity, and composing functions · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>

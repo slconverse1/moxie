@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Truth and choices · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>

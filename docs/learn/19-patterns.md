@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Patterns · Learning Guide moxie"
 ---
 <p><small>Data</small></p>

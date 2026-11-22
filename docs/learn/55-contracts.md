@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Contracts: where and invariant · Learning Guide moxie"
 ---
 <p><small>Fields and promises</small></p>

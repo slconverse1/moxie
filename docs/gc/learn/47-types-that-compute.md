@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Types that compute · Learning Guide moxie/gc"
 ---
 <p><small>Designing with interfaces</small></p>

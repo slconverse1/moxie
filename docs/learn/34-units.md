@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Units of measure · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>

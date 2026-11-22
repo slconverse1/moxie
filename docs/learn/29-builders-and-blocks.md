@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Builders: a DSL without macros · Learning Guide moxie"
 ---
 <p><small>Packages</small></p>

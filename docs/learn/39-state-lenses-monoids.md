@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "State, lenses, lazy sequences, and monoids · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>

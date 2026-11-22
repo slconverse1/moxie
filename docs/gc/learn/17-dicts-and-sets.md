@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Dicts and sets · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>

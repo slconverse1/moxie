@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Streams and pipelines · Learning Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Text · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>

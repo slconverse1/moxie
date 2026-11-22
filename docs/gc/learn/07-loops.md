@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Loops · Learning Guide moxie/gc"
 ---
 <p><small>Getting started</small></p>

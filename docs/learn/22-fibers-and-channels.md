@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Fibers and channels · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>

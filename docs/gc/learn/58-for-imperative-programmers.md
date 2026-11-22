@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Moxie for imperative programmers · Learning Guide moxie/gc"
 ---
 <p><small>Getting started</small></p>

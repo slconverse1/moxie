@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Methods and interfaces · Learning Guide moxie"
 ---
 <p><small>Data</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Receiver blocks, interface composition, and mocks · Learning Guide moxie"
 ---
 <p><small>Designing with interfaces</small></p>

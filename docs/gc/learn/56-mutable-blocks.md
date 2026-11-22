@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "In-place algorithms: `mutable` blocks · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>

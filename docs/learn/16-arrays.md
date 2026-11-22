@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Arrays and grids · Learning Guide moxie"
 ---
 <p><small>Data</small></p>

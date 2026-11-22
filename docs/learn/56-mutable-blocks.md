@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "In-place algorithms: `mutable` blocks · Learning Guide moxie"
 ---
 <p><small>Data</small></p>

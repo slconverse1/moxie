@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Waiting on several things: select, timers, and cancelling · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>

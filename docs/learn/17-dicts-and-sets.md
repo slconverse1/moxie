@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Dicts and sets · Learning Guide moxie"
 ---
 <p><small>Data</small></p>

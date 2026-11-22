@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Functions · Learning Guide moxie"
 ---
 <p><small>Functions</small></p>

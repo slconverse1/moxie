@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Transformers and the mtl classes · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>

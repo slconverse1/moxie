@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Reader, writer, and continuations · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Errors in larger programs · Learning Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>

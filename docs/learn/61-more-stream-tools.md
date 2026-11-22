@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "More stream tools: sources you build · Learning Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>

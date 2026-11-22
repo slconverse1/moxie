@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Recursion and function clauses · Learning Guide moxie/gc"
 ---
 <p><small>Functions</small></p>

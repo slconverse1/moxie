@@ -51,17 +51,17 @@ th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-ali
 <body{% if page.toc or page.learn %} class="hastoc"{% endif %}>
 <nav>
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
-  <a class="brand" href="{{ base | append: '/' | relative_url }}">{% if gc %}moxie/gc{% else %}moxie{% endif %}</a>
+  <a class="brand" href="{{ base | append: '/' | relative_url }}">{% if page.dialect == 'gc' %}moxie/gc{% else %}moxie{% endif %}</a>
   <a href="{{ base | append: '/learn/' | relative_url }}">Learning Guide</a>
   <a href="{{ base | append: '/tutorial.html' | relative_url }}">Tutorial</a>
   <a href="{{ base | append: '/spec.html' | relative_url }}">Spec</a>
   <a href="{{ base | append: '/style.html' | relative_url }}">Style</a>
-  {% if gc %}<a href="{{ '/gc/try.html' | relative_url }}">Try moxie/gc</a>{% else %}<a href="{{ '/try.html' | relative_url }}">Try moxie</a>{% endif %}
+  {% if page.dialect == 'gc' %}<a href="{{ '/gc/try.html' | relative_url }}">Try moxie/gc</a>{% else %}<a href="{{ '/try.html' | relative_url }}">Try moxie</a>{% endif %}
   <a href="{{ base | append: '/repl.html' | relative_url }}">REPL</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
 </nav>
 <div class="page">
-{% if page.toc or page.learn %}<aside id="toc" aria-label="Contents">{% if page.learn %}{% if gc %}{% include learn-nav-gc.html %}{% else %}{% include learn-nav.html %}{% endif %}{% endif %}</aside>{% endif %}
+{% if page.toc or page.learn %}<aside id="toc" aria-label="Contents">{% if page.learn %}{% if page.dialect == 'gc' %}{% include learn-nav-gc.html %}{% else %}{% include learn-nav.html %}{% endif %}{% endif %}</aside>{% endif %}
 <main>
 {% if page.toc or page.learn %}<details id="toc-small"><summary>Contents</summary></details>{% endif %}
 {{ content }}

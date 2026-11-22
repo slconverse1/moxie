@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Formatting and checking: `moxie fmt` and `moxie check` · Learning Guide moxie/gc"
 ---
 <p><small>Quality and larger programs</small></p>

@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Where to go next · Learning Guide moxie/gc"
 ---
 <p><small>Your program and its machine</small></p>

@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "JSON and data from outside · Learning Guide moxie/gc"
 ---
 <p><small>Data from outside</small></p>

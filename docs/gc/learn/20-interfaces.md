@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Methods and interfaces · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Types that compute · Learning Guide moxie"
 ---
 <p><small>Designing with interfaces</small></p>

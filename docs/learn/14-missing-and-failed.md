@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Missing values and failures: Option and Result · Learning Guide moxie"
 ---
 <p><small>Data</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Regular expressions · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>

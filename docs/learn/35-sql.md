@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Databases with SQL · Learning Guide moxie"
 ---
 <p><small>Data from outside</small></p>

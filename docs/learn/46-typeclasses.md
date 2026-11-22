@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Typeclasses · Learning Guide moxie"
 ---
 <p><small>Designing with interfaces</small></p>

@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Waiting on several things: select, timers, and cancelling · Learning Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>

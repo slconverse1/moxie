@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Data types that grow: the expression problem · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>

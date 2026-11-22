@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Learning Guide moxie/gc"
 ---
 # LEARNING GUIDE MOXIE/GC

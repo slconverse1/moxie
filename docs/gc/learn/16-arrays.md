@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Arrays and grids · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>

@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Naming types: aliases, opaque types, and unions · Learning Guide moxie/gc"
 ---
 <p><small>Data</small></p>

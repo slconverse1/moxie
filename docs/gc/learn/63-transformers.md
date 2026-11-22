@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Transformers and the mtl classes · Learning Guide moxie/gc"
 ---
 <p><small>Functional programming</small></p>

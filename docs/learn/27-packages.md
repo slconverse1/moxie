@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Packages and imports · Learning Guide moxie"
 ---
 <p><small>Packages</small></p>

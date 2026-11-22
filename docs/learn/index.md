@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Learning Guide moxie"
 ---
 # LEARNING GUIDE MOXIE

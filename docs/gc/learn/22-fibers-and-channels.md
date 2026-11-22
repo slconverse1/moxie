@@ -1,6 +1,7 @@
 ---
 layout: default
 dialect: gc
+learn: true
 title: "Fibers and channels · Learning Guide moxie/gc"
 ---
 <p><small>Concurrency</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Generic functions · Learning Guide moxie"
 ---
 <p><small>Functions</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Pipe slots, `seq`, and doing work once · Learning Guide moxie"
 ---
 <p><small>Streams and pipelines</small></p>

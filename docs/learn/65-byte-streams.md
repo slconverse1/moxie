@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Byte streams: Reader and Writer · Learning Guide moxie"
 ---
 <p><small>Your program and its machine</small></p>

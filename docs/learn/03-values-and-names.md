@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Values and names · Learning Guide moxie"
 ---
 <p><small>Getting started</small></p>

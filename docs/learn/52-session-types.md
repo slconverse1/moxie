@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Session types: a channel that remembers the conversation · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>

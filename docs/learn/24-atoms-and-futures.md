@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Atoms and futures · Learning Guide moxie"
 ---
 <p><small>Concurrency</small></p>

@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "GADTs and typestate · Learning Guide moxie"
 ---
 <p><small>Functional programming</small></p>

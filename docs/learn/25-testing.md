@@ -1,5 +1,6 @@
 ---
 layout: default
+learn: true
 title: "Testing, assertions, and checking · Learning Guide moxie"
 ---
 <p><small>Quality and larger programs</small></p>
