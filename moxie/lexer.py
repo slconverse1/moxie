@@ -27,7 +27,7 @@ class Tok:
     __slots__ = ("kind", "val", "line", "col", "bol", "sp", "extra")
 
     def __init__(self, kind, val, line, col, sp=False):
-        self.kind = kind      # NAME INT FLOAT DEC STR CHAR BYTES BCHAR HASH DUR OP BTICK NL INDENT DEDENT EOF SQL
+        self.kind = kind      # NAME INT FLOAT DEC STR CHAR BYTES BCHAR HASH DUR OP NL INDENT DEDENT EOF SQL
         self.val = val
         self.line = line
         self.col = col
@@ -331,12 +331,7 @@ class Lexer:
             add("HASH", src[i + 1:j])
             return
         if c == "`":
-            j = src.find("`", i + 1)
-            if j < 0:
-                self.err("unterminated backtick")
-            self.i = j + 1
-            add("BTICK", src[i + 1:j])
-            return
+            self.err("backticks are not used: call the function, `f(a, b)`, or pipe, `a |> f(b)`")
         # operators
         for op in OPS_BY_FIRST.get(c, ()):
             if src.startswith(op, i):

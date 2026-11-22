@@ -2,7 +2,7 @@
 
 Grammar syntax (one rule per `name : alternatives ;`, `#` starts a comment):
     'text'      a token whose value is `text` (an operator, or a keyword written as a name)
-    NAME INT ...  a token of that kind (NAME INT FLOAT STR CHAR DEC DUR BYTES SQL HASH BTICK NL INDENT DEDENT EOF)
+    NAME INT ...  a token of that kind (NAME INT FLOAT STR CHAR DEC DUR BYTES SQL HASH NL INDENT DEDENT EOF)
     ident       a NAME token that is not a reserved word (`%reserved a b c` lists them)
     rule        another rule
     ( ... )  [ ... ]  { ... }  +      grouping, optional, zero or more, postfix one or more

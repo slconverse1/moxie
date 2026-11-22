@@ -173,8 +173,6 @@ class ExprParser(PBase):
             if t.val == "|>":
                 return None
             return BINTIER.get(t.val)
-        if t.kind == "BTICK":
-            return T_BT
         if t.kind == "NAME":
             if t.val == "and":
                 return T_AND
@@ -265,10 +263,6 @@ class ExprParser(PBase):
                     continue
                 right = self._climb(tier + 1)
                 left = InOp(left, right, neg, line=line)
-            elif t.kind == "BTICK":
-                self.next()
-                right = self._climb(tier + 1)
-                left = Tick(left, t.val, right, line=line)
             elif t.val in ("..", "..="):
                 self.next()
                 left = self.range_rest(left, t.val, tier + 1, line)
@@ -1126,8 +1120,6 @@ class ExprParser(PBase):
     def section_op(self, t, nt):
         """Is token `t` (followed by `nt`) an operator that can name a section?  `(- 4)` with a space is the section, `(-4)` and `(-x)`
         are negation, and `(/dir)` is a path."""
-        if t.kind == "BTICK":
-            return True
         if t.kind != "OP" or t.val not in self.SECT_OPS:
             return False
         if nt.kind == "OP" and nt.val == ")":
@@ -1141,8 +1133,6 @@ class ExprParser(PBase):
     WORD_SECT = ("and", "or", "in")
 
     def sect_body(self, t, left, right):
-        if t.kind == "BTICK":
-            return Tick(left, t.val, right, line=t.line)
         if t.kind == "NAME" and t.val in self.WORD_SECT:                # `(and ok)`, `(or x)`, `(in xs)`
             if t.val == "in":
                 return InOp(left, right, False, line=t.line)
@@ -1165,7 +1155,7 @@ class ExprParser(PBase):
                         return None
                     p = self.peek(i - 1)
                     pp = self.peek(i - 2) if i >= 2 else None
-                    ok = (p.kind == "BTICK" or (p.kind == "OP" and p.val in self.SECT_OPS) or (p.kind == "NAME" and p.val in self.WORD_SECT)) and i >= 2 \
+                    ok = ((p.kind == "OP" and p.val in self.SECT_OPS) or (p.kind == "NAME" and p.val in self.WORD_SECT)) and i >= 2 \
                         and not (pp.kind == "OP" and pp.val in ("(", "[", "{", ",", ":", "->", "=")) and pp.kind != "NL"
                     return i if ok else None
                 depth -= 1

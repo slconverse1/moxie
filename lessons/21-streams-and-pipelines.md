@@ -200,16 +200,6 @@ println(7 |> coordinates() |> describe())
 at 14,21
 ```
 
-A two-argument function can also be written between its arguments with backticks:
-
-```moxie
-fn calculate_yield(base Int, factor Int) Int = base * factor
-println(100 `calculate_yield` 5)
-```
-```output
-500
-```
-
 ## Streams are lazy, and run once
 
 A stage doesn't run until a terminal asks for values. This pipeline shows the order, element by element, through the whole chain:

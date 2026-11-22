@@ -71,7 +71,6 @@ def _defs():
         "IsOp": "e pat",
         "RangeE": "lo hi incl step",
         "Pipe": "l stage",
-        "Tick": "l fname r",
         "Q": "e",
         "IfE": "branches else_",       # branches: [(cond, body)]
         "WhenE": "scrut arms",         # arms: [Arm]

@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Backtick infix removed. ``a `f` b`` is gone (the lexer says so and points to `f(a, b)` or `a |> f(b)`); it came from Haskell and a call or a pipe says the same thing. The grammar, both specs, both intros, and lessons 21 and 50 are updated.
+
 `ref self` methods. A method declared `fn add(ref self, x Int) Unit` rebinds its receiver, and the call says so, `ref m.add(1)`, like any other `ref` argument; it works in interfaces and through generic bounds, and leaving the `ref` off (or adding it to an ordinary method) is a compile error. `tests/run_refself.py` covers both dialects.
 
 Removals. Four overlapping or special-purpose features are gone: **operator sections** (`(+ 1)`, `(10 -)`, ``(`f` 2)``, `(in xs)` and the whitespace rule for `(- 4)`; a placeholder says the same, `_ + 1`, `10 - _`, and the error points to it), **the `<~` operator** (`~>` composes left to right; `~` on a function is now a compile error that says so), **`fp.free`** (`fp.freer` stays, and `FreeT` in `fp.trans`), and **two corners of GADTs**: a case of an enum with a header can't state its own result type, and a case's own type variables must be declared in brackets (`Pair[A, B](a Value[A], b Value[B]) Value[(A, B)]`) instead of being picked up from one-letter names. `Has[X]` bounds, `ref` parameters, and field delegates stay.

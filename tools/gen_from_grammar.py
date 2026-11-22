@@ -22,7 +22,7 @@ def load_samples():
     for f in sorted(glob.glob(os.path.join(ROOT, "examples", "*.mxi"))) + glob.glob(os.path.join(ROOT, "moxie", "std", "*.mxi")):
         try:
             for t in tokenize(open(f).read(), f):
-                if t.kind in ("INT", "FLOAT", "STR", "CHAR", "DEC", "DUR", "BYTES", "SQL", "HASH", "BTICK") and (
+                if t.kind in ("INT", "FLOAT", "STR", "CHAR", "DEC", "DUR", "BYTES", "SQL", "HASH") and (
                         isinstance(t.val, str) or t.kind in ("INT", "FLOAT")):
                     seen.setdefault(t.kind, []).append(t)
         except Exception:

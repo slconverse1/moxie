@@ -921,14 +921,6 @@ class Interp(TypesMixin, CallsMixin, DeclsMixin, PatternsMixin, PlacesMixin):
             return ComposeV([l, r])
         raise Abort(f"bad operator {op}")
 
-    def ev_Tick(self, n, env):
-        l = yield from self.ev(n.l, env)
-        r = yield from self.ev(n.r, env)
-        f = env.lookup(n.fname, self)
-        if f is MISSING:
-            raise Abort(f"undefined function '{n.fname}'", n.line)
-        return (yield from self.apply(f, [l, r]))
-
     def ev_InOp(self, n, env):
         l = yield from self.ev(n.l, env)
         r = yield from self.ev(n.r, env)

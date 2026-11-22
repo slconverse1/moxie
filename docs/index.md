@@ -105,7 +105,7 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond` and lock-free state through Atoms and `swap`.
-- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, infix functions in backticks, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, operator sections, and QuickCheck-style property tests (`forall`).
+- **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
 - **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), units of measure,, and anonymous records, the tuples whose named-field types are never declared, with the open form `(name String, ...)`.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code.
@@ -1164,7 +1164,7 @@ page = html(
 )
 ```
 
-That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing blocks, receiver blocks (`x.do` and `x.update`), named arguments and defaults, contextual `using` parameters, user-defined operators, and infix functions in backticks (`100 `calculate_yield` 5`). You can extend types you don't own by writing your own `impl` for them.
+That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing blocks, receiver blocks (`x.do` and `x.update`), named arguments and defaults, contextual `using` parameters, and user-defined operators. You can extend types you don't own by writing your own `impl` for them.
 
 One thing moxie doesn't have is Kotlin's lambda-with-receiver, where a block sees an implicit parent and children register themselves as they're created. In moxie, children are returned values, not side effects. Whether we need a dedicated child-collection mechanism is still an open question.
 
