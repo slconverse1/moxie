@@ -12,10 +12,10 @@ println("${fns(0)(10)} ${fns(1)(10)}")
 fn make(k Int) (Int) -> Int
   (n) -> n + k
 table = Dict[String, (Int) -> Int]()
-table(a) = make(1)
-table(b) = make(10)
-table(c) = make(100)
-when table(b)
+table("a") = make(1)
+table("b") = make(10)
+table("c") = make(100)
+when table("b")
   Ok(f) -> println("${f(5)} ${len(table)}")
   Err(e) -> println("missing")
 ''', ["15 3"], 0),
@@ -30,9 +30,9 @@ println("${op.apply(6)} ${f(1)}")
 ''', ["42 8"], 0),
 ("collections grow past a hint", '''
 d = Dict[String, Int][2]()
-d(a) = 1
-d(b) = 2
-d(c) = 3
+d("a") = 1
+d("b") = 2
+d("c") = 3
 l = List[Int][2]()
 l = l + 1
 l = l + 2
@@ -97,7 +97,7 @@ fn size(t Tree) Int
     Node(l, _, r) -> size(l) + 1 + size(r)
 t = Tree.Node(left: Node(left: Leaf, value: 1, right: Leaf), value: 2, right: Leaf)
 d = Dict[String, Tree]()
-d(t1) = t
+d("t1") = t
 a = Atom[Tree](t)
 println("${size(d("t1").get_or(Leaf))} ${size(@a)}")
 ''', ["2 2"], 0),

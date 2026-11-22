@@ -68,7 +68,7 @@ GOOD = [
  "println(parse_number(\"1,5\", Locale.de_de))\nprintln(parse_number(\"3\"))\n",
  'fn take(xs List[Int | String]) Int\n  len(xs)\nfn mk() List[Int | String]\n  List(1, "a")\nprintln(take(List(1, "a")) + len(mk()))\n',
  'xs List[Int | String] = List(1, "a")\nd Dict[String, Int | Bool] = Dict("n" -> 1, "on" -> true)\nprintln(len(xs) + len(d))\n',
- 'x = Dict(1 -> 2).map((k, v) -> k) |> collect()\ny = Dict("a" -> 1, b -> 2)\nz = Dict((5, 6), (7, 8))\nprintln(len(y) + len(z))\n',
+ 'x = Dict(1 -> 2).map((k, v) -> k) |> collect()\ny = Dict("a" -> 1, "b" -> 2)\nz = Dict((5, 6), (7, 8))\nprintln(len(y) + len(z))\n',
  'x = Ok(1).map((a) -> a + 1)\nprintln(x)\n',
  'n = 7\nfn half(x Double) Double\n  x / 2.0\nprintln(half(7))\nprintln(half(cast[Double](n)))\nz Double = 3\n',
 ]
