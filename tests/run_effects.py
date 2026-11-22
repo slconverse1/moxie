@@ -39,9 +39,9 @@ CASES = [
  ("stale declaration", 'prints fn f(x Int) Int = x\n', False, "never does"),
  ("impure with no effect", 'impure fn f(x Int) Int = x\n', False, "declared impure"),
  ("pure and impure together", 'pure prints fn f(x Int) Int = x\n', False, "both pure and impure"),
- ("interface member bound allows an impl", 'interface L\n  prints fn log(self, s String) Unit\ntuple Q\n  n Int\nimpl L for Q\n  fn log(self, s String) Unit = println(s)\n', True, ""),
- ("impl exceeds the interface bound", 'interface L\n  prints fn log(self, s String) Unit\ntuple Q\n  n Int\nimpl L for Q\n  fn log(self, s String) Unit\n    ch = Chan[Int](1)\n    read(ch)\n', False, "does not allow"),
- ("a pure fn calling a declared member is caught", 'interface L\n  prints fn log(self, s String) Unit\ntuple Q\n  n Int\nimpl L for Q\n  fn log(self, s String) Unit = println(s)\npure fn f(q Q) Unit = q.log("x")\n', False, "prints"),
+ ("interface member bound allows an impl", 'interface L\n  prints fn log(self, s String) Unit\ntuple Q deriving show\n  n Int\nimpl L for Q\n  fn log(self, s String) Unit = println(s)\n', True, ""),
+ ("impl exceeds the interface bound", 'interface L\n  prints fn log(self, s String) Unit\ntuple Q deriving show\n  n Int\nimpl L for Q\n  fn log(self, s String) Unit\n    ch = Chan[Int](1)\n    read(ch)\n', False, "does not allow"),
+ ("a pure fn calling a declared member is caught", 'interface L\n  prints fn log(self, s String) Unit\ntuple Q deriving show\n  n Int\nimpl L for Q\n  fn log(self, s String) Unit = println(s)\npure fn f(q Q) Unit = q.log("x")\n', False, "prints"),
 ]
 fails = []
 for name, src, ok, word in CASES:

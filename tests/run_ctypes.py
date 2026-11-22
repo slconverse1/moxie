@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-BOX = 'tuple Box[T]\n  v T\n'
+BOX = 'tuple Box[T] deriving show\n  v T\n'
 BAD = [
  ("a Box[Int] built from a String", BOX + 'b Box[Int] = Box(v: "not an int")\n', "expected `Box[Int]`, found `Box[String]`"),
  ("array size mismatch", 'x Array[Int][3] = Array(1, 2)\n', "expected `Array[Int][3]`, found `Array[Int][2]`"),

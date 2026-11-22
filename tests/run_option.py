@@ -28,9 +28,9 @@ case('? on None in an entry point ends the program', 'init\n  x = None\n  y = x?
 case('map, flat_map and |>> work on an Option', 'fn half(n Int) Option[Int]\n  if n % 2 == 0 then Some(n / 2) else None\nprintln(Some(3).map((x) -> x + 1))\nprintln(half(8).flat_map(half))\nprintln(half(8) |>> half |>> half)\nprintln(half(3) |>> half)\nprintln(Option.pure(5))\n', 0, 'Some(4)\nSome(2)\nSome(1)\nNone\nSome(5)')
 case('is_some, is_none and get_or', 'println(is_some(Some(1)))\nprintln(is_none(Some(1)))\nprintln(get_or(None, 4))\nprintln(get_or(Some(2), 4))\nprintln(get_or(List(1, 2), 5, 9))\n', 0, 'true\nfalse\n4\n2\n9')
 case('an Option compares and reads', 'println(Some(1) == Some(1))\nprintln(Some(1) ~= None)\nprintln(read[Option[Int]]("Some(7)"))\nprintln(read[Option[Int]]("None"))\nprintln(read[Option[Int]](show(Some(3))) == Ok(Some(3)))\n', 0, 'true\ntrue\nOk(Some(7))\nOk(None)\ntrue')
-case('an Option sits in a list and a field', 'tuple P\n  nick Option[String]\nxs List[Option[Int]] = List(Some(1), None, Some(3))\nprintln(xs)\nprintln(P(nick: Some("z")))\nprintln(P(nick: None).nick)\n', 0, 'List(Some(1), None, Some(3))\nP(nick: Some("z"))\nNone')
-case('a program may declare its own Option', 'enum Option\n  Yes\n  No\nprintln(Option.Yes)\n', 0, 'Option.Yes')
-case('a program may use None as a case of its own enum', 'enum Mode\n  None\n  Fast\nm Mode = None\nprintln(m)\nwhen m\n  None -> println("n")\n  Fast -> println("f")\n', 0, 'Mode.None\nn')
+case('an Option sits in a list and a field', 'tuple P deriving show\n  nick Option[String]\nxs List[Option[Int]] = List(Some(1), None, Some(3))\nprintln(xs)\nprintln(P(nick: Some("z")))\nprintln(P(nick: None).nick)\n', 0, 'List(Some(1), None, Some(3))\nP(nick: Some("z"))\nNone')
+case('a program may declare its own Option', 'enum Option deriving show\n  Yes\n  No\nprintln(Option.Yes)\n', 0, 'Option.Yes')
+case('a program may use None as a case of its own enum', 'enum Mode deriving show\n  None\n  Fast\nm Mode = None\nprintln(m)\nwhen m\n  None -> println("n")\n  Fast -> println("f")\n', 0, 'Mode.None\nn')
 
 print(f"{len(fails)} failed" if fails else "all passed")
 sys.exit(1 if fails else 0)

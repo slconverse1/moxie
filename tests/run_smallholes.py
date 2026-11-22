@@ -17,7 +17,7 @@ CASES = [
  ("let-else against the wrong type", 'fn f(xs List[Int]) Int\n  Some(n) = first(xs) else 0\n  n\n', "can never match"),
  ("a literal inside Ok", 'fn f(xs List[Int]) Int\n  when first(xs)\n    Ok("a") -> 1\n    _ -> 0\n', "can never match"),
  ("the right cases are fine", 'fn f(xs List[Int]) Int\n  when first(xs)\n    Ok(n) -> n\n    Err(_) -> 0\nfn g(o Option[Int]) Int\n  when o\n    Some(n) -> n\n    None -> 0\n', None),
- ("a program's own Some is left alone", 'enum Box\n  Some(n Int)\n  Empty\nfn f(b Box) Int\n  when b\n    Some(n) -> n\n    Empty -> 0\n', None),
+ ("a program's own Some is left alone", 'enum Box deriving show\n  Some(n Int)\n  Empty\nfn f(b Box) Int\n  when b\n    Some(n) -> n\n    Empty -> 0\n', None),
  ("a dropped Result", F + 'fn g() Int\n  f()\n  2\n', "this `Result` is dropped"),
  ("a dropped Result in a loop", F + 'for i in 0..<2\n  f()\n', "this `Result` is dropped"),
  ("a dropped library Result", 'fn g() Int\n  write_file("/tmp/x", "a")\n  2\n', "this `Result` is dropped"),

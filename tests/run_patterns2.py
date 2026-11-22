@@ -22,7 +22,7 @@ def chk(name, src, rc_want, *wants, cmd="run"):
         print(("ok    " if ok else "FAIL  ") + label + ("" if ok else f"  (rc {rc}) {out[:300]!r}"))
         if not ok: fails.append(label)
 
-U = "tuple User\n  name String,\n  age Int,\n  role String\nu = User(\"a\", 3, \"admin\")\n"
+U = "tuple User deriving show\n  name String,\n  age Int,\n  role String\nu = User(\"a\", 3, \"admin\")\n"
 chk("is not", "o = Some(1)\nprintln(o is not Some(_))\nprintln(o is not None)\nx Int | String = 5\nprintln(x is not String)\n", 0, "false\ntrue\ntrue")
 chk("is not in an if", U + "if u is not User(role: \"guest\", ...)\n  println(\"not guest\")\n", 0, "not guest")
 chk("a bare ... in a tuple pattern", U + "println(u is User(name, ...))\nprintln(u is User(role: \"guest\", ...))\nUser(n, ...) = u\nprintln(n)\n", 0, "true\nfalse\na")

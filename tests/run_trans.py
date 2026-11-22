@@ -129,7 +129,7 @@ fn begin() (Int, Int)
 println(begin())
 """, 0, "(5, 5)")
 
-FREE = """enum Cmd[Next]
+FREE = """enum Cmd[Next] deriving show
   Say(String, Next)
   Ask((String) -> Next)
 impl Functor[Cmd]

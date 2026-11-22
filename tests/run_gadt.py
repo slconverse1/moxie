@@ -1,7 +1,7 @@
 """GADTs: a case states its own result type; `when` arms learn the type parameter.  Run: python3 tests/run_gadt.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
-VAL = """enum Value[T]
+VAL = """enum Value[T] deriving show
   Num(n Int) Value[Int]
   Flag(b Bool) Value[Bool]
   Add(a Value[Int], b Value[Int]) Value[Int]
@@ -26,7 +26,7 @@ CASES = [
  ("a generic value needs every case", VAL + "fn f[T](v Value[T]) Int = when v\n  Num(n) -> n\n", 2, "does not cover"),
 ]
 
-EX = """enum Value[T]
+EX = """enum Value[T] deriving show
   Num(n Int) Value[Int]
   Flag(b Bool) Value[Bool]
   Pair(a Value[A], b Value[B]) Value[(A, B)]
@@ -62,12 +62,12 @@ impl Show for Int
   fn show(self) String = "int ${self}"
 impl Show for Bool
   fn show(self) String = "bool ${self}"
-tuple Plain(x Int)
-enum Item[T]
+tuple Plain(x Int) deriving show
+enum Item[T] deriving show
   Shown[A Show](v A) Item[String]
   Pair[Left, Right](a Left, b Right) Item[(Left, Right)]
 """
-HV = """enum Value[T](line Int)
+HV = """enum Value[T](line Int) deriving show
   Num(line: 1)(n Int) Value[Int]
   Flag(line: 2)(b Bool) Value[Bool]
   Add(line: 3)(a Value[Int], b Value[Int]) Value[Int]
@@ -77,11 +77,11 @@ HEV = """fn eval[T](v Value[T]) T = when v
   Flag(b) -> b
   Add(a, b) -> eval(a) + eval(b)
 """
-LV = """enum Level[K](rank Int)
+LV = """enum Level[K](rank Int) deriving show
   Low(rank: 1) Level[Int]
   High(rank: 9) Level[Bool]
 """
-IMPL = """enum Value[T]
+IMPL = """enum Value[T] deriving show
   Num(n Int) Value[Int]
   Flag(b Bool) Value[Bool]
 impl[T] Value[T]
@@ -92,8 +92,8 @@ impl[T] Value[T]
 CASES += [
  ("when self in a method refines", IMPL + "println(Num(4).get())\nprintln(Flag(true).get())\n", 0, "4\ntrue"),
  ("when self in a method checks the arm", IMPL.replace("Num(n) -> n", "Num(n) -> true"), 2, "expected `Int`, found `Bool`"),
- ("an is-test refines", "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\nfn f[T](v Value[T]) T\n  if v is Num(n)\n    true\n  else\n    when v\n      Flag(b) -> b\n      Num(n) -> n\n", 2, "expected `Int`, found `Bool`"),
- ("an is-test refines and runs", "enum Value[T]\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\nfn f[T](v Value[T]) T\n  if v is Num(n)\n    n + 1\n  else\n    when v\n      Flag(b) -> b\n      Num(n) -> n\nprintln(f(Num(1)))\nprintln(f(Flag(true)))\n", 0, "2\ntrue"),
+ ("an is-test refines", "enum Value[T] deriving show\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\nfn f[T](v Value[T]) T\n  if v is Num(n)\n    true\n  else\n    when v\n      Flag(b) -> b\n      Num(n) -> n\n", 2, "expected `Int`, found `Bool`"),
+ ("an is-test refines and runs", "enum Value[T] deriving show\n  Num(n Int) Value[Int]\n  Flag(b Bool) Value[Bool]\nfn f[T](v Value[T]) T\n  if v is Num(n)\n    n + 1\n  else\n    when v\n      Flag(b) -> b\n      Num(n) -> n\nprintln(f(Num(1)))\nprintln(f(Flag(true)))\n", 0, "2\ntrue"),
  ("a bounded existential runs", SHOWN + "fn text(i Item[String]) String = when i\n  Shown(v) -> v.show()\nprintln(text(Shown(1)))\nprintln(text(Shown(true)))\n", 0, "int 1\nbool true"),
  ("a bounded existential: a member outside the bound", SHOWN + "fn text(i Item[String]) String = when i\n  Shown(v) -> v.shout()\n", 2, "not provided by the bound"),
  ("a bounded existential: a value that lacks the bound", SHOWN + "x = Shown(Plain(1))\n", 2, "doesn't implement `Show`"),

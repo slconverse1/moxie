@@ -55,7 +55,7 @@ CASES = [
  ("pow with a variable exponent", U + "n = 2\nbad = pow(2.0 m, n)\n", "must be a constant whole number"),
  ("an undeclared unit in a literal stays an ordinary expression", "x = 5\nprintln(x)\n", "5"),
  ("an undeclared unit in a type", "fn f(x Double[meter]) Double = 1.0\nprintln(1)\n", "`meter` is not a unit"),
- ("a variable called unit still works", "enum Shape\n  Circle(radius Double),\n  Empty\nunit Shape = Circle(radius: 1.0)\nprintln(unit)\n", "Circle(1.0)"),
+ ("a variable called unit still works", "enum Shape deriving show\n  Circle(radius Double),\n  Empty\nunit Shape = Circle(radius: 1.0)\nprintln(unit)\n", "Circle(1.0)"),
  ("a unit declared twice", "unit m\nunit m\n", "the unit `m` is declared twice"),
  ("a derived unit from an undeclared unit", "unit N = kg*m\n", "`kg` is not a unit"),
  ("a duration literal is still a Duration", U + "println(5s)\n", "5s"),

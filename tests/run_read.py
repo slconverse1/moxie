@@ -42,7 +42,7 @@ case('a List of enums inside a tuple reads', ENUMS + 'println(read[Scene]("Scene
 case('show then read round-trips', ENUMS + 'x = Scene(shapes: List(Dot, Circle(r: 2.0)))\nprintln(read[Scene](show(x)) == Ok(x))' + '\n', 0, 'true')
 case('read of an enum without deriving read is a compile error', 'enum Plain deriving show\n  A,\n  B\nprintln(read[Plain]("A"))\n', 2, "doesn't implement `Read`")
 
-H = 'enum Level(code Int, label String) deriving read\n  Low(1, "low")\n  High(9, "high")\ntuple Conf deriving read\n  names Set[String]\n  limits Dict[String, Int]\n  level Level\n'
+H = 'enum Level(code Int, label String) deriving read, show\n  Low(1, "low")\n  High(9, "high")\ntuple Conf deriving read, show\n  names Set[String]\n  limits Dict[String, Int]\n  level Level\n'
 case('a Dict, a Set and a header enum read', H + 'println(read[Conf]("Conf(names: Set(\\"a\\", \\"b\\"), limits: Dict(\\"x\\" -> 1, \\"y\\" -> 2), level: Level.High(9, \\"high\\"))"))' + '\n', 0, 'Ok(Conf(names: Set("a", "b"), limits: Dict("x" -> 1, "y" -> 2), level: Level.High(9, "high")))')
 case('a header case reads by its bare name', H + 'println(read[Level]("Low"))' + '\n', 0, 'Ok(Level.Low(1, "low"))')
 case('a header case with other values is an Err', H + 'println(read[Level]("Level.Low(5, \\"low\\")"))' + '\n', 0, 'not `Level.Low(5,')

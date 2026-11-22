@@ -22,7 +22,7 @@ ERR = [
  ("not with an else", 'fn f(v Int) Int\n  a = b = v else 0\n  a\n', "can't have an `else`"),
  ("not with +=", 'x = 1\ny = 2\nx += y = 3\n', "unexpected '='"),
  ("not with a tuple on the left", 'x = 1\n(a, b) = c = x\n', "unexpected '='"),
- ("not with a field", 'tuple P\n  n Int\np = P(n: 1)\nq = 2\np.n = q = 3\n', "unexpected '='"),
+ ("not with a field", 'tuple P deriving show\n  n Int\np = P(n: 1)\nq = 2\np.n = q = 3\n', "unexpected '='"),
 ]
 fails = []
 for name, src, want in OK:

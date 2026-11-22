@@ -41,7 +41,7 @@ int h_now(h_t cb, int x) { return cb(x); }
 '''
 open(os.path.join(D, "hd.c"), "w").write(HC)
 subprocess.check_call(["gcc", "-shared", "-fPIC", "-pthread", "-o", os.path.join(D, "libhd.so"), os.path.join(D, "hd.c")])
-HDR = '''tuple Pt
+HDR = '''tuple Pt deriving show
   x Double
   y Double
 foreign "cb"

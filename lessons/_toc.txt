@@ -24,6 +24,7 @@
 
 # Streams and pipelines
 21-streams-and-pipelines
+50-pipe-slots-and-caching
 
 # Concurrency
 22-fibers-and-channels

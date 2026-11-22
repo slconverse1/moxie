@@ -11,7 +11,7 @@ BAD = [
  ("a constant binding as a size", FIB + 'N = fib(6)\nb Array[Int][N] = Array(1, 2)\n', "expected `Array[Int][8]`, found `Array[Int][2]`"),
  ("a constant built from constants", FIB + 'N = fib(4) * 2\nb Array[Int][N + 1] = Array(1)\n', "expected `Array[Int][7]`, found `Array[Int][1]`"),
  ("an abort is a compile error", PORT + 'p = port(99999)\n', "evaluating `port(99999)` at compile time aborts: assertion failed"),
- ("a runaway recursion", DEEP + 'x = deep(0)\n', "recursed too deeply"),
+ ("a runaway recursion", DEEP + 'x = deep(0)\n', "did not finish"),
  ("a function in a type-level number", FIB + 'type Fixed[T] = when T\n  X -> Array[Int][fib(4)]\nc Fixed[Int] = Array(1)\n', "expected `Array[Int][3]`, found `Array[Int][1]`"),
 ]
 GOOD = [

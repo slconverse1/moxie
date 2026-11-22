@@ -14,7 +14,7 @@ CASES = [
  ("your own type", STATS + 'println(fold_map((n) -> Stats(count: 1, total: n), List(4, 6, 8)))\n', "Stats(count: 3, total: 18)"),
  ("an empty input gives empty", STATS + 'println(fold_all[Stats](List()))\nprintln(fold_all[String](List()) == "")\n', "Stats(count: 0, total: 0)\ntrue"),
  ("a generic function over Monoid", STATS + 'fn twice[T Monoid](x T) T\n  x.combine(x)\nprintln(twice(Stats(count: 1, total: 5)))\nprintln(twice("ab"))\n', "Stats(count: 2, total: 10)\nabab"),
- ("a program may declare its own Sum", 'tuple Sum\n  n Int\nprintln(Sum(n: 1))\n', "Sum(n: 1)"),
+ ("a program may declare its own Sum", 'tuple Sum deriving show\n  n Int\nprintln(Sum(n: 1))\n', "Sum(n: 1)"),
 ]
 BAD = [
  ("a bound is checked", 'fn g[T Monoid](x T) T\n  x\nprintln(g(5))\n', "`Int` doesn't implement `Monoid`"),

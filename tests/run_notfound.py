@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = tempfile.mkdtemp()
-ENUM = 'enum Color\n  Red\n  Green\n'
+ENUM = 'enum Color deriving show\n  Red\n  Green\n'
 CASES = [
  ("a Dict key", 'd = Dict(("a", 1))\nprintln(get(d, "z"))\nprintln(d("z"))\n', 'code: 4, message: "no such key"'),
  ("a List index", 'xs = List(1, 2)\nprintln(get(xs, len(xs) + 3))\n', 'code: 4, message: "no such element"'),

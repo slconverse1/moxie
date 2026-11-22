@@ -1,7 +1,7 @@
 """`when` exhaustiveness through nested patterns, tuples and literals.  Run: python3 tests/run_nestedcover.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
-H = "enum Shape\n  Circle(r Int)\n  Sq(s Int)\n  Tri(a Int)\n"
+H = "enum Shape deriving show\n  Circle(r Int)\n  Sq(s Int)\n  Tri(a Int)\n"
 CASES = [
  ("an Option of an enum missing a case", H + "fn f(o Option[Shape]) Int = when o\n  Some(Circle(r)) -> r\n  Some(Sq(s)) -> s\n  None -> 0\n", 2, "does not cover `Some(Tri(_))`"),
  ("an Option of an enum, covered", H + "fn f(o Option[Shape]) Int = when o\n  Some(Circle(r)) -> r\n  Some(Sq(s)) -> s\n  Some(Tri(a)) -> a\n  None -> 0\n", 0, ""),

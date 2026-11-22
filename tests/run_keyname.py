@@ -6,9 +6,9 @@ CASES = [
  ("fn daemon is rejected", "fn daemon(n Int) Int = n + 1\n", 2, "`daemon` is a keyword"),
  ("fn try_go is rejected", "fn try_go(n Int) Int = n\n", 2, "`try_go` is a keyword"),
  ("fn move is rejected", "fn move(n Int) Int = n\n", 2, "`move` is a keyword"),
- ("a method may be called go", "tuple T()\nimpl T\n  fn go(self) Int = 1\nprintln(T().go())\n", 0, "1"),
+ ("a method may be called go", "tuple T() deriving show\nimpl T\n  fn go(self) Int = 1\nprintln(T().go())\n", 0, "1"),
  ("run is an ordinary name again", "fn run(n Int) Int = n + 1\nprintln(run(2))\n", 0, "3"),
- ("an interface method may be called do_it and run", "interface Job\n  fn run(self) Int\ntuple J()\nimpl Job for J\n  fn run(self) Int = 7\nprintln(J().run())\n", 0, "7"),
+ ("an interface method may be called do_it and run", "interface Job\n  fn run(self) Int\ntuple J() deriving show\nimpl Job for J\n  fn run(self) Int = 7\nprintln(J().run())\n", 0, "7"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

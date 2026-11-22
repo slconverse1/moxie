@@ -6,9 +6,9 @@ fails = []
 IFACE = '''interface Combine
   fn combine(self, other Self) Self
   fn label(self) String
-tuple A
+tuple A deriving show
   n Int
-tuple B
+tuple B deriving show
   s String
 impl Combine for A
   fn combine(self, other Self) Self

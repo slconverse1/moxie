@@ -9,7 +9,7 @@ def run(src, cmd="run"):
     os.unlink(f.name)
     return r.returncode, r.stdout.decode() + r.stderr.decode()
 
-SRC = """tuple Countdown
+SRC = """tuple Countdown deriving show
   from Int
 
 impl Countdown

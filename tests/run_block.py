@@ -8,8 +8,8 @@ def run(src, gc=False):
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=120)
     os.unlink(f.name)
     return r.returncode, r.stdout + r.stderr
-D = """tuple Li(text String)
-tuple Ul(class String, items List[Li])
+D = """tuple Li(text String) deriving show
+tuple Ul(class String, items List[Li]) deriving show
 fn ul(class String, block items List[Li]) Ul = Ul(class: class, items: items)
 fn li(t String) Li = Li(text: t)
 fn count(block xs List[Int]) Int = len(xs)
@@ -24,7 +24,7 @@ CASES = [
  ("for with several children each", D + "m = ul(class: \"m\")\n  for p in List(\"a\", \"b\")\n    li(p)\n    li(p + p)\nprintln(m.items |> map(_.text) |> collect())\n", 'List("a", "aa", "b", "bb")'),
  ("a binding contributes nothing", D + "m = ul(class: \"m\")\n  t = \"x\"\n  li(t)\n  t = \"y\"\n  li(t)\nprintln(m.items |> map(_.text) |> collect())\n", 'List("x", "y")'),
  ("spread adds every element", D + "more = List(li(\"p\"), li(\"q\"))\nm = ul(class: \"m\")\n  li(\"a\")\n  ...more\nprintln(len(m.items))\n", "3"),
- ("blocks nest", D + "tuple Div(kids List[Ul])\nfn div(block kids List[Ul]) Div = Div(kids: kids)\nd = div()\n  ul(class: \"a\")\n    li(\"1\")\n  ul(class: \"b\")\n    li(\"2\")\n    li(\"3\")\nprintln(d.kids |> map(_.items) |> map(len) |> collect())\n", "List(1, 2)"),
+ ("blocks nest", D + "tuple Div(kids List[Ul]) deriving show\nfn div(block kids List[Ul]) Div = Div(kids: kids)\nd = div()\n  ul(class: \"a\")\n    li(\"1\")\n  ul(class: \"b\")\n    li(\"2\")\n    li(\"3\")\nprintln(d.kids |> map(_.items) |> map(len) |> collect())\n", "List(1, 2)"),
  ("a tuple pattern in for", D + "m = ul(class: \"m\")\n  for (a, b) in List((\"x\", 1), (\"y\", 2))\n    li(a)\nprintln(len(m.items))\n", "2"),
  ("a wrong child type is an error", D + "m = ul(class: \"m\")\n  li(\"a\")\n  5\n", "List"),
  ("a function without block", D + "fn plain(x Int) Int = x\nr = plain(1)\n  2\n", "has no `block` parameter"),

@@ -9,9 +9,9 @@ BAD = [
  ("* on a T that is only Addable", 'fn dbl[T Addable](a T) T\n  a * a\nprintln(dbl(2))\n', "needs a `Numeric` bound"),
  ("one T bound to two types", 'fn pick[T](a T, b T) T = a\nprintln(pick(1, "x"))\n', "needs one type for `T`"),
  ("a result type that follows T", 'fn first[T](a T, b T) T = a\nx Int = first("a", "b")\nprintln(x)\n', "expected"),
- ("too few type arguments", 'tuple Pair[A, B]\n  a A\n  b B\nfn f(p Pair[Int]) Int = 1\n', "takes 2 type arguments, but 1 given"),
- ("too many type arguments", 'tuple Box[T]\n  v T\nfn f(p Box[Int, Int]) Int = 1\n', "takes 1 type argument, but 2 given"),
- ("too many in a return type", 'enum Opt[T]\n  Some(T)\n  Nothing\nfn f() Opt[Int, Int] = Nothing\n', "takes 1 type argument, but 2 given"),
+ ("too few type arguments", 'tuple Pair[A, B] deriving show\n  a A\n  b B\nfn f(p Pair[Int]) Int = 1\n', "takes 2 type arguments, but 1 given"),
+ ("too many type arguments", 'tuple Box[T] deriving show\n  v T\nfn f(p Box[Int, Int]) Int = 1\n', "takes 1 type argument, but 2 given"),
+ ("too many in a return type", 'enum Opt[T] deriving show\n  Some(T)\n  Nothing\nfn f() Opt[Int, Int] = Nothing\n', "takes 1 type argument, but 2 given"),
 ]
 GOOD = [
  ("Ordered gives <", 'fn smaller[T Ordered](a T, b T) Bool\n  a < b\nprintln(smaller(1, 2))\n', "true"),
@@ -21,7 +21,7 @@ GOOD = [
  ("several bounds", 'fn mx[T Ordered + Show](a T, b T) String\n  if a < b then "${b}" else "${a}"\nprintln(mx(2, 9))\n', "9"),
  ("Int and Float arguments for one T", 'fn first[T](a T, b T) T = a\nprintln(first(1, 2.5))\n', "1"),
  ("passing and returning need no bound", 'fn id[T](a T) T = a\nprintln(id("hi"))\n', "hi"),
- ("the right number of type arguments", 'tuple Pair[A, B]\n  a A\n  b B\nfn f(p Pair[Int, String]) Int = p.a\nprintln(f(Pair(7, "x")))\n', "7"),
+ ("the right number of type arguments", 'tuple Pair[A, B] deriving show\n  a A\n  b B\nfn f(p Pair[Int, String]) Int = p.a\nprintln(f(Pair(7, "x")))\n', "7"),
 ]
 fails = []
 

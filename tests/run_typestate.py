@@ -1,9 +1,9 @@
 """Typestate with a phantom type parameter (no new compiler feature).  Run: python3 tests/run_typestate.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
-HEAD = """tuple Open()
-tuple Closed()
-tuple File[S]
+HEAD = """tuple Open() deriving show
+tuple Closed() deriving show
+tuple File[S] deriving show
   name String
 
 fn mk(n String) File[Open] = File(name: n)

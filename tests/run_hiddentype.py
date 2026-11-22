@@ -27,7 +27,7 @@ HEAD = """interface Container
   fn get(i Int) Result[Item, Error]
   fn put(x Item) Self
   fn size() Int
-tuple Names
+tuple Names deriving show
   xs List[String]
 impl Container for Names
   type Item = String

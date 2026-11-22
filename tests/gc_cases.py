@@ -20,7 +20,7 @@ when table(b)
   Err(e) -> println("missing")
 ''', ["15 3"], 0),
 ("closure in a tuple field and in an Atom", '''
-tuple Op
+tuple Op deriving show
   apply (Int) -> Int
 k = 7
 op = Op(apply: (n) -> n * k)
@@ -88,7 +88,7 @@ fn tail(s String) String
 println(tail("Python"))
 ''', ["thon"], 0),
 ("recursive value stored in a Dict and an Atom", '''
-enum Tree
+enum Tree deriving show
   Leaf,
   Node(left Tree, value Int, right Tree)
 fn size(t Tree) Int

@@ -22,7 +22,7 @@ def chk(name, src, rc_want, *wants):
         print(("ok    " if ok else "FAIL  ") + label + ("" if ok else f"  (rc {rc}) {out[:300]!r}"))
         if not ok: fails.append(label)
 
-chk("a case named Key is built and matched", '''enum Event
+chk("a case named Key is built and matched", '''enum Event deriving show
   Click(x Int),
   Key(c String),
   Quit
@@ -36,7 +36,7 @@ println(show(Click(3)))
 println(Key("b"))
 ''', 0, "key a\nclick 3\nEvent.Key(\"b\")")
 chk("the prelude's own Key cases still work", 'k = Key.Enter\nprintln(k)\n', 0, "Key.Enter")
-chk("a bare case named Option is the program's own case", '''enum Mode deriving eq
+chk("a bare case named Option is the program's own case", '''enum Mode deriving eq, show
   Option
   Plain
 x Mode = Option
@@ -55,8 +55,8 @@ chk("a pipe into a written-out function", 'x = 3\nprintln(x |> ((v) -> v + 1)())
 chk("a lambda called with too many arguments", 'f = (x) -> x + 1\nprintln(f(1, 2))\n', 2, "`f` takes 1 argument, but 2 given")
 chk("a lambda called with too few arguments", 'g = (a, b) -> a + b\nprintln(g(1))\n', 2, "`g` takes 2 arguments, but 1 given")
 chk("lambdas called correctly", 'f = (x) -> x + 1\ng = (a, b) -> a + b\nh = () -> 5\nprintln("${f(1)} ${g(1, 2)} ${h()}")\n', 0, "2 3 5")
-chk("a tuple built with one plain number too few", 'tuple P\n  x Int,\n  y Int\np = P(1)\n', 2, "`P` needs a value for `y`")
-chk("a one-field tuple built with one value", 'tuple W\n  n Int\nw = W(3)\nprintln(w)\n', 0, "W(n: 3)")
+chk("a tuple built with one plain number too few", 'tuple P deriving show\n  x Int,\n  y Int\np = P(1)\n', 2, "`P` needs a value for `y`")
+chk("a one-field tuple built with one value", 'tuple W deriving show\n  n Int\nw = W(3)\nprintln(w)\n', 0, "W(n: 3)")
 chk("arithmetic on an Option", 'o Option[Int] = Some(1)\nprintln(o + 1)\n', 2, "cannot apply `+` to `Option[Int]`")
 chk("a field on a number", 'x = 5\nprintln(x.foo)\n', 2, "a `Int` has no field `foo`")
 chk("a field on a List", 'xs = List(1, 2)\nprintln(xs.len)\n', 2, "a `List` has no field `len`", "`.len()`")

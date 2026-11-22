@@ -6,7 +6,7 @@ ELEM = 'type Elem[T] = when T\n  List[X] -> X\n  Array[X][N] -> X\n'
 CONCAT = 'type Concat[A, B] = when A\n  () -> B\n  (H, ...T) -> (H, ...Concat[T, B])\n'
 LENGTH = 'type Length[T] = when T\n  () -> 0\n  (H, ...Rest) -> 1 + Length[Rest]\n'
 SHRINK = 'type Shrink[T] = when T\n  Array[X][N] -> Array[X][N - 1]\n'
-BOX = 'tuple Box[T]\n  v T\n'
+BOX = 'tuple Box[T] deriving show\n  v T\n'
 BAD = [
  ("Elem of a List", ELEM + 'a Elem[List[String]] = 3\n', "expected `String`, found `Int`"),
  ("Elem of an Array", ELEM + 'a Elem[Array[Int][3]] = "s"\n', "expected `Int`, found `String`"),
@@ -48,7 +48,7 @@ GOOD += [
 ]
 GET = 'type Get[R, K] = when R\n  (K T, ...Rest) -> T\n  (_ _, ...Rest) -> Get[Rest, K]\nfn get[R, K](row R, key K) Get[R, K]\n  todo\n'
 NAMES = 'type Names[R] = when R\n  () -> ()\n  (k _, ...Rest) -> (k, ...Names[Rest])\n'
-USER = 'tuple User\n  id Int\n  name String\n  zip Int\n'
+USER = 'tuple User deriving show\n  id Int\n  name String\n  zip Int\n'
 BAD += [
  ("get finds a field by name: wrong type", GET + USER + 'u = User(id: 1, name: "a", zip: 3)\nx Int = get(u, "name")\n', "expected `Int`, found `String`"),
  ("get: no such field", GET + USER + 'u = User(id: 1, name: "a", zip: 3)\nz = get(u, "nope")\n', "no arm of `Get` matches"),
@@ -58,7 +58,7 @@ BAD += [
 GOOD += [
  ("get finds a field by name", GET + USER + 'fn look(u User) Unit\n  y String = get(u, "name")\n  z Int = get(u, "zip")\n  println(y)\nprintln("ok")\n', "ok"),
 ]
-NAMED = 'interface Named\n  fn name() String\ntuple Dog\n  n String\nimpl Named for Dog\n  fn name() String = n\ntype Label[T] = when T\n  X Named -> String\n  _ -> Int\n'
+NAMED = 'interface Named\n  fn name() String\ntuple Dog deriving show\n  n String\nimpl Named for Dog\n  fn name() String = n\ntype Label[T] = when T\n  X Named -> String\n  _ -> Int\n'
 BAD += [
  ("X: Iface matches an implementer", NAMED + 'c Label[Dog] = 3\n', "expected `String`, found `Int`"),
  ("X: Iface skips a non-implementer", NAMED + 'd Label[Bool] = "s"\n', "expected `Int`, found `String`"),
@@ -66,7 +66,7 @@ BAD += [
 GOOD += [
  ("X: Iface picks the arm", NAMED + 'a Label[Dog] = "x"\nb Label[Bool] = 3\nprintln(a)\n', "x"),
 ]
-CONT = 'interface Container\n  type Item\n  fn first() Item\ntuple Names\n  xs List[String]\nimpl Container for Names\n  type Item = String\n  fn first() String = xs(0)\nfn head[C Container](c C) C.Item\n  c.first()\n'
+CONT = 'interface Container\n  type Item\n  fn first() Item\ntuple Names deriving show\n  xs List[String]\nimpl Container for Names\n  type Item = String\n  fn first() String = xs(0)\nfn head[C Container](c C) C.Item\n  c.first()\n'
 BAD += [
  ("a concrete associated type", CONT + 'b Names.Item = 3\n', "expected `String`, found `Int`"),
  ("an associated type from a call", CONT + 'a Int = head(Names(xs: List("a")))\n', "expected `Int`, found `String`"),
@@ -103,7 +103,7 @@ BAD += [
 GOOD += [
  ("a guard that calls a function picks the arm", BIG + 'a Pad2[5] = Array(1, 2, 3, 4, 5)\nb Pad2[2] = Array(1, 2, 3)\nprintln(a(4))\n', "5"),
 ]
-NA = 'interface Named\n  fn name() String\ninterface Aged\n  fn age() Int\ntuple Dog\n  n String\ntuple Cat\n  n String\n  a Int\nimpl Named for Dog\n  fn name() String = n\nimpl Named for Cat\n  fn name() String = n\nimpl Aged for Cat\n  fn age() Int = a\n'
+NA = 'interface Named\n  fn name() String\ninterface Aged\n  fn age() Int\ntuple Dog deriving show\n  n String\ntuple Cat deriving show\n  n String\n  a Int\nimpl Named for Dog\n  fn name() String = n\nimpl Named for Cat\n  fn name() String = n\nimpl Aged for Cat\n  fn age() Int = a\n'
 DESC = 'fn describe(x any Named + Aged) String\n  "${x.name()} ${x.age()}"\n'
 BAD += [
  ("an intersection needs every interface", NA + DESC + 'println(describe(Dog(n: "rex")))\n', "`Dog` doesn't implement `Aged`, which `any Named + Aged` needs for `x`"),

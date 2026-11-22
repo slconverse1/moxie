@@ -2,12 +2,12 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 D = tempfile.mkdtemp()
-HEAD = 'tuple NotFound\n  id Int\nenum Shape\n  Circle(r Int)\n  Square(s Int)\n  Dot\n'
+HEAD = 'tuple NotFound deriving show\n  id Int\nenum Shape deriving show\n  Circle(r Int)\n  Square(s Int)\n  Dot\n'
 CASES = [
  ("the Err's contents are in scope", 'fn half(s String) Result[Int, Error]\n  Ok(n) = read[Int](s) else Err(e) -> Err(Error(code: 7, message: "bad: ${e.message}"))\n  Ok(n / 2)\nprintln(half("10"))\nprintln(half("zz"))\n', 0, 'code: 7, message: "bad: cannot read"'),
  ("a wildcard inside the failure pattern", 'fn h(xs List[Int]) Int\n  Ok(x) = first(xs) else Err(_) -> -1\n  x\nprintln(h(List(4)))\nprintln(h(List()))\n', 0, "-1"),
  ("a plain name binds the whole value", 'fn h(xs List[Int]) String\n  Ok(x) = first(xs) else r -> "none: ${r}"\n  "got ${x}"\nprintln(h(List()))\n', 0, "none: Err("),
- ("an enum split in two", 'enum Two\n  Circle(r Int)\n  Square(s Int)\nfn r(s Two) Int\n  Circle(n) = s else Square(k) -> k * 10\n  n\nprintln(r(Square(3)))\nprintln(r(Circle(4)))\n', 0, "30"),
+ ("an enum split in two", 'enum Two deriving show\n  Circle(r Int)\n  Square(s Int)\nfn r(s Two) Int\n  Circle(n) = s else Square(k) -> k * 10\n  n\nprintln(r(Square(3)))\nprintln(r(Circle(4)))\n', 0, "30"),
  ("three cases need a third pattern", HEAD + 'fn r(s Shape) Int\n  Circle(n) = s else Square(k) -> k\n  n\n', 2, "does not cover `Dot`"),
  ("a name for the rest covers it", HEAD + 'fn r(s Shape) Int\n  Circle(n) = s else other -> 0\n  n\nprintln(r(Dot))\n', 0, "0"),
  ("the same case twice does not cover", 'fn r(x Result[Int, Error]) Int\n  Ok(n) = x else Ok(m) -> m\n  n\n', 2, "does not cover `Err`"),

@@ -2,12 +2,12 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-DATA = '''tuple Address
+DATA = '''tuple Address deriving show
   city String
-tuple Firm
+tuple Firm deriving show
   name String,
   address Address
-tuple User
+tuple User deriving show
   firm Firm
 u = User(firm: Firm(name: "Acme", address: Address(city: "Reno")))
 '''
@@ -39,7 +39,7 @@ CASES = [
  ("a path parameter is checked too",
   DATA + 'fn set_to(x User, p (User) -> String, v Int) User\n  replace(x, p, v)\nprintln(u)\n', "fail", "expected `String`, found `Int`"),
  ("a path through a property has the property's type",
-  'tuple P\n  property n Int = 0\nprintln(replace(P(), /P/n, 5))\nprintln(replace(P(), /P/n, "x"))\n', "fail", "expected `Int`, found `String`"),
+  'tuple P deriving show\n  property n Int = 0\nprintln(replace(P(), /P/n, 5))\nprintln(replace(P(), /P/n, "x"))\n', "fail", "expected `Int`, found `String`"),
  ("a path with the right types is accepted",
   DATA + 'println(replace(u, /User/firm/name, "Zed"))\nprintln(modify(u, /User/firm/address/city, (s) -> s + "!"))\n', "run", 'name: "Zed"'),
 ]

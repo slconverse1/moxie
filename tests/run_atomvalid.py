@@ -29,7 +29,7 @@ chk("try_reset", PCT + "println(try_reset(pct, 50))\nprintln(try_reset(pct, -1))
 chk("swap aborts on a rejected value", PCT + "swap(pct, _ + 500)\nprintln(\"not reached\")\n", 1, "rejected by the Atom's `valid` check")
 chk("reset aborts on a rejected value", PCT + "reset(pct, -5)\nprintln(\"not reached\")\n", 1, "rejected by the Atom's `valid` check")
 chk("the initial value is checked", "a = Atom[Int](-1, valid: (n) -> n >= 0)\nprintln(\"not reached\")\n", 1, "initial value was rejected")
-chk("watchers never see a rejected value", """tuple Account
+chk("watchers never see a rejected value", """tuple Account deriving show
   owner String,
   property balance Int = 0
 fn note(old Int, new Int) Unit

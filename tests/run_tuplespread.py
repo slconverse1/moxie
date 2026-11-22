@@ -8,7 +8,7 @@ def run(src, gc=False):
     r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=120)
     os.unlink(f.name)
     return r.returncode, r.stdout + r.stderr
-T = 'tuple Item(id Int, tags List[String], owner String)\nit = Item(id: 1, tags: List("a"), owner: "ada")\n'
+T = 'tuple Item(id Int, tags List[String], owner String) deriving show\nit = Item(id: 1, tags: List("a"), owner: "ada")\n'
 CASES = [
  ("labeled fields leave the others in rest", T + "when it\n  Item(id: i, ...rest) -> println(rest)\n", '(tags: List("a"), owner: "ada")'),
  ("a field of the rest is readable", T + "when it\n  Item(id: i, ...rest) -> println(rest.owner)\n", "ada"),
@@ -17,7 +17,7 @@ CASES = [
  ("nothing left is an empty tuple", T + "when it\n  Item(id: i, tags: t, owner: o, ...none) -> println(none)\n", "()"),
  ("a bare ... still skips", T + "when it\n  Item(id: i, ...) -> println(i)\n", "1"),
  ("a tuple with no declaration", '(id: j, ...more) = (id: 7, name: "x", age: 3)\nprintln(more)\n', '(name: "x", age: 3)'),
- ("an enum case with names", 'enum Shape\n  Circle(radius Double, label String)\n  Dot\ns = Shape.Circle(radius: 2.0, label: "c")\nwhen s\n  Circle(radius: r, ...more) -> println(more.label)\n  _ -> println("dot")\n', "c"),
+ ("an enum case with names", 'enum Shape deriving show\n  Circle(radius Double, label String)\n  Dot\ns = Shape.Circle(radius: 2.0, label: "c")\nwhen s\n  Circle(radius: r, ...more) -> println(more.label)\n  _ -> println("dot")\n', "c"),
  ("destructuring with a declared tuple", T + "Item(id: k, ...others) = it\nprintln(others)\n", '(tags: List("a"), owner: "ada")'),
  ("a list spread is still a list", "when List(1, 2, 3)\n  List(a, ...r) -> println(r)\n  _ -> println(0)\n", "List(2, 3)"),
  ("a dict spread is still a dict", "when Dict(a -> 1, b -> 2)\n  Dict(a -> x, ...r) -> println(r)\n  _ -> println(0)\n", 'Dict("b" -> 2)'),
@@ -37,10 +37,10 @@ CASES = [
  ("* is typed like ...", T + "when it\n  Item(id: i, *rest) -> println(rest.nme)\n", "has no field `nme`"),
  ("* nested in one pattern", 'p = (status: "ok", items: List((id: 1, tags: List("u", "b"), owner: "ada"), (id: 2, tags: List("l"), owner: "g")))\nwhen p\n  (status: "ok", items: List((id: f, tags: List(a, *o), *e), *rem), *top) -> println("${f} ${a} ${o} ${e} ${rem.len()} ${top}")\n  _ -> println("no")\n', '1 u List("b") (owner: "ada") 1 ()'),
  ("a pattern over several lines", 'p = (status: "ok", n: 3)\nwhen p\n  (\n    status: "ok",\n    *rest\n  ) -> println(rest)\n  _ -> println("no")\n', "(n: 3)"),
- ("a spread in an enum case is typed", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Circle(radius: 1.5, label: \"c\")\nwhen s\n  Circle(radius: r, *more) -> println(r + more.label)\n  _ -> println(0)\n", "cannot apply `+` to `Double` and `String`"),
- ("a spread in an enum case still runs", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Circle(radius: 1.5, label: \"c\")\nwhen s\n  Circle(radius: r, *more) -> println(\"${r} ${more.label}\")\n  _ -> println(0)\n", "1.5 c"),
- ("the rest of an enum case is the other fields", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Square(side: 2.0, label: \"q\")\nwhen s\n  Square(side: x, *more) -> println(more)\n  _ -> println(0)\n", "(label: \"q\")"),
- ("an enum case spread names a field the case lacks", "enum Shape\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Square(side: 2.0, label: \"q\")\nwhen s\n  Square(radius: x, *more) -> println(more)\n  _ -> println(0)\n", "can never match"),
+ ("a spread in an enum case is typed", "enum Shape deriving show\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Circle(radius: 1.5, label: \"c\")\nwhen s\n  Circle(radius: r, *more) -> println(r + more.label)\n  _ -> println(0)\n", "cannot apply `+` to `Double` and `String`"),
+ ("a spread in an enum case still runs", "enum Shape deriving show\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Circle(radius: 1.5, label: \"c\")\nwhen s\n  Circle(radius: r, *more) -> println(\"${r} ${more.label}\")\n  _ -> println(0)\n", "1.5 c"),
+ ("the rest of an enum case is the other fields", "enum Shape deriving show\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Square(side: 2.0, label: \"q\")\nwhen s\n  Square(side: x, *more) -> println(more)\n  _ -> println(0)\n", "(label: \"q\")"),
+ ("an enum case spread names a field the case lacks", "enum Shape deriving show\n  Circle(radius Double, label String)\n  Square(side Double, label String)\ns = Square(side: 2.0, label: \"q\")\nwhen s\n  Square(radius: x, *more) -> println(more)\n  _ -> println(0)\n", "can never match"),
  ("* is still multiplication", "println(2 * 3)\n", "6"),
 ]
 fails = []

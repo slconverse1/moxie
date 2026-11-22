@@ -49,10 +49,10 @@ CHECK = [
  ("a member without the method is an error", "import arith\n" + MUL + PRETTY + UNION + "fn show_full(e Full) String\n  e.pretty(show_full)\n", "has no method `pretty`"),
  ("a member that doesn't meet a bound is an error", "import arith\n" + MUL + PRETTY + UNION + "fn begin[U Pretty[U]](e U) String\n  e.pretty(begin)\n" + VALUE + "println(begin(f))\n", "doesn't implement `Pretty`"),
  ("all members have it: fine", "import arith\n" + MUL + PRETTY + PRETTY_MUL + UNION + "fn show_full(e Full) String\n  e.pretty(show_full)\n", None),
- ("a local union with a member lacking the method", "tuple A\n  n Int\ntuple B\n  n Int\ninterface Name\n  fn name(self) String\nimpl Name for A\n  fn name(self) String\n    \"a\"\nunion type AB = A | B\nfn f(x AB) String\n  x.name()\n", "`B`, which has no method `name`"),
- ("a generic constructor takes its children from the union", "tuple Lit\n  value Int\ntuple Add[E]\n  left E\n  right E\ntuple Mul[E]\n  left E\n  right E\nunion type Full = Lit | Add[Full] | Mul[Full]\nx Full = Mul(Lit(3), Add(Lit(1), Lit(2)))\n", None),
- ("a child that is not in the union is still an error", "tuple Lit\n  value Int\ntuple Neg[E]\n  inner E\ntuple Mul[E]\n  left E\n  right E\nunion type Full = Lit | Mul[Full]\nx Full = Mul(Lit(1), Neg(Lit(2)))\n", "expects"),
- ("a local union where all have it", "tuple A\n  n Int\ntuple B\n  n Int\ninterface Name\n  fn name(self) String\nimpl Name for A\n  fn name(self) String\n    \"a\"\nimpl Name for B\n  fn name(self) String\n    \"b\"\nunion type AB = A | B\nfn f(x AB) String\n  x.name()\n", None),
+ ("a local union with a member lacking the method", "tuple A deriving show\n  n Int\ntuple B deriving show\n  n Int\ninterface Name\n  fn name(self) String\nimpl Name for A\n  fn name(self) String\n    \"a\"\nunion type AB = A | B\nfn f(x AB) String\n  x.name()\n", "`B`, which has no method `name`"),
+ ("a generic constructor takes its children from the union", "tuple Lit deriving show\n  value Int\ntuple Add[E] deriving show\n  left E\n  right E\ntuple Mul[E] deriving show\n  left E\n  right E\nunion type Full = Lit | Add[Full] | Mul[Full]\nx Full = Mul(Lit(3), Add(Lit(1), Lit(2)))\n", None),
+ ("a child that is not in the union is still an error", "tuple Lit deriving show\n  value Int\ntuple Neg[E] deriving show\n  inner E\ntuple Mul[E] deriving show\n  left E\n  right E\nunion type Full = Lit | Mul[Full]\nx Full = Mul(Lit(1), Neg(Lit(2)))\n", "expects"),
+ ("a local union where all have it", "tuple A deriving show\n  n Int\ntuple B deriving show\n  n Int\ninterface Name\n  fn name(self) String\nimpl Name for A\n  fn name(self) String\n    \"a\"\nimpl Name for B\n  fn name(self) String\n    \"b\"\nunion type AB = A | B\nfn f(x AB) String\n  x.name()\n", None),
 ]
 fails = []
 def run_in(files, cmd, gc=False):

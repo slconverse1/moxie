@@ -11,7 +11,7 @@ CASES = [
  ("a binding prints its name and type", "x = 4.5\n", "x Double = 4.5", None, None),
  ("a string result is quoted", '"abc"\n', '$res1 String = "abc"', None, None),
  ("a function stays for later inputs", 'fn sq(n Int) Int\n  n * n\n\nsq(9)\n', "$res1 Int = 81", None, None),
- ("a tuple type and its use", 'tuple P\n  a Int\n\np = P(a: 3)\np.a\n', "$res1 Int = 3", None, None),
+ ("a tuple type and its use", 'tuple P deriving show\n  a Int\n\np = P(a: 3)\np.a\n', "$res1 Int = 3", None, None),
  ("an error leaves the session as it was", "x = 1\nx + \"a\"\nx + 1\n", "$res1 Int = 2", "error:", None),
  ("a string's own $name is left alone", 'res1 = 7\n"n=$res1"\n', 'n=7', None, None),
  ("a user variable named res1 is not a result", "res1 = 7\n1 + 1\nres1\n", "$res1 Int = 7", None, None),

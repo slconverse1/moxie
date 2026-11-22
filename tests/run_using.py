@@ -2,7 +2,7 @@
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-CTX = '''tuple Context
+CTX = '''tuple Context deriving show
   user String
 fn send(url String, using ctx Context) Unit
   println("${url} ${ctx.user}")
@@ -11,7 +11,7 @@ fn send(url String, using ctx Context) Unit
 # (name, source, how, text): how is "run" (exit 0 and text in output) or "fail" (nonzero exit and text in output)
 CASES = [
  ("a call that leaves out using, with nothing in scope, is a compile error",
-  'tuple Context\n  name String\nfn greet(msg String, using ctx Context) String\n  "$(ctx.name): $msg"\nprintln(greet("hi"))\n', "fail", "no `using` value of type `Context` in scope"),
+  'tuple Context deriving show\n  name String\nfn greet(msg String, using ctx Context) String\n  "$(ctx.name): $msg"\nprintln(greet("hi"))\n', "fail", "no `using` value of type `Context` in scope"),
  ("a top-level using is found by type, whatever the names",
   CTX + 'using c = Context(user: "ann")\nsend("u", using)\n', "run", "u ann"),
  ("a using declared inside a function body is found at the call",
@@ -23,13 +23,13 @@ CASES = [
  ("two in one function scope are ambiguous too",
   CTX + 'fn begin() Unit\n  using a = Context(user: "ann")\n  using b = Context(user: "bob")\n  send("u", using)\nbegin()\n', "fail", "ambiguous"),
  ("values of different types don't clash",
-  CTX + 'tuple Other\n  n Int\nusing a = Context(user: "ann")\nusing b = Other(n: 1)\nsend("u", using)\n', "run", "u ann"),
+  CTX + 'tuple Other deriving show\n  n Int\nusing a = Context(user: "ann")\nusing b = Other(n: 1)\nsend("u", using)\n', "run", "u ann"),
  ("a using parameter is a candidate for calls in the body",
-  'tuple Context\n  user String\nfn inner(using ctx Context) Unit\n  println("inner ${ctx.user}")\nfn outer(n Int, using ctx Context) Unit\n  inner(using)\nfn begin() Unit\n  using c = Context(user: "zed")\n  outer(1, using)\nbegin()\n', "run", "inner zed"),
+  'tuple Context deriving show\n  user String\nfn inner(using ctx Context) Unit\n  println("inner ${ctx.user}")\nfn outer(n Int, using ctx Context) Unit\n  inner(using)\nfn begin() Unit\n  using c = Context(user: "zed")\n  outer(1, using)\nbegin()\n', "run", "inner zed"),
  ("no value in scope is an error",
   CTX + 'send("u", using)\n', "fail", "no `using` value of type `Context`"),
  ("a using of another type doesn't count",
-  CTX + 'tuple Other\n  n Int\nusing b = Other(n: 1)\nsend("u", using)\n', "fail", "no `using` value of type `Context`"),
+  CTX + 'tuple Other deriving show\n  n Int\nusing b = Other(n: 1)\nsend("u", using)\n', "fail", "no `using` value of type `Context`"),
  ("a using declared later at the top level still serves a function body",
   CTX + 'fn begin() Unit\n  send("u", using)\nusing c = Context(user: "late")\nbegin()\n', "run", "u late"),
  ("a using in an enclosing function serves a lambda",

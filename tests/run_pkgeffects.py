@@ -30,7 +30,7 @@ LIB = '''export fn shout() Int
 export pure fn twice(n Int) Int = n * 2
 export fn slurp(p String) Result[String, Error] = read_file(p)
 export fn apply(f () -> Int) Int = f()
-export tuple Box
+export tuple Box deriving show
   n Int
 impl Box
   export fn say(self) Int

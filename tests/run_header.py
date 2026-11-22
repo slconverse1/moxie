@@ -127,7 +127,7 @@ d = project('import lib\nfor i in 0..<3\n  t = lib.mk()\nprintln(1)\n', files={"
 chk("a kept resource from a package in a loop is an error naming the package", moxie(d, "pools", "main.mxi"), 1, "lib.mk' creates a Chan that outlives the call")
 d = project('fiber[3] fn w(tx ChanW[Int]) Unit\n  \\write(tx, 2)\nfn start(tx ChanW[Int]) Unit\n  go w(tx)\nrx, tx = Chan[Int][4]()\nstart(tx)\nprintln(read(rx)?)\n')
 chk("fibers started by a helper function are counted", moxie(d, "pools", "main.mxi"), 0, "largest possible fiber count: 4")
-BOXLIB = '''export tuple Box
+BOXLIB = '''export tuple Box deriving show
   n Int
 impl Box
   fn chan(self) ChanW[Int]
@@ -152,7 +152,7 @@ chk("pools and fibers that exactly fit start", moxie(d, "run", "main.mxi"), 0, "
 d = project(PB, FM.format(t="2199"))
 chk("one byte less is refused, with the pools named", moxie(d, "run", "main.mxi"), 2, "needs 2200 bytes", "152 for pools")
 chk("the pool report gives the pool memory", moxie(d, "pools", "main.mxi"), 0, "pool memory: 152 bytes")
-TUP = '''tuple Point
+TUP = '''tuple Point deriving show
   x Double
   y Float
 rx, tx = Chan[Point][3]()

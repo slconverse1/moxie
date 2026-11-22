@@ -5,7 +5,7 @@ CASES = [
  ('running totals fill an array in place', 'fn running_totals(xs Array[Int][5]) Array[Int][5]\n  mutable\n    out = xs\n    total = 0\n    for i in 0..<5\n      total += xs(i)\n      out(i) = total\n    out\nprintln(running_totals(Array(3, 1, 4, 1, 5)))\n', 0, 'Array(3, 4, 8, 9, 14)'),
  ('assignment reaches through nested blocks', 'pure fn count_big(xs List[Int]) Int\n  mutable\n    n = 0\n    for x in xs\n      if x > 10\n        n += 1\n    n\nprintln(count_big(List(5, 20, 30, 1)))\n', 0, '2'),
  ('a pure fn may hold a mutable block', 'pure fn s(xs List[Int]) Int\n  mutable\n    t = 0\n    for x in xs\n      t += x\n    t\nprintln(s(List(1, 2, 3)))\n', 0, '6'),
- ('fields, a while loop, a when arm and an in line', 'tuple P\n  x Int\n  y Int\nfn g(xs List[Int]) (Int, Int)\n  total = 100\n  r = mutable\n    in total\n    p = P(0, 0)\n    i = 0\n    while i < len(xs)\n      p.x += xs(i)\n      when xs(i) % 2\n        0 -> p.y += 1\n        _ -> total -= 1\n      i += 1\n    (p.x + p.y, total)\n  (r.0, total)\nprintln(g(List(1, 2, 3, 4)))\n', 0, '(12, 100)'),
+ ('fields, a while loop, a when arm and an in line', 'tuple P deriving show\n  x Int\n  y Int\nfn g(xs List[Int]) (Int, Int)\n  total = 100\n  r = mutable\n    in total\n    p = P(0, 0)\n    i = 0\n    while i < len(xs)\n      p.x += xs(i)\n      when xs(i) % 2\n        0 -> p.y += 1\n        _ -> total -= 1\n      i += 1\n    (p.x + p.y, total)\n  (r.0, total)\nprintln(g(List(1, 2, 3, 4)))\n', 0, '(12, 100)'),
  ('the outer name is unchanged unless it is on the in line', 'fn f() Int\n  n = 5\n  r = mutable\n    in n\n    n += 1\n    n\n  n * 10 + r\nprintln(f())\n', 0, '56'),
  ('a mutable name keeps its type', 'fn f() Int\n  mutable\n    n = 0\n    n = "no"\n    n\nprintln(f())\n', 2, 'keeps its type'),
  ('mutable stays a legal name', 'mutable = 3\nprintln(mutable + 1)\nfn f(mutable Int) Int = mutable * 2\nprintln(f(4))\n', 0, '4\n8'),
@@ -16,7 +16,7 @@ CASES = [
  ('a block hands back what it mutated as its last line', 'fn part(a Array[Int][4]) (Array[Int][4], Int)\n  mutable\n    in a\n    n = 0\n    for i in 0..<4\n      if a(i) > 2\n        a(i) = 0\n        n += 1\n    (a, n)\nb, k = part(Array(1, 3, 2, 5))\nprintln("${b} ${k}")\n', 0, 'Array(1, 0, 2, 0) 2'),
  ('writing an element of an outer array in a loop, without @1, is an error', 'fn f() Int\n  a = Array(1, 2, 3)\n  for i in 0..<3\n    a(i) = 9\n  a(0)\nprintln(f())\n', 2, 'never changes'),
  ('a@1 writes the outer array', 'fn f() Int\n  a = Array(1, 2, 3)\n  for i in 0..<3\n    a@1(i) = 9\n  a(0)\nprintln(f())\n', 0, '9'),
- ('a field of an outer tuple written in a loop is the same mistake', 'tuple P\n  x Int\nfn f() Int\n  p = P(1)\n  for i in 0..<3\n    p.x = 9\n  p.x\nprintln(f())\n', 2, 'never changes'),
+ ('a field of an outer tuple written in a loop is the same mistake', 'tuple P deriving show\n  x Int\nfn f() Int\n  p = P(1)\n  for i in 0..<3\n    p.x = 9\n  p.x\nprintln(f())\n', 2, 'never changes'),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

@@ -9,7 +9,7 @@ PROG = '''fn inc(x Int) Int
 fn bad(x Int) Int
   ensures result > x
   x - 1
-tuple P
+tuple P deriving show
   a Int
   invariant a >= 0
 '''
@@ -45,7 +45,7 @@ IF = '''interface Named
     ensures len(result) > 0
   fn pick(self, n Int) Int
     requires n >= 0
-tuple Cat
+tuple Cat deriving show
   nm String
 impl Named for Cat
   fn name(self) String = self.nm
@@ -68,7 +68,7 @@ chk("interface requires passes", rc == 0 and o.strip() == "3")
 rc, o = run2('impl Named for Cat\n  fn name(self) String = self.nm\n' if False else 'println("x")\n', "--no-check") if False else (0, "")
 BADIMPL = '''interface Named
   fn name(self) String
-tuple Cat
+tuple Cat deriving show
   nm String
 impl Named for Cat
   fn name(self) String

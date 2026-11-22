@@ -2,7 +2,7 @@
 Also the exact form: `(name String, age Int)` takes exactly those fields.  Run: python3 tests/run_rowtuple.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HEAD = 'user = (name: "Alice", age: 30)\nadmin = (...user, role: "Admin")\ntuple Employee\n  name String\n  age Int\n  salary Int\n'
+HEAD = 'user = (name: "Alice", age: 30)\nadmin = (...user, role: "Admin")\ntuple Employee deriving show\n  name String\n  age Int\n  salary Int\n'
 GREET = 'fn greet(u (name String, ...)) String = "hi ${u.name}"\n'
 CASES = [
     ("labeled tuple", HEAD + GREET + 'println(greet(user))\n', 0, "hi Alice"),

@@ -9,17 +9,17 @@ def run(src, flags=()):
     os.unlink(f.name)
     return r.returncode, (r.stdout + r.stderr).decode()
 
-U = 'tuple User\n  name String,\n  age Int\n'
+U = 'tuple User deriving show\n  name String,\n  age Int\n'
 CASES = [
  ("a parameter is a name and a type", 'fn add(a Int, b Int = 2) Int\n  a + b\nprintln(add(1))\n', 0, "3\n"),
  ("a variadic parameter", 'fn total(xs ...Int) Int\n  sum(xs)\nprintln(total(1, 2, 3))\n', 0, "6\n"),
  ("a function-typed parameter", 'fn twice(f (Int) -> Int, x Int) Int\n  f(f(x))\nprintln(twice((n Int) -> n + 1, 5))\n', 0, "7\n"),
  ("tuple fields", U + 'println(User(name: "Al", age: 3))\n', 0, 'User(name: "Al", age: 3)\n'),
- ("enum case fields", 'enum Shape\n  Circle(r Float)\n  Dot\nprintln(Circle(r: 1.5))\n', 0, "Shape.Circle(1.5)\n"),
+ ("enum case fields", 'enum Shape deriving show\n  Circle(r Float)\n  Dot\nprintln(Circle(r: 1.5))\n', 0, "Shape.Circle(1.5)\n"),
  ("a tuple type with labels", 'p (x Int, y Int) = (x: 1, y: 2)\nprintln(p)\n', 0, "(x: 1, y: 2)\n"),
  ("a type bound", 'fn big[T Ordered](a T, b T) T\n  if a > b then a else b\nprintln(big(3, 9))\n', 0, "9\n"),
  ("the old parameter colon is an error", 'fn f(x: Int) Int\n  x\n', 2, "has no colon"),
- ("the old field colon is an error", 'tuple P\n  x: Int\n', 2, "has no colon"),
+ ("the old field colon is an error", 'tuple P deriving show\n  x: Int\n', 2, "has no colon"),
  ("a binding is a name and a type", 'total Int = 1\nnames List[String] = List("a")\nf (Int) -> Int = (n) -> n + 1\nprintln(total)\nprintln(f(3))\n', 0, "1\n4\n"),
  ("a binding with a destructuring tuple still works", 'a, b = 1, 2\nprintln(a + b)\n', 0, "3\n"),
  ("the old binding colon is an error", 'total: Int = 1\n', 2, "has no colon"),

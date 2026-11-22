@@ -1,7 +1,7 @@
 """`|` joins alternatives in a pattern, and `when a, b, c` matches several values at once.  Run: python3 tests/run_multiwhen.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HEAD = 'enum Role\n  Admin,\n  Member,\n  Guest\n'
+HEAD = 'enum Role deriving show\n  Admin,\n  Member,\n  Guest\n'
 CASES = [
     ("alternatives with |", 'fn k(n Int) String\n  when n\n    1 | 2 | 3 -> "low"\n    else "other"\nprintln(k(2))\nprintln(k(9))\n', 0, "low\nother"),
     ("comma is not an alternative", 'fn k(n Int) String\n  when n\n    1, 2 -> "low"\n    else "other"\nprintln(k(1))\n', 1, "write `A | B`"),
@@ -13,7 +13,7 @@ CASES = [
     ("bindings", 'fn s(a Int, b Int) Int\n  when a, b\n    0, y -> y\n    x, 0 -> x\n    x, y -> x + y\nprintln(s(0, 5))\nprintln(s(4, 0))\nprintln(s(2, 3))\n', 0, "5\n4\n5"),
     ("alternatives must bind the same names", 'fn s(a Option[Int]) Int\n  when a\n    Some(x) | None -> 1\n    else 0\nprintln(1)\n', 1, "same names"),
     ("Option pair", 'fn s(a Option[Int], b Option[Int]) Int\n  when a, b\n    Some(x), Some(y) -> x + y\n    (Some(x), None) | (None, Some(x)) -> x\n    None, None -> 0\nprintln(s(Some(1), Some(2)))\nprintln(s(None, Some(7)))\nprintln(s(None, None))\n', 0, "3\n7\n0"),
-    ("is with alternatives", 'enum R\n  A,\n  B,\n  C\nr = C\nprintln(r is A | C)\nprintln(r is not A | B)\nif r is B | C then println("ok")\n', 0, "true\ntrue\nok"),
+    ("is with alternatives", 'enum R deriving show\n  A,\n  B,\n  C\nr = C\nprintln(r is A | C)\nprintln(r is not A | B)\nif r is B | C then println("ok")\n', 0, "true\ntrue\nok"),
     ("is alternatives cannot bind", 'o = Some(1)\nprintln(o is Some(x) | None)\n', 1, "cannot bind names"),
     ("nested alternatives in a constructor", 'fn f(o Option[Int]) String\n  when o\n    Some(1 | 2) -> "low"\n    Some(x) -> "other"\n    None -> "none"\nprintln(f(Some(2)))\nprintln(f(Some(9)))\n', 0, "low\nother"),
     ("nested alternatives in a tuple pattern", 'fn g(a Int, b Int) String\n  when a, b\n    (0 | 1, 0 | 1) -> "bits"\n    _ -> "no"\nprintln(g(1, 0))\nprintln(g(2, 0))\n', 0, "bits\nno"),

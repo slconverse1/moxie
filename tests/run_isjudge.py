@@ -1,7 +1,7 @@
 """`is` tests that cannot vary: tuple patterns with sub-patterns, generic tuples, refutable parts.  Run: python3 tests/run_isjudge.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.abspath(__file__)) + "/.."
-H = "tuple Dog\n  name String\ntuple Cat\n  name String\ntuple Box[T]\n  v T\nunion type Pet = Dog | Cat\ntuple Fish\n  name String\n"
+H = "tuple Dog deriving show\n  name String\ntuple Cat deriving show\n  name String\ntuple Box[T] deriving show\n  v T\nunion type Pet = Dog | Cat\ntuple Fish deriving show\n  name String\n"
 CASES = [
  ("a Dog pattern with a binding on a Dog", H + "fn f(d Dog) Int\n  if d is Dog(n)\n    1\n  else\n    2\n", "always a `Dog`"),
  ("a generic tuple pattern on a Box[Int]", H + "fn f(b Box[Int]) Int\n  if b is Box(x)\n    1\n  else\n    2\n", "always a `Box`"),

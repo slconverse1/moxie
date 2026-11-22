@@ -10,7 +10,7 @@ CASES = [
  ("a read in an expression", 'n = 5\nif true\n  n = 7\n  println(n@1 + n)\n', 0, "12"),
  ("the second layer out", 'n = 1\nif true\n  n = 2\n  if true\n    n = 3\n    println("${n} ${n@1} ${n@2}")\n', 0, "3 2 1"),
  ("the old spelling points to the new one", 'x = 1\nif true\n  x = 2\n  println(gimme.1.x)\n', 2, "x@1"),
- ("a field name after the number still works", 'tuple P\n  a Int\np = P(a: 4)\nif true\n  p = P(a: 9)\n  println(p@1.a + p.a)\n', 0, "13"),
+ ("a field name after the number still works", 'tuple P deriving show\n  a Int\np = P(a: 4)\nif true\n  p = P(a: 9)\n  println(p@1.a + p.a)\n', 0, "13"),
  ("a function keeps its own total and updates the outer one", 'fn tally(scores List[Int]) Int\n  total = 0\n  for s in scores\n    total = s * 2\n    total@1 += total\n  total\nprintln(tally(List(1, 2, 3)))\n', 0, "12"),
  ("a function is a boundary for a module-level name", 'rate = 3\nfn bump() Int\n  rate@1 = 4\n  rate\nprintln(bump())\n', 2, "no enclosing block binds `rate`"),
  ("a closure is a boundary", 'fn f() Int\n  x = 1\n  g = () -> x@1\n  g()\nprintln(f())\n', 2, "no enclosing block binds `x`"),
@@ -20,7 +20,7 @@ CASES = [
  ("a label on a while loop", 'count = 0\n#w while count < 3\n  count@w += 1\nprintln(count)\n', 0, "3"),
  ("an unknown label is an error", 'total = 0\nfor x in List(1)\n  total@nope += x\nprintln(total)\n', 2, "no enclosing loop or `do` is labeled `#nope`"),
  ("a label with nothing outside it", '#serve for x in List(1)\n  y@serve = 1\n', 2, "no enclosing block binds `y`"),
- ("an as-pattern is not a label", 'tuple P\n  a Int\n  b Int\nq = P(a: 1, b: 2)\nr@P(a, b) = q\nprintln("${r} ${a}")\n', 0, "P(a: 1, b: 2) 1"),
+ ("an as-pattern is not a label", 'tuple P deriving show\n  a Int\n  b Int\nq = P(a: 1, b: 2)\nr@P(a, b) = q\nprintln("${r} ${a}")\n', 0, "P(a: 1, b: 2) 1"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

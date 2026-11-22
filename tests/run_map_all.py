@@ -2,7 +2,7 @@
 import sys, subprocess
 sys.path.insert(0, ".")
 PROG = r'''
-tuple User
+tuple User deriving show
   name String
   email String
   age Int

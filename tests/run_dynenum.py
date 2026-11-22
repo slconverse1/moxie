@@ -8,7 +8,7 @@ CASES = [
  ('a missing field is an Err', 'import json\nenum Shape deriving show, dyn\n  Circle(r Float)\nprintln(Shape.from_dyn(json.parse("{\\"case\\": \\"Circle\\"}")?))\n', 0, 'no key'),
  ('a tuple holds an enum', 'import json\nenum Color deriving show, dyn\n  Red\n  Rgb(r Int, g Int, b Int)\ntuple Pixel deriving show, dyn\n  x Int\n  c Color\np = Pixel(x: 1, c: Color.Rgb(r: 1, g: 2, b: 3))\nprintln(p.to_dyn().to_json())\nprintln(Pixel.from_dyn(p.to_dyn()))\n', 0, 'Ok(Pixel(x: 1, c: Color.Rgb(1, 2, 3)))'),
  ('an enum holds a list', 'import json\nenum Poly deriving show, dyn\n  Pts(xs List[Int])\nprintln(Poly.from_dyn(Poly.Pts(xs: List(1, 2)).to_dyn()))\n', 0, 'Ok(Poly.Pts(List(1, 2)))'),
- ('unnamed case fields are an error', 'import json\nenum E deriving dyn\n  A(Int)\n', 2, 'unnamed fields'),
+ ('unnamed case fields are an error', 'import json\nenum E deriving dyn, show\n  A(Int)\n', 2, 'unnamed fields'),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

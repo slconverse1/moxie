@@ -9,7 +9,7 @@ def run(src, cmd="run"):
     return r.returncode, r.stdout + r.stderr
 U = 'union type IT = Int | String\n'
 U3 = 'union type IBT = Int | Bool | String\n'
-P = U + 'tuple P\n  v IT\n'
+P = U + 'tuple P deriving show\n  v IT\n'
 OK = [
  ("is narrows the then-branch", U + 'fn g(v IT) Int\n  if v is Int\n    v + 1\n  else\n    0\nprintln(g(4))\nprintln(g("a"))\n', "5\n0\n"),
  ("two members: the else is the other one", U + 'fn g(v IT) Int\n  if v is Int\n    v\n  else\n    len(v)\nprintln(g(4))\nprintln(g("abc"))\n', "4\n3\n"),

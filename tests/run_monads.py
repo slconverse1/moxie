@@ -71,7 +71,7 @@ println(m.flat_map((a) -> ListM(List(a))) == m)
 """, 0, "true\ntrue\ntrue")
 
 chk("Reader: ask, asks, local, run_reader", """import fp.reader
-tuple Config
+tuple Config deriving show
   name String
   depth Int
 greet = reader.asks((c Config) -> "hi ${c.name}").flat_map((g) -> reader.asks((c Config) -> "${g} x${c.depth}"))
@@ -112,7 +112,7 @@ println(cont.run_cont(m, (a Int) -> "got ${a}"))
 """, 0, "got 10")
 
 DSL = """import fp.free
-enum Cmd[Next]
+enum Cmd[Next] deriving show
   Say(String, Next)
   Ask((String) -> Next)
 impl Functor[Cmd]

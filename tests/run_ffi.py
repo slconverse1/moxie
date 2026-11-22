@@ -9,7 +9,7 @@ def run(src, *flags, cmd="run"):
     os.unlink(f.name)
     return r.returncode, r.stdout + r.stderr
 
-HDR = '''tuple DivT
+HDR = '''tuple DivT deriving show
   quot Int32
   rem Int32
 foreign "z"

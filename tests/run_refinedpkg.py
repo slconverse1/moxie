@@ -9,8 +9,8 @@ CASES = [
  ("a from-import used unqualified", "import lib(Pos)\nfn twice(n Pos) Int = n * 2\nprintln(twice(5))\n", 0, "10"),
  ("a refined binding", "import lib\nx lib.Pos = 3\nprintln(x)\n", 0, "3"),
  ("a refined binding that fails", "import lib\nx lib.Pos = 0 - 3\nprintln(x)\n", 1, ""),
- ("a refined field", "import lib\ntuple Box\n  n lib.Pos\nprintln(Box(n: 2).n)\n", 0, "2"),
- ("a refined field that fails", "import lib\ntuple Box\n  n lib.Pos\nprintln(Box(n: 0).n)\n", 1, ""),
+ ("a refined field", "import lib\ntuple Box deriving show\n  n lib.Pos\nprintln(Box(n: 2).n)\n", 0, "2"),
+ ("a refined field that fails", "import lib\ntuple Box deriving show\n  n lib.Pos\nprintln(Box(n: 0).n)\n", 1, ""),
 ]
 fails = []
 for name, src, rc_want, word in CASES:

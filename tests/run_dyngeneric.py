@@ -12,8 +12,8 @@ CASES = [
  ("the same enum at another type", HEAD + TREE + 'println(Tree[String].from_dyn(Tree.Leaf(v: "x").to_dyn()))\n', 0, 'Ok(Tree.Leaf("x"))'),
  ("a wrong kind inside is an Err", HEAD + PAIR + 'println(Pair[Int, Int].from_dyn(json.parse("{\\"first\\": 1, \\"second\\": \\"no\\"}")?))\n', 0, "not an Int"),
  ("a non-generic type is still readable", HEAD + PT + 'println(Pt.from_dyn(Pt(x: 3, y: 4).to_dyn()))\n', 0, 'Ok(Pt(x: 3, y: 4))'),
- ("a type with no Dyn form is not a type argument", HEAD + PAIR + 'tuple Raw\n  n Int\nprintln(Pair[Raw, Int].from_dyn(json.Dyn.DNull))\n', 1, ""),
- ("a Dict field is still an error", HEAD + "tuple Bad[T] deriving dyn\n  d Dict[String, T]\n", 2, "no `Dyn` form"),
+ ("a type with no Dyn form is not a type argument", HEAD + PAIR + 'tuple Raw deriving show\n  n Int\nprintln(Pair[Raw, Int].from_dyn(json.Dyn.DNull))\n', 1, ""),
+ ("a Dict field is still an error", HEAD + "tuple Bad[T] deriving dyn, show\n  d Dict[String, T]\n", 2, "no `Dyn` form"),
 ]
 fails = []
 for name, src, rc_want, word in CASES:
