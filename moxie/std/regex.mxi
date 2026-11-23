@@ -446,9 +446,7 @@ export fn compile(source String) Result[Regex, Error]
 
 /// A pattern known to be right: stops the program when it is not.
 export fn must(source String) Regex
-  when compile(source)
-    Ok(r) -> r
-    Err(e) -> fail(e.message)
+  unwrap(compile(source))
 
 // ---------------------------------------------------------------- the matcher
 

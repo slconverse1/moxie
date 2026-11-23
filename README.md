@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Spec audit (every "is an error" claim in the Spec was probed against the checker): now enforced or fixed are a bare `_` mixed with `_2` in one function, a text slice that cuts a multi-byte character (aborts, and is a compile error for a constant cut), a field called as a function on a constructed value (`P(x: 1).x(2)`), a `forward fn` whose definition has a different number of type parameters, and `regex.must` on a bad pattern (it returned an `Err` instead of stopping). `x = 5 if c` and `x = 1 if c else 2` give messages that point to `if c then a else b`. `tests/run_specrules.py`.
+
 Pages with an outline get a floating "↑ Top" link once you scroll; the monoids lesson no longer carries a GC-free-only remark in the gc guide. `par_map`, `par_traverse`, and `par_map_all` now check `limit:` (a constant of 1 or more) when called after a pipe too, as the Spec says.
 
 The Spec's dated design notes now live on their own pages (`docs/design-notes.md`, `docs/gc/design-notes.md`), linked from the end of the Spec, so the Spec holds only the language as it is.

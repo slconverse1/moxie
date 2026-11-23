@@ -6809,15 +6809,18 @@ class Checker(RefineMixin):
             elif fv is not None and fv.ty.__class__ is tuple and fv.ty[0] == "app" and fv.ty[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
                     and fv.ty[1] not in self.tuples and fv.ty[1] not in self.enums and fv.ty[1] not in self.aliases:
                 self.err(n.line, f"`{f.name}` is a `{tshow(fv.ty)}`, not a function" + ("; take the value out of the Result first" if fv.ty[1] == "Result" else ""))
-        if f.__class__ is Field and f.obj.__class__ is Name and not extra and f.name not in self.fns and f.name not in self.prelude \
+        if f.__class__ is Field and not extra and f.name not in self.fns and f.name not in self.prelude \
                 and not any(k[1] == f.name for k in self.methods):
-            ov = sc.find(f.obj.name)
-            ot = ov.ty if ov is not None else None
+            if f.obj.__class__ is Name:
+                ov = sc.find(f.obj.name)
+                ot = ov.ty if ov is not None else None
+            else:
+                ot = self.quiet(f.obj, sc)[0]                  # `P(x: 1).x(2)`, `mk().x(2)`: the value's type, when it is known
             if ot.__class__ is tuple and ot[0] == "named" and ot[1] in self.tuples and not self.tuples[ot[1]].tparams:
                 fld = next((x for x in self.tuples[ot[1]].fields or [] if x.name == f.name), None)
                 fty = self.ty_of_type(fld.type) if fld is not None and fld.type is not None else None
                 if fty is not None and (fty in INTS or fty in ("String", "Bool", "Float", "Char", "Decimal")):
-                    self.err(n.line, f"`{f.obj.name}.{f.name}` is {tshow(fty)}, not a function")
+                    self.err(n.line, (f"`{f.obj.name}.{f.name}` is {tshow(fty)}, not a function" if f.obj.__class__ is Name else f"the field `{f.name}` is {tshow(fty)}, not a function"))
         if (r is None or r[0] is None) and n.trailing is None and n.args and not extra:
             it = self.index_type(f, n.args, sc, n)
             if it is not None:
@@ -10155,14 +10158,18 @@ def toplevel_fn_order(stmts, who=""):
     a `forward fn` signature came first (spec section 4, Order)."""
     def fns_of(st):
         return st.clauses if st.__class__.__name__ == "FnGroup" else [st] if st.__class__.__name__ == "FnDecl" else []
-    decl, fwd = {}, set()
+    decl, fwd, fwd_tp = {}, set(), {}
     for i, st in enumerate(stmts):
         for fd in fns_of(st):
             if fd.body is None or "forward" in (fd.flags or ()):
                 fwd.add(fd.name)
+                fwd_tp.setdefault(fd.name, (len(fd.tparams or []), fd.line))
             else:
-                decl.setdefault(fd.name, (i, fd.line))
+                decl.setdefault(fd.name, (i, fd.line, len(fd.tparams or [])))
     out, seen = [], set()
+    for nm, (ntp, fl) in fwd_tp.items():                  # the definition has the signature's number of type parameters
+        if nm in decl and decl[nm][2] != ntp:
+            out.append(Diag(decl[nm][1], f"{who}`{nm}` has {decl[nm][2]} type parameter{'s' if decl[nm][2] != 1 else ''}, but its `forward fn` (line {fl}) has {ntp}: the definition must match the signature"))
     for i, st in enumerate(stmts):
         cl = fns_of(st)
         reads = {}

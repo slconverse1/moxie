@@ -1651,7 +1651,7 @@ def b_get(I, a, kw, ta):
 def b_unwrap(I, a, kw, ta):
     if is_ok(a[0]):
         return a[0].vals[0]
-    raise Abort("unwrap of an Err")
+    raise Abort("unwrap of an Err: " + show(a[0].vals[0], I) if a[0].vals else "unwrap of an Err")
 
 
 # ---------------------------------------------------------------- collections
