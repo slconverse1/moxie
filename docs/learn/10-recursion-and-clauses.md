@@ -5,7 +5,7 @@ title: "Recursion and function clauses · Mixer’s Guide moxie"
 ---
 # 12. Recursion and function clauses
 
-<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [9. Functions](../spec.html#s9)</div>
+<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html?from=10-recursion-and-clauses#s8), [9. Functions](../spec.html?from=10-recursion-and-clauses#s9)</div>
 
 A function that calls itself is *recursive*. Recursion is the natural way to work through data that is built from smaller pieces of the same kind, and in moxie it is cheap enough to use freely.
 

@@ -6,7 +6,7 @@ title: "Packages and imports · Mixer’s Guide moxie/gc"
 ---
 # 36. Packages and imports
 
-<div class='specref' markdown='1'>In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4), [19. Resources, pools, packages](../spec.html#s19)</div>
+<div class='specref' markdown='1'>In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html?from=27-packages#s4), [19. Resources, pools, packages](../spec.html?from=27-packages#s19)</div>
 
 A program doesn't have to live in one file. Code is split into *packages*, and a package is made of one or more files. This lesson covers how to import code, what a package shares with the rest of the program, and how a larger package is laid out.
 

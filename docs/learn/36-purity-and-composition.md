@@ -5,7 +5,7 @@ title: "Values, purity, and composing functions · Mixer’s Guide moxie"
 ---
 # 45. Values, purity, and composing functions
 
-<div class='specref' markdown='1'>In the Spec: [14. Caching, memoization, and effects](../spec.html#s14), [23. Functional programming support](../spec.html#s23)</div>
+<div class='specref' markdown='1'>In the Spec: [14. Caching, memoization, and effects](../spec.html?from=36-purity-and-composition#s14), [23. Functional programming support](../spec.html?from=36-purity-and-composition#s23)</div>
 
 Moxie's functional features are ordinary code on top of a few language features: immutable values, higher-order functions, pipelines, and interfaces over type constructors. This lesson covers the first and the oldest ideas: values that never change, functions that say what they do, and functions built out of functions.
 

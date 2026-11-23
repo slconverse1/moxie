@@ -6,7 +6,7 @@ title: "Patterns · Mixer’s Guide moxie/gc"
 ---
 # 22. Patterns
 
-<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [6. Tuples, enums, aliases, unions](../spec.html#s6)</div>
+<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html?from=19-patterns#s8), [6. Tuples, enums, aliases, unions](../spec.html?from=19-patterns#s6)</div>
 
 A *pattern* describes the shape of a value and names its parts at the same time. You have used the simplest ones already: `Some(v)` in a `when`, `List(head, ...tail)`, and `a, b = ...` in a binding. This lesson collects them, because the same patterns work everywhere a value is taken apart.
 

@@ -5,7 +5,7 @@ title: "Your first program · Mixer’s Guide moxie"
 ---
 # 2. Your first program
 
-<div class='specref' markdown='1'>In the Spec: [1. Source, blocks, bindings](../spec.html#s1)</div>
+<div class='specref' markdown='1'>In the Spec: [1. Source, blocks, bindings](../spec.html?from=02-first-program#s1)</div>
 
 A moxie program is a file of statements. The interpreter reads them from the top, in order, and the top of the file you run behaves like the body of a function named `main`: you do not write `main` yourself, and there is no boilerplate. The smallest program is one line:
 

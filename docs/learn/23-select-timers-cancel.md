@@ -5,7 +5,7 @@ title: "Waiting on several things: select, timers, and cancelling · Mixer’s G
 ---
 # 29. Waiting on several things: select, timers, and cancelling
 
-<div class='specref' markdown='1'>In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)</div>
+<div class='specref' markdown='1'>In the Spec: [17. Atoms, futures, channels, timers](../spec.html?from=23-select-timers-cancel#s17)</div>
 
 A fiber often has to wait for more than one thing: a message from a worker, or a timeout; input from one channel or another. `select` waits on several at once and runs the arm for whichever is ready.
 

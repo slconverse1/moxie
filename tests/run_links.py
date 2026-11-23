@@ -22,7 +22,7 @@ for d, spec in (("docs", "docs/spec.md"), ("docs/gc", "docs/gc/spec.md")):
     pages = [f for f in os.listdir(os.path.join(ROOT, d, "learn")) if f.endswith(".md") and f != "index.md"]
     bad = []
     for f in pages:
-        for sid in re.findall(r"\(\.\./spec\.html#(s\w+)\)", open(os.path.join(ROOT, d, "learn", f)).read()):
+        for sid in re.findall(r"\(\.\./spec\.html(?:\?from=[\w-]+)?#(s\w+)\)", open(os.path.join(ROOT, d, "learn", f)).read()):
             if sid not in ids: bad.append((f, sid))
     chk(f"{d}/learn: Spec links resolve", bad == [])
     stale = [f for f in pages if "In the Spec:" not in open(os.path.join(ROOT, d, "learn", f)).read()]

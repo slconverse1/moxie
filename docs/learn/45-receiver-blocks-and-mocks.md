@@ -5,7 +5,7 @@ title: "Receiver blocks, interface composition, and mocks · Mixer’s Guide mox
 ---
 # 55. Receiver blocks, interface composition, and mocks
 
-<div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html#s9b), [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
+<div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html?from=45-receiver-blocks-and-mocks#s9b), [12. Interfaces and `impl` blocks](../spec.html?from=45-receiver-blocks-and-mocks#s12)</div>
 
 Lesson 24 introduced methods and interfaces. This lesson adds the tools you reach for as programs grow: blocks that run with a value as their receiver, interfaces built from other interfaces, interfaces that require a field, and swapping a real service for a fake one in a test.
 

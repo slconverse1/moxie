@@ -5,7 +5,7 @@ title: "Calling C · Mixer’s Guide moxie"
 ---
 # 62. Calling C
 
-<div class='specref' markdown='1'>In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html#s19a)</div>
+<div class='specref' markdown='1'>In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html?from=54-calling-c#s19a)</div>
 
 Most programs never need this lesson. When one does, a library written in C already exists and rewriting it would be a waste, so moxie lets you declare its functions and call them. Because the compiler can't look inside C, a foreign declaration is something *you* promise, and the rest of the language keeps its checks around it.
 

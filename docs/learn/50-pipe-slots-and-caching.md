@@ -5,7 +5,7 @@ title: "Pipe slots, `seq`, and doing work once · Mixer’s Guide moxie"
 ---
 # 27. Pipe slots, `seq`, and doing work once
 
-<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13), [14. Caching, memoization, and effects](../spec.html#s14)</div>
+<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html?from=50-pipe-slots-and-caching#s13), [14. Caching, memoization, and effects](../spec.html?from=50-pipe-slots-and-caching#s14)</div>
 
 Lesson 25 used `|>` to run values through stages. This lesson looks at how a pipe decides where the value goes, adds the `seq` block, and then turns to the opposite problem: doing an expensive step only once. Moxie never caches behind your back, so each way of reusing work is something you write on purpose.
 

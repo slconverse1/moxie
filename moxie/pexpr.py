@@ -82,8 +82,22 @@ def split_sql(text, parser):
     return [p for p in out if p != ""]
 
 
-def ph_lambda(body, line):
+def has_bare_ph(e):
+    if isinstance(e, PH):
+        return bool(e.bare)
+    if isinstance(e, Lambda):
+        return False
+    if isinstance(e, N):
+        return any(has_bare_ph(getattr(e, f, None)) for f in e._fields)
+    if isinstance(e, (list, tuple)):
+        return any(has_bare_ph(x) for x in e)
+    return False
+
+
+def ph_lambda(body, line, file="<input>"):
     n = max(1, max_ph(body))
+    if n >= 2 and has_bare_ph(body):
+        raise MoxieSyntaxError("a bare `_` stands for the only parameter, so it can't be mixed with `_2` or higher: number every placeholder (`_1 + _2 + _1`)", line, 0, file)
     params = [Param(None, f"_{i}", None, None, None, False, line=line) for i in range(1, n + 1)]
     return Lambda(params, body, None, None, None, line=line)
 
@@ -493,7 +507,7 @@ class ExprParser(PBase):
             if t.kind == "OP" and t.val == "->":
                 self.next()
                 body = self.parse_lambda_body()
-                call.trailing = ph_lambda(body, line)
+                call.trailing = ph_lambda(body, line, self.file)
                 continue
             break
         if call.__class__ is Call and not self.no_trailing and call.trailing is None and self.at_block() and not self.trailing_if_block():
@@ -838,7 +852,7 @@ class ExprParser(PBase):
                 if isinstance(a.expr, PH):
                     partial = True
                 else:
-                    a = Arg(a.label, ph_lambda(a.expr, a.line), a.mod, line=a.line)
+                    a = Arg(a.label, ph_lambda(a.expr, a.line, self.file), a.mod, line=a.line)
             new_args.append(a)
         # `shared.on_change(balance, h)` and `on_change(shared, balance, h)`: the property is named by a bare name
         if fn.__class__ is Field and fn.name == "on_change" and len(new_args) == 2 and new_args[0].label is None \
@@ -851,7 +865,7 @@ class ExprParser(PBase):
             new_args[1] = Arg(None, StrLit([new_args[1].expr.name], line=line), None, line=line)
         call = Call(fn, new_args, None, line=line)
         if partial:
-            lam = ph_lambda(call, line)
+            lam = ph_lambda(call, line, self.file)
             lam.partial = True
             return lam
         return call
@@ -1067,7 +1081,7 @@ class ExprParser(PBase):
             self.err(f"`gimme.N.name` is now written `name@N`: write `{nm}@{self.peek(2).val}`")
         if v == "_":
             self.next()
-            return PH(1, line=line)
+            return PH(1, True, line=line)
         if v[0] == "_" and len(v) > 1 and v[1:].isdigit():
             self.next()
             return PH(int(v[1:]), line=line)
@@ -1394,6 +1408,13 @@ class ExprParser(PBase):
             pass
         elif t.kind in ("DEDENT", "EOF"):
             pass
+        elif t.kind == "NAME" and t.val == "if":
+            k = self.p + 1
+            while k < len(self.toks) and self.toks[k].kind not in ("NL", "EOF", "DEDENT"):
+                if self.toks[k].kind == "NAME" and self.toks[k].val == "else":
+                    self.err("`a if c else b` is Python's order: write `if c then a else b`", t)
+                k += 1
+            self.err("a trailing `if` is only for a statement that has no value, such as a call: a value that is bound or returned needs both outcomes, so write `if c then a else b`", t)
         else:
             self.err(f"unexpected {self.describe(t)}")
 

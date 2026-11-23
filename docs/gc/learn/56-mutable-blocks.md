@@ -6,7 +6,7 @@ title: "In-place algorithms: `mutable` blocks · Mixer’s Guide moxie/gc"
 ---
 # 19. In-place algorithms: `mutable` blocks
 
-<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3)</div>
+<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html?from=56-mutable-blocks#s3)</div>
 
 Moxie values never change, and a loop's rebindings don't leave the loop. For most code that is a gain. A few algorithms, though, are most naturally written as *loops that write into an array*: sorting, prefix sums, a sieve, union-find. A `mutable` block gives those algorithms the shape they want without giving up what moxie promises from outside.
 

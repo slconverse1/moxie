@@ -32,6 +32,8 @@ nav a.here:hover{text-decoration:none}
 #toc li.back{margin-bottom:2px}
 #toc li.gap{margin-top:10px;border-top:1px solid var(--line)}#to-top{position:fixed;right:16px;bottom:16px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--accent);font-size:14px;font-weight:600;text-decoration:none;box-shadow:0 1px 4px rgba(0,0,0,.15);opacity:0;pointer-events:none;transition:opacity .15s}
 #to-top.show{opacity:1;pointer-events:auto}
+#backbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:7px 0;font-size:15px;font-weight:600}
+#backbar[hidden]{display:none}
 .page{display:block}
 #toc{display:none}
 #toc ul{list-style:none;margin:0;padding:0}
@@ -71,6 +73,7 @@ nav a.here:hover{text-decoration:none}
 <div class="page">
 {% if page.toc or page.learn %}<aside id="toc" aria-label="Contents">{% if page.learn %}{% if page.dialect == 'gc' %}{% include learn-nav-gc.html %}{% else %}{% include learn-nav.html %}{% endif %}{% endif %}</aside>{% endif %}
 <main>
+{% if page.toc %}<div id="backbar" hidden></div>{% endif %}
 {% if page.toc or page.learn %}<details id="toc-small"><summary>Contents</summary></details>{% endif %}
 {{ content }}
 </main>
@@ -84,6 +87,16 @@ nav a.here:hover{text-decoration:none}
     var onscroll = function () { top.classList.toggle('show', window.scrollY > 900); };
     window.addEventListener('scroll', onscroll, { passive: true }); onscroll();
   }
+})();
+(function () {                               // arrived from a lesson: a way back to it
+  var bar = document.getElementById('backbar'), m = location.search.match(/[?&]from=([\w-]+)/);
+  if (!bar || !m) return;
+  var a = document.querySelector('main a[href$="learn/' + m[1] + '.html"]');
+  if (!a) return;
+  var back = document.createElement('a');
+  back.href = a.href; back.textContent = '\u2190 Back to ' + a.textContent;
+  bar.appendChild(back); bar.hidden = false;
+  a.style.fontWeight = '700';
 })();
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');

@@ -51,7 +51,7 @@ def _defs():
         "UnitLit": "",
         # names
         "Name": "name",
-        "PH": "idx",               # _ or _1 _2 ... placeholder
+        "PH": "idx bare",               # _ or _1 _2 ... placeholder
         "Slot": "",                # & in a pipe call
         "Gimme": "n name",
         "Carry": "items",          # first line of a block: `total, count@1, x@lap`: local copies of outer bindings; items: list of Gimme (n is None for the nearest)

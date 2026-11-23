@@ -7030,6 +7030,11 @@ class Checker(RefineMixin):
         if any(not hasattr(a, "expr") or getattr(a, "label", None) or getattr(a, "mod", None) for a in args):
             return None
         arg = args[0]
+        if f.__class__ is StrLit and all(isinstance(q, str) for q in f.parts) and args[0].expr.__class__ is RangeE:
+            bs = "".join(f.parts).encode("utf-8")                  # a cut in a literal must fall between characters too
+            for b_ in (args[0].expr.lo, args[0].expr.hi):
+                if b_.__class__ is IntLit and 0 < b_.v < len(bs) and (bs[b_.v] & 0xC0) == 0x80:
+                    self.err(getattr(b_, "line", 0) or self.cur_line, f"the cut at byte {b_.v} falls inside a multi-byte character of this text")
         if f.__class__ is Name:
             v = sc.find(f.name)
             ct = v.ty if v is not None else None

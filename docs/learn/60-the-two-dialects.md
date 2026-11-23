@@ -5,7 +5,7 @@ title: "Moxie and moxie/gc side by side · Mixer’s Guide moxie"
 ---
 # 64. Moxie and moxie/gc side by side
 
-<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)</div>
+<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html?from=60-the-two-dialects#s3), [24a. Departures from compile-time type safety](../spec.html?from=60-the-two-dialects#s24a)</div>
 
 You are reading the GC-free guide. moxie has a second dialect, moxie/gc, that keeps the same language and swaps the memory model: one shared heap with a generational collector instead of sizes worked out ahead of time. This lesson lists what changes, with a short example of each, so you can read code written for either dialect. Every example below also runs in moxie/gc, and the guide for that dialect shows the other column.
 

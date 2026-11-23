@@ -6,7 +6,7 @@ title: "Properties, field delegates, and proxies · Mixer’s Guide moxie/gc"
 ---
 # 58. Properties, field delegates, and proxies
 
-<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
+<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html?from=48-properties-delegates-proxies#s12)</div>
 
 Three features let a field do more than hold a value. A *property* runs code when it is read or written. A *field delegate* adds the same behavior to many fields. A *proxy* hands a whole interface to a field, so a type does everything the field does except what you override.
 

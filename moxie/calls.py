@@ -830,9 +830,14 @@ class CallsMixin:
             b = coll.encode("utf-8")
             if isinstance(i, RangeV):
                 if i.explicit and i.step != 1:
-                    return bytes(b[k] for k in i.indices(len(b), line)).decode("utf-8", errors="replace")
-                s, e = self.slice_bounds(i, len(b), line)
-                return b[s:e].decode("utf-8", errors="replace")
+                    cut = bytes(b[k] for k in i.indices(len(b), line))
+                else:
+                    s, e = self.slice_bounds(i, len(b), line)
+                    cut = b[s:e]
+                try:
+                    return cut.decode("utf-8")
+                except UnicodeDecodeError:
+                    raise Abort("the slice cuts a multi-byte character in half (text slices count bytes)", line)
             if i < 0 or i >= len(b):
                 raise Abort(f"index {i} out of range", line)
             return INT_CLASSES["Byte"](b[i])

@@ -5,7 +5,7 @@ title: "Templates and locales · Mixer’s Guide moxie"
 ---
 # 7. Templates and locales
 
-<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e)</div>
+<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html?from=59-fmt-and-locales#s5), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html?from=59-fmt-and-locales#s19e)</div>
 
 Lesson 6 introduced format specs inside interpolation, `${price:.2f}`. This lesson covers the other ways to put values into text: a template written apart from its values, a template loaded at run time, and numbers and dates written the way a particular place writes them.
 

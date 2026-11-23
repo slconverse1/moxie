@@ -6,7 +6,7 @@ title: "Tagless final: one program, many interpreters · Mixer’s Guide moxie/g
 ---
 # 49. Tagless final: one program, many interpreters
 
-<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12), [23. Functional programming support](../spec.html#s23)</div>
+<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html?from=40-tagless-final#s12), [23. Functional programming support](../spec.html?from=40-tagless-final#s23)</div>
 
 Suppose you are writing a tiny language of sums (numbers, `+`, negation) and want to run it, print it, and later do more with it. The usual way is a data type (an `enum`) and one function per job that takes it apart with `when`. **Tagless final** turns that around: you write the language as an *interface*, and a program in it is a generic function that builds its result using the interface's functions. An interpreter is a type that implements the interface, so choosing the interpreter is choosing a type argument, and no tree is built at all.
 

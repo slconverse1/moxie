@@ -5,7 +5,7 @@ title: "Anonymous functions and closures · Mixer’s Guide moxie"
 ---
 # 11. Anonymous functions and closures
 
-<div class='specref' markdown='1'>In the Spec: [11. Closures and first-class functions](../spec.html#s11)</div>
+<div class='specref' markdown='1'>In the Spec: [11. Closures and first-class functions](../spec.html?from=09-lambdas-and-closures#s11)</div>
 
 A function doesn't need a name. An *anonymous function*, which many languages call a lambda, is written `(parameters) -> body`. In these lessons the two words mean the same thing. What makes it anonymous is the missing name, not its size.
 

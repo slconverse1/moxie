@@ -6,7 +6,7 @@ title: "JSON and data from outside · Mixer’s Guide moxie/gc"
 ---
 # 39. JSON and data from outside
 
-<div class='specref' markdown='1'>In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html#s23c), [15. Errors and Results](../spec.html#s15)</div>
+<div class='specref' markdown='1'>In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html?from=30-json#s23c), [15. Errors and Results](../spec.html?from=30-json#s15)</div>
 
 Data from outside a program, such as a configuration file or a web response, has a shape the program doesn't know until it arrives. Moxie doesn't look inside your types at run time (there is no reflection), so the standard `json` package gives you an ordinary, closed type for such data. This lesson shows how to read it, how to write it, and how to turn it into your own types and back.
 
