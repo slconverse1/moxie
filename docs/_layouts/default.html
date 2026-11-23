@@ -210,7 +210,7 @@ nav a.here:hover{text-decoration:none}
   var ul = side.querySelector('ul:not(.trail)');
   if (!ul) {                                  // a page without a prebuilt list: the outline is its section headings
     var hs = document.querySelectorAll('main h2[id]');
-    if (!hs.length) { side.style.display = 'none'; small.style.display = 'none'; return; }
+    if (!hs.length) return;                     // no outline; the History block stays
     ul = document.createElement('ul');
     hs.forEach(function (h) {
       var li = document.createElement('li'), a = document.createElement('a');
