@@ -99,8 +99,7 @@ def build(gc):
     flat = [(p, s, t, txt) for p, ls in parts for (s, t, txt) in ls]
     dia = ("dialect: gc\n" if gc else "") + "learn: true\n"
     # the sidebar: one list per dialect, in docs/_includes, shared by every lesson page
-    nav = ["<ul>", '<li class="back"><a href="../spec.html">← Spec</a></li>', '<li class="back"><a href="../tutorial.html">← Tutorial</a></li>',
-           '<li class="back"><a href="../">← Home</a></li>', '<li class="gap"></li>']
+    nav = ["<ul>"]
     k = 0
     for p, ls in parts:
         nav.append(f'<li class="part">{p}</li>')
