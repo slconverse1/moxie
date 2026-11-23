@@ -34,6 +34,9 @@ nav a.here:hover{text-decoration:none}
 #to-top.show{opacity:1;pointer-events:auto}
 #backbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:7px 0;font-size:15px;font-weight:600}
 #backbar[hidden]{display:none}
+#toc .hist{display:block;padding:3px 8px;margin-bottom:8px;font-weight:600;color:var(--accent);text-decoration:none}
+.hist.off{color:var(--muted);pointer-events:none;opacity:.5}
+@media (min-width:1100px){#backbar{display:none}}
 .page{display:block}
 #toc{display:none}
 #toc ul{list-style:none;margin:0;padding:0}
@@ -73,7 +76,7 @@ nav a.here:hover{text-decoration:none}
 <div class="page">
 {% if page.toc or page.learn %}<aside id="toc" aria-label="Contents">{% if page.learn %}{% if page.dialect == 'gc' %}{% include learn-nav-gc.html %}{% else %}{% include learn-nav.html %}{% endif %}{% endif %}</aside>{% endif %}
 <main>
-{% if page.toc %}<div id="backbar" hidden></div>{% endif %}
+{% if page.toc or page.learn %}<div id="backbar" hidden></div>{% endif %}
 {% if page.toc or page.learn %}<details id="toc-small"><summary>Contents</summary></details>{% endif %}
 {{ content }}
 </main>
@@ -88,23 +91,31 @@ nav a.here:hover{text-decoration:none}
     window.addEventListener('scroll', onscroll, { passive: true }); onscroll();
   }
 })();
-(function () {                               // arrived from a lesson: a way back to it
-  var bar = document.getElementById('backbar'), m = location.search.match(/[?&]from=([\w-]+)/);
-  if (!bar || !m) return;
-  var a = document.querySelector('main a[href$="learn/' + m[1] + '.html"]');
-  if (!a) return;
-  var back = document.createElement('a');
-  back.href = a.href; back.textContent = '\u2190 Back to ' + a.textContent;
-  // go back through history to the lesson, so it opens where you left it; the Spec's own jumps (outline, links) count as steps
+(function () {                               // the history link: always there, so the sidebar does not move
+  var bar = document.getElementById('backbar'), side = document.getElementById('toc');
+  var m = location.search.match(/[?&]from=([\w-]+)/);
+  var lesson = m && document.querySelector('main a[href$="learn/' + m[1] + '.html"]');
+  var label = lesson ? '\u2190 Back to ' + lesson.textContent : '\u2190 Back';
   var visited = [location.href], ref = document.referrer.split('#')[0].split('?')[0];
   window.addEventListener('hashchange', function (e) {
     if (visited.length > 1 && visited[visited.length - 2] === e.newURL) visited.pop(); else visited.push(e.newURL);
   });
-  back.addEventListener('click', function (e) {
-    if (ref && ref === a.href.split('#')[0] && history.length > visited.length) { e.preventDefault(); history.go(-visited.length); }
+  var links = [];
+  [side, bar].forEach(function (host) {
+    if (!host) return;
+    var a = document.createElement('a');
+    a.className = 'hist'; a.href = lesson ? lesson.href : '#'; a.textContent = label;
+    a.addEventListener('click', function (e) {
+      // go back through history, so the page opens where you left it; the page's own jumps (outline, links) count as steps
+      if (history.length > visited.length && (!lesson || ref === lesson.href.split('#')[0])) { e.preventDefault(); history.go(-visited.length); }
+      else if (!lesson) e.preventDefault();
+    });
+    if (host === side) host.insertBefore(a, host.firstChild); else host.appendChild(a);
+    links.push(a);
   });
-  bar.appendChild(back); bar.hidden = false;
-  a.style.fontWeight = '700';
+  if (lesson) lesson.style.fontWeight = '700';
+  if (!lesson && history.length <= 1) links.forEach(function (a) { a.classList.add('off'); });
+  if (bar) bar.hidden = false;
 })();
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
