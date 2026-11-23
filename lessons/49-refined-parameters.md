@@ -20,7 +20,7 @@ println(last_or(List(), 7))
 7
 ```
 
-Each call to `get` has to be *proved*. In `first_or`, the test `len(xs) > 0` is enough to show that index `0` is in range. In `last_or`, `n` is bound to `len(xs)`, so `n - 1` is in range when `n > 0`. Remove either test and the call is a compile error that shows the condition it couldn't prove.
+Each call to `get` has to be *proved*. In `first_or`, the test `len(xs) > 0` is enough to show that index `0` is in range. In `last_or`, `n` is bound to `len(xs)`, so `n - 1` is in range when `n > 0`. Remove either test and the checker can no longer prove the call: it compiles with a note that shows the condition it couldn't prove, and the condition is checked when the program runs (with `prove = true`, below, it is an error).
 
 The checker uses what it can see: the function's own `where` clauses, the tests of an `if`/`elif`/`else`, an early `return ... if`, the range of `for i in 0..<len(xs)`, a name bound once to a sum or difference, constants, and the range of a bounded integer (`k Int[1..10]`). It reasons about whole numbers with `+`, `-`, a constant factor, and comparisons, and it is exact for those. Anything else, such as a product of two variables, is "unknown": the checker can neither prove the condition nor show that it fails. An unknown call still compiles, with a note, and the same condition is checked when the program runs, so a bad value stops the program and names the caller. Write `[contracts]` then `prove = true` in `Moxie.toml` (or pass `--prove`) to make every unknown an error instead: check it first, or give the caller the same `where`.
 
@@ -71,7 +71,7 @@ println(f(List(1, 2), 1))
 
 A call `f(List(1, 2), 5)` here would abort with `precondition failed in pick`, naming the caller as the bug.
 
-Mistakes: calling a refined function with no test in front of it, testing only half of a condition (`i >= 0` for `i >= 0 and i < len(xs)`), changing the name between the test and the call (`i = 7`), putting a float or a string in a `where` the solver can't read (only integer comparisons are proved), and expecting a `where` on a `ref` parameter (it is checked at run time only).
+What leaves a call unproved (and so only checked at run time): calling a refined function with no test in front of it, testing only half of a condition (`i >= 0` for `i >= 0 and i < len(xs)`), changing the name between the test and the call (`i = 7`), putting a float or a string in a `where` the solver can't read (only integer comparisons are proved), and expecting a `where` on a `ref` parameter (it is checked at run time only).
 
 ## Refined aliases
 
@@ -104,7 +104,7 @@ A parameter declared `n Pos` means `n Int where n > 0`, nothing more, so every c
 - A `List[Pos]` (or `Array`, `Set`, `Dict` values) is checked element by element when the program runs; that check is not proved at compile time.
 - An alias can be exported from a package (`export type Pos = Int where self > 0`) and used as `lib.Pos` after `import lib`, or as `Pos` after `import lib(Pos)`, provided its condition uses only `self` and literals.
 
-Mistakes: `half(k)` for a plain `Int` `k` with no test first, and `x Pos = n` for an unchecked `n`.
+Left unproved (so only checked at run time): `half(k)` for a plain `Int` `k` with no test first, and `x Pos = n` for an unchecked `n`.
 
 ```moxie
 type Pos = Int where self > 0
@@ -131,7 +131,7 @@ Account(balance: 40, name: "ann")
 
 ## What to remember
 
-- `fn f(x Int where x > 0)` puts a condition in the signature; every call must prove it, or fail to compile.
+- `fn f(x Int where x > 0)` puts a condition in the signature; the checker tries to prove it at every call, and refuses a call it can see is wrong.
 - The checker proves what it can from tests, ranges, and bounded types; unknown compiles with a note and is checked at run time, unless `prove = true` makes it an error.
 - The condition is kept as a run-time precondition, so calls through function values are still checked at run time.
 - `type Pos = Int where self > 0` names a condition; parameters, bindings, results, and fields declared with it are all checked.

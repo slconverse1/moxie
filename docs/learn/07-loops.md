@@ -317,7 +317,7 @@ println(first_square_over(50))
 error: `n` is changed inside the loop (line 4) only for the loop's own condition, so here it still has its old value: write `n@1` in the loop to change this one, or give it back with `else n`
 ```
 
-Moxie has no `forEach`, `map` loop statement, or `do ... while`. A `for` with `continue` covers the first, streams cover the second, and a `for true` with a `break` covers the third. Streams and their pipelines get a lesson of their own.
+Moxie has no `forEach`, `map` loop statement, or `do ... while`. A plain `for` covers the first, streams cover the second, and a `for true` with a `break` covers the third. Streams and their pipelines get a lesson of their own.
 
 ---
 

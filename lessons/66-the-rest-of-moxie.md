@@ -1,6 +1,6 @@
 # …moxie: the rest of the moxie toolbox
 
-The earlier lessons teach the language by topic. This page gathers the small things they skipped: a few more numeric functions, some stream and `Result` helpers, a handful of resource and library calls. Nothing here is needed to read the rest of the guide, and you can come back to any of it when a program asks for it. Each section ends with the lesson that covers its neighbourhood.
+The earlier lessons teach the language by topic. This page gathers the small things they skipped: a few more numeric functions, some stream and `Result` helpers, a handful of resource and library calls. Nothing here is needed to read the rest of the guide, and you can come back to any of it when a program asks for it. Most sections point to the lesson that covers their neighbourhood.
 
 ## Numbers that check themselves
 
