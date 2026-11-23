@@ -56,6 +56,8 @@ with `hello.mxi` saved next to the `moxie` folder. To run moxie from any folder,
 
 **Windows.** Not yet tested. In principle it should work: install Python 3.11 or later from python.org, unzip `moxie.zip`, and run `py -m moxie run hello.mxi` from that folder in PowerShell. The `curl` and `alias` steps above are Unix shell commands and won't carry over, and native-library examples would need Windows DLLs.
 
+**Editors.** Moxie files end in `.mxi`. The repository (way 3 above) has a `tools/editor` folder with two ready-made setups. **vim and neovim:** syntax colors, `.mxi` detection and 2-space indent; copy the `syntax`, `ftdetect` and `ftplugin` folders into `~/.vim/` (or `~/.config/nvim/`). **VS Code:** an extension with syntax highlighting, plus errors and warnings as you type, Format Document (the `moxie fmt` layout) and an outline, from the moxie language server. That server is `python3 -m moxie lsp`, which speaks the Language Server Protocol, so any editor with an LSP client (Neovim, Emacs, Helix, Sublime Text with a plugin) can use it, and the VS Code grammar file also works in Sublime Text and TextMate. Not yet: hover types, completion and go to definition. Both setups are tested only against the language server itself, not in a live editor, so treat them as a starting point.
+
 Everything above runs moxie, the GC-free dialect. To run [moxie/gc](gc/) instead, add `--gc` on the command line: `python3 -m moxie --gc run hello.mxi`.
 
 The [Tutorial](tutorial.html) builds one program step by step and assumes you have it running.
@@ -66,11 +68,9 @@ Regrettably, moxie doesn't have a real compiler yet. Sorry, guys! What it does h
 
 The interpreter runs moxie programs, including the examples in the Mixer’s Guide, and it catches many mistakes before a program runs, such as mismatched types, non-exhaustive `when`s, and use-after-move. It's not the compiler, though. The things only a compiler can prove, like the GC-free memory model and the speed in FCFX, are still promises, not demonstrations.
 
-Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But moxie is still worth a look or two (the GC-free, 1-pass compiler constraint on moxie’s design is especially informative), and its promises should be kept in a real programming language.
+Of course, we're not true language designers. We're no Simon Peyton Jones, no Yukihiro Matsumoto, no Martin Odersky, no Guido van Rossum, not even close. But moxie is still worth a look (the GC-free, 1-pass compiler constraint on moxie’s design is especially informative), and its promises should be kept in a real programming language.
 
-ASAP!
-
-In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers,” its life force. Alongside this page you'll find the Moxie Spec, the Mixer’s Guide, the reference interpreter, and a set of sample programs. The interpreter is plain Python 3, so to run a sample you unzip it and type `python3 -m moxie run hello.mxi`.
+In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers”—its life force. Alongside this page you'll find the Moxie Spec, the Mixer’s Guide, the reference interpreter, and a set of sample programs. The interpreter is plain Python 3, so to run a sample you unzip moxie.zip and type `python3 -m moxie run hello.mxi`.
 
 ## A moxie appetizer
 
@@ -239,14 +239,14 @@ println("${add5(10)} ${apply_curried(add_curried, 3, 4)}")
 
 Output: `15 7`. Read `make_adder(n Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic currying, written out by hand, which is what the prelude's `curry` does for you.
 
-## Call by value, name, need, and reference
+## Call by value, reference, name, and need
 
 A function has four ways to receive an argument, and moxie supports most of them:
 
 - **By value** is the default. The argument is evaluated once, before the call, and the function gets its own value. Nothing it does can change your variable.
+- **By reference** is for a parameter marked `ref`. Despite the name, it isn't a shared pointer. The function gets a copy, may rebind it, and when the function returns, the final value is copied back into the caller's variable. Both sides say so: the parameter is declared with `ref`, and the caller writes `ref` in front of the variable, so a change to your variable is always visible at the call. A `ref` parameter the function never changes draws a compiler warning, and `ref` can't be combined with `lazy`.
 - **By name** is for a parameter marked `lazy`. The argument isn't evaluated before the call. It's evaluated each time the function reads the parameter, and never if the function never reads it. That makes `lazy` the right tool for a fallback value or an expensive default that's needed only sometimes. A lazy argument can't contain a `ref`.
 - **By need** is by name with a cache, so the argument is evaluated at most once. Moxie doesn't build this in, since nothing is cached for you. If you want it, read the lazy parameter once, bind the result to a name, and use that name.
-- **By reference** is for a parameter marked `ref`. Despite the name, it isn't a shared pointer. The function gets a copy, may rebind it, and when the function returns, the final value is copied back into the caller's variable. Both sides say so: the parameter is declared with `ref`, and the caller writes `ref` in front of the variable, so a change to your variable is always visible at the call. A `ref` parameter the function never changes draws a compiler warning, and `ref` can't be combined with `lazy`.
 
 ## Avoiding the pyramid of doom
 
@@ -538,6 +538,8 @@ This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds
 
 # Moxie's Superpowers
 
+## Moxie Superpowers
+
 What follows is a list of moxie's "superpowers" which, as I see it, run roughly from least to greatest. So here goes:
 
 ## 1. Legacy code
@@ -548,7 +550,7 @@ Of which there's none, so backward compatibility isn't an issue. Made from scrat
 
 Any moxie file can hold executable statements at its top level. There's no `main` to write and no wrapper to put around your code, so the appetizer above is a complete program as it stands.
 
-The Manifest is a small `Moxie.toml` file that sits beside your source files. Here is one for a program made of two files:
+The Manifest is a small `Moxie.toml` file that sits beside your source files. Here’s one for a program made of two files:
 
 ```
 name = "app"
@@ -572,13 +574,13 @@ The values here are only examples. The `limit` is a default for each fiber funct
 
 ## 3. What moxie is built for
 
-Moxie is a general language, but four kinds of application come with the language itself, so you start with a toolbox instead of a shopping list.
+Moxie is a general language, but four kinds of applications come with the language itself, so you start with a toolbox instead of a shopping list.
 
 **Typeclasses and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
 
 **SQL databases.** See the [Mixer’s Guide](learn/).
 
-**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It is not a numeric toolkit. See the [Mixer’s Guide](learn/).
+**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It’s not a numeric toolkit. See the [Mixer’s Guide](learn/).
 
 **HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Mixer’s Guide](learn/). Sockets and their permissions are in superpower 23.
 
@@ -1291,7 +1293,7 @@ Output: `102334155`, instantly. Without the table the same recursion makes over 
 
 ## 17. Generics
 
-Go shipped without generics in 2009 and didn't get them until version 1.18, in 2022. A language can survive without them for a while, but it pays in copy-and-paste code and `any`-typed escape hatches. Moxie has them from the start, and the interesting part is how they say what a type must be able to do.
+A language can survive without generics for a while, but it pays in copy-and-paste code and `any`-typed escape hatches. Moxie has them from the start, and the interesting part is how they say what a type must be able to do.
 
 A generic declaration lists its type parameters in square brackets, ahead of the ordinary parameters in parentheses. The compiler works the types out from the arguments, so you rarely write them at a call:
 

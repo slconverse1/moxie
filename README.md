@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+One history for the text window: swipe left or right on the text, or press the left and right arrow keys (hold to speed through), to step through the intro, guide and spec pages you have visited, up to 50 per site, kept separately for moxie and moxie/gc. The contents area now holds only the moxie / moxie/gc toggle, the menu bar and contents bar are pinned, and on narrow screens the menu bar has arrows to show its ends. In the moxie/gc intro, `[gc]` text is marked by a red line in the right margin. Intro edits: Moxie Superpowers entry in the contents, an Editors paragraph, call by value, reference, name, and need.
+
 A site-wide History: a moxie / moxie/gc toggle, then three trails (Intro, Mixer’s Guide, Spec) each with its own back and forward arrows, kept separately for each site. Spec now follows the Mixer’s Guide in the menu bar, and Tutorial sits with Style outside History. Guide titles read "Moxie Mixer’s Guide".
 
 A name bound with `=` may start with a capital letter and is an ordinary value (`MAXN = 5`, then `println(MAXN)`); only a declared enum case reads as a pattern. Before, a capitalized binding worked only in sizes.
