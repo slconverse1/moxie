@@ -37,7 +37,7 @@ nav a.here:hover{text-decoration:none}
 #toc .hist{display:block;padding:3px 8px;margin-bottom:2px;font-weight:600;color:var(--accent);text-decoration:none}
 #toc ul.trail{margin:0 0 10px}
 #toc ul.trail a{font-size:13px;padding:2px 8px 2px 18px;color:var(--muted)}
-.hist.off{color:var(--muted);pointer-events:none;opacity:.5}
+#toc ul.trail li.now{padding:2px 8px 2px 18px;font-size:13px;font-weight:700;color:var(--ink)}
 @media (min-width:1100px){#backbar{display:none}}
 .page{display:block}
 #toc{display:none}
@@ -93,48 +93,54 @@ nav a.here:hover{text-decoration:none}
     window.addEventListener('scroll', onscroll, { passive: true }); onscroll();
   }
 })();
-(function () {                               // the history link: always there, so the sidebar does not move
+(function () {                               // History: the pages visited in this tab, with Back and Forward where there is somewhere to go
   var bar = document.getElementById('backbar'), side = document.getElementById('toc');
   var m = location.search.match(/[?&]from=([\w-]+)/);
   var lesson = m && document.querySelector('main a[href$="learn/' + m[1] + '.html"]');
-  var label = lesson ? '\u2190 Back to ' + lesson.textContent : '\u2190 Back';
-  var visited = [location.href], ref = document.referrer.split('#')[0].split('?')[0];
-  window.addEventListener('hashchange', function (e) {
-    if (visited.length > 1 && visited[visited.length - 2] === e.newURL) visited.pop(); else visited.push(e.newURL);
-  });
-  var links = [];
-  [side, bar].forEach(function (host) {
-    if (!host) return;
-    var a = document.createElement('a');
-    a.className = 'hist'; a.href = lesson ? lesson.href : '#'; a.textContent = label;
-    a.addEventListener('click', function (e) {
-      // go back through history, so the page opens where you left it; the page's own jumps (outline, links) count as steps
-      if (history.length > visited.length && (!lesson || ref === lesson.href.split('#')[0])) { e.preventDefault(); history.go(-visited.length); }
-      else if (!lesson) e.preventDefault();
-    });
-    if (host === side) {
-      var head = document.createElement('div'); head.className = 'part'; head.textContent = 'History';
-      host.insertBefore(a, host.firstChild); host.insertBefore(head, a);
-    } else host.appendChild(a);
-    links.push(a);
-  });
-  try {                                       // the pages visited in this tab, newest first
-    var trail = JSON.parse(sessionStorage.getItem('moxie-trail') || '[]');
-    var here = { u: location.pathname, t: document.title.replace(/ \u00b7 .*$/, '') };
-    if (!trail.length || trail[0].u !== here.u) { trail.unshift(here); trail = trail.slice(0, 7); sessionStorage.setItem('moxie-trail', JSON.stringify(trail)); }
-    if (side && trail.length > 1) {
-      var ul = document.createElement('ul'); ul.className = 'trail';
-      trail.slice(1).forEach(function (x) {
-        var li = document.createElement('li'), l = document.createElement('a');
-        l.href = x.u; l.textContent = x.t; li.appendChild(l); ul.appendChild(li);
-      });
-      var first = side.querySelector('.hist');
-      first.parentNode.insertBefore(ul, first.nextSibling);
-    }
-  } catch (err) {}
   if (lesson) lesson.style.fontWeight = '700';
-  if (!lesson && history.length <= 1) links.forEach(function (a) { a.classList.add('off'); });
-  if (bar) bar.hidden = false;
+  var st = { list: [], idx: -1 };
+  try { st = JSON.parse(sessionStorage.getItem('moxie-history') || 'null') || st; } catch (e) {}
+  var path = location.pathname, here = { u: path + location.search + location.hash, t: document.title.replace(/ · .*$/, ''), y: 0 };
+  var same = function (e) { return e && e.u.split(/[?#]/)[0] === path; };
+  var go = null, nav = '';
+  try { go = sessionStorage.getItem('moxie-go'); sessionStorage.removeItem('moxie-go'); nav = performance.getEntriesByType('navigation')[0].type; } catch (e) {}
+  if (go !== null && st.list[+go]) { st.idx = +go; if (st.list[st.idx].y) { var y0 = st.list[st.idx].y; window.addEventListener('load', function () { window.scrollTo(0, y0); }); } }
+  else if (same(st.list[st.idx])) { /* the same page: a reload, or a jump inside it */ }
+  else if (nav === 'back_forward' && same(st.list[st.idx - 1])) st.idx -= 1;
+  else if (nav === 'back_forward' && same(st.list[st.idx + 1])) st.idx += 1;
+  else { st.list = st.list.slice(0, st.idx + 1); st.list.push(here); st.idx = st.list.length - 1; }
+  if (st.list.length > 30) { st.list = st.list.slice(-30); st.idx = Math.min(st.idx, 29); }
+  var cur = st.list[st.idx]; cur.u = here.u; cur.t = here.t;
+  var save = function () { try { cur.u = path + location.search + location.hash; sessionStorage.setItem('moxie-history', JSON.stringify(st)); } catch (e) {} };
+  save();
+  window.addEventListener('scroll', function () { cur.y = window.scrollY; }, { passive: true });
+  window.addEventListener('pagehide', save);
+  window.addEventListener('hashchange', save);
+  var visit = function (j) { return function (e) { e.preventDefault(); save(); try { sessionStorage.setItem('moxie-go', String(j)); } catch (x) {} location.href = st.list[j].u; }; };
+  var link = function (j, text, cls) { var a = document.createElement('a'); a.className = cls || ''; a.href = st.list[j].u; a.textContent = text; a.addEventListener('click', visit(j)); return a; };
+  var back = st.idx > 0 ? st.idx - 1 : -1, fwd = st.idx < st.list.length - 1 ? st.idx + 1 : -1;
+  if (side && (back >= 0 || fwd >= 0)) {
+    var head = document.createElement('div'); head.className = 'part'; head.textContent = 'History';
+    side.insertBefore(head, side.firstChild);
+    var at = head.nextSibling;
+    var put = function (el) { side.insertBefore(el, at); };
+    if (back >= 0) put(link(back, '← Back to ' + st.list[back].t, 'hist'));
+    if (fwd >= 0) put(link(fwd, 'Forward to ' + st.list[fwd].t + ' →', 'hist'));
+    if (st.list.length > 2) {
+      var ul = document.createElement('ul'); ul.className = 'trail';
+      for (var k = Math.max(0, st.idx - 3); k <= Math.min(st.list.length - 1, st.idx + 3); k++) {
+        var li = document.createElement('li');
+        if (k === st.idx) { li.className = 'now'; li.textContent = st.list[k].t; } else li.appendChild(link(k, st.list[k].t));
+        ul.appendChild(li);
+      }
+      put(ul);
+    }
+  }
+  if (bar && (back >= 0 || fwd >= 0)) {
+    if (back >= 0) bar.appendChild(link(back, '← ' + st.list[back].t, 'hist'));
+    if (fwd >= 0) { var f = link(fwd, st.list[fwd].t + ' →', 'hist'); f.style.marginLeft = '16px'; bar.appendChild(f); }
+    bar.hidden = false;
+  }
 })();
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
