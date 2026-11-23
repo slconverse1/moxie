@@ -33,5 +33,11 @@ rejects("a field called on a call result", "tuple P\n  x Int\nfn mk() P = P(x: 1
 accepts("a method called on a constructed value", "tuple P deriving show\n  x Int\nimpl P\n  fn dbl(self) Int = self.x * 2\nprintln(P(x: 1).dbl())\n")
 rejects("forward fn and definition differ in type parameters", "forward fn f(n Int) Bool\nfn f[T](n Int) Bool = true\nprintln(f(1))\n", "type parameter")
 accepts("forward fn with matching type parameters", "forward fn f[T](n T) Bool\nfn f[T](n T) Bool = true\nprintln(f(1))\n")
+def runs(name, src, want):
+    rc, o = moxie(src, "run")
+    chk(name, rc == 0 and o.strip() == want)
+runs("a capitalized top-level name is a value", "MAXN = 5\nprintln(MAXN + 1)\nK = 3\na Array[Int][K] = Array(1, 2, 3)\nprintln(len(a))\n", "6\n3")
+runs("a capitalized local name is a value", "fn f() Int\n  N = 5\n  N + 1\nprintln(f())\n", "6")
+runs("a declared case still reads as a case", "enum C deriving show\n  Red\n  Blue\nc = Red\nprintln(c)\n", "C.Red")
 print("FAILED" if fails else "all passed")
 sys.exit(1 if fails else 0)

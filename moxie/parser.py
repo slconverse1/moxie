@@ -35,6 +35,7 @@ class Parser(ExprParser):
         stmts = self.parse_stmts_until_dedent(top=True)
         if self.peek().kind != "EOF":
             self.err(f"unexpected {self.describe(self.peek())}")
+        stmts = bind_constants(stmts)
         stmts = expand_delegates(stmts, self.file)
         stmts = expand_proxies(stmts, self.file)
         stmts = expand_dyn(stmts, self.file)
@@ -1468,6 +1469,35 @@ def expand_delegates(stmts, file=None):
             groups = [[TName([tp.name], []) for tp in s.tparams]] if s.tparams else []
             out.append(ImplDecl(None, TName([s.name], groups), [], members, False, line=s.line))
     return out
+
+
+def bind_constants(stmts):
+    """`MAXN = 5` binds a value, as `maxn = 5` does: a capital letter is a habit for constants, and no language enforces habits.  It is
+    read as a pattern for an enum case only when `MAXN` is a case declared in this file or `Some`/`None`/`Ok`/`Err`."""
+    cases = {"Some", "None", "Ok", "Err"}
+
+    def walk(x, find):
+        if isinstance(x, list) or isinstance(x, tuple):
+            for y in x:
+                walk(y, find)
+        elif hasattr(x, "_fields"):
+            find(x)
+            for f in x._fields:
+                walk(getattr(x, f, None), find)
+
+    def collect(x):
+        if x.__class__.__name__ == "EnumDecl":
+            cases.update(c.name for c in x.cases or [])
+
+    def fix(x):
+        if x.__class__.__name__ == "Assign":
+            tg = x.targets
+            if tg.__class__.__name__ == "PCon" and len(tg.path) == 1 and tg.args is None and tg.path[0] not in cases:
+                x.targets = PBind(tg.path[0], line=tg.line)
+
+    walk(list(stmts), collect)
+    walk(list(stmts), fix)
+    return stmts
 
 
 def expand_dyn(stmts, file=None):
