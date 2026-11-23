@@ -34,7 +34,9 @@ nav a.here:hover{text-decoration:none}
 #to-top.show{opacity:1;pointer-events:auto}
 #backbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:7px 0;font-size:15px;font-weight:600}
 #backbar[hidden]{display:none}
-#toc .hist{display:block;padding:3px 8px;margin-bottom:8px;font-weight:600;color:var(--accent);text-decoration:none}
+#toc .hist{display:block;padding:3px 8px;margin-bottom:2px;font-weight:600;color:var(--accent);text-decoration:none}
+#toc ul.trail{margin:0 0 10px}
+#toc ul.trail a{font-size:13px;padding:2px 8px 2px 18px;color:var(--muted)}
 .hist.off{color:var(--muted);pointer-events:none;opacity:.5}
 @media (min-width:1100px){#backbar{display:none}}
 .page{display:block}
@@ -110,9 +112,26 @@ nav a.here:hover{text-decoration:none}
       if (history.length > visited.length && (!lesson || ref === lesson.href.split('#')[0])) { e.preventDefault(); history.go(-visited.length); }
       else if (!lesson) e.preventDefault();
     });
-    if (host === side) host.insertBefore(a, host.firstChild); else host.appendChild(a);
+    if (host === side) {
+      var head = document.createElement('div'); head.className = 'part'; head.textContent = 'History';
+      host.insertBefore(a, host.firstChild); host.insertBefore(head, a);
+    } else host.appendChild(a);
     links.push(a);
   });
+  try {                                       // the pages visited in this tab, newest first
+    var trail = JSON.parse(sessionStorage.getItem('moxie-trail') || '[]');
+    var here = { u: location.pathname, t: document.title.replace(/ \u00b7 .*$/, '') };
+    if (!trail.length || trail[0].u !== here.u) { trail.unshift(here); trail = trail.slice(0, 7); sessionStorage.setItem('moxie-trail', JSON.stringify(trail)); }
+    if (side && trail.length > 1) {
+      var ul = document.createElement('ul'); ul.className = 'trail';
+      trail.slice(1).forEach(function (x) {
+        var li = document.createElement('li'), l = document.createElement('a');
+        l.href = x.u; l.textContent = x.t; li.appendChild(l); ul.appendChild(li);
+      });
+      var first = side.querySelector('.hist');
+      first.parentNode.insertBefore(ul, first.nextSibling);
+    }
+  } catch (err) {}
   if (lesson) lesson.style.fontWeight = '700';
   if (!lesson && history.length <= 1) links.forEach(function (a) { a.classList.add('off'); });
   if (bar) bar.hidden = false;
@@ -120,7 +139,7 @@ nav a.here:hover{text-decoration:none}
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
   if (!side || !small) return;
-  var ul = side.querySelector('ul');
+  var ul = side.querySelector('ul:not(.trail)');
   if (!ul) {                                  // a page without a prebuilt list: the outline is its section headings
     var hs = document.querySelectorAll('main h2[id]');
     if (!hs.length) { side.style.display = 'none'; small.style.display = 'none'; return; }
