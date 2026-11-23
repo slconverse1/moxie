@@ -37,6 +37,7 @@ nav a.here:hover{text-decoration:none}
 #toc .hist{display:block;padding:3px 8px;margin-bottom:2px;font-weight:600;color:var(--accent);text-decoration:none}
 #toc ul.trail{margin:0 0 10px}
 #toc ul.trail a{font-size:13px;padding:2px 8px 2px 18px;color:var(--muted)}
+#toc .hist.off,#backbar .hist.off{color:var(--muted);opacity:.45;cursor:default}
 #toc ul.trail li.now{padding:2px 8px 2px 18px;font-size:13px;font-weight:700;color:var(--ink)}
 @media (min-width:1100px){#backbar{display:none}}
 .page{display:block}
@@ -119,13 +120,14 @@ nav a.here:hover{text-decoration:none}
   var visit = function (j) { return function (e) { e.preventDefault(); save(); try { sessionStorage.setItem('moxie-go', String(j)); } catch (x) {} location.href = st.list[j].u; }; };
   var link = function (j, text, cls) { var a = document.createElement('a'); a.className = cls || ''; a.href = st.list[j].u; a.textContent = text; a.addEventListener('click', visit(j)); return a; };
   var back = st.idx > 0 ? st.idx - 1 : -1, fwd = st.idx < st.list.length - 1 ? st.idx + 1 : -1;
-  if (side && (back >= 0 || fwd >= 0)) {
+  var dim = function (text) { var d = document.createElement('span'); d.className = 'hist off'; d.textContent = text; return d; };
+  if (side) {
     var head = document.createElement('div'); head.className = 'part'; head.textContent = 'History';
     side.insertBefore(head, side.firstChild);
     var at = head.nextSibling;
     var put = function (el) { side.insertBefore(el, at); };
-    if (back >= 0) put(link(back, '← Back to ' + st.list[back].t, 'hist'));
-    if (fwd >= 0) put(link(fwd, 'Forward to ' + st.list[fwd].t + ' →', 'hist'));
+    put(back >= 0 ? link(back, '← Back to ' + st.list[back].t, 'hist') : dim('← Back'));
+    put(fwd >= 0 ? link(fwd, 'Forward to ' + st.list[fwd].t + ' →', 'hist') : dim('Forward →'));
     if (st.list.length > 2) {
       var ul = document.createElement('ul'); ul.className = 'trail';
       for (var k = Math.max(0, st.idx - 3); k <= Math.min(st.list.length - 1, st.idx + 3); k++) {
@@ -136,9 +138,9 @@ nav a.here:hover{text-decoration:none}
       put(ul);
     }
   }
-  if (bar && (back >= 0 || fwd >= 0)) {
-    if (back >= 0) bar.appendChild(link(back, '← ' + st.list[back].t, 'hist'));
-    if (fwd >= 0) { var f = link(fwd, st.list[fwd].t + ' →', 'hist'); f.style.marginLeft = '16px'; bar.appendChild(f); }
+  if (bar) {
+    bar.appendChild(back >= 0 ? link(back, '← ' + st.list[back].t, 'hist') : dim('← Back'));
+    var f = fwd >= 0 ? link(fwd, st.list[fwd].t + ' →', 'hist') : dim('Forward →'); f.style.marginLeft = '16px'; bar.appendChild(f);
     bar.hidden = false;
   }
 })();
