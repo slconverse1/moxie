@@ -318,38 +318,36 @@ def load_sigs():
 def build(gc):
     S = load_sigs()
     name = "moxie/gc" if gc else "moxie"
-    out = ["---", "layout: default", "toc: true", "terms: false"]
+    out = ["---", "layout: default", "toc: true", "terms: false", "refpage: true"]
     if gc: out.append("dialect: gc")
     out += ['title: "%s Spec · keywords, types, and functions"' % name.capitalize(), "---", ""]
     out.append("# Spec reference: keywords, types, and functions")
     out.append("")
-    out.append("This is part of the [%s Spec](spec.html). Every keyword, type and prelude function the text of this site mentions is described here, with its signature, and each word in the Mixer’s Guide and the intro links to its entry. A parameter written `Seq[T]` takes any source of `T` values: a `List`, `Array`, `Set`, `Ring` or `Stream`. Where a name has several signatures, each is listed." % name)
+    out.append("This is part of the [%s Spec](spec.html). Every keyword, type and prelude function, in one alphabetical list: use the letters above to jump. Each word in the Mixer’s Guide and the intro links to its entry here. A parameter written `Seq[T]` takes any source of `T` values: a `List`, `Array`, `Set`, `Ring` or `Stream`. Where a name has several signatures, each is listed." % name)
     out.append("")
-    def kw_block(title, hid, items, lead):
-        out.append("## %s {#%s}" % (title, hid)); out.append(""); out.append(lead); out.append("")
-        out.append('<dl class="ref">')
-        for n, d, sec in items:
-            out.append('<dt id="kw-%s"><code>%s</code></dt>' % (n, esc(n)))
-            out.append('<dd>%s <a href="spec.html#%s">Spec §%s</a></dd>' % (md_inline(d), sec, sec[1:].upper()))
-        out.append("</dl>"); out.append("")
-    kw_block("Hard keywords", "hard", HARD, "These %d words can never be names." % len(HARD))
-    kw_block("Soft keywords", "soft", SOFT, "These %d words are keywords in one position only and are ordinary names elsewhere." % len(SOFT))
-    out.append("## Types {#types}"); out.append("")
-    out.append('<dl class="ref">')
-    for n, d in TYPES:
-        out.append('<dt id="ty-%s"><code>%s</code></dt><dd>%s</dd>' % (n, n, md_inline(d)))
-    out.append("</dl>"); out.append("")
+    entries = []   # (sort name, order, id, tag, description, signature or None, section id)
+    for n, d, sec in HARD: entries.append((n, 0, "kw-" + n, "hard keyword", d, None, sec))
+    for n, d, sec in SOFT: entries.append((n, 0, "kw-" + n, "soft keyword", d, None, sec))
+    for n, d in TYPES: entries.append((n, 1, "ty-" + n, "type", d, None, None))
     index_fn = []
     for title, sec, items in FUNCS:
-        out.append("## %s {#f-%s}" % (title, re.sub(r"[^a-z]+", "-", title.lower()).strip("-"))); out.append("")
-        out.append('Spec <a href="spec.html#%s">§%s</a>.' % (sec, sec[1:].upper())); out.append("")
-        out.append('<dl class="ref">')
         for n, d in items:
-            sg = SIGS.get(n) or "\n".join(S.get(n, [n + "(…)"]))
-            out.append('<dt id="fn-%s"><code>%s</code></dt>' % (n, esc(n)))
-            out.append('<dd>%s<br><code class="sig">%s</code></dd>' % (md_inline(d), esc(sg)))
-            index_fn.append(n)
-        out.append("</dl>"); out.append("")
+            entries.append((n, 2, "fn-" + n, "function", d, SIGS.get(n) or "\n".join(S.get(n, [n + "(…)"])), sec)); index_fn.append(n)
+    entries.sort(key=lambda e: (e[0].lower(), e[1], e[0]))
+    letters = sorted({e[0][0].lower() for e in entries})
+    out.append('<div class="az" aria-label="Jump to a letter">' + "".join(
+        ('<a href="#%s">%s</a>' % (c, c) if c in letters else '<span>%s</span>' % c) for c in "abcdefghijklmnopqrstuvwxyz") + "</div>")
+    out.append("")
+    cur = None
+    for n, _, eid, tag, d, sg, sec in entries:
+        c = n[0].lower()
+        if c != cur:
+            if cur is not None: out.append("</dl>"); out.append("")
+            out.append("## %s {#%s}" % (c.upper(), c)); out.append(""); out.append('<dl class="ref">'); cur = c
+        out.append('<dt id="%s"><code>%s</code> <span class="tag">%s</span></dt>' % (eid, esc(n), tag))
+        link = ' <a href="spec.html#%s">Spec §%s</a>' % (sec, sec[1:].upper()) if sec else ""
+        out.append("<dd>%s%s%s</dd>" % (md_inline(d), link, ('<br><code class="sig">%s</code>' % esc(sg)) if sg else ""))
+    out.append("</dl>"); out.append("")
     missing = sorted(set(S) - set(index_fn))
     return "\n".join(out) + "\n", missing
 

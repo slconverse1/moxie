@@ -13,7 +13,7 @@ nav{border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap
 nav a{color:var(--accent);text-decoration:none;font-weight:600}
 nav a:hover{text-decoration:underline}
 nav .brand{margin-right:0}
-html{scroll-padding-top:calc(var(--navh,48px) + 70px)}
+html{scroll-padding-top:calc(var(--navh,48px) + var(--azh,0px) + 70px)}
 nav{position:sticky;top:0;z-index:30;background:var(--bg)}
 .sep{width:1px;background:var(--line);align-self:stretch;margin:2px 4px}
 .navarr{flex:none;position:sticky;z-index:2;width:30px;height:26px;padding:0;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--accent);font-size:20px;line-height:1;cursor:pointer}
@@ -31,7 +31,13 @@ a.tl{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
 a.tl:hover{color:var(--link);border-bottom-color:var(--link)}
 a.tl code{color:var(--accent)}
 dl.ref{margin:0 0 20px}
-dl.ref dt{margin-top:14px;font-weight:600;scroll-margin-top:var(--navh,48px)}
+dl.ref dt{margin-top:14px;font-weight:600;scroll-margin-top:calc(var(--navh,48px) + var(--azh,0px) + 8px)}
+.tag{font-size:12px;font-weight:400;color:var(--muted);margin-left:6px}
+.az{position:sticky;top:var(--navh,48px);z-index:15;display:flex;flex-wrap:wrap;gap:2px;padding:6px 0;background:var(--bg);border-bottom:1px solid var(--line);font-weight:600}
+.az a,.az span{color:var(--accent);min-width:24px;text-align:center;padding:3px 4px;border-radius:5px;text-transform:uppercase;text-decoration:none}
+.az span{opacity:.3}
+.az a:hover{background:var(--code)}
+body.refpage #toc-small{top:calc(var(--navh,40px) + var(--azh,0px))}
 dl.ref dd{margin:2px 0 0 1.2em}
 dl.ref code.sig{display:inline-block;margin-top:4px;color:var(--muted);background:none;padding:0;white-space:pre-wrap}
 dl.ref dt:target,dl.ref dt:target+dd{background:var(--code)}
@@ -80,7 +86,7 @@ nav a.here:hover{text-decoration:none}
 }
 </style>
 </head>
-<body{% if page.toc or page.learn %} class="hastoc"{% endif %}{% if page.gcmarks %} data-gcmarks{% endif %}{% if page.learn or page.terms %} data-terms{% endif %}>
+<body class="{% if page.toc or page.learn %}hastoc{% endif %}{% if page.refpage %} refpage{% endif %}"{% if page.gcmarks %} data-gcmarks{% endif %}{% if page.learn or page.terms %} data-terms{% endif %}>
 <nav>
   {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains 'spec' or page.url contains 'reference' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% endif %}
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
@@ -254,7 +260,7 @@ nav a.here:hover{text-decoration:none}
 (function () {
   var nav = document.querySelector('nav'), root = document.documentElement;
   if (!nav) return;
-  var setH = function () { root.style.setProperty('--navh', nav.offsetHeight + 'px'); };
+  var setH = function () { root.style.setProperty('--navh', nav.offsetHeight + 'px'); var az = document.querySelector('.az'); if (az) root.style.setProperty('--azh', az.offsetHeight + 'px'); };
   setH(); window.addEventListener('resize', setH); window.addEventListener('load', setH);
   var mk = function (cls, ch, label) { var b = document.createElement('button'); b.type = 'button'; b.className = 'navarr ' + cls; b.textContent = ch; b.setAttribute('aria-label', label); b.hidden = true; return b; };
   var L = mk('l', '\u2039', 'Show the left end of the menu bar'), R = mk('r', '\u203a', 'Show the right end of the menu bar');
