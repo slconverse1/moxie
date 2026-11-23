@@ -95,6 +95,14 @@ nav a.here:hover{text-decoration:none}
   if (!a) return;
   var back = document.createElement('a');
   back.href = a.href; back.textContent = '\u2190 Back to ' + a.textContent;
+  // go back through history to the lesson, so it opens where you left it; the Spec's own jumps (outline, links) count as steps
+  var visited = [location.href], ref = document.referrer.split('#')[0].split('?')[0];
+  window.addEventListener('hashchange', function (e) {
+    if (visited.length > 1 && visited[visited.length - 2] === e.newURL) visited.pop(); else visited.push(e.newURL);
+  });
+  back.addEventListener('click', function (e) {
+    if (ref && ref === a.href.split('#')[0] && history.length > visited.length) { e.preventDefault(); history.go(-visited.length); }
+  });
   bar.appendChild(back); bar.hidden = false;
   a.style.fontWeight = '700';
 })();
