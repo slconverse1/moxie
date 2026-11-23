@@ -165,7 +165,7 @@ Err(Error(code: 12, message: "with_timeout: timed out"))
 
 `par_map(f, xs, limit: n)` calls `f` on every item, at most `n` at a time, each call in its own fiber, and gives the results as a `List` in the order of the input, however the calls finish. It pays off when `f` mostly waits (a network call, a file, a program) or when the work spreads across cores; for a quick calculation, plain `map` is faster, because starting a fiber costs more than the work.
 
-`limit:` is any `Int`, since moxie/gc doesn't count fibers before the program runs.
+`limit:` must be a number the compiler can see (a literal or a top-level constant), the same rule as a channel's capacity, for the same reason: fibers are counted before the program runs.
 
 `par_traverse(f, xs, limit: n)` is `traverse` for the same job, for an `f` that gives a `Result`. When an item fails it stops starting new items, lets the running ones finish, and gives the `Err` of the earliest failing item, so the answer doesn't depend on timing.
 

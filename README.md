@@ -19,7 +19,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
-Pages with an outline get a floating "↑ Top" link once you scroll; two gc lessons no longer carry GC-free-only sentences (the `par_map` `limit:` rule and the "full collection" remark).
+Pages with an outline get a floating "↑ Top" link once you scroll; the monoids lesson no longer carries a GC-free-only remark in the gc guide. `par_map`, `par_traverse`, and `par_map_all` now check `limit:` (a constant of 1 or more) when called after a pipe too, as the Spec says.
 
 The Spec's dated design notes now live on their own pages (`docs/design-notes.md`, `docs/gc/design-notes.md`), linked from the end of the Spec, so the Spec holds only the language as it is.
 

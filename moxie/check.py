@@ -7560,7 +7560,7 @@ class Checker(RefineMixin):
         label is one the function takes and its value fits.  Calls with any other labels are returned unchanged."""
         opts = self.OPTIONS.get(fn.name) if fn.__class__ is Name else None
         labeled = [a for a in args if getattr(a, "label", None)]
-        if fn.__class__ is Name and fn.name in ("par_map", "par_traverse", "par_map_all") and not extra and sc.find(fn.name) is None \
+        if fn.__class__ is Name and fn.name in ("par_map", "par_traverse", "par_map_all") and extra in (0, 1) and sc.find(fn.name) is None \
                 and fn.name not in self.fns and fn.name not in self.tuples and all(hasattr(a, "expr") for a in args):
             lim = next((a for a in labeled if a.label == "limit"), None)
             v = self.const_int(lim.expr) if lim is not None else None
