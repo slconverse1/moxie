@@ -1,6 +1,7 @@
 ---
 layout: default
 toc: true
+terms: true
 title: "Moxie Tutorial"
 ---
 # MOXIE TUTORIAL: build a gradebook

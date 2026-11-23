@@ -27,6 +27,14 @@ nav{position:sticky;top:0;z-index:30;background:var(--bg)}
 #toc-small .dtoggle{margin:8px 0 6px}
 #hnav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:90vw;padding:8px 16px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .15s;z-index:40}
 #hnav.show{opacity:1}
+a.tl{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
+a.tl:hover{color:var(--link);border-bottom-color:var(--link)}
+a.tl code{color:var(--accent)}
+dl.ref{margin:0 0 20px}
+dl.ref dt{margin-top:14px;font-weight:600;scroll-margin-top:var(--navh,48px)}
+dl.ref dd{margin:2px 0 0 1.2em}
+dl.ref code.sig{display:inline-block;margin-top:4px;color:var(--muted);background:none;padding:0;white-space:pre-wrap}
+dl.ref dt:target,dl.ref dt:target+dd{background:var(--code)}
 .gcmark{position:relative}
 .gcmark::after{content:"";position:absolute;right:-14px;top:.2em;bottom:.2em;width:3px;border-radius:2px;background:#d33}
 blockquote{border:1px solid var(--accent);border-radius:8px;padding:8px 14px;margin:14px 0;background:var(--code)}
@@ -72,9 +80,9 @@ nav a.here:hover{text-decoration:none}
 }
 </style>
 </head>
-<body{% if page.toc or page.learn %} class="hastoc"{% endif %}{% if page.gcmarks %} data-gcmarks{% endif %}>
+<body{% if page.toc or page.learn %} class="hastoc"{% endif %}{% if page.gcmarks %} data-gcmarks{% endif %}{% if page.learn or page.terms %} data-terms{% endif %}>
 <nav>
-  {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains 'spec' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% endif %}
+  {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains 'spec' or page.url contains 'reference' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% endif %}
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
   <a class="brand{% if sect == 'home' %} here{% endif %}" href="{{ base | append: '/' | relative_url }}">{% if page.dialect == 'gc' %}moxie/gc{% else %}moxie{% endif %}</a>
   <a{% if sect == 'guide' %} class="here"{% endif %} href="{{ base | append: '/learn/' | relative_url }}">Mixer’s Guide</a>
@@ -241,6 +249,7 @@ nav a.here:hover{text-decoration:none}
   small.appendChild(ul.cloneNode(true));
 })();
 </script>{% endif %}
+{% if page.learn or page.terms %}{% include terms.html %}{% endif %}
 <script>
 (function () {
   var nav = document.querySelector('nav'), root = document.documentElement;
@@ -268,6 +277,51 @@ nav a.here:hover{text-decoration:none}
       blk.classList.add('gcmark'); b.parentNode.removeChild(b);
     });
   }
+})();
+(function () {                               // link the keywords, types and functions named in the text to the Spec reference
+  var T = window.MOXIE_TERMS; if (!T || !document.body.hasAttribute('data-terms')) return;
+  var GC = '{{ page.dialect }}' === 'gc', ROOT = '{{ "/" | relative_url }}'.replace(/\/?$/, '/'), dir = ROOT + (GC ? 'gc/' : '');
+  var ref = dir + 'reference.html', set = function (a) { var o = {}; a.forEach(function (n) { o[n] = 1; }); return o; };
+  var kw = set(T.kw), fn = set(T.fn), ty = set(T.ty);
+  var bare = set(['count', 'first', 'last', 'index', 'show', 'hash', 'set', 'now', 'remove', 'clear', 'values', 'keys', 'items', 'get', 'read', 'write', 'result', 'value']);
+  var words = { package: dir + 'spec.html#s4', channel: ref + '#ty-Chan', atom: ref + '#ty-Atom', stream: ref + '#ty-Stream',
+    timer: ref + '#ty-Timer', fiber: ref + '#kw-fiber', tuple: ref + '#kw-tuple', enum: ref + '#kw-enum', interface: ref + '#kw-interface',
+    closure: dir + 'spec.html#s11', contract: dir + 'spec.html#s9c', generic: dir + 'spec.html#s9a', resource: dir + 'spec.html#s19', daemon: ref + '#kw-daemon' };
+  var wre = /\b(package|channel|atom|stream|timer|fiber|tuple|enum|interface|closure|contract|generic|resource|daemon)(s|es)?\b/gi;
+  var target = function (code) {
+    var c0 = code.trim(); if (/\s/.test(c0) && /[=$\/"']/.test(c0)) return null;      // a shell line, an assignment, a string: not a bare moxie term
+    var m = /^([A-Za-z_]\w*)(?=[\(\[]|\s|$)/.exec(c0); if (!m) return null;
+    var n = m[1], call = /^[\(\[]/.test(code.trim().slice(n.length)), only = code.trim() === n;
+    if (fn[n] && call) return ref + '#fn-' + n;
+    if (kw[n] && !(only && bare[n]) && !(fn[n] && !call && only && !kw[n])) return ref + '#kw-' + n;
+    if (ty[n]) return ref + '#ty-' + n;
+    if (fn[n] && !(only && bare[n])) return ref + '#fn-' + n;
+    return null;
+  };
+  var skip = { A: 1, PRE: 1, UL: 1, OL: 1, H1: 1, H2: 1, H3: 1, H4: 1, SCRIPT: 1, BUTTON: 1, DETAILS: 1 };
+  var link = function (href, node) { var a = document.createElement('a'); a.className = 'tl'; a.href = href; node.parentNode.replaceChild(a, node); a.appendChild(node); };
+  var work = function (blk) {
+    var seen = {}, todo = [];
+    (function walk(n) {
+      for (var c = n.firstChild; c; c = c.nextSibling) {
+        if (c.nodeType === 3) todo.push(c);
+        else if (c.nodeType === 1 && !skip[c.tagName] && !/specref|pager/.test(c.className)) { if (c.tagName === 'CODE') todo.push(c); else walk(c); }
+      }
+    })(blk);
+    Array.prototype.forEach.call(blk.querySelectorAll('a'), function (a) { var h = a.getAttribute('href') || ''; Object.keys(words).forEach(function (k) { if (words[k] === h) seen[h] = 1; }); });
+    todo.forEach(function (n) {
+      if (n.nodeType === 1) { var h = target(n.textContent); if (h && !seen[h]) { seen[h] = 1; link(h, n); } return; }
+      var txt = n.nodeValue, last = 0, m, frag = null; wre.lastIndex = 0;
+      while ((m = wre.exec(txt))) {
+        var h = words[m[1].toLowerCase()]; if (seen[h]) continue; seen[h] = 1;
+        frag = frag || document.createDocumentFragment();
+        frag.appendChild(document.createTextNode(txt.slice(last, m.index)));
+        var a = document.createElement('a'); a.className = 'tl'; a.href = h; a.textContent = m[0]; frag.appendChild(a); last = m.index + m[0].length;
+      }
+      if (frag) { frag.appendChild(document.createTextNode(txt.slice(last))); n.parentNode.replaceChild(frag, n); }
+    });
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('main p, main li, main td'), work);
 })();
 </script>
 </body>

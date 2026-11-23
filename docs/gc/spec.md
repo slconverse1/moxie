@@ -8,6 +8,8 @@ toc: true
 
 moxie/gc is the garbage-collected dialect of moxie, a design language (a specification and a reference interpreter, not yet a production compiler). No-GC moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
 
+For every keyword, type and prelude function with its signature, see the [reference of keywords, types, and functions](reference.html).
+
 **What's different from moxie**
 
 Only the memory model changes. Patterns, generics, interfaces, pipes, results, fibers and channels, the resource rules, and the one-pass compiler are the same. What moxie/gc gives up is the promise of constant memory and pauses of zero; what it gets back is a language where a program never plans its memory.
@@ -109,10 +111,10 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 - **Style warnings.** Names should be `snake_case`. Types should be PascalCase without consecutive capitals (`HttpServer`, not `HTTPServer`). Constants should be `SCREAMING_SNAKE_CASE`, and enum cases are PascalCase or SCREAMING_SNAKE_CASE. Deriving names (`show`, `eq`, `ord`, `read`) are lowercase because they name generated functions.
 - **Constants in patterns.** A constant in a pattern matches by value and needs no pin, because its value never changes. A variable needs `^`. An unqualified capitalized name in a pattern resolves to an enum case of the matched type first, then to a constant.
 - **Reserved.** `_` and `_` followed by digits (`_1`, `_2`) are placeholders and can't be names.
-- **Hard keywords (38)**, never usable as names:
+- **Hard keywords (39)**, never usable as names:
   - declarations: `fn`, `tuple`, `enum`, `interface`, `impl`, `forward`, `inline`, `fiber`, `import`, `export`, `internal`, `using`
-  - control: `if`, `elif`, `else`, `when`, `select`, `for`, `in`, `is`, `break`, `continue`, `return`, `daemon`, `do`
-  - ownership and concurrency: `go`, `ref`, `move`, `static` (**[gc]** used only in `static fn`)
+  - control: `if`, `elif`, `else`, `when`, `select`, `for`, `while` (reserved: an error that says to write `for`), `in`, `is`, `break`, `continue`, `return`, `daemon`, `do`
+  - ownership and concurrency: `go`, `try_go`, `ref`, `move`, `static` (**[gc]** used only in `static fn`)
   - logic and values: `and`, `or`, `not`, `true`, `false`, `Self`, `self`, `todo`
 - **Soft keywords (30)**, meaningful in one position only and legal names elsewhere: `end` (after a block), `eval` and `mutable` (each at the start of an indented block), `deriving` (in a tuple or enum header), `delegate` (after a field's type), `proxy` (after the target of an `impl ... for`, as `proxy(field)`), `closed` and `cancelled` (in a `select` arm), `wait` (at a statement start, as `wait` or `wait token`; the old spelling `scope` is an error that points here), `as` (in an import), `type` (at a statement start, followed by `alias`, `opaque`, or `union`), `alias`, `opaque`, and `union` (only right after `type`), `step` (directly after a range, before the step value), `seq` (after `|>`, as `seq` ending the line), `init` (as `init` ending the line, opening an initializer block), `lazy` (before a parameter), `foreign` (at a statement start, before a string literal), `pure`, `prints`, `parks`, `impure`, and `tailrec` (each only before `fn`, as a function modifier), `invariant` (starting a line among a tuple's fields), and note that `result` is an ordinary name, bound only inside a `where` after a result type, `update` (after `x.` and before `:`), `test` (at a statement start, before a string literal), `where` (inside generic brackets), `yield` (in a `for` comprehension), and `any` (in a type, before an interface name).
 - Type names, prelude cases (`Ok`, `Err`), constants like `MAX`, `INF`, and `NAN`, and functions like `cast`, `fail`, `swap`, `assert`, and `dbg` are not keywords, and a local name can hide them.

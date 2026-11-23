@@ -1,6 +1,7 @@
 ---
 layout: default
 toc: true
+terms: true
 title: "Moxie"
 ---
 > This is **moxie**, the GC-free language. Prefer a garbage collector? Visit [moxie/gc](gc/), its own site with its own Tutorial, Mixer’s Guide, and Spec. The two are kept apart on purpose because they make different promises.
@@ -582,7 +583,7 @@ Moxie is a general language, but four kinds of applications come with the langua
 
 **Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It’s not a numeric toolkit. See the [Mixer’s Guide](learn/).
 
-**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Mixer’s Guide](learn/). Sockets and their permissions are in superpower 23.
+**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Mixer’s Guide](learn/).
 
 **Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See the [Mixer’s Guide](learn/).
 
@@ -842,7 +843,7 @@ Output: `6.0`, then `6.0`. Here `area` is *computed*: it takes no space in the t
 
 If you want one rule on many fields, such as "keep this between 0 and 100", write it once as a **field delegate** and attach it with `level Int delegate(Percent)`. Delegates come up with tuples in superpower 8, and the Mixer’s Guide has the details. The difference is where the rule lives: a property is written in place and can see the tuple's other fields, while a delegate is a rule shared across fields.
 
-**Properties in interfaces.** An interface can ask for a property too: `name Type` means "readable", and `property name Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it. Interfaces are the subject of superpower 18.
+**Properties in interfaces.** An interface can ask for a property too: `name Type` means "readable", and `property name Type` with `get` and/or `set` lines says whether it must also be writable. In general terms, the interface says "whatever your type is, I need to be able to ask it for an `area`", and a type can satisfy that with a plain field, a computed property, or a delegate field. Generic code just writes `x.area` and never needs to know which one it got, so a field can become a property later without breaking anyone who relied on it.
 
 ## 10. Pattern matching
 
@@ -1944,7 +1945,7 @@ println(describe(41))
 println(describe("hi"))
 ```
 
-Output: `the number 42` then `the text hi`. `n@Int` binds the value itself, so `n` is an `Int` in its arm. A union is exhaustive without a `_` arm, and an `any` value needs one, since the full set of types isn't known where you match. See the Mixer’s Guide, Chapter 12 for patterns and superpower 18 for `any` and interfaces.
+Output: `the number 42` then `the text hi`. `n@Int` binds the value itself, so `n` is an `Int` in its arm. A union is exhaustive without a `_` arm, and an `any` value needs one, since the full set of types isn't known where you match. See the Mixer’s Guide, Chapter 12 for patterns; `any` and interfaces are covered in the Spec.
 
 ## 29. FCFX
 
