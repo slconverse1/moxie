@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+A site-wide History: a moxie / moxie/gc toggle, then three trails (Intro, Mixer’s Guide, Spec) each with its own back and forward arrows, kept separately for each site. Spec now follows the Mixer’s Guide in the menu bar, and Tutorial sits with Style outside History. Guide titles read "Moxie Mixer’s Guide".
+
 A name bound with `=` may start with a capital letter and is an ordinary value (`MAXN = 5`, then `println(MAXN)`); only a declared enum case reads as a pattern. Before, a capitalized binding worked only in sizes.
 
 Spec audit (every "is an error" claim in the Spec was probed against the checker): now enforced or fixed are a bare `_` mixed with `_2` in one function, a text slice that cuts a multi-byte character (aborts, and is a compile error for a constant cut), a field called as a function on a constructed value (`P(x: 1).x(2)`), a `forward fn` whose definition has a different number of type parameters, and `regex.must` on a bad pattern (it returned an `Err` instead of stopping). `x = 5 if c` and `x = 1 if c else 2` give messages that point to `if c then a else b`. `tests/run_specrules.py`.

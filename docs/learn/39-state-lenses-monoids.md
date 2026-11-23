@@ -1,11 +1,11 @@
 ---
 layout: default
 learn: true
-title: "State, lenses, lazy sequences, and monoids · Mixer’s Guide moxie"
+title: "State, lenses, lazy sequences, and monoids · Moxie Mixer’s Guide"
 ---
 # 48. State, lenses, lazy sequences, and monoids
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html?from=39-state-lenses-monoids#s23)</div>
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 This lesson collects four ideas that functional programmers reach for. In each case moxie offers a plain way to do the job, and sometimes also the classic abstraction.
 

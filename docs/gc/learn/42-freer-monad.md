@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "Programs with effects as data: the freer monad · Mixer’s Guide moxie/gc"
+title: "Programs with effects as data: the freer monad · Moxie/gc Mixer’s Guide"
 ---
 # 51. Programs with effects as data: the freer monad
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html?from=42-freer-monad#s23)</div>
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 The same idea as the last lesson covers programs that *do* things. The commands are described as data, and a program is data that holds a command and what to do with its answer. A separate function, a *handler*, decides what the commands actually do. That way the same program can talk to the real world in production and to a script in a test.
 

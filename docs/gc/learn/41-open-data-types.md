@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "Data types that grow: the expression problem · Mixer’s Guide moxie/gc"
+title: "Data types that grow: the expression problem · Moxie/gc Mixer’s Guide"
 ---
 # 50. Data types that grow: the expression problem
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html?from=41-open-data-types#s23)</div>
+<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
 
 Suppose a library defines arithmetic as data (numbers and `+`) together with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**.
 

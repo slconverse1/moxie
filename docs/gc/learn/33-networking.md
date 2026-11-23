@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "Networking, deadlines, and parallel work · Mixer’s Guide moxie/gc"
+title: "Networking, deadlines, and parallel work · Moxie/gc Mixer’s Guide"
 ---
 # 42. Networking, deadlines, and parallel work
 
-<div class='specref' markdown='1'>In the Spec: [19c. Files and sockets](../spec.html?from=33-networking#s19c), [23b. HTTP (the `http` package)](../spec.html?from=33-networking#s23b)</div>
+<div class='specref' markdown='1'>In the Spec: [19c. Files and sockets](../spec.html#s19c), [23b. HTTP (the `http` package)](../spec.html#s23b)</div>
 
 This lesson covers talking over a network, waiting with a deadline, racing two jobs against each other, and spreading work across fibers. Everything here uses `localhost`, so each example is a complete program that runs on its own.
 

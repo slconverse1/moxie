@@ -1,11 +1,11 @@
 ---
 layout: default
 learn: true
-title: "Values and names · Mixer’s Guide moxie"
+title: "Values and names · Moxie Mixer’s Guide"
 ---
 # 3. Values and names
 
-<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html?from=03-values-and-names#s0), [1. Source, blocks, bindings](../spec.html?from=03-values-and-names#s1), [2. Names and keywords](../spec.html?from=03-values-and-names#s2), [3. Memory model: S-space, T-space, and resets](../spec.html?from=03-values-and-names#s3)</div>
+<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [1. Source, blocks, bindings](../spec.html#s1), [2. Names and keywords](../spec.html#s2), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)</div>
 
 A moxie program is mostly *values* and the *names* you give them. This lesson covers the building blocks: how to bind a name, what kinds of value there are, and the one rule about names that surprises people coming from other languages.
 

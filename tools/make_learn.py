@@ -110,7 +110,7 @@ def build(gc):
     inc = os.path.join(ROOT, "docs", "_includes")
     os.makedirs(inc, exist_ok=True)
     open(os.path.join(inc, "learn-nav-gc.html" if gc else "learn-nav.html"), "w", encoding="utf-8").write("\n".join(nav) + "\n")
-    idx = [f"---\nlayout: default\n{dia}title: \"Mixer’s Guide {name}\"\n---\n# MIXER’S GUIDE {name.upper()}\n"]
+    idx = [f"---\nlayout: default\n{dia}title: \"{name.capitalize()} Mixer’s Guide\"\n---\n# {name.upper()} MIXER’S GUIDE\n"]
     idx.append(open(os.path.join(SRC, "_intro.md"), encoding="utf-8").read().strip().replace("{{name}}", name) + "\n")
     n = 0
     for p, ls in parts:
@@ -123,7 +123,7 @@ def build(gc):
     for i, (p, s, t, txt) in enumerate(flat):
         body = render(txt, gc)
         if s in sl:
-            refs = ", ".join(f"[{h[0]}. {h[1]}](../spec.html?from={s}#{sid})" for sid, h in sl[s])
+            refs = ", ".join(f"[{h[0]}. {h[1]}](../spec.html#{sid})" for sid, h in sl[s])
             body = re.sub(r"^(# .+)$", lambda m: m.group(1) + f"\n\n<div class='specref' markdown='1'>In the Spec: {refs}</div>", body, 1, flags=re.M)
         body = re.sub(r"^# (.+)$", lambda m: f"# {i + 1}. {m.group(1)}", body, 1, flags=re.M)
         nv = []
@@ -132,7 +132,7 @@ def build(gc):
         nv.append("[Contents](./)")
         if i + 1 < len(flat):
             nv.append(f"[{flat[i + 1][2]} →]({flat[i + 1][1]}.html)")
-        page = f"---\nlayout: default\n{dia}title: \"{t} · Mixer’s Guide {name}\"\n---\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
+        page = f"---\nlayout: default\n{dia}title: \"{t} · {name.capitalize()} Mixer’s Guide\"\n---\n{body.rstrip()}\n\n---\n\n" + " · ".join(nv) + "\n"
         open(os.path.join(base, s + ".md"), "w", encoding="utf-8").write(page)
     return len(flat)
 

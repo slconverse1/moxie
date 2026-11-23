@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "Regular expressions · Mixer’s Guide moxie/gc"
+title: "Regular expressions · Moxie/gc Mixer’s Guide"
 ---
 # 40. Regular expressions
 
-<div class='specref' markdown='1'>In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html?from=31-regex#s23f)</div>
+<div class='specref' markdown='1'>In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html#s23f)</div>
 
 A regular expression describes the shape of some text. The standard `regex` package is written in moxie, and it runs in time proportional to the text: it never backtracks, so no pattern can hang your program. The price is two missing features, back-references (`\1`) and look-around, and the package says so if you write one.
 

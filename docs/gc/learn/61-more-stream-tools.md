@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "More stream tools: sources you build · Mixer’s Guide moxie/gc"
+title: "More stream tools: sources you build · Moxie/gc Mixer’s Guide"
 ---
 # 26. More stream tools: sources you build
 
-<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html?from=61-more-stream-tools#s13)</div>
+<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13)</div>
 
 Lesson 25 covered the common stages. This lesson covers the rest of the toolbox: stages that tidy and combine streams, generators that make a stream from a seed, and how to make your own types into stream sources.
 

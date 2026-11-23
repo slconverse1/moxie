@@ -1,11 +1,11 @@
 ---
 layout: default
 learn: true
-title: "Running moxie · Mixer’s Guide moxie"
+title: "Running moxie · Moxie Mixer’s Guide"
 ---
 # 1. Running moxie
 
-<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html?from=01-run#s22), [20. Program arguments and environment](../spec.html?from=01-run#s20)</div>
+<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22), [20. Program arguments and environment](../spec.html#s20)</div>
 
 Before any language, you need a way to run programs. There are three, from least to most effort.
 

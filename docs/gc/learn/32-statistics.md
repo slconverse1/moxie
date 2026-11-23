@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "Statistics and prediction · Mixer’s Guide moxie/gc"
+title: "Statistics and prediction · Moxie/gc Mixer’s Guide"
 ---
 # 41. Statistics and prediction
 
-<div class='specref' markdown='1'>In the Spec: [23a. Statistics and prediction (the `stats` package)](../spec.html?from=32-statistics#s23a)</div>
+<div class='specref' markdown='1'>In the Spec: [23a. Statistics and prediction (the `stats` package)](../spec.html#s23a)</div>
 
 The standard `stats` package is a small library for learning how data turns into numbers, and how those numbers turn into predictions. Every function in it is short enough to read (it is `moxie/std/stats.mxi`), and it works on an `Array[Double]`. Write `import stats` and call `stats.mean(xs)`.
 

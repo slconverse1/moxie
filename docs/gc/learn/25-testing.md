@@ -2,11 +2,11 @@
 layout: default
 dialect: gc
 learn: true
-title: "Testing, assertions, and checking · Mixer’s Guide moxie/gc"
+title: "Testing, assertions, and checking · Moxie/gc Mixer’s Guide"
 ---
 # 32. Testing, assertions, and checking
 
-<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html?from=25-testing#s22), [9c. Contracts](../spec.html?from=25-testing#s9c)</div>
+<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22), [9c. Contracts](../spec.html#s9c)</div>
 
 Moxie has testing built in: no framework to install, and nothing to import. A `test` block is code that runs only when you ask for tests. This lesson also covers the other ways moxie helps you find mistakes before users do.
 
