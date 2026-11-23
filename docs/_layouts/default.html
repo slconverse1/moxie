@@ -9,7 +9,9 @@
 @media (prefers-color-scheme:dark){:root{--bg:#0e1816;--ink:#e3efec;--muted:#93a8a2;--line:#27403a;--accent:#4cc9ad;--code:#15221f;--link:#7db7ff}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}
-nav{border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap:wrap;gap:6px 20px;font-size:15px}
+html{scroll-padding-top:110px}
+@media (min-width:700px){html{scroll-padding-top:64px}}
+nav{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-wrap:wrap;gap:6px 20px;font-size:15px}
 nav a{color:var(--accent);text-decoration:none;font-weight:600}
 nav a:hover{text-decoration:underline}
 nav .brand{margin-right:0}
@@ -70,7 +72,7 @@ nav a.here:hover{text-decoration:none}
 @media (min-width:1100px){
   body.hastoc .page{display:grid;grid-template-columns:16.5rem minmax(0,50rem);gap:32px;max-width:72rem;margin:0 auto;padding:0 16px}
   body.hastoc main{margin:0;max-width:none;padding:8px 0 64px}
-  body.hastoc #toc{display:block;position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:16px 0 24px;font-size:14px;line-height:1.35}
+  body.hastoc #toc{display:block;position:sticky;top:56px;align-self:start;max-height:calc(100vh - 56px);overflow:auto;padding:16px 0 24px;font-size:14px;line-height:1.35}
   body.hastoc #toc-small{display:none}
 }
 </style>
