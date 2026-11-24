@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+A long swipe, a long trackpad scroll, or a held arrow key now sets the pages flowing by as a strip of cards (section, title and a few words of the text), at a steady two cards a second (`CPS` in `docs/_layouts/default.html`); where the strip stops is the page you land on. Any press, click or key stops it on the selected card.
+
 Navigation by touch or trackpad: a slight swipe moves one frame; a long swipe runs several frames at half a second each (about one frame per 40 pixels of finger travel, up to 12). Any press, click or key stops the run on the frame being shown. A held arrow key still goes one frame per half second.
 
 Holding an arrow key steps through the history at one page per half second. On phones the Contents bar is fixed below the menu bar, a Contents link closes the dropdown and scrolls clear of the bars, and the reference page shows no letter list in the contents area.

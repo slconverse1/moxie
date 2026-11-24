@@ -27,6 +27,14 @@ nav{position:sticky;top:0;z-index:30;background:var(--bg)}
 #toc-small .dtoggle{margin:8px 0 6px}
 #hnav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:90vw;padding:8px 16px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .15s;z-index:40}
 #hnav.show{opacity:1}
+#hflow{position:fixed;inset:0;z-index:60;background:rgba(14,24,22,.88);overflow:hidden;color:#e3efec}
+.hf-strip{position:absolute;left:50%;top:50%;margin-top:-90px;display:flex;gap:16px;will-change:transform}
+.hf-card{flex:none;width:220px;height:180px;padding:12px 14px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:#15221f;opacity:.55;transform:scale(.9);transition:opacity .12s,transform .12s;overflow:hidden}
+.hf-card.sel{opacity:1;transform:scale(1.08);border-color:#4cc9ad;box-shadow:0 0 0 2px #4cc9ad}
+.hf-k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#4cc9ad}
+.hf-t{font-weight:700;font-size:15px;line-height:1.25;margin:4px 0 6px;max-height:3.8em;overflow:hidden}
+.hf-x{font-size:12px;line-height:1.35;color:#93a8a2;max-height:6.8em;overflow:hidden}
+.hf-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:14px;font-weight:600;padding:0 16px}
 a.tl{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
 a.tl:hover{color:var(--link);border-bottom-color:var(--link)}
 a.tl code{color:var(--accent)}
@@ -155,8 +163,12 @@ html,body{overscroll-behavior-x:none}
   };
   var curU = function () { return path + location.hash; };
   var save = function () { try { sessionStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
+  var excerpt = function () {
+    try { var e = document.elementFromPoint(Math.round(window.innerWidth / 2), Math.min(window.innerHeight - 1, 200)), b = e && e.closest ? e.closest('p,li,h1,h2,h3,h4,pre,td') : null;
+      return ((b || e).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140); } catch (x) { return ''; }
+  };
   var push = function () {
-    S.l = S.l.slice(0, S.i + 1); S.l.push({ u: curU(), t: titleNow(), y: 0 }); S.i = S.l.length - 1;
+    S.l = S.l.slice(0, S.i + 1); S.l.push({ u: curU(), t: titleNow(), y: 0, x: excerpt() }); S.i = S.l.length - 1;
     while (S.l.length > MAX) { S.l.shift(); S.i--; }
   };
   var nav = '', went = false;
@@ -169,7 +181,7 @@ html,body{overscroll-behavior-x:none}
   else push();
   save();
   window.addEventListener('scroll', function () { if (S.l[S.i]) S.l[S.i].y = window.scrollY; }, { passive: true });
-  window.addEventListener('pagehide', save);
+  window.addEventListener('pagehide', function () { if (S.l[S.i]) S.l[S.i].x = excerpt(); save(); });
   var skip = false;
   window.addEventListener('hashchange', function () {
     if (skip) { skip = false; return; }
@@ -181,7 +193,7 @@ html,body{overscroll-behavior-x:none}
   });
   var toast = el('div'); toast.id = 'hnav'; toast.setAttribute('aria-live', 'polite'); document.body.appendChild(toast);
   var tt = null, say = function (msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 1400); };
-  var pend = null, timer = null, run = null, runTimer = null, lastStep = 0, swallow = 0;
+  var pend = null, timer = null, flow = null, swallow = 0, CPS = 2;   // CPS: how many pages flow by each second
   var go = function (j) {                     // show history entry j
     if (j === S.i || !S.l[j]) return;
     var t = S.l[j]; S.i = j; save();
@@ -191,47 +203,74 @@ html,body{overscroll-behavior-x:none}
     } else { try { sessionStorage.setItem('moxie-go', '1'); } catch (x) {} location.href = t.u; }
   };
   var commit = function () { var j = pend; pend = null; if (j !== null) go(j); };
-  var label = function (j) { return S.l[j].t + '   ' + (j + 1) + '/' + S.l.length; };
-  var step = function (d, now) {              // d = -1 back, +1 forward; quick taps pile up and one jump follows; a held key goes at once
+  var step = function (d) {                   // one frame; quick repeats pile up and one jump follows
+    if (flow) return;
     var j = (pend === null ? S.i : pend) + d;
     if (j < 0 || j >= S.l.length) { say(d < 0 ? 'Start of history' : 'End of history'); return; }
-    pend = j; lastStep = performance.now();
+    pend = j;
     say((d < 0 ? '← ' : '') + S.l[j].t + (d > 0 ? ' →' : '') + '   ' + (j + 1) + '/' + S.l.length);
-    clearTimeout(timer); if (now) commit(); else timer = setTimeout(commit, 350);
+    clearTimeout(timer); timer = setTimeout(commit, 350);
   };
-  var saveRun = function () { try { if (run) sessionStorage.setItem('moxie-run', JSON.stringify(run)); else sessionStorage.removeItem('moxie-run'); } catch (x) {} };
-  var stopRun = function (msg) {              // any press, click or key leaves the history on the frame being shown
-    if (!run) return false;
-    run = null; saveRun(); clearTimeout(runTimer); pend = null; clearTimeout(timer);
-    say(msg || ('Stopped: ' + S.l[S.i].t)); return true;
+  // The flow: a strip of cards, one per history entry, slides past at a steady speed; where it stops is the page you land on.
+  var CARD = 236, SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html/.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
+  var endFlow = function (land) {
+    if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf);
+    if (f.el.parentNode) f.el.parentNode.removeChild(f.el);
+    if (land) go(Math.max(0, Math.min(S.l.length - 1, Math.round(f.pos))));
   };
-  var runStep = function () {                 // one frame every half second
-    if (!run) return;
-    var j = S.i + run.d;
-    if (run.left <= 0 || j < 0 || j >= S.l.length) { var m = run.left > 0 ? (run.d < 0 ? 'Start of history' : 'End of history') : null; run = null; saveRun(); if (m) say(m); return; }
-    run.left--; saveRun(); lastStep = performance.now();
-    say((run.d < 0 ? '← ' : '') + S.l[j].t + (run.d > 0 ? ' →' : '') + '   ' + (j + 1) + '/' + S.l.length + '   · tap to stop');
-    go(j);
-    if (pathOf(S.l[j].u) === path) runTimer = setTimeout(runStep, 500);
+  var startFlow = function (d, target, held) {
+    clearTimeout(timer); pend = null;
+    if (flow) { flow.target = target; flow.d = d; flow.held = held; return; }
+    var el = document.createElement('div'); el.id = 'hflow';
+    var strip = document.createElement('div'); strip.className = 'hf-strip'; el.appendChild(strip);
+    var cards = S.l.map(function (e, i) {
+      var c = document.createElement('div'); c.className = 'hf-card';
+      var k = document.createElement('div'); k.className = 'hf-k'; k.textContent = SECT(e.u);
+      var t = document.createElement('div'); t.className = 'hf-t'; t.textContent = e.t.replace(/^(Guide|Spec|Intro) · /, '');
+      var x = document.createElement('div'); x.className = 'hf-x'; x.textContent = e.x || '';
+      c.appendChild(k); c.appendChild(t); c.appendChild(x); strip.appendChild(c); return c;
+    });
+    var cap = document.createElement('div'); cap.className = 'hf-cap'; el.appendChild(cap);
+    document.body.appendChild(el);
+    flow = { el: el, strip: strip, cards: cards, cap: cap, pos: S.i, target: target, d: d, held: held, last: performance.now(), sel: -1, raf: 0 };
+    var frame = function (now) {
+      var f = flow; if (!f) return;
+      var dt = Math.min(0.1, (now - f.last) / 1000); f.last = now;
+      var dir = f.target > f.pos ? 1 : -1;
+      if (Math.abs(f.target - f.pos) > 0.001) { f.pos += dir * Math.min(Math.abs(f.target - f.pos), CPS * dt); }
+      f.strip.style.transform = 'translateX(' + (-(f.pos * CARD + CARD / 2)) + 'px)';
+      var sel = Math.round(f.pos);
+      if (sel !== f.sel) {
+        if (f.cards[f.sel]) f.cards[f.sel].classList.remove('sel');
+        f.cards[sel].classList.add('sel'); f.sel = sel;
+        f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop';
+      }
+      if (Math.abs(f.target - f.pos) <= 0.001 && !f.held) {
+        if (!f.done) { f.done = now; } else if (now - f.done > 450) { endFlow(true); return; }
+      }
+      f.raf = requestAnimationFrame(frame);
+    };
+    flow.raf = requestAnimationFrame(frame);
   };
-  var startRun = function (d, n) {
-    n = Math.max(1, Math.min(n, 12)); run = { d: d, left: n }; saveRun(); clearTimeout(timer); pend = null;
-    clearTimeout(runTimer); runTimer = setTimeout(runStep, 0);
-  };
-  try { var r0 = JSON.parse(sessionStorage.getItem('moxie-run') || 'null'); if (r0 && r0.left > 0) { run = r0; runTimer = setTimeout(runStep, Math.max(0, 500 - performance.now())); } } catch (x) {}
+  var flowBy = function (d, n) { startFlow(d, Math.max(0, Math.min(S.l.length - 1, S.i + d * Math.max(2, n))), false); };
+  var stopFlow = function () { if (!flow) return false; endFlow(true); swallow = Date.now(); return true; };
+  var heldKey = null;
   document.addEventListener('keydown', function (ev) {
-    if (run && !ev.metaKey) { ev.preventDefault(); stopRun(); swallow = Date.now(); return; }
+    if (flow) {
+      if (flow.held && ev.key === heldKey) { ev.preventDefault(); return; }
+      if (ev.metaKey) return;
+      ev.preventDefault(); stopFlow(); return;
+    }
     if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;
     var t = ev.target, tag = t && t.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
     ev.preventDefault();
     var d = ev.key === 'ArrowLeft' ? -1 : 1;
-    if (ev.repeat) {                          // a held key: one page at a time, each shown for half a second
-      if (performance.now() - lastStep < 500) return;
-      step(d, true);
-    } else step(d, false);
+    if (ev.repeat) { heldKey = ev.key; startFlow(d, d < 0 ? 0 : S.l.length - 1, true); }   // a held key: the pages flow by until it is let go
+    else step(d);
   }, true);
-  var press = function (ev) { if (stopRun()) { swallow = Date.now(); ok = false; } };
+  document.addEventListener('keyup', function (ev) { if (flow && flow.held && ev.key === heldKey) { heldKey = null; endFlow(true); } }, true);
+  var press = function () { if (stopFlow()) ok = false; };
   document.addEventListener('touchstart', press, { capture: true, passive: true });
   document.addEventListener('mousedown', press, true);
   document.addEventListener('click', function (ev) { if (Date.now() - swallow < 500) { ev.preventDefault(); ev.stopPropagation(); } }, true);
@@ -249,23 +288,23 @@ html,body{overscroll-behavior-x:none}
     var t = ev.touches[0]; ok = ev.touches.length === 1 && t.clientX > 24 && t.clientX < window.innerWidth - 24 && !scrollsSideways(ev.target);
     sx = t.clientX; sy = t.clientY; st = Date.now();
   }, { passive: true });
-  document.addEventListener('touchend', function (ev) {   // a slight swipe moves one frame, a long one runs several at half a second each
+  document.addEventListener('touchend', function (ev) {   // a slight swipe moves one frame, a long one sets the pages flowing by
     if (!ok) return; ok = false;
     var t = ev.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy, ax = Math.abs(dx);
     if (Date.now() - st > 1000 || ax < 50 || ax < 1.4 * Math.abs(dy) || String(window.getSelection()) !== '') return;
     var d = dx < 0 ? 1 : -1;
-    if (ax < 150) step(d, false); else startRun(d, Math.floor(ax / 40));
+    if (ax < 150) step(d); else flowBy(d, Math.floor(ax / 40));
   }, { passive: true });
   var wx = 0, wt = null;                      // a trackpad: the same, from the total horizontal scroll of one gesture
   window.addEventListener('wheel', function (ev) {
     if (Math.abs(ev.deltaX) <= Math.abs(ev.deltaY) || ev.ctrlKey || scrollsSideways(ev.target)) return;
     ev.preventDefault();
-    if (run) { stopRun(); swallow = Date.now(); wx = 0; return; }
+    if (flow) { stopFlow(); wx = 0; return; }
     wx += ev.deltaX; clearTimeout(wt);
     wt = setTimeout(function () {
       var tot = wx; wx = 0; if (Math.abs(tot) < 40) return;
       var d = tot > 0 ? 1 : -1, a = Math.abs(tot);
-      if (a < 500) step(d, false); else startRun(d, Math.round(a / 150));
+      if (a < 500) step(d); else flowBy(d, Math.round(a / 150));
     }, 140);
   }, { passive: false });
 })();
