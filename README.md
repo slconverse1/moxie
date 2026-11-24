@@ -19,7 +19,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
-A **Help** tab now sits between REPL and Source on both sites (docs/help.md, docs/gc/help.md): what each tab is, how the back and forward history works (arrow keys, swipes, tap to stop), the Try and REPL pages, how names link to the reference, and how to run moxie locally. The Help page is not part of the history. The Try and REPL navs (and tools/make_gc_pages.py) carry the new tab.
+A **Help** tab now sits between REPL and Source on both sites (docs/help.md, docs/gc/help.md). It covers moving through the site only: which pages go into the history (Intro, Guide, Spec and reference), the arrow keys, swipes and tap-to-stop. The Help page is not part of the history. The Try and REPL navs (and tools/make_gc_pages.py) carry the new tab.
 
 Quick view landing no longer flashes or jumps: when a swipe ends on a page in another document, the moving strip stays on screen until the new page replaces it (instead of briefly showing the page you started from), and the saved scroll position is applied as soon as the page's script runs, not only after it finishes loading.
 
