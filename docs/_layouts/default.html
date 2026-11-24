@@ -27,14 +27,16 @@ nav{position:sticky;top:0;z-index:30;background:var(--bg)}
 #toc-small .dtoggle{margin:8px 0 6px}
 #hnav{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:90vw;padding:8px 16px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .15s;z-index:40}
 #hnav.show{opacity:1}
-#hflow{position:fixed;inset:0;z-index:60;background:rgba(14,24,22,.88);overflow:hidden;color:#e3efec}
-.hf-strip{position:absolute;left:50%;top:50%;margin-top:-90px;display:flex;gap:16px;will-change:transform}
-.hf-card{flex:none;width:220px;height:180px;padding:12px 14px;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:#15221f;opacity:.55;transform:scale(.9);transition:opacity .12s,transform .12s;overflow:hidden}
-.hf-card.sel{opacity:1;transform:scale(1.08);border-color:#4cc9ad;box-shadow:0 0 0 2px #4cc9ad}
-.hf-k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#4cc9ad}
-.hf-t{font-weight:700;font-size:15px;line-height:1.25;margin:4px 0 6px;max-height:3.8em;overflow:hidden}
-.hf-x{font-size:12px;line-height:1.35;color:#93a8a2;max-height:6.8em;overflow:hidden}
-.hf-cap{position:absolute;left:0;right:0;bottom:22px;text-align:center;font-size:14px;font-weight:600;padding:0 16px}
+#hflow{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:hidden}
+.hf-strip{position:absolute;left:0;top:0;width:0;height:100%;will-change:transform}
+.hf-frame{position:absolute;top:0;background:var(--bg);overflow:hidden;box-shadow:0 0 22px rgba(0,0,0,.5)}
+.hf-frame iframe{position:absolute;left:0;top:0;border:0;background:var(--bg);opacity:0;pointer-events:none}
+.hf-frame.ready iframe{opacity:1}
+.hf-card{padding:80px 28px;max-width:34rem;margin:0 auto}
+.hf-k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.hf-t{font-weight:700;font-size:26px;line-height:1.25;margin:6px 0 10px}
+.hf-x{font-size:15px;line-height:1.5;color:var(--muted)}
+.hf-cap{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);max-width:90vw;padding:8px 16px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 a.tl{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
 a.tl:hover{color:var(--link);border-bottom-color:var(--link)}
 a.tl code{color:var(--accent)}
@@ -149,6 +151,7 @@ html,body{overscroll-behavior-x:none}
   window.addEventListener('hashchange', function () {
     Array.prototype.forEach.call(document.querySelectorAll('.dtoggle a'), function (a) { a.href = other + location.hash; });
   });
+  if (window.self !== window.top) return;   // a frame inside the flow shows a page; it must not touch the history
   if (!sec) return;                          // Tutorial, Style, Try, REPL: not part of the history
   var KEY = 'moxie-nav-' + (GC ? 'gc' : 'moxie'), MAX = 50, S = { l: [], i: -1 };
   try { var raw = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (raw && raw.l) S = raw; } catch (e) {}
@@ -193,7 +196,7 @@ html,body{overscroll-behavior-x:none}
   });
   var toast = el('div'); toast.id = 'hnav'; toast.setAttribute('aria-live', 'polite'); document.body.appendChild(toast);
   var tt = null, say = function (msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 1400); };
-  var pend = null, timer = null, flow = null, swallow = 0, CPS = 2;   // CPS: how many pages flow by each second
+  var pend = null, timer = null, flow = null, swallow = 0;
   var go = function (j) {                     // show history entry j
     if (j === S.i || !S.l[j]) return;
     var t = S.l[j]; S.i = j; save();
@@ -211,42 +214,61 @@ html,body{overscroll-behavior-x:none}
     say((d < 0 ? '← ' : '') + S.l[j].t + (d > 0 ? ' →' : '') + '   ' + (j + 1) + '/' + S.l.length);
     clearTimeout(timer); timer = setTimeout(commit, 350);
   };
-  // The flow: a strip of cards, one per history entry, slides past at a steady speed; where it stops is the page you land on.
-  var CARD = 236, SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html|\/ref\//.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
+  // The flow: the history's pages, in full, glide past as one continuous strip, each shown little by little as it slides into view.
+  // A short run moves at one steady speed; a long swipe starts fast and slows steadily towards its end. Where it stops (or where you
+  // click, touch or press a key) is the page you land on.
+  var CPS = 1.5, FAST = 12, SHORT = 6;       // pages a second when steady; the fastest part of a long run; up to this many pages is "short"
+  var SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html|\/ref\//.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
   var endFlow = function (land) {
     if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf);
     if (f.el.parentNode) f.el.parentNode.removeChild(f.el);
     if (land) go(Math.max(0, Math.min(S.l.length - 1, Math.round(f.pos))));
+  };
+  var mkFrame = function (f, j) {            // one page: a card with its title at once, and the page itself over it when loaded
+    var e = S.l[j], W = f.W, H = f.H;
+    var fr = document.createElement('div'); fr.className = 'hf-frame'; fr.style.cssText = 'left:' + (j * W) + 'px;width:' + W + 'px;height:' + H + 'px';
+    var c = document.createElement('div'); c.className = 'hf-card';
+    var k = document.createElement('div'); k.className = 'hf-k'; k.textContent = SECT(e.u);
+    var t = document.createElement('div'); t.className = 'hf-t'; t.textContent = e.t.replace(/^(Guide|Spec|Intro) · /, '');
+    var x = document.createElement('div'); x.className = 'hf-x'; x.textContent = e.x || '';
+    c.appendChild(k); c.appendChild(t); c.appendChild(x); fr.appendChild(c);
+    var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
+    ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
+    var y = j === S.i ? window.scrollY : (e.y || 0);
+    ifr.addEventListener('load', function () {
+      var go2 = function () { try { var w = ifr.contentWindow, h = hashOf(e.u); if (y) w.scrollTo(0, y); else if (h) { var el = w.document.getElementById(decodeURIComponent(h.slice(1))); if (el) el.scrollIntoView(); } } catch (x) {} fr.classList.add('ready'); f.ready[j] = 1; };
+      go2(); setTimeout(go2, 60);
+    });
+    fr.appendChild(ifr); f.strip.appendChild(fr); f.frames[j] = fr; return fr;
   };
   var startFlow = function (d, target, held) {
     clearTimeout(timer); pend = null;
     if (flow) { flow.target = target; flow.d = d; flow.held = held; return; }
     var el = document.createElement('div'); el.id = 'hflow';
     var strip = document.createElement('div'); strip.className = 'hf-strip'; el.appendChild(strip);
-    var cards = S.l.map(function (e, i) {
-      var c = document.createElement('div'); c.className = 'hf-card';
-      var k = document.createElement('div'); k.className = 'hf-k'; k.textContent = SECT(e.u);
-      var t = document.createElement('div'); t.className = 'hf-t'; t.textContent = e.t.replace(/^(Guide|Spec|Intro) · /, '');
-      var x = document.createElement('div'); x.className = 'hf-x'; x.textContent = e.x || '';
-      c.appendChild(k); c.appendChild(t); c.appendChild(x); strip.appendChild(c); return c;
-    });
     var cap = document.createElement('div'); cap.className = 'hf-cap'; el.appendChild(cap);
     document.body.appendChild(el);
-    flow = { el: el, strip: strip, cards: cards, cap: cap, pos: S.i, target: target, d: d, held: held, last: performance.now(), sel: -1, raf: 0 };
+    var n = Math.abs(target - S.i);
+    flow = { el: el, strip: strip, frames: {}, ready: {}, cap: cap, W: window.innerWidth, H: window.innerHeight, pos: S.i, target: target, d: d, held: held,
+             long: n > SHORT, last: performance.now(), t0: performance.now(), sel: -1, raf: 0 };
     var frame = function (now) {
       var f = flow; if (!f) return;
       var dt = Math.min(0.1, (now - f.last) / 1000); f.last = now;
-      var dir = f.target > f.pos ? 1 : -1;
-      if (Math.abs(f.target - f.pos) > 0.001) { f.pos += dir * Math.min(Math.abs(f.target - f.pos), CPS * dt); }
-      f.strip.style.transform = 'translateX(' + (-(f.pos * CARD + CARD / 2)) + 'px)';
-      var sel = Math.round(f.pos);
-      if (sel !== f.sel) {
-        if (f.cards[f.sel]) f.cards[f.sel].classList.remove('sel');
-        f.cards[sel].classList.add('sel'); f.sel = sel;
-        f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop';
+      var lo = Math.max(0, Math.floor(f.pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(f.pos) + 2);
+      if (f.d < 0) { lo = Math.max(0, Math.floor(f.pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(f.pos) + 1); }
+      for (var j = lo; j <= hi; j++) if (!f.frames[j]) mkFrame(f, j);
+      Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); delete f.frames[k]; delete f.ready[k]; } });
+      var waiting = !f.ready[S.i] && now - f.t0 < 400;       // let the page you are leaving appear first, so the glide begins from what you saw
+      var r = f.target - f.pos, dir = r > 0 ? 1 : -1;
+      if (!waiting && Math.abs(r) > 0.001) {
+        var v = f.held ? CPS * 1.7 : f.long ? Math.min(FAST, Math.max(CPS, Math.abs(r) * 2.2)) : CPS;   // long: fast at first, ever slower towards the end
+        f.pos += dir * Math.min(Math.abs(r), v * dt);
       }
+      f.strip.style.transform = 'translateX(' + (-f.pos * f.W) + 'px)';
+      var sel = Math.round(f.pos);
+      if (sel !== f.sel) { f.sel = sel; f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop here'; }
       if (Math.abs(f.target - f.pos) <= 0.001 && !f.held) {
-        if (!f.done) { f.done = now; } else if (now - f.done > 450) { endFlow(true); return; }
+        if (!f.done) { f.done = now; } else if (now - f.done > 700) { endFlow(true); return; }
       }
       f.raf = requestAnimationFrame(frame);
     };
