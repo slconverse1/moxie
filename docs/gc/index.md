@@ -1322,7 +1322,7 @@ result = names
   |> collect()
 ```
 
-Output: `List("ANA", "LEE", "MINA", "ZOE")` for `names = List("mina", "lee", "ana", "zoe", "bo")`. Nothing between the stages builds a list, so `collect()` appears once, at the very end, and never to get a collection ready for the next stage. (A `collect()` in the middle still works, since a `List` is a source, but it builds a list that the next stage then walks again.) You convert only when a function declares a `Stream[T]` parameter, and then `to_stream()` at the call is all it takes. A type of your own joins in by having a `to_stream` method.
+Output: `List("ANA", "LEE", "MINA", "ZOE")` for `names = List("mina", "lee", "ana", "zoe", "bo")`. Nothing between the stages builds a list, so `collect()` appears once, at the very end, and never to get a collection ready for the next stage. (A `collect()` in the middle still works, since a `List` is a source, but it builds a list that the next stage then walks again.) The same goes for a function that declares a `Stream[T]` parameter: pass it the collection as it is. A type of your own joins in by having a `to_stream` method.
 
 **`lazy` parameters.** Mark a parameter `lazy` and the argument isn't evaluated until the function reads it, which makes call-by-name a one-word feature:
 

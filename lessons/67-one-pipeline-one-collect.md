@@ -60,21 +60,23 @@ true
 
 The first version builds a whole list of lengths in the middle, and the second pipeline walks it again. The second version never builds that list: each name travels through `map` and `filter` and into the result, one at a time. So write the stages one after another and put a single `collect()` (or `sum()`, `count()`, `reduce(...)`, or a `for` loop) at the end.
 
-## Where you do convert
+## Passing a collection to a function
 
-A function that declares a `Stream[T]` parameter wants a stream, and a plain collection is not one, so the call site converts it with `to_stream()`. A pipeline is already a stream, so it needs no conversion:
+A function that declares a `Stream[T]` parameter takes any collection of `T` as it stands, and also a range or a pipeline. The call needs no conversion either:
 
 ```moxie
 fn evens(xs Stream[Int]) List[Int]
   xs |> filter(_ % 2 == 0) |> collect()
+println(evens(List(1, 2, 3, 4)))
+println(evens(Set(2, 3)))
+println(evens(1..6))
 println(evens(List(1, 2, 3, 4) |> map(_ + 1)))
-println(evens(List(1, 2, 3, 4) |> to_stream()))
-println(evens(Set(2, 3) |> to_stream()))
 ```
 ```output
 List(2, 4)
-List(2, 4)
 List(2)
+List(2, 4, 6)
+List(2, 4)
 ```
 
-Functions such as `traverse` and `sequence` take streams in this way. A type of your own becomes a pipeline source when it has a `to_stream` method, which the lesson on more stream tools shows.
+The element type is still checked: `evens(List("a"))` is a type error, because a `List[String]` is not a source of `Int`. You will rarely write `to_stream()` yourself. A type of your own becomes a pipeline source when it has a `to_stream` method, which the lesson on more stream tools shows.

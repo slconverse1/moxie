@@ -104,8 +104,8 @@ fn check(n Int) Result[Int, String]
   when n > 0
     true -> Ok(n)
     false -> Err("bad $n")
-println(traverse(check, List(5, 20, 7) |> to_stream()))
-println(traverse(check, List(5, -1, -3) |> to_stream()))
+println(traverse(check, List(5, 20, 7)))
+println(traverse(check, List(5, -1, -3)))
 println(validate(check, List(5, -1, 7, -3)))
 ```
 **Output:**

@@ -1959,10 +1959,26 @@ class Checker(RefineMixin):
                 return
             self.err(line, msg)
             return
+        if exp.__class__ is tuple and exp[0] == "app" and exp[1] == "Stream" and len(exp[2]) == 1 and self.collection_elem(act) is not None:
+            if tys.compatible(exp[2][0], self.collection_elem(act)[0]):
+                return                  # every collection is a pipeline source, so it can be passed where a `Stream[T]` is declared
         if exp.__class__ is tuple and exp[0] in ("app", "fn", "tup", "param", "rigid") or act.__class__ is tuple and act[0] in ("app", "fn", "tup", "param", "rigid"):
             if tys.compatible(exp, act):
                 return
         self.err(line, f"mismatched types: expected `{tshow(exp)}`, found `{tshow(act)}`" + self.layout_hint(exp, act))
+
+    def collection_elem(self, act):
+        """The element type, in a one-item tuple, when `act` is a plain collection (a `List`, `Array`, `Set`, `Ring`, `Dict` of pairs, `Option`, or `String` of characters)."""
+        if act == "String":
+            return ("Char",)
+        if act.__class__ is tuple and act[0] == "app":
+            if act[1] in tys.SEQ_HEADS and act[1] != "Stream" and len(act[2]) == 1:
+                return (act[2][0],)
+            if act[1] == "Option" and len(act[2]) == 1:
+                return (act[2][0],)
+            if act[1] == "Dict" and len(act[2]) == 2:
+                return (("tup", (act[2][0], act[2][1])),)
+        return None
 
     def row_fields(self, t):
         """{name: type} of a tuple type that names its fields: a labeled tuple type, an open one, or a declared (non-generic) tuple; else None."""
