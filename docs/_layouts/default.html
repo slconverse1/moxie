@@ -171,7 +171,7 @@ html,body{overscroll-behavior-x:none}
       return ((b || e).textContent || '').replace(/\s+/g, ' ').trim().slice(0, 140); } catch (x) { return ''; }
   };
   var push = function () {
-    S.l = S.l.slice(0, S.i + 1); S.l.push({ u: curU(), t: titleNow(), y: 0, x: excerpt() }); S.i = S.l.length - 1;
+    S.run = null; S.l = S.l.slice(0, S.i + 1); S.l.push({ u: curU(), t: titleNow(), y: 0, x: excerpt() }); S.i = S.l.length - 1;
     while (S.l.length > MAX) { S.l.shift(); S.i--; }
   };
   var nav = '', went = false;
@@ -300,7 +300,14 @@ html,body{overscroll-behavior-x:none}
     };
     flow.raf = requestAnimationFrame(frame);
   };
-  var flowBy = function (d, n) { startFlow(d, Math.max(0, Math.min(S.l.length - 1, S.i + d * Math.min(MAXRUN, Math.max(2, n)))), false); };
+  var flowBy = function (d, n) {              // a swipe carries on from the last one: first through the pages it was going to show, then ten more
+    var last = S.l.length - 1, r = S.run, base = S.i, step = Math.min(MAXRUN, Math.max(2, n));
+    if (r && r.d === d && S.i >= Math.min(r.from, r.end) && S.i <= Math.max(r.from, r.end)) base = r.end;
+    var target = Math.max(0, Math.min(last, base + d * step));
+    if (target === S.i) target = Math.max(0, Math.min(last, S.i + d * step));
+    S.run = { d: d, from: S.i, end: target }; save();
+    startFlow(d, target, false);
+  };
   var stopFlow = function () { if (!flow) return false; endFlow(true); swallow = Date.now(); return true; };
   var heldKey = null;
   document.addEventListener('keydown', function (ev) {
