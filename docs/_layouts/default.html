@@ -74,6 +74,7 @@ nav a.here:hover{text-decoration:none}
 #toc-small{position:fixed;top:calc(var(--navh,40px) + var(--azh,0px));left:0;right:0;z-index:20;max-height:calc(100vh - var(--navh,40px) - var(--azh,0px) - 8px);max-height:calc(100dvh - var(--navh,40px) - var(--azh,0px) - 8px);overflow:auto;margin:0;border:1px solid var(--line);border-left:0;border-right:0;border-top:0;border-radius:0;padding:8px 16px;background:var(--code)}
 @media (max-width:1099px){body.hastoc main{padding-top:calc(var(--smallh,44px) + var(--azh,0px) + 8px)}.az{position:fixed;top:var(--navh,40px);left:0;right:0;padding:6px 12px}}
 main{touch-action:pan-y pinch-zoom}
+html,body{overscroll-behavior-x:none}
 #toc-small summary{cursor:pointer;font-weight:600;color:var(--accent)}
 #toc-small ul{list-style:none;margin:6px 0 2px;padding:0}
 #toc-small a{display:block;padding:3px 0;color:var(--ink);text-decoration:none}
@@ -180,25 +181,46 @@ main{touch-action:pan-y pinch-zoom}
   });
   var toast = el('div'); toast.id = 'hnav'; toast.setAttribute('aria-live', 'polite'); document.body.appendChild(toast);
   var tt = null, say = function (msg) { toast.textContent = msg; toast.classList.add('show'); clearTimeout(tt); tt = setTimeout(function () { toast.classList.remove('show'); }, 1400); };
-  var pend = null, timer = null;
-  var commit = function () {
-    var j = pend; pend = null;
-    if (j === null || j === S.i || !S.l[j]) return;
+  var pend = null, timer = null, run = null, runTimer = null, lastStep = 0, swallow = 0;
+  var go = function (j) {                     // show history entry j
+    if (j === S.i || !S.l[j]) return;
     var t = S.l[j]; S.i = j; save();
     if (pathOf(t.u) === path) {
       if (hashOf(t.u) !== location.hash) { skip = true; location.hash = hashOf(t.u); }
       setTimeout(function () { window.scrollTo(0, t.y || 0); }, 0);
     } else { try { sessionStorage.setItem('moxie-go', '1'); } catch (x) {} location.href = t.u; }
   };
+  var commit = function () { var j = pend; pend = null; if (j !== null) go(j); };
+  var label = function (j) { return S.l[j].t + '   ' + (j + 1) + '/' + S.l.length; };
   var step = function (d, now) {              // d = -1 back, +1 forward; quick taps pile up and one jump follows; a held key goes at once
     var j = (pend === null ? S.i : pend) + d;
     if (j < 0 || j >= S.l.length) { say(d < 0 ? 'Start of history' : 'End of history'); return; }
-    pend = j;
+    pend = j; lastStep = performance.now();
     say((d < 0 ? '← ' : '') + S.l[j].t + (d > 0 ? ' →' : '') + '   ' + (j + 1) + '/' + S.l.length);
     clearTimeout(timer); if (now) commit(); else timer = setTimeout(commit, 350);
   };
-  var lastStep = 0;
+  var saveRun = function () { try { if (run) sessionStorage.setItem('moxie-run', JSON.stringify(run)); else sessionStorage.removeItem('moxie-run'); } catch (x) {} };
+  var stopRun = function (msg) {              // any press, click or key leaves the history on the frame being shown
+    if (!run) return false;
+    run = null; saveRun(); clearTimeout(runTimer); pend = null; clearTimeout(timer);
+    say(msg || ('Stopped: ' + S.l[S.i].t)); return true;
+  };
+  var runStep = function () {                 // one frame every half second
+    if (!run) return;
+    var j = S.i + run.d;
+    if (run.left <= 0 || j < 0 || j >= S.l.length) { var m = run.left > 0 ? (run.d < 0 ? 'Start of history' : 'End of history') : null; run = null; saveRun(); if (m) say(m); return; }
+    run.left--; saveRun(); lastStep = performance.now();
+    say((run.d < 0 ? '← ' : '') + S.l[j].t + (run.d > 0 ? ' →' : '') + '   ' + (j + 1) + '/' + S.l.length + '   · tap to stop');
+    go(j);
+    if (pathOf(S.l[j].u) === path) runTimer = setTimeout(runStep, 500);
+  };
+  var startRun = function (d, n) {
+    n = Math.max(1, Math.min(n, 12)); run = { d: d, left: n }; saveRun(); clearTimeout(timer); pend = null;
+    clearTimeout(runTimer); runTimer = setTimeout(runStep, 0);
+  };
+  try { var r0 = JSON.parse(sessionStorage.getItem('moxie-run') || 'null'); if (r0 && r0.left > 0) { run = r0; runTimer = setTimeout(runStep, Math.max(0, 500 - performance.now())); } } catch (x) {}
   document.addEventListener('keydown', function (ev) {
+    if (run && !ev.metaKey) { ev.preventDefault(); stopRun(); swallow = Date.now(); return; }
     if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;
     var t = ev.target, tag = t && t.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
@@ -206,27 +228,46 @@ main{touch-action:pan-y pinch-zoom}
     var d = ev.key === 'ArrowLeft' ? -1 : 1;
     if (ev.repeat) {                          // a held key: one page at a time, each shown for half a second
       if (performance.now() - lastStep < 500) return;
-      lastStep = performance.now(); step(d, true);
-    } else { lastStep = performance.now(); step(d, false); }
-  });
+      step(d, true);
+    } else step(d, false);
+  }, true);
+  var press = function (ev) { if (stopRun()) { swallow = Date.now(); ok = false; } };
+  document.addEventListener('touchstart', press, { capture: true, passive: true });
+  document.addEventListener('mousedown', press, true);
+  document.addEventListener('click', function (ev) { if (Date.now() - swallow < 500) { ev.preventDefault(); ev.stopPropagation(); } }, true);
   var sx = 0, sy = 0, st = 0, ok = false;
   var scrollsSideways = function (n) {
     for (; n && n !== document.body; n = n.parentNode) {
       if (n.nodeType !== 1) continue;
-      var tag = n.tagName; if (tag === 'NAV' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'ASIDE' || n.id === 'toc-small') return true;
+      var tag = n.tagName; if (tag === 'NAV' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'ASIDE' || n.id === 'toc-small' || n.className === 'az') return true;
       if (n.scrollWidth > n.clientWidth + 4 && /auto|scroll/.test(getComputedStyle(n).overflowX)) return true;
     }
     return false;
   };
   document.addEventListener('touchstart', function (ev) {
+    if (Date.now() - swallow < 50) { ok = false; return; }
     var t = ev.touches[0]; ok = ev.touches.length === 1 && t.clientX > 24 && t.clientX < window.innerWidth - 24 && !scrollsSideways(ev.target);
     sx = t.clientX; sy = t.clientY; st = Date.now();
   }, { passive: true });
-  document.addEventListener('touchend', function (ev) {
+  document.addEventListener('touchend', function (ev) {   // a slight swipe moves one frame, a long one runs several at half a second each
     if (!ok) return; ok = false;
-    var t = ev.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Date.now() - st < 800 && Math.abs(dx) > 50 && Math.abs(dx) > 1.4 * Math.abs(dy) && String(window.getSelection()) === '') step(dx < 0 ? 1 : -1);
+    var t = ev.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy, ax = Math.abs(dx);
+    if (Date.now() - st > 1000 || ax < 50 || ax < 1.4 * Math.abs(dy) || String(window.getSelection()) !== '') return;
+    var d = dx < 0 ? 1 : -1;
+    if (ax < 150) step(d, false); else startRun(d, Math.floor(ax / 40));
   }, { passive: true });
+  var wx = 0, wt = null;                      // a trackpad: the same, from the total horizontal scroll of one gesture
+  window.addEventListener('wheel', function (ev) {
+    if (Math.abs(ev.deltaX) <= Math.abs(ev.deltaY) || ev.ctrlKey || scrollsSideways(ev.target)) return;
+    ev.preventDefault();
+    if (run) { stopRun(); swallow = Date.now(); wx = 0; return; }
+    wx += ev.deltaX; clearTimeout(wt);
+    wt = setTimeout(function () {
+      var tot = wx; wx = 0; if (Math.abs(tot) < 40) return;
+      var d = tot > 0 ? 1 : -1, a = Math.abs(tot);
+      if (a < 500) step(d, false); else startRun(d, Math.round(a / 150));
+    }, 140);
+  }, { passive: false });
 })();
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
