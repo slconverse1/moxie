@@ -37,7 +37,6 @@ dl.ref dt{margin-top:14px;font-weight:600;scroll-margin-top:calc(var(--navh,48px
 .az a,.az span{color:var(--accent);min-width:24px;text-align:center;padding:3px 4px;border-radius:5px;text-transform:uppercase;text-decoration:none}
 .az span{opacity:.3}
 .az a:hover{background:var(--code)}
-body.refpage #toc-small{top:calc(var(--navh,40px) + var(--azh,0px))}
 dl.ref dd{margin:2px 0 0 1.2em}
 dl.ref code.sig{display:inline-block;margin-top:4px;color:var(--muted);background:none;padding:0;white-space:pre-wrap}
 dl.ref dt:target,dl.ref dt:target+dd{background:var(--code)}
@@ -72,7 +71,9 @@ nav a.here:hover{text-decoration:none}
 #toc a.here{border-left-color:var(--accent);color:var(--accent);font-weight:600}
 #toc .part{margin:12px 0 2px;padding:0 8px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 #toc code{font-size:.9em}
-#toc-small{position:sticky;top:var(--navh,40px);z-index:20;max-height:calc(100vh - var(--navh,40px) - 16px);overflow:auto;margin:0 0 12px;border:1px solid var(--line);border-top:0;border-radius:0 0 8px 8px;padding:8px 12px;background:var(--code)}
+#toc-small{position:fixed;top:calc(var(--navh,40px) + var(--azh,0px));left:0;right:0;z-index:20;max-height:calc(100vh - var(--navh,40px) - var(--azh,0px) - 8px);max-height:calc(100dvh - var(--navh,40px) - var(--azh,0px) - 8px);overflow:auto;margin:0;border:1px solid var(--line);border-left:0;border-right:0;border-top:0;border-radius:0;padding:8px 16px;background:var(--code)}
+@media (max-width:1099px){body.hastoc main{padding-top:calc(var(--smallh,44px) + var(--azh,0px) + 8px)}.az{position:fixed;top:var(--navh,40px);left:0;right:0;padding:6px 12px}}
+main{touch-action:pan-y pinch-zoom}
 #toc-small summary{cursor:pointer;font-weight:600;color:var(--accent)}
 #toc-small ul{list-style:none;margin:6px 0 2px;padding:0}
 #toc-small a{display:block;padding:3px 0;color:var(--ink);text-decoration:none}
@@ -189,18 +190,24 @@ nav a.here:hover{text-decoration:none}
       setTimeout(function () { window.scrollTo(0, t.y || 0); }, 0);
     } else { try { sessionStorage.setItem('moxie-go', '1'); } catch (x) {} location.href = t.u; }
   };
-  var step = function (d) {                   // d = -1 back, +1 forward; fast repeats pile up and one jump follows
+  var step = function (d, now) {              // d = -1 back, +1 forward; quick taps pile up and one jump follows; a held key goes at once
     var j = (pend === null ? S.i : pend) + d;
     if (j < 0 || j >= S.l.length) { say(d < 0 ? 'Start of history' : 'End of history'); return; }
     pend = j;
     say((d < 0 ? '← ' : '') + S.l[j].t + (d > 0 ? ' →' : '') + '   ' + (j + 1) + '/' + S.l.length);
-    clearTimeout(timer); timer = setTimeout(commit, 350);
+    clearTimeout(timer); if (now) commit(); else timer = setTimeout(commit, 350);
   };
+  var lastStep = 0;
   document.addEventListener('keydown', function (ev) {
     if (ev.altKey || ev.ctrlKey || ev.metaKey || ev.shiftKey || (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight')) return;
     var t = ev.target, tag = t && t.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
-    ev.preventDefault(); step(ev.key === 'ArrowLeft' ? -1 : 1);
+    ev.preventDefault();
+    var d = ev.key === 'ArrowLeft' ? -1 : 1;
+    if (ev.repeat) {                          // a held key: one page at a time, each shown for half a second
+      if (performance.now() - lastStep < 500) return;
+      lastStep = performance.now(); step(d, true);
+    } else { lastStep = performance.now(); step(d, false); }
   });
   var sx = 0, sy = 0, st = 0, ok = false;
   var scrollsSideways = function (n) {
@@ -218,12 +225,29 @@ nav a.here:hover{text-decoration:none}
   document.addEventListener('touchend', function (ev) {
     if (!ok) return; ok = false;
     var t = ev.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
-    if (Date.now() - st < 800 && Math.abs(dx) > 60 && Math.abs(dx) > 1.8 * Math.abs(dy) && String(window.getSelection()) === '') step(dx < 0 ? 1 : -1);
+    if (Date.now() - st < 800 && Math.abs(dx) > 50 && Math.abs(dx) > 1.4 * Math.abs(dy) && String(window.getSelection()) === '') step(dx < 0 ? 1 : -1);
   }, { passive: true });
 })();
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
   if (!side || !small) return;
+  if (document.body.classList.contains('refpage')) {   // the A-Z bar is the contents here: nothing to list
+    var sm = small.querySelector('summary'); if (sm) sm.textContent = 'moxie / moxie/gc';
+    return;
+  }
+  var goTo = function (e) {                   // a contents link: close the dropdown, then scroll clear of the pinned bars
+    var a = e.target.closest && e.target.closest('a'); if (!a) return;
+    var h = a.getAttribute('href') || ''; if (h.charAt(0) !== '#' || h.length < 2) return;
+    var t = document.getElementById(decodeURIComponent(h.slice(1))); if (!t) return;
+    e.preventDefault();
+    small.open = false;
+    var style = getComputedStyle(document.documentElement), navh = parseFloat(style.getPropertyValue('--navh')) || 48;
+    var bars = window.innerWidth < 1100 ? navh + (parseFloat(style.getPropertyValue('--smallh')) || 44) : navh;
+    if (location.hash !== h) location.hash = h;
+    var y = t.getBoundingClientRect().top + window.scrollY - bars - 12;
+    setTimeout(function () { window.scrollTo(0, Math.max(0, y)); }, 30);
+  };
+  side.addEventListener('click', goTo); small.addEventListener('click', goTo);
   var ul = side.querySelector('ul:not(.trail)');
   if (!ul) {                                  // a page without a prebuilt list: the outline is its section headings
     var hs = document.querySelectorAll('main h2[id]');
@@ -260,7 +284,8 @@ nav a.here:hover{text-decoration:none}
 (function () {
   var nav = document.querySelector('nav'), root = document.documentElement;
   if (!nav) return;
-  var setH = function () { root.style.setProperty('--navh', nav.offsetHeight + 'px'); var az = document.querySelector('.az'); if (az) root.style.setProperty('--azh', az.offsetHeight + 'px'); };
+  var setH = function () { root.style.setProperty('--navh', nav.offsetHeight + 'px'); var az = document.querySelector('.az'); if (az) root.style.setProperty('--azh', az.offsetHeight + 'px');
+    var sm = document.getElementById('toc-small'); if (sm && !sm.open) root.style.setProperty('--smallh', sm.offsetHeight + 'px'); };
   setH(); window.addEventListener('resize', setH); window.addEventListener('load', setH);
   var mk = function (cls, ch, label) { var b = document.createElement('button'); b.type = 'button'; b.className = 'navarr ' + cls; b.textContent = ch; b.setAttribute('aria-label', label); b.hidden = true; return b; };
   var L = mk('l', '\u2039', 'Show the left end of the menu bar'), R = mk('r', '\u203a', 'Show the right end of the menu bar');
