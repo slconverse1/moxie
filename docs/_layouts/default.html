@@ -220,7 +220,7 @@ html,body{overscroll-behavior-x:none}
   var CPS = 1.5, FAST = 12, SHORT = 6;       // pages a second when steady; the fastest part of a long run; up to this many pages is "short"
   var SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html|\/ref\//.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
   var endFlow = function (land) {
-    if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf);
+    if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf); if (land && f.anim) f.pos = curPos(f); if (f.anim) f.anim.cancel();
     if (f.el.parentNode) f.el.parentNode.removeChild(f.el);
     if (land) go(Math.max(0, Math.min(S.l.length - 1, Math.round(f.pos))));
   };
@@ -246,39 +246,55 @@ html,body{overscroll-behavior-x:none}
     });
     fr.appendChild(ifr); fr.__ifr = ifr;
   };
+  var speedAt = function (f, r) { return f.held ? CPS * 1.7 : f.long ? Math.min(FAST, Math.max(CPS, Math.abs(r) * 2.2)) : CPS; };   // long: fast at first, ever slower towards the end
+  var DT = 1 / 60;
+  var planFlow = function (f) {              // work out the whole glide from here to the target, and hand it to the compositor, so loading pages can't make it stutter
+    if (f.anim) f.anim.cancel();
+    var pos = f.pos, sm = [pos], guard = 0;
+    while (Math.abs(f.target - pos) > 0.001 && guard++ < 6000) {
+      var r = f.target - pos; pos += (r > 0 ? 1 : -1) * Math.min(Math.abs(r), speedAt(f, r) * DT); sm.push(pos);
+    }
+    f.samples = sm; f.dur = (sm.length - 1) * DT;
+    var kf = [], step = 3;
+    for (var k = 0; k < sm.length; k += step) kf.push({ transform: 'translate3d(' + (-sm[k] * f.W) + 'px,0,0)', offset: sm.length > 1 ? k / (sm.length - 1) : 0 });
+    if ((sm.length - 1) % step) kf.push({ transform: 'translate3d(' + (-sm[sm.length - 1] * f.W) + 'px,0,0)', offset: 1 });
+    f.strip.style.transform = 'translate3d(' + (-sm[0] * f.W) + 'px,0,0)';
+    f.anim = sm.length > 1 ? f.strip.animate(kf, { duration: Math.max(1, f.dur * 1000), easing: 'linear', fill: 'forwards' }) : null;
+    if (f.anim) { f.anim.pause(); if (f.go) f.anim.play(); }
+  };
+  var curPos = function (f) {
+    if (!f.anim || !f.samples) return f.pos;
+    var t = Math.min(f.dur, Math.max(0, (f.anim.currentTime || 0) / 1000)) / DT, a = Math.floor(t), b = Math.min(f.samples.length - 1, a + 1);
+    return f.samples[a] + (f.samples[b] - f.samples[a]) * (t - a);
+  };
   var startFlow = function (d, target, held) {
     clearTimeout(timer); pend = null;
-    if (flow) { flow.target = target; flow.d = d; flow.held = held; return; }
+    if (flow) { var f0 = flow; f0.pos = curPos(f0); f0.target = target; f0.d = d; f0.held = held; f0.long = Math.abs(target - f0.pos) > SHORT; planFlow(f0); return; }
     var el = document.createElement('div'); el.id = 'hflow';
     var strip = document.createElement('div'); strip.className = 'hf-strip'; el.appendChild(strip);
     var cap = document.createElement('div'); cap.className = 'hf-cap'; el.appendChild(cap);
     document.body.appendChild(el);
     var n = Math.abs(target - S.i);
     flow = { el: el, strip: strip, frames: {}, ready: {}, loading: 0, cap: cap, W: window.innerWidth, H: window.innerHeight, pos: S.i, target: target, d: d, held: held,
-             long: n > SHORT, last: performance.now(), t0: performance.now(), sel: -1, raf: 0 };
+             long: n > SHORT, t0: performance.now(), sel: -1, raf: 0, go: false };
+    planFlow(flow);
     var frame = function (now) {
       var f = flow; if (!f) return;
-      var dt = Math.min(0.1, (now - f.last) / 1000); f.last = now;
-      var lo = Math.max(0, Math.floor(f.pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(f.pos) + 2);
-      if (f.d < 0) { lo = Math.max(0, Math.floor(f.pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(f.pos) + 1); }
+      if (!f.go && (f.ready[S.i] || now - f.t0 >= 400)) { f.go = true; if (f.anim) f.anim.play(); }     // let the page you are leaving appear first, so the glide begins from what you saw
+      var pos = curPos(f);
+      var lo = Math.max(0, Math.floor(pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(pos) + 2);
+      if (f.d < 0) { lo = Math.max(0, Math.floor(pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(pos) + 1); }
       for (var j = lo; j <= hi; j++) if (!f.frames[j]) mkFrame(f, j);
-      var slow = f.held || !f.long || Math.abs(f.target - f.pos) < 3.5, near = [];    // real pages only while the glide is slow enough to load them
+      var slow = speedAt(f, f.target - pos) < 4, near = [];    // real pages only while the glide is slow enough to load them
       if (f.frames[S.i] && !f.frames[S.i].__ifr && now - f.t0 < 4000) loadFrame(f, S.i);
-      if (slow) { for (var q in f.frames) if (!f.frames[q].__ifr && Math.abs(q - f.pos) < 2.2) near.push(+q);
-        near.sort(function (x, y) { return Math.abs(x - f.pos) - Math.abs(y - f.pos); });
+      if (slow) { for (var q in f.frames) if (!f.frames[q].__ifr && Math.abs(q - pos) < 2.2) near.push(+q);
+        near.sort(function (x, y) { return Math.abs(x - pos) - Math.abs(y - pos); });
         for (var w = 0; w < near.length && f.loading < 2; w++) loadFrame(f, near[w]); }
       Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
-      var waiting = !f.ready[S.i] && now - f.t0 < 400;       // let the page you are leaving appear first, so the glide begins from what you saw
-      var r = f.target - f.pos, dir = r > 0 ? 1 : -1;
-      if (!waiting && Math.abs(r) > 0.001) {
-        var v = f.held ? CPS * 1.7 : f.long ? Math.min(FAST, Math.max(CPS, Math.abs(r) * 2.2)) : CPS;   // long: fast at first, ever slower towards the end
-        f.pos += dir * Math.min(Math.abs(r), v * dt);
-      }
-      f.strip.style.transform = 'translateX(' + (-f.pos * f.W) + 'px)';
-      var sel = Math.round(f.pos);
+      var sel = Math.round(pos);
       if (sel !== f.sel) { f.sel = sel; f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop here'; }
-      if (Math.abs(f.target - f.pos) <= 0.001 && !f.held) {
-        if (!f.done) { f.done = now; } else if (now - f.done > 700) { endFlow(true); return; }
+      if (f.go && !f.held && (!f.anim || f.anim.currentTime >= f.dur * 1000 - 1)) {
+        if (!f.done) { f.done = now; } else if (now - f.done > 700) { f.pos = f.target; endFlow(true); return; }
       }
       f.raf = requestAnimationFrame(frame);
     };
