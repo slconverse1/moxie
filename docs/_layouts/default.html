@@ -232,14 +232,19 @@ html,body{overscroll-behavior-x:none}
     var t = document.createElement('div'); t.className = 'hf-t'; t.textContent = e.t.replace(/^(Guide|Spec|Intro) · /, '');
     var x = document.createElement('div'); x.className = 'hf-x'; x.textContent = e.x || '';
     c.appendChild(k); c.appendChild(t); c.appendChild(x); fr.appendChild(c);
+    f.strip.appendChild(fr); f.frames[j] = fr; return fr;
+  };
+  var loadFrame = function (f, j) {          // the page itself, in a frame over the card
+    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr) return;
+    f.loading++;
     var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
     var y = j === S.i ? window.scrollY : (e.y || 0);
     ifr.addEventListener('load', function () {
       var go2 = function () { try { var w = ifr.contentWindow, h = hashOf(e.u); if (y) w.scrollTo(0, y); else if (h) { var el = w.document.getElementById(decodeURIComponent(h.slice(1))); if (el) el.scrollIntoView(); } } catch (x) {} fr.classList.add('ready'); f.ready[j] = 1; };
-      go2(); setTimeout(go2, 60);
+      f.loading--; go2(); setTimeout(go2, 60);
     });
-    fr.appendChild(ifr); f.strip.appendChild(fr); f.frames[j] = fr; return fr;
+    fr.appendChild(ifr); fr.__ifr = ifr;
   };
   var startFlow = function (d, target, held) {
     clearTimeout(timer); pend = null;
@@ -249,7 +254,7 @@ html,body{overscroll-behavior-x:none}
     var cap = document.createElement('div'); cap.className = 'hf-cap'; el.appendChild(cap);
     document.body.appendChild(el);
     var n = Math.abs(target - S.i);
-    flow = { el: el, strip: strip, frames: {}, ready: {}, cap: cap, W: window.innerWidth, H: window.innerHeight, pos: S.i, target: target, d: d, held: held,
+    flow = { el: el, strip: strip, frames: {}, ready: {}, loading: 0, cap: cap, W: window.innerWidth, H: window.innerHeight, pos: S.i, target: target, d: d, held: held,
              long: n > SHORT, last: performance.now(), t0: performance.now(), sel: -1, raf: 0 };
     var frame = function (now) {
       var f = flow; if (!f) return;
@@ -257,7 +262,12 @@ html,body{overscroll-behavior-x:none}
       var lo = Math.max(0, Math.floor(f.pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(f.pos) + 2);
       if (f.d < 0) { lo = Math.max(0, Math.floor(f.pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(f.pos) + 1); }
       for (var j = lo; j <= hi; j++) if (!f.frames[j]) mkFrame(f, j);
-      Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); delete f.frames[k]; delete f.ready[k]; } });
+      var slow = f.held || !f.long || Math.abs(f.target - f.pos) < 3.5, near = [];    // real pages only while the glide is slow enough to load them
+      if (f.frames[S.i] && !f.frames[S.i].__ifr && now - f.t0 < 4000) loadFrame(f, S.i);
+      if (slow) { for (var q in f.frames) if (!f.frames[q].__ifr && Math.abs(q - f.pos) < 2.2) near.push(+q);
+        near.sort(function (x, y) { return Math.abs(x - f.pos) - Math.abs(y - f.pos); });
+        for (var w = 0; w < near.length && f.loading < 2; w++) loadFrame(f, near[w]); }
+      Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
       var waiting = !f.ready[S.i] && now - f.t0 < 400;       // let the page you are leaving appear first, so the glide begins from what you saw
       var r = f.target - f.pos, dir = r > 0 ? 1 : -1;
       if (!waiting && Math.abs(r) > 0.001) {
@@ -412,6 +422,7 @@ html,body{overscroll-behavior-x:none}
   }
 })();
 (function () {                               // link the keywords, types and functions named in the text to the Spec reference
+  if (window.self !== window.top) return;      // a frame in the quick view: skip the linking, it only costs time
   var T = window.MOXIE_TERMS; if (!T || !document.body.hasAttribute('data-terms')) return;
   var GC = '{{ page.dialect }}' === 'gc', ROOT = '{{ "/" | relative_url }}'.replace(/\/?$/, '/'), dir = ROOT + (GC ? 'gc/' : '');
   var ref = dir + 'reference.html', set = function (a) { var o = {}; a.forEach(function (n) { o[n] = 1; }); return o; };
