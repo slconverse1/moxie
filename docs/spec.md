@@ -2,6 +2,7 @@
 layout: default
 title: "Moxie Spec"
 toc: true
+terms: true
 ---
 # MOXIE SPEC
 

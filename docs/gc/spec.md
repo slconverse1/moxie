@@ -3,10 +3,12 @@ layout: default
 dialect: gc
 title: "Moxie/gc Spec"
 toc: true
+terms: true
+gcmarks: true
 ---
 # MOXIE/GC SPEC
 
-moxie/gc is the garbage-collected dialect of moxie, a design language (a specification and a reference interpreter, not yet a production compiler). GC-free moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
+moxie/gc is the garbage-collected dialect of moxie, a design language (a specification and a reference interpreter, not yet a production compiler). GC-free moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked with a red line in the right margin. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
 
 For every keyword, type and prelude function with its signature, see the [reference of keywords, types, and functions](reference.html).
 
@@ -51,7 +53,7 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 - **No null and no zero values.** Every binding needs a value. Absence is an enum case of your own or a `T | ()`, and "might fail" is a `Result`.
 - **Fields, and properties when you need them.** A tuple has fields, and every field is public. A `property` (section 6) is a field that can run code on a read or a write, with accessors, `field`, computed, `lazy`, and `static` forms, and observers when its tuple is held in an Atom. Apart from a property's `priv set`, visibility applies only to top-level names (section 4), and an opaque type hides its representation from other packages. A field delegate (section 6) hooks one field's reads and writes with a rule shared across fields.
 - **No inheritance.** Types have no parents. Interfaces are satisfied through an explicit `impl` and checked at compile time (section 12).
-- **[gc] Garbage-collected, with short pauses.** All fibers share one heap, which a generational collector reclaims in small slices at points where a fiber parks or allocates. Collections grow as needed, and a program never plans its memory (section 3). The collector reclaims memory and nothing else: resources are still single-owner values that are dropped at known points.
+- **[gc]** **Garbage-collected, with short pauses.** All fibers share one heap, which a generational collector reclaims in small slices at points where a fiber parks or allocates. Collections grow as needed, and a program never plans its memory (section 3). The collector reclaims memory and nothing else: resources are still single-owner values that are dropped at known points.
 - **Errors are values.** There are no exceptions: "There is no try." A function that can fail returns a `Result` (section 15), and an unrecoverable fault such as an out-of-range index or an arithmetic overflow aborts the fiber.
 - **No `defer`.** Resources are single-owner values that are moved or dropped, so cleanup needs no hook. **[gc]** This matters more with a collector, which can't say when a value dies: ownership is what gives a handle a known drop time.
 - **No ambient authority.** Files, network connections, and processes are resources that must be passed in explicitly, so a function that is not given one cannot reach it. `args` and `env` are the current exceptions (section 20).
@@ -243,7 +245,7 @@ How the heap behaves:
 - **Byte literals**: `b"GET /"` is an `Array[Byte]` of known size, and `b'\x7F'` is a `Byte`. Allowed escapes are `\xNN`, `\n`, `\r`, `\t`, `\\`, and the quote. A non-ASCII character in a byte literal is an error.
 - **Lengths.** `len(s)` counts bytes. `char_count(s)` counts Unicode scalars (a scan, O(n)). `chars(s)` is a stream of `Char`, so `s |> chars() |> count()` also works. Scalars are not grapheme clusters: a letter with a combining accent, a flag, or a family emoji is several scalars and one thing to the eye. `graphemes(s)` is a stream of `String`, one per extended grapheme cluster (Unicode UAX #29, without the Indic conjunct rule), and `grapheme_count(s)` counts them. A cluster is a `String`, not a `Char`, because it can hold many scalars. `len`, `char_count`, and slicing are unchanged.
 - **Slices**: strings slice with parentheses, like arrays. `s(2..)`, `s(..<3)`, `s(..3)`, and `s(..)` give, for `"Python"`, `thon`, `Pyt`, `Pyth`, and `Python`. Offsets are bytes. A cut inside a multi-byte character aborts (a compile error for constant offsets). **[gc]** A slice is an ordinary `String` and may share its parent's storage.
-- **[gc] One `String` type.** moxie/gc has no `String[n]` and no `readonly` strings. Every string is an immutable `String`, and literals are shared. (`static` survives only as the keyword in `static fn`.)
+- **[gc]** **One `String` type.** moxie/gc has no `String[n]` and no `readonly` strings. Every string is an immutable `String`, and literals are shared. (`static` survives only as the keyword in `static fn`.)
 
 **Format specs in interpolation**
 - `${expr:spec}` with `spec` = `[[fill]align][sign][#][0][width][,][.precision][type]`.
@@ -732,7 +734,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 - **Lambdas.** `return` inside a lambda leaves that lambda and gives its value, which is the moxie form of Kotlin's `return@forEach`. A labeled return to an enclosing function is not possible. To skip an item in a `for`, use `continue`.
 - **Resources.** `break`, `continue`, and the labeled forms follow the usual rule: a resource may be moved only on an exiting path, and the end-of-body check applies at `continue`.
 
-## 19. Resources and packages** **[gc] {#s19}
+## 19. Resources and packages **[gc]** {#s19}
 
 <!-- guide -->
 *In the Mixer’s Guide: [35. Limits, pools, and the memory budget](learn/53-limits-pools-memory.html), [36. Packages and imports](learn/27-packages.html), [37. Input, output, and files](learn/28-input-output-files.html)*
@@ -1097,9 +1099,9 @@ Everything else in this Spec is settled, including every call that earlier draft
 6. **Currying:** `curry` for any arity is settled. The checker's rules for `curry` and `uncurry[n]` are built as shape rules (parameter counts, the excluded parameter kinds, the number of arguments in each call of the result); full function types in the checker are not.
 7. **`clone` in loops** (section 17) is a starting rule, to be revisited when real programs need it.
 8. **Locale:** settled (section 5 and 19e). Translation, plural rules, collation, and calendars other than the Gregorian remain out of scope.
-9. **Pending [gc]:** the compiler and the collector. The moxie/gc Mixer’s Guide exists, and the reference interpreter runs moxie/gc programs with `--gc`, but it has no collector and does not model the heap limit or the allocation report.
-10. **Collector tuning [gc]:** the numbers (the default slice budget, the generation sizes) are to be set once a real collector exists. There is one heap and one young generation for all fibers.
-11. **No per-fiber heap cap [gc].** An abort ends the program, so a cap that ended only one fiber would not fit. The heap limit is for the whole program.
+9. **[gc]** **Pending:** the compiler and the collector. The moxie/gc Mixer’s Guide exists, and the reference interpreter runs moxie/gc programs with `--gc`, but it has no collector and does not model the heap limit or the allocation report.
+10. **[gc]** **Collector tuning:** the numbers (the default slice budget, the generation sizes) are to be set once a real collector exists. There is one heap and one young generation for all fibers.
+11. **[gc]** **No per-fiber heap cap.** An abort ends the program, so a cap that ended only one fiber would not fit. The heap limit is for the whole program.
 
 ## 26. Grammar {#s26}
 

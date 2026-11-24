@@ -16,7 +16,5 @@ The Tutorial, Style, Try, REPL and Help pages are not added.
 ## Moving back and forth
 
 - **Left and right arrow keys** step one page back or forward, with a short note of where you are in the history. Hold a key and the pages flow by until you let go.
-- **A swipe** (on a touch screen) moves through up to ten pages, each shown in full as it passes. Swipe again and it runs through the pages it was already showing, then ten more.
+- **A swipe** (on a touch screen) moves through up to ten pages, each shown in full as it passes. Swipe again and it carries on with the next ten, without replaying pages it has already shown.
 - **Tap, click or press any key** while pages are moving to stop on the page in view. That page opens in full and becomes the current page.
-
-Going back and then following a link starts a new branch: the pages you went back past are dropped from the history.

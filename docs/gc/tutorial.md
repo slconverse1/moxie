@@ -2,6 +2,7 @@
 layout: default
 toc: true
 terms: true
+gcmarks: true
 dialect: gc
 title: "moxie/gc Tutorial"
 ---
@@ -9,7 +10,7 @@ title: "moxie/gc Tutorial"
 
 This tutorial grows one small program, a gradebook, a step at a time. Each step adds a few lines to the same file and shows what it prints, so by the end you will have used values, functions, data, patterns, collections, errors, generics, concurrency, and tests. You don't need to know any functional programming. If you do, the notes will tell you where moxie differs from what you expect.
 
-This is the tutorial for moxie/gc, the garbage-collected dialect of moxie. It builds the same gradebook as the plain moxie tutorial, and the places where the two differ are marked **[gc]**. A new step 8 is about memory, and tests are now step 9.
+This is the tutorial for moxie/gc, the garbage-collected dialect of moxie. It builds the same gradebook as the plain moxie tutorial, and the places where the two differ are marked with a red line in the right margin. A new step 8 is about memory, and tests are now step 9.
 
 **To follow along,** save the code in a file called `gradebook.mxi`, adding each step's code to the end of the file, and run it with the reference interpreter (plain Python 3, nothing to install):
 

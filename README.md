@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Spec: in the moxie/gc Spec every passage that differs is now marked by a red line in the right margin instead of the visible **[gc]** text (five marks written inside bold phrases, and the heading of section 19, were repaired so they convert), and the Spec's opening says what the red line means; the moxie/gc Tutorial's marks became red lines too. Both Specs now link the keywords, types and functions named in their text to the reference, as the Intros, Tutorials and Guide already do. Quick view: a swipe that continues an earlier one skips the pages that were already shown instead of replaying them. Help says so.
+
 A **Help** tab now sits between REPL and Source on both sites (docs/help.md, docs/gc/help.md). It covers moving through the site only: which pages go into the history (Intro, Guide, Spec and reference), the arrow keys, swipes and tap-to-stop. The Help page is not part of the history. The Try and REPL navs (and tools/make_gc_pages.py) carry the new tab.
 
 Quick view landing no longer flashes or jumps: when a swipe ends on a page in another document, the moving strip stays on screen until the new page replaces it (instead of briefly showing the page you started from), and the saved scroll position is applied as soon as the page's script runs, not only after it finishes loading.
