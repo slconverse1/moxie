@@ -189,6 +189,14 @@ html,body{overscroll-behavior-x:none}
   save();
   window.addEventListener('scroll', function () { if (S.l[S.i]) S.l[S.i].y = window.scrollY; }, { passive: true });
   window.addEventListener('pagehide', function () { if (S.l[S.i]) S.l[S.i].x = excerpt(); save(); });
+  document.addEventListener('click', function (ev) {      // a link that takes you to another page, the menu bar and Contents included: the page you are on, if you reached it by moving back or forward, led somewhere, so it is added again
+    if (ev.defaultPrevented || ev.button || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    var a = ev.target.closest && ev.target.closest('a[href]'); if (!a || (a.target && a.target !== '_self')) return;
+    var h = a.getAttribute('href') || ''; if (!h || h.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(h)) return;
+    var c = S.l[S.i]; if (!c || S.i >= S.l.length - 1) return;
+    var to = a.href.split('#')[0]; if (to === location.href.split('#')[0]) return;
+    c.y = window.scrollY; S.l.push({ u: c.u, t: c.t, y: c.y, x: c.x }); S.i = S.l.length - 1; S.run = null; save();
+  });
   var skip = false;
   window.addEventListener('hashchange', function () {
     if (skip) { skip = false; return; }

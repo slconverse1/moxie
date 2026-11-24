@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+History: a page you stopped on (or reached by moving back or forward) is now added again when you leave it by any link to another page, the menu bar and Contents links included, not only by links in the text. Help says so.
+
 History: nothing is ever dropped now. Going back and then following a link used to discard the pages that were ahead; instead the history keeps them all (up to 500, up from 50), and leaving a page you reached by moving back or forward adds that page again before the new one, since it led somewhere. Stopping on a page in quick view does not add it by itself. Help now tells a short swipe (the next page) from a long one (up to ten pages).
 
 Spec: in the moxie/gc Spec every passage that differs is now marked by a red line in the right margin instead of the visible **[gc]** text (five marks written inside bold phrases, and the heading of section 19, were repaired so they convert), and the Spec's opening says what the red line means; the moxie/gc Tutorial's marks became red lines too. Both Specs now link the keywords, types and functions named in their text to the reference, as the Intros, Tutorials and Guide already do. Quick view: a swipe that continues an earlier one skips the pages that were already shown instead of replaying them. Help says so.
