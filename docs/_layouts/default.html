@@ -215,9 +215,9 @@ html,body{overscroll-behavior-x:none}
     clearTimeout(timer); timer = setTimeout(commit, 350);
   };
   // The flow: the history's pages, in full, glide past as one continuous strip, each shown little by little as it slides into view.
-  // A short run moves at one steady speed; a long swipe starts fast and slows steadily towards its end. Where it stops (or where you
+  // Every run moves at one steady speed, whatever its length; one swipe carries you through up to MAXRUN pages. Where it stops (or where you
   // click, touch or press a key) is the page you land on.
-  var CPX = 585, FASTX = 4700, SHORT = 6;     // pixels a second when steady, and in the fastest part of a long run (the same on every screen, so a wide iPad glides at the pace of a phone); up to SHORT pages is a short run
+  var CPX = 585, MAXRUN = 10;                 // pixels a second (the same on every screen, so a wide iPad glides at the pace of a phone); the most pages one swipe shows
   var SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html|\/ref\//.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
   var endFlow = function (land) {
     if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf); if (land && f.anim) f.pos = curPos(f); if (f.anim) f.anim.cancel();
@@ -246,7 +246,7 @@ html,body{overscroll-behavior-x:none}
     });
     fr.appendChild(ifr); fr.__ifr = ifr;
   };
-  var speedAt = function (f, r) { var cps = CPX / f.W, fast = FASTX / f.W; return f.held ? cps * 1.7 : f.long ? Math.min(fast, Math.max(cps, Math.abs(r) * 2.2)) : cps; };   // pages a second   // long: fast at first, ever slower towards the end
+  var speedAt = function (f, r) { return CPX / f.W; };   // pages a second: always the same   // long: fast at first, ever slower towards the end
   var DT = 1 / 60;
   var planFlow = function (f) {              // work out the whole glide from here to the target, and hand it to the compositor, so loading pages can't make it stutter
     if (f.anim) f.anim.cancel();
@@ -269,14 +269,14 @@ html,body{overscroll-behavior-x:none}
   };
   var startFlow = function (d, target, held) {
     clearTimeout(timer); pend = null;
-    if (flow) { var f0 = flow; f0.pos = curPos(f0); f0.target = target; f0.d = d; f0.held = held; f0.long = Math.abs(target - f0.pos) > SHORT; planFlow(f0); return; }
+    if (flow) { var f0 = flow; f0.pos = curPos(f0); f0.target = target; f0.d = d; f0.held = held; planFlow(f0); return; }
     var el = document.createElement('div'); el.id = 'hflow';
     var strip = document.createElement('div'); strip.className = 'hf-strip'; el.appendChild(strip);
     var cap = document.createElement('div'); cap.className = 'hf-cap'; el.appendChild(cap);
     document.body.appendChild(el);
     var n = Math.abs(target - S.i);
     flow = { el: el, strip: strip, frames: {}, ready: {}, loading: 0, cap: cap, W: window.innerWidth, H: window.innerHeight, pos: S.i, target: target, d: d, held: held,
-             long: n > SHORT, t0: performance.now(), sel: -1, raf: 0, go: false };
+             t0: performance.now(), sel: -1, raf: 0, go: false };
     planFlow(flow);
     var frame = function (now) {
       var f = flow; if (!f) return;
@@ -285,7 +285,7 @@ html,body{overscroll-behavior-x:none}
       var lo = Math.max(0, Math.floor(pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(pos) + 2);
       if (f.d < 0) { lo = Math.max(0, Math.floor(pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(pos) + 1); }
       for (var j = lo; j <= hi; j++) if (!f.frames[j]) mkFrame(f, j);
-      var slow = speedAt(f, f.target - pos) * f.W < 2500, near = [];    // real pages only while the glide is slow enough to load them
+      var slow = true, near = [];    // real pages only while the glide is slow enough to load them
       if (f.frames[S.i] && !f.frames[S.i].__ifr && now - f.t0 < 4000) loadFrame(f, S.i);
       if (slow) { for (var q in f.frames) if (!f.frames[q].__ifr && Math.abs(q - pos) < 2.2) near.push(+q);
         near.sort(function (x, y) { return Math.abs(x - pos) - Math.abs(y - pos); });
@@ -300,7 +300,7 @@ html,body{overscroll-behavior-x:none}
     };
     flow.raf = requestAnimationFrame(frame);
   };
-  var flowBy = function (d, n) { startFlow(d, Math.max(0, Math.min(S.l.length - 1, S.i + d * Math.max(2, n))), false); };
+  var flowBy = function (d, n) { startFlow(d, Math.max(0, Math.min(S.l.length - 1, S.i + d * Math.min(MAXRUN, Math.max(2, n)))), false); };
   var stopFlow = function () { if (!flow) return false; endFlow(true); swallow = Date.now(); return true; };
   var heldKey = null;
   document.addEventListener('keydown', function (ev) {
