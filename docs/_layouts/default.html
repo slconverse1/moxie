@@ -100,7 +100,7 @@ html,body{overscroll-behavior-x:none}
 </head>
 <body class="{% if page.toc or page.learn %}hastoc{% endif %}{% if page.refpage %} refpage{% endif %}"{% if page.gcmarks %} data-gcmarks{% endif %}{% if page.learn or page.terms %} data-terms{% endif %}>
 <nav>
-  {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains '/ref/' or page.url contains 'spec' or page.url contains 'reference' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% endif %}
+  {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains '/ref/' or page.url contains 'spec' or page.url contains 'reference' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% elsif page.url contains '/help' %}{% assign sect = 'help' %}{% endif %}
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
   <a class="brand{% if sect == 'home' %} here{% endif %}" href="{{ base | append: '/' | relative_url }}">{% if page.dialect == 'gc' %}moxie/gc{% else %}moxie{% endif %}</a>
   <a{% if sect == 'guide' %} class="here"{% endif %} href="{{ base | append: '/learn/' | relative_url }}">Mixer’s Guide</a>
@@ -110,6 +110,7 @@ html,body{overscroll-behavior-x:none}
   <a{% if sect == 'style' %} class="here"{% endif %} href="{{ base | append: '/style.html' | relative_url }}">Style</a>
   {% if page.dialect == 'gc' %}<a{% if sect == 'try' %} class="here"{% endif %} href="{{ '/gc/try.html' | relative_url }}">Try moxie/gc</a>{% else %}<a{% if sect == 'try' %} class="here"{% endif %} href="{{ '/try.html' | relative_url }}">Try moxie</a>{% endif %}
   <a{% if sect == 'repl' %} class="here"{% endif %} href="{{ base | append: '/repl.html' | relative_url }}">REPL</a>
+  <a{% if sect == 'help' %} class="here"{% endif %} href="{{ base | append: '/help.html' | relative_url }}">Help</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
 </nav>
 <div class="page">
@@ -152,7 +153,7 @@ html,body{overscroll-behavior-x:none}
     Array.prototype.forEach.call(document.querySelectorAll('.dtoggle a'), function (a) { a.href = other + location.hash; });
   });
   if (window.self !== window.top) return;   // a frame inside the flow shows a page; it must not touch the history
-  if (!sec) return;                          // Tutorial, Style, Try, REPL: not part of the history
+  if (!sec) return;                          // Tutorial, Style, Try, REPL, Help: not part of the history
   var KEY = 'moxie-nav-' + (GC ? 'gc' : 'moxie'), MAX = 50, S = { l: [], i: -1 };
   try { var raw = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (raw && raw.l) S = raw; } catch (e) {}
   var pathOf = function (u) { return u.split('#')[0]; }, hashOf = function (u) { return u.indexOf('#') < 0 ? '' : u.slice(u.indexOf('#')); };

@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+A **Help** tab now sits between REPL and Source on both sites (docs/help.md, docs/gc/help.md): what each tab is, how the back and forward history works (arrow keys, swipes, tap to stop), the Try and REPL pages, how names link to the reference, and how to run moxie locally. The Help page is not part of the history. The Try and REPL navs (and tools/make_gc_pages.py) carry the new tab.
+
 Quick view landing no longer flashes or jumps: when a swipe ends on a page in another document, the moving strip stays on screen until the new page replaces it (instead of briefly showing the page you started from), and the saved scroll position is applied as soon as the page's script runs, not only after it finishes loading.
 
 Everywhere the text said "no GC" or "no-GC" for the plain dialect (the Intros, including the Contents entry "Constraints from "GC-free" and "1-pass compiler"", the Specs, the Guide, the reference pages, and the notes and test names) it now says "GC-free". The changelog entries below that describe earlier wording are left as they were.
