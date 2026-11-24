@@ -5,7 +5,8 @@ title: "Reader, writer, and continuations · Moxie Mixer’s Guide"
 ---
 # 53. Reader, writer, and continuations
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
+In the Spec: [23. Functional programming support](../spec.html#s23)
+{: .specref}
 
 The monads in this lesson and the next are packages that need closures of one type per signature, which GC-free moxie does not have, so they ship only with moxie/gc. The idea of each, and what to use instead, is below.
 

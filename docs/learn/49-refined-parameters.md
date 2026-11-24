@@ -5,7 +5,8 @@ title: "Refined parameters: proofs in the signature · Moxie Mixer’s Guide"
 ---
 # 59. Refined parameters: proofs in the signature
 
-<div class='specref' markdown='1'>In the Spec: [9d. Refined parameters](../spec.html#s9d)</div>
+In the Spec: [9d. Refined parameters](../spec.html#s9d)
+{: .specref}
 
 A condition on a parameter says what a function needs. A **refined parameter** says it in the signature, so a bad call can fail when you *compile*, and one the compiler can't judge is checked when the program runs. Write `where` and a condition after the parameter's type:
 

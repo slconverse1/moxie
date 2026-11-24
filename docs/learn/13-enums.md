@@ -5,7 +5,8 @@ title: "Enums · Moxie Mixer’s Guide"
 ---
 # 15. Enums
 
-<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)</div>
+In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6)
+{: .specref}
 
 A tuple says "a value has *all* of these fields". An *enum* says "a value is *one of* these cases". A traffic light is red, yellow, or green. A shape is a circle with a radius, or a rectangle with a width and height. Enums are how moxie describes data that comes in kinds.
 

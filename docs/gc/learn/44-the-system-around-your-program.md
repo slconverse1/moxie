@@ -6,7 +6,8 @@ title: "The system around your program · Moxie/gc Mixer’s Guide"
 ---
 # 61. The system around your program
 
-<div class='specref' markdown='1'>In the Spec: [19d. Permissions](../spec.html#s19d), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e), [20. Program arguments and environment](../spec.html#s20)</div>
+In the Spec: [19d. Permissions](../spec.html#s19d), [19e. The system: clock, random numbers, exit, signals, and the host](../spec.html#s19e), [20. Program arguments and environment](../spec.html#s20)
+{: .specref}
 
 A program lives inside a machine. This lesson covers what it is allowed to touch, how it tells time and makes random numbers, how it keeps secrets, how it reacts to Ctrl-C, how it runs other programs, and how it shows dates.
 

@@ -5,7 +5,8 @@ title: "Atoms and futures · Moxie Mixer’s Guide"
 ---
 # 30. Atoms and futures
 
-<div class='specref' markdown='1'>In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)</div>
+In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)
+{: .specref}
 
 Channels send messages. Two other tools cover the rest of what concurrent programs need: an *atom* is a single shared value that fibers can read and update safely, and a *future* is a value that will be available later.
 

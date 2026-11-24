@@ -5,7 +5,8 @@ title: "Databases with SQL · Moxie Mixer’s Guide"
 ---
 # 44. Databases with SQL
 
-<div class='specref' markdown='1'>In the Spec: [21. Database access](../spec.html#s21), [19d. Permissions](../spec.html#s19d)</div>
+In the Spec: [21. Database access](../spec.html#s21), [19d. Permissions](../spec.html#s19d)
+{: .specref}
 
 Moxie checks SQL the way it checks everything else: before the program runs. A query is written in place with `sql(conn):` and the SQL indented below, and its result has a type the compiler knows.
 

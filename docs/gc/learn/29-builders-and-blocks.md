@@ -6,7 +6,8 @@ title: "Builders: a DSL without macros · Moxie/gc Mixer’s Guide"
 ---
 # 38. Builders: a DSL without macros
 
-<div class='specref' markdown='1'>In the Spec: [9b. Receiver blocks](../spec.html#s9b)</div>
+In the Spec: [9b. Receiver blocks](../spec.html#s9b)
+{: .specref}
 
 Some programs read best when the code looks like the thing it builds: a page of markup, a menu, a configuration. Many languages add macros for this. Moxie has none, and doesn't need them. A builder is an ordinary set of functions, and nesting is nested calls. Types keep the nesting honest.
 

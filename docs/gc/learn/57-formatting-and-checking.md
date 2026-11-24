@@ -6,7 +6,8 @@ title: "Formatting and checking: `moxie fmt` and `moxie check` · Moxie/gc Mixer
 ---
 # 33. Formatting and checking: `moxie fmt` and `moxie check`
 
-<div class='specref' markdown='1'>In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)</div>
+In the Spec: [22. Tooling, tests, and checks](../spec.html#s22)
+{: .specref}
 
 Two commands do most of the work of keeping a project in good shape. `moxie fmt` rewrites files into one layout. `moxie check` reads the whole program and reports mistakes without running anything. This lesson says what each does, and exactly what `check` can and can't prove.
 

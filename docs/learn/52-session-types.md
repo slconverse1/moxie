@@ -5,7 +5,8 @@ title: "Session types: a channel that remembers the conversation Â· Moxie Mixerâ
 ---
 # 31. Session types: a channel that remembers the conversation
 
-<div class='specref' markdown='1'>In the Spec: [23e. Session types (the `session` package)](../spec.html#s23e)</div>
+In the Spec: [23e. Session types (the `session` package)](../spec.html#s23e)
+{: .specref}
 
 When two fibers talk in a fixed pattern ("you send a request, I send a reply"), an ordinary channel can't tell you if someone gets the order wrong. A **session** is a pair of channel ends whose *type* is the conversation, so the compiler checks that each side follows it. You write the conversation once, as a type. This lesson builds on channels and fibers (lesson 28) and uses the standard `session` package.
 

@@ -5,7 +5,8 @@ title: "Errors in larger programs · Moxie Mixer’s Guide"
 ---
 # 34. Errors in larger programs
 
-<div class='specref' markdown='1'>In the Spec: [15. Errors and Results](../spec.html#s15)</div>
+In the Spec: [15. Errors and Results](../spec.html#s15)
+{: .specref}
 
 The lesson on `Option` and `Result` covered the basics: a function that can fail returns a `Result`, and `?` passes a failure along. This lesson is about what changes when a program has many functions and several kinds of failure.
 

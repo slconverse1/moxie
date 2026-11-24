@@ -6,7 +6,8 @@ title: "Types that compute · Moxie/gc Mixer’s Guide"
 ---
 # 57. Types that compute
 
-<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)</div>
+In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)
+{: .specref}
 
 Types in moxie can be built and taken apart by small programs of their own. This is an advanced lesson. You don't need any of it to write ordinary programs, but it explains how the language's generic library is typed, and it lets you write functions whose result type depends on their arguments.
 

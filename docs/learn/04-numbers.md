@@ -5,7 +5,8 @@ title: "Numbers · Moxie Mixer’s Guide"
 ---
 # 5. Numbers
 
-<div class='specref' markdown='1'>In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [10. Operators](../spec.html#s10), [24. Prelude reference](../spec.html#s24)</div>
+In the Spec: [5. Scalars, numbers, text, ranges](../spec.html#s5), [10. Operators](../spec.html#s10), [24. Prelude reference](../spec.html#s24)
+{: .specref}
 
 Moxie has several number types. Most programs use two of them, `Int` for whole numbers and `Double` for numbers with a fraction, and meet the others only when they need exact sizes, very large numbers, or exact decimals.
 

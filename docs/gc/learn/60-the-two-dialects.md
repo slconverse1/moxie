@@ -6,7 +6,8 @@ title: "Moxie and moxie/gc side by side · Moxie/gc Mixer’s Guide"
 ---
 # 64. Moxie and moxie/gc side by side
 
-<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)</div>
+In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)
+{: .specref}
 
 
 You are reading the moxie/gc guide. moxie has a second dialect, GC-free moxie, that keeps the same language but has no collector: every size is worked out ahead of time. This lesson lists what moxie/gc takes away from that dialect's limits, with a short example of each. The GC-free guide shows the other column.

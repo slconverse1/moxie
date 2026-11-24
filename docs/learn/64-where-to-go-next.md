@@ -5,7 +5,8 @@ title: "Where to go next · Moxie Mixer’s Guide"
 ---
 # 66. Where to go next
 
-<div class='specref' markdown='1'>In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)</div>
+In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)
+{: .specref}
 
 You have now met the whole language, from `println("hello")` to session types and calling C. This last page is a map of the other things on this site and in the repository, and a short list of habits that make moxie programs good ones.
 

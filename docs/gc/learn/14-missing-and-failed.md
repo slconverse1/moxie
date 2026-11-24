@@ -6,7 +6,8 @@ title: "Missing values and failures: Option and Result · Moxie/gc Mixer’s Gui
 ---
 # 16. Missing values and failures: Option and Result
 
-<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [15. Errors and Results](../spec.html#s15), [6. Tuples, enums, aliases, unions](../spec.html#s6)</div>
+In the Spec: [0. Principles](../spec.html#s0), [15. Errors and Results](../spec.html#s15), [6. Tuples, enums, aliases, unions](../spec.html#s6)
+{: .specref}
 
 Some operations don't always have an answer. Looking up a name that isn't there, reading a number from text that isn't a number, opening a file that doesn't exist. Many languages answer with a special value (`null`) or an exception. Moxie has neither. A function that might not produce a value says so in its *type*, and the compiler makes the caller deal with it.
 

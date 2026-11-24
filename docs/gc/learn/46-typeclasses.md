@@ -6,7 +6,8 @@ title: "Typeclasses · Moxie/gc Mixer’s Guide"
 ---
 # 56. Typeclasses
 
-<div class='specref' markdown='1'>In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)</div>
+In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)
+{: .specref}
 
 Moxie has no separate typeclass feature. A class is an `interface`, an instance is an `impl`, a constraint is a bound, a superclass is an embedded interface, a member with no receiver is a `static fn`, and deriving is `deriving show, eq, ord, read, hash`. This lesson gathers those pieces in one place. If you know Haskell, the last section is a translation table.
 

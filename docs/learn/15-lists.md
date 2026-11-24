@@ -5,7 +5,8 @@ title: "Lists · Moxie Mixer’s Guide"
 ---
 # 17. Lists
 
-<div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)</div>
+In the Spec: [7. Collections](../spec.html#s7), [3. Memory model: S-space, T-space, and resets](../spec.html#s3)
+{: .specref}
 
 A `List` holds a sequence of values of one type. It is the collection you will use most.
 

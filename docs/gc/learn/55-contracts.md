@@ -6,7 +6,8 @@ title: "Contracts: where and invariant · Moxie/gc Mixer’s Guide"
 ---
 # 60. Contracts: where and invariant
 
-<div class='specref' markdown='1'>In the Spec: [9c. Contracts](../spec.html#s9c)</div>
+In the Spec: [9c. Contracts](../spec.html#s9c)
+{: .specref}
 
 A contract states what a function needs and what it promises, in the code and not in a comment. It is for faults that are *bugs*: an expected failure, such as a missing file, still returns a `Result` (lesson 16). A contract failure ends the program with a message that says whose fault it was.
 

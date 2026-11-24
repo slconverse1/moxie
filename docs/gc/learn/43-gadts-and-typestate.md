@@ -6,7 +6,8 @@ title: "GADTs and typestate · Moxie/gc Mixer’s Guide"
 ---
 # 52. GADTs and typestate
 
-<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23. Functional programming support](../spec.html#s23)</div>
+In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23. Functional programming support](../spec.html#s23)
+{: .specref}
 
 Lesson 49 got a typed evaluator by making the interpreters types, and lesson 50 got one by making the nodes generic. A third way keeps one ordinary `enum` and lets each case state its own *result type* after its parameters. That is a GADT, a generalized algebraic data type.
 

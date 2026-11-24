@@ -5,7 +5,8 @@ title: "Moxie for imperative programmers · Moxie Mixer’s Guide"
 ---
 # 4. Moxie for imperative programmers
 
-<div class='specref' markdown='1'>In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [18. Fibers, loops, streams](../spec.html#s18)</div>
+In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [18. Fibers, loops, streams](../spec.html#s18)
+{: .specref}
 
 If you come from C, Java, Python, or JavaScript, most habits carry over, and a few need a new spelling. This lesson is a translation table with a working example for each habit.
 

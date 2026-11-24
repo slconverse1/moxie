@@ -6,7 +6,8 @@ title: "Truth and choices · Moxie/gc Mixer’s Guide"
 ---
 # 8. Truth and choices
 
-<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8), [10. Operators](../spec.html#s10)</div>
+In the Spec: [8. Patterns and `when`](../spec.html#s8), [10. Operators](../spec.html#s10)
+{: .specref}
 
 A program becomes interesting when it can decide. This lesson covers `Bool`, comparisons, and the two ways to choose: `if` and `when`.
 

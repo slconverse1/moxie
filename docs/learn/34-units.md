@@ -5,7 +5,8 @@ title: "Units of measure · Moxie Mixer’s Guide"
 ---
 # 43. Units of measure
 
-<div class='specref' markdown='1'>In the Spec: [23g. Units of measure](../spec.html#s23g)</div>
+In the Spec: [23g. Units of measure](../spec.html#s23g)
+{: .specref}
 
 A number that means meters should not be addable to a number that means seconds. Moxie lets you say so, and checks it before the program runs. Units are a compile-time check only: at run time a quantity is just the number.
 

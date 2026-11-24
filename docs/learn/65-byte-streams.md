@@ -5,7 +5,8 @@ title: "Byte streams: Reader and Writer · Moxie Mixer’s Guide"
 ---
 # 63. Byte streams: Reader and Writer
 
-<div class='specref' markdown='1'>In the Spec: [19c. Files and sockets](../spec.html#s19c)</div>
+In the Spec: [19c. Files and sockets](../spec.html#s19c)
+{: .specref}
 
 Files, sockets, standard input and output, and a buffer in memory all move bytes. The `io` package gives them two interfaces, so a function written once works on any of them. `Reader` has `read(ref self, n Int)`, which returns up to `n` bytes and an empty array at the end, and `Writer` has `write(ref self, bytes Array[Byte])`, which takes all of the bytes or gives an `Err`.
 

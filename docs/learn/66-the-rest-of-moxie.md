@@ -5,7 +5,8 @@ title: "…moxie: the rest of the moxie toolbox · Moxie Mixer’s Guide"
 ---
 # 65. …moxie: the rest of the moxie toolbox
 
-<div class='specref' markdown='1'>In the Spec: [24. Prelude reference](../spec.html#s24)</div>
+In the Spec: [24. Prelude reference](../spec.html#s24)
+{: .specref}
 
 The earlier lessons teach the language by topic. This page gathers the small things they skipped: a few more numeric functions, some stream and `Result` helpers, a handful of resource and library calls. Nothing here is needed to read the rest of the guide, and you can come back to any of it when a program asks for it. Most sections point to the lesson that covers their neighbourhood.
 

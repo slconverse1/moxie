@@ -6,7 +6,8 @@ title: "Limits, pools, and the memory budget · Moxie/gc Mixer’s Guide"
 ---
 # 35. Limits, pools, and the memory budget
 
-<div class='specref' markdown='1'>In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)</div>
+In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)
+{: .specref}
 
 
 In moxie/gc the runtime manages memory for you, so pools and budgets are not part of the language. A fiber function can still say how many copies may run at once with `fiber[n]`, which this lesson starts with, but the pool header and the memory budget described later apply only to GC-free moxie.

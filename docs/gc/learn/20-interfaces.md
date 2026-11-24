@@ -6,7 +6,8 @@ title: "Methods and interfaces · Moxie/gc Mixer’s Guide"
 ---
 # 24. Methods and interfaces
 
-<div class='specref' markdown='1'>In the Spec: [0. Principles](../spec.html#s0), [12. Interfaces and `impl` blocks](../spec.html#s12), [9a. Generics](../spec.html#s9a)</div>
+In the Spec: [0. Principles](../spec.html#s0), [12. Interfaces and `impl` blocks](../spec.html#s12), [9a. Generics](../spec.html#s9a)
+{: .specref}
 
 You have seen methods already (`s.area()`, `xs.map(...)`). This lesson is about declaring them for your own types, and about *interfaces*, which let one function work with many different types as long as they can do the same thing.
 

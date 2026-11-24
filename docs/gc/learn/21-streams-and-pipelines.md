@@ -6,7 +6,8 @@ title: "Streams and pipelines · Moxie/gc Mixer’s Guide"
 ---
 # 25. Streams and pipelines
 
-<div class='specref' markdown='1'>In the Spec: [13. Pipelines and streams](../spec.html#s13), [18. Fibers, loops, streams](../spec.html#s18)</div>
+In the Spec: [13. Pipelines and streams](../spec.html#s13), [18. Fibers, loops, streams](../spec.html#s18)
+{: .specref}
 
 A *stream* is a sequence of values produced one at a time. Instead of writing a loop that builds up a result, you describe a *pipeline*: where the values come from, what happens to each, and what you want at the end. Streams are the main tool for working with collections in moxie.
 

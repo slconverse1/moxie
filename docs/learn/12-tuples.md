@@ -5,7 +5,8 @@ title: "Tuples · Moxie Mixer’s Guide"
 ---
 # 14. Tuples
 
-<div class='specref' markdown='1'>In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [8. Patterns and `when`](../spec.html#s8)</div>
+In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [8. Patterns and `when`](../spec.html#s8)
+{: .specref}
 
 A *tuple* groups a few values into one. It is moxie's way of making a record: a point is an `x` and a `y`, a user is a name and an age. Tuples hold values of any types, and each field has a name.
 

@@ -5,7 +5,8 @@ title: "Data types that grow: the expression problem · Moxie Mixer’s Guide"
 ---
 # 50. Data types that grow: the expression problem
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
+In the Spec: [23. Functional programming support](../spec.html#s23)
+{: .specref}
 
 Suppose a library defines arithmetic as data (numbers and `+`) together with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**.
 

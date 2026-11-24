@@ -5,7 +5,8 @@ title: "Dicts and sets · Moxie Mixer’s Guide"
 ---
 # 20. Dicts and sets
 
-<div class='specref' markdown='1'>In the Spec: [7. Collections](../spec.html#s7), [10. Operators](../spec.html#s10)</div>
+In the Spec: [7. Collections](../spec.html#s7), [10. Operators](../spec.html#s10)
+{: .specref}
 
 A `Dict` maps keys to values: names to ages, ids to records, words to counts. A `Set` holds distinct values and answers "is this one of them?" quickly. Both keep their elements in the order they were added.
 

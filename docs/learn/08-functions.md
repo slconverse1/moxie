@@ -5,7 +5,8 @@ title: "Functions · Moxie Mixer’s Guide"
 ---
 # 10. Functions
 
-<div class='specref' markdown='1'>In the Spec: [9. Functions](../spec.html#s9), [11. Closures and first-class functions](../spec.html#s11)</div>
+In the Spec: [9. Functions](../spec.html#s9), [11. Closures and first-class functions](../spec.html#s11)
+{: .specref}
 
 A *function* is a named piece of code that takes values in and gives a value back. You have used built-in functions such as `println` and `max`. This lesson is about writing your own.
 

@@ -5,7 +5,8 @@ title: "Limits, pools, and the memory budget · Moxie Mixer’s Guide"
 ---
 # 35. Limits, pools, and the memory budget
 
-<div class='specref' markdown='1'>In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)</div>
+In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)
+{: .specref}
 
 A moxie program has no garbage collector, so the compiler works out ahead of time how much of each counted resource it can have: channels, timers, atoms, files and sockets, listeners, and the fibers themselves. This lesson shows how to read those counts, how to set limits on them, and how to give a program a memory budget.
 

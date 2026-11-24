@@ -5,7 +5,8 @@ title: "Transformers and the mtl classes · Moxie Mixer’s Guide"
 ---
 # 54. Transformers and the mtl classes
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
+In the Spec: [23. Functional programming support](../spec.html#s23)
+{: .specref}
 
 Monad transformers need closures of one type per signature, so they ship only with moxie/gc. In GC-free moxie, handle several effects at once with the tools in earlier lessons: `Result` and `?` for failure, a tuple threaded through a `reduce` for state, and a `mutable` block (lesson 19) for the places where in-place updates are the clearest code.
 

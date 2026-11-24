@@ -124,7 +124,7 @@ def build(gc):
         body = render(txt, gc)
         if s in sl:
             refs = ", ".join(f"[{h[0]}. {h[1]}](../spec.html#{sid})" for sid, h in sl[s])
-            body = re.sub(r"^(# .+)$", lambda m: m.group(1) + f"\n\n<div class='specref' markdown='1'>In the Spec: {refs}</div>", body, 1, flags=re.M)
+            body = re.sub(r"^(# .+)$", lambda m: m.group(1) + f"\n\nIn the Spec: {refs}\n{{: .specref}}", body, 1, flags=re.M)
         body = re.sub(r"^# (.+)$", lambda m: f"# {i + 1}. {m.group(1)}", body, 1, flags=re.M)
         nv = []
         if i > 0:

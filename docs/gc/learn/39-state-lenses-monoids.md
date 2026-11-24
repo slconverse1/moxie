@@ -6,7 +6,8 @@ title: "State, lenses, lazy sequences, and monoids · Moxie/gc Mixer’s Guide"
 ---
 # 48. State, lenses, lazy sequences, and monoids
 
-<div class='specref' markdown='1'>In the Spec: [23. Functional programming support](../spec.html#s23)</div>
+In the Spec: [23. Functional programming support](../spec.html#s23)
+{: .specref}
 
 This lesson collects four ideas that functional programmers reach for. In each case moxie offers a plain way to do the job, and sometimes also the classic abstraction.
 

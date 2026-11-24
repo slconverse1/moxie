@@ -6,7 +6,8 @@ title: "Binary patterns, and taking a value apart by its type Â· Moxie/gc Mixerâ
 ---
 # 23. Binary patterns, and taking a value apart by its type
 
-<div class='specref' markdown='1'>In the Spec: [8. Patterns and `when`](../spec.html#s8)</div>
+In the Spec: [8. Patterns and `when`](../spec.html#s8)
+{: .specref}
 
 Lesson 22 showed patterns for tuples, enums, and lists. This lesson adds two more: patterns that match the *layout of bytes*, and patterns that take apart a value whose type is only known at run time.
 
