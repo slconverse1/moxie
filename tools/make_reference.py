@@ -6,6 +6,7 @@ import os, re, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 from moxie import sigs
+from moxie import effects
 
 # ---- keywords: name -> (description, spec section id)
 HARD = [
@@ -186,8 +187,8 @@ FUNCS = [
   ("cast", "Converts a number to another numeric type, `cast[Double](n)`."),
   ("try_cast", "Like `cast`, but gives an Err (OUT_OF_RANGE) when the value does not fit."),
   ("wrap_to", "Converts to another width by keeping the low bits."),
-  ("round_to", "Rounds a Decimal to a scale with a mode: `round_to[2](x, #half_even)`."),
-  ("div", "Divides Decimals at a scale and mode; an Err for zero."),
+  ("round_to", "Rounds a Decimal to a scale of n places, as in `round_to[2](x, #half_even)`; a `Mode` is `#half_even`, `#half_up` or `#down`."),
+  ("div", "Divides Decimals to a scale and `Mode`; an Err for division by zero."),
  ]),
  ("Text", "s5", [
   ("upper", "Upper case."), ("lower", "Lower case."), ("trim", "Removes spaces from both ends."),
@@ -286,9 +287,9 @@ FUNCS = [
 ]
 # signatures that the checker's table only approximates, or lacks
 SIGS = {
- "const": "const[A, B](x A) (B) -> A", "index": "index(x Enum) Int", "hash": "hash[T](x T) Int",
+ "const": "const[A, B](x A) (B) -> A", "index": "index[E](x E) Int", "hash": "hash[T](x T) Int",
  "read": "read[T](c ChanR[T]) Result[T, Error]\nread[T](f FutureR[T]) T",
- "cast": "cast[T](x Number) T", "try_cast": "try_cast[T](x Number) Result[T, Error]", "wrap_to": "wrap_to[T](x Number) T",
+ "cast": "cast[T Numeric, N Numeric](x N) T", "try_cast": "try_cast[T Numeric, N Numeric](x N) Result[T, Error]", "wrap_to": "wrap_to[T Numeric, N Numeric](x N) T",
  "round_to": "round_to[n](x Decimal, mode Mode) Decimal", "div": "div(a Decimal, b Decimal, scale Int, mode Mode) Result[Decimal, Error]",
  "split_once": "split_once(s String, sep String) Option[(String, String)]",
  "strip_prefix": "strip_prefix(s String, prefix String) Option[String]", "strip_suffix": "strip_suffix(s String, suffix String) Option[String]",
@@ -315,6 +316,41 @@ def load_sigs():
         if m: d.setdefault(m.group(1), []).append(m.group(1) + m.group(2))
     return d
 
+def full_sig(name, S):
+    """The complete signature lines for a function, as `fn name[T](params) Result`: the checker's table, with the placeholder
+    error parameter `E` written as Error where no argument fixes it, and the interface bounds the checker enforces."""
+    if name in SIGS:
+        lines = SIGS[name].split("\n")
+    else:
+        lines = S.get(name) or [name + "(…)"]
+    out = []
+    for ln in lines:
+        m = re.match(r"(\w+)\[([^\]]*(?:\[[^\]]*\][^\]]*)*)\](\(.*)$", ln)
+        if m and name not in SIGS:
+            params = [x.strip() for x in re.split(r",\s*(?![^\[]*\])", m.group(2))]
+            rest = m.group(3)
+            args = rest[:rest.index(")") + 1] if ")" in rest else rest
+            if "E" in params and not re.search(r"\bE\b", args):
+                params.remove("E")
+                rest = re.sub(r"\bE\b", "Error", rest)
+                ln = name + ("[" + ", ".join(params) + "]" if params else "") + rest
+        out.append("fn " + ln)
+    bound = {"sort": ("T", "Ordered"), "min": ("T", "Ordered"), "max": ("T", "Ordered"), "distinct": ("T", "Equatable")}
+    if name in bound:
+        v, i = bound[name]
+        out = [re.sub(r"\[%s\b" % v, "[%s %s" % (v, i), l, count=1) if "[%s" % v in l else l for l in out]
+    if name == "contains":
+        out = [l.replace("contains[T]", "contains[T Equatable]") for l in out]
+    return "\n".join(out)
+
+def effect_line(name):
+    e = effects.BUILTIN.get(name); need = effects.NEEDS.get(name)
+    bits = []
+    if name in effects.EXEMPT: bits.append("Effect: prints, but is allowed in any code")
+    elif e: bits.append("Effect: " + e)
+    if need: bits.append("Needs permission: " + need.replace("platform:", ""))
+    return " · ".join(bits)
+
 def build(gc):
     S = load_sigs()
     name = "moxie/gc" if gc else "moxie"
@@ -323,7 +359,7 @@ def build(gc):
     out += ['title: "%s Spec · keywords, types, and functions"' % name.capitalize(), "---", ""]
     out.append("# Spec reference: keywords, types, and functions")
     out.append("")
-    out.append("This is part of the [%s Spec](spec.html). Every keyword, type and prelude function, in one alphabetical list: use the letters above to jump. Each word in the Mixer’s Guide and the intro links to its entry here. A parameter written `Seq[T]` takes any source of `T` values: a `List`, `Array`, `Set`, `Ring` or `Stream`. Where a name has several signatures, each is listed." % name)
+    out.append("This is part of the [%s Spec](spec.html). Every keyword, type and prelude function, in one alphabetical list: use the letters above to jump. Each word in the Mixer’s Guide and the intro links to its entry here. A parameter written `Seq[T]` takes any source of `T` values: a `List`, `Array`, `Set`, `Ring` or `Stream`. Where a name has several signatures, each is listed. A line starting `Effect:` says what a call does (prints, parks to wait, uses the system, or uses a resource); a function with no such line is pure. `Needs permission:` names what the program must be allowed to reach (Spec §19d). A type parameter written `T Ordered` must have that interface, and `Error` in a result is the standard error value." % name)
     out.append("")
     entries = []   # (sort name, order, id, tag, description, signature or None, section id)
     for n, d, sec in HARD: entries.append((n, 0, "kw-" + n, "hard keyword", d, None, sec))
@@ -332,7 +368,7 @@ def build(gc):
     index_fn = []
     for title, sec, items in FUNCS:
         for n, d in items:
-            entries.append((n, 2, "fn-" + n, "function", d, SIGS.get(n) or "\n".join(S.get(n, [n + "(…)"])), sec)); index_fn.append(n)
+            entries.append((n, 2, "fn-" + n, "function", d, full_sig(n, S), sec)); index_fn.append(n)
     entries.sort(key=lambda e: (e[0].lower(), e[1], e[0]))
     letters = sorted({e[0][0].lower() for e in entries})
     out.append('<div class="az" aria-label="Jump to a letter">' + "".join(
@@ -345,8 +381,10 @@ def build(gc):
             if cur is not None: out.append("</dl>"); out.append("")
             out.append("## %s {#%s}" % (c.upper(), c)); out.append(""); out.append('<dl class="ref">'); cur = c
         out.append('<dt id="%s"><code>%s</code> <span class="tag">%s</span></dt>' % (eid, esc(n), tag))
-        link = ' <a href="spec.html#%s">Spec §%s</a>' % (sec, sec[1:].upper()) if sec else ""
-        out.append("<dd>%s%s%s</dd>" % (md_inline(d), link, ('<br><code class="sig">%s</code>' % esc(sg)) if sg else ""))
+        link = ' <a href="spec.html#%s">Spec §%s</a>' % (sec, sec[1:]) if sec else ""
+        eff = effect_line(n) if tag == "function" else ""
+        out.append("<dd>%s%s%s%s</dd>" % (md_inline(d), link, ('<br><code class="sig">%s</code>' % esc(sg)) if sg else "",
+                                            ('<br><span class="eff">%s</span>' % esc(eff)) if eff else ""))
     out.append("</dl>"); out.append("")
     missing = sorted(set(S) - set(index_fn))
     return "\n".join(out) + "\n", missing
