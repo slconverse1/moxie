@@ -6,7 +6,7 @@ toc: true
 ---
 # MOXIE/GC SPEC
 
-moxie/gc is the garbage-collected dialect of moxie, a design language (a specification and a reference interpreter, not yet a production compiler). No-GC moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
+moxie/gc is the garbage-collected dialect of moxie, a design language (a specification and a reference interpreter, not yet a production compiler). GC-free moxie is the other dialect, and each has its own Spec because they make different promises. This is a full copy of the Moxie Spec, folding in everything decided through Sunday 2026-11-01, in which every passage that differs from GC-free moxie is marked **[gc]**. Unmarked text is the same in both languages. Items marked *(planned)*, *(sketch)*, *(design)*, *(a starting rule)*, or *(to be tuned)* are not final; section 25 lists what is still open. Indentation inside inline code is shown with blank braille characters.
 
 For every keyword, type and prelude function with its signature, see the [reference of keywords, types, and functions](reference.html).
 
@@ -125,7 +125,7 @@ Gone altogether: `String[n]`, `readonly` strings, S-space and T-space, daemon-sa
 *In the Mixer’s Guide: [3. Values and names](learn/03-values-and-names.html), [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [17. Lists](learn/15-lists.html), [18. Arrays and grids](learn/16-arrays.html), [19. In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html), [64. Moxie and moxie/gc side by side](learn/60-the-two-dialects.html)*
 <!-- /guide -->
 
-**Why this is different.** No-GC moxie has no garbage collector, so it plans memory in advance: capacities are declared, resources are counted before the program starts, and strings and temporaries are released in bulk at fixed points. moxie/gc gives that up. It spends a little speed, and accepts short pauses, so that a program never sizes a collection, counts a resource, or asks where a string lives.
+**Why this is different.** GC-free moxie has no garbage collector, so it plans memory in advance: capacities are declared, resources are counted before the program starts, and strings and temporaries are released in bulk at fixed points. moxie/gc gives that up. It spends a little speed, and accepts short pauses, so that a program never sizes a collection, counts a resource, or asks where a string lives.
 
 **The daemon.** `daemon` is the entry file's main loop. It runs until `break daemon`, and each pass through its body is a cycle.
 

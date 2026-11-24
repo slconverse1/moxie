@@ -139,4 +139,4 @@ def build(gc):
 
 if __name__ == "__main__":
     for gc in (False, True):
-        print(("gc  " if gc else "no-gc ") + str(build(gc)) + " lessons")
+        print(("gc  " if gc else "GC-free ") + str(build(gc)) + " lessons")

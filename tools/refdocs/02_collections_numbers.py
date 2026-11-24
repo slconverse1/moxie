@@ -2,7 +2,7 @@ DOCS = {}
 def d(name, text, ex=(), shown=()):
     DOCS[name] = (text, list(ex), list(shown))
 
-CAP = "In moxie (no garbage collector) a `List`, `Set` or `Dict` has a fixed capacity, so adding to a full one aborts; in moxie/gc they grow as needed."
+CAP = "In GC-free moxie a `List`, `Set` or `Dict` has a fixed capacity, so adding to a full one aborts; in moxie/gc they grow as needed."
 
 # ---------------------------------------------------------------- collections
 d("len", """How many items a collection holds, or how many bytes a `String` has. A `String` is stored as UTF-8, so a character outside plain ASCII counts as more than one byte; use `char_count` for characters and `grapheme_count` for what a reader sees as one character.

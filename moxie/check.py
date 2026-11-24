@@ -7844,7 +7844,7 @@ class Checker(RefineMixin):
                    "temp_dir": "String", "path_join": "String", "char_count": "Int", "grapheme_count": "Int"}
 
     def warn_list_spread(self, fd, n, args, ats):
-        """No-GC moxie: spreading a `List` into a variadic checks the count at run time, so say how to check it at compile time."""
+        """GC-free moxie: spreading a `List` into a variadic checks the count at run time, so say how to check it at compile time."""
         from .values import GC
         if GC[0] or not any(p.variadic for p in fd.params or []):
             return

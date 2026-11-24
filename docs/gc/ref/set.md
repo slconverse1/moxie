@@ -21,7 +21,7 @@ fn set[K, V](d Dict[K, V], k K, v V) Dict[K, V]
 
 ## Description {#description}
 
-A copy with one position or key replaced; the original is unchanged. For a `List`, `Array` or `MultiArray`, the position must already exist, or the call aborts; it never makes the collection longer. For a `Dict`, an existing key gets the new value and a new key is added. In moxie (no garbage collector) a `List`, `Set` or `Dict` has a fixed capacity, so adding to a full one aborts; in moxie/gc they grow as needed.
+A copy with one position or key replaced; the original is unchanged. For a `List`, `Array` or `MultiArray`, the position must already exist, or the call aborts; it never makes the collection longer. For a `Dict`, an existing key gets the new value and a new key is added. In GC-free moxie a `List`, `Set` or `Dict` has a fixed capacity, so adding to a full one aborts; in moxie/gc they grow as needed.
 
 **Parameters**
 

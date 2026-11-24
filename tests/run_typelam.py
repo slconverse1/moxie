@@ -24,7 +24,7 @@ ONE = """fn one[M[_] Monad]() M[Int]
   M.pure(1)
 """
 chk("a lambda applied where it is written", 'x ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n', 0, "Ok(3)")
-chk("lambdas parse and check in no-GC moxie too", 'x ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n', 0, "Ok(3)", flags=())
+chk("lambdas parse and check in GC-free moxie too", 'x ([A] -> Result[A, String])[Int] = Ok(3)\nprintln(x)\n', 0, "Ok(3)", flags=())
 chk("a lambda passed as a constructor", ONE + "println(one[[A] -> Result[A, String]]())\n", 0, "Ok(1)")
 chk("a generic alias passed as a constructor", "type Fail[A] = Result[A, String]\n" + ONE + "println(one[Fail]())\n", 0, "Ok(1)")
 chk("a lambda whose body applies an alias", "type Fail[A] = Result[A, String]\n" + ONE + "println(one[[A] -> Fail[A]]())\n", 0, "Ok(1)")

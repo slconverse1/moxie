@@ -14,7 +14,7 @@ First, plainly: moxie is a language **design**, a complete specification with a 
 
 Moxie is a (mostly) compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem. Where the compiler can't verify a type, it says so with a warning and shows how to write the code so the check happens at compile time instead of at run time (see the Spec, section 24a).
 
-Moxie compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie-to-hardware mapping is so tight, moxie runs impossibly fast. Best of all, it needs no GC.
+Moxie compiles straight to machine code, so there's no bytecode standing between you and the hardware. And because the moxie-to-hardware mapping is so tight, moxie runs impossibly fast. Best of all, it is GC-free.
 
 Moxie has just about all the features you've come to expect from an FP language: iterators, generators, comprehensions, lambdas, monads, pipes, laziness, generics, you name it. For data, it has the usual suspects: primitive types (numbers and String), structure types (tuple and enum), collection types (Array, MultiArray, List, Set, and Dict), resource types, and a fistful of others for good luck. Last but not least, as in any respectable FP language, functions are first-class citizens.
 
@@ -157,7 +157,7 @@ The Moxie Runtime is the small piece of machinery that starts your program, sche
 Beyond that, the Runtime is small, and it hates surprises:
 
 - **Memory is one fixed block, allocated at startup.** The compiler tallies everything your program can need (atoms, channels, timers, futures, connections, and one stack per possible fiber) and writes that into the program. At startup the Runtime checks that they all fit in memory and *refuses to start* if they don't. After that, creating those things can't fail, and there's no heap to fragment or run out of.
-- **Strings and temporaries live on stacks.** Each fiber has an S-space (for strings built at run time and recursive values) and a T-space (for temporaries from things like `collect()`). Both are released in bulk at fixed points, such as the end of a `daemon` cycle, which is how a program can run forever in constant memory with no GC.
+- **Strings and temporaries live on stacks.** Each fiber has an S-space (for strings built at run time and recursive values) and a T-space (for temporaries from things like `collect()`). Both are released in bulk at fixed points, such as the end of a `daemon` cycle, which is how a program can run forever in constant memory, GC-free.
 - **An abort ends the program.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, drops the fiber's resources, and ends the program with a non-zero exit, whichever fiber it was. A fault means a bug, so there's little reason to carry on.
 - **Everything is linked statically from source,** Go style, with unreachable code pruned and a link report of what each package contributed. No code is loaded at run time.
 
@@ -1387,7 +1387,7 @@ println(twice(List(1, 2, 3)))
 
 Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works on every container in the `Functor` club (the set of constructors that can be mapped over). Without this you would write `twice` again for `Box`, for `List`, and for every other container. `Functor`, `Applicative`, and `Monad` are ordinary interfaces over type constructors, which is why `for` comprehensions work on any type with a `Monad` impl. A call with no receiver goes through the parameter: write `F.pure(x)`, not a bare `pure(x)`.
 
-There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which has no GC, as well as in moxie/gc.
+There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which is GC-free, as well as in moxie/gc.
 
 The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Mixer’s Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. A generic function called with a resource is checked as written for that type, so copying the resource is an error, and a function that passes a resource to a function-typed parameter is assumed to hand it over (see the Spec, section 24a).
 
@@ -1982,7 +1982,7 @@ The price is code size (each specialization is its own copy) and a few limits, w
 
 # What moxie can't do, and why
 
-## Constraints from "no GC" and "1-pass compiler"
+## Constraints from "GC-free" and "1-pass compiler"
 
 These come with the territory, and we don't mind them.
 

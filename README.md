@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Everywhere the text said "no GC" or "no-GC" for the plain dialect (the Intros, including the Contents entry "Constraints from "GC-free" and "1-pass compiler"", the Specs, the Guide, the reference pages, and the notes and test names) it now says "GC-free". The changelog entries below that describe earlier wording are left as they were.
+
 A parameter declared `Stream[T]` now accepts any collection of `T` as it stands (a `List`, `Array`, `Set`, `Ring`, an `Option`, a `String` for `Stream[Char]`, a `Dict` for `Stream[(K, V)]`), as well as a range or a pipeline, so a call needs no `to_stream()`; a wrong element type is still a type error (`tests/run_streamparam.py`). The rule is in the checker's `compat` (`collection_elem`), the Spec's Streams section, lesson 26 and the Intro.
 
 The Intro now stresses that every collection is a pipeline source as it stands, so a pipeline needs one `collect()` at the end and no conversion in front (a function with a `Stream[T]` parameter takes a collection as it is, too), and the debts list credits C# with this (and the Mixer's Guide has a new lesson 26, "One pipeline, one collect"). Adding it moved later lessons up by one, and the lesson numbers written in the lesson text were updated to match.

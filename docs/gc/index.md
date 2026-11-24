@@ -177,7 +177,7 @@ Beyond that, the Runtime is small, and it hates surprises:
 - **Memory is one shared heap, collected for you.** **[gc]** All fibers allocate from the same heap, and a generational collector reclaims what nothing can reach. New values are collected often and cheaply, and values that survive move to an older generation that is collected less often. The collector works in short slices at moments when a fiber parks or allocates, so pauses stay short. They aren't zero, and the claim is still a promise until there is a real collector. There is no startup tally, no pool to size, and no S-space or T-space. A name you are finished with doesn't keep its value alive, because the collector counts a local only until its last use, so holding the head of a long list by accident isn't a problem.
 - **Resources are released at known points, not by the collector.** **[gc]** A channel end, a write handle, or a connection is a one-owner handle, and it is closed when its owner lets go of it, never whenever the collector gets around to it. That is why a dropped write end can reject its future with `ABANDONED` right away. There are no finalizers.
 - **A full heap ends the program.** **[gc]** The Manifest sets a limit on the heap. When any fiber needs memory after a full collection and the limit is reached, the Runtime prints a diagnostic and ends the whole program, because a heap that all fibers share is a heap that's full for all of them.
-- **Memory can leak again.** **[gc]** No-GC moxie runs in constant memory forever. With a garbage collector, a loop that keeps adding to a list, an Atom that keeps every message, and a Dict that is never trimmed all grow without end, because the collector frees only what nothing can reach. (A variable you're done with doesn't count. This is about structures the program itself keeps.) A `Ring` is the standard way to keep only recent history.
+- **Memory can leak again.** **[gc]** GC-free moxie runs in constant memory forever. With a garbage collector, a loop that keeps adding to a list, an Atom that keeps every message, and a Dict that is never trimmed all grow without end, because the collector frees only what nothing can reach. (A variable you're done with doesn't count. This is about structures the program itself keeps.) A `Ring` is the standard way to keep only recent history.
 - **An abort ends the program.** If a fiber hits an unrecoverable fault (an out-of-range index, an overflow, a division by zero, `todo`, a failed assertion), the Runtime prints a diagnostic with file, line, and function, drops the fiber's resources, and ends the program with a non-zero exit, whichever fiber it was. A fault means a bug, so there's little reason to carry on.
 - **Everything is linked statically from source,** Go style, with unreachable code pruned and a link report of what each package contributed. No code is loaded at run time.
 
@@ -854,7 +854,7 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 
 - **Splatting:** `add(...pair)` spreads a tuple across a parameter list, and `total(100, ...values)` spreads an array into a variadic. `(...p, y: 9)` spreads a tuple's fields into a new tuple, with later fields overriding earlier ones. In many cases you don't even need the `...`, because `add(pair)` already works when the shape matches.
 - **Gathering:** `numbers ...Int` gathers any number of trailing arguments into one list **[gc]**, and zero is fine. A pattern gathers too: in `Array(first, ...rest)` the `rest` collects whatever the pattern didn't name.
-- **The limits:** A variadic has a single element type (use a union or a tuple when you need a mix). **[gc]** In moxie/gc a `List` of any length can be splatted into a call, and a `rest` is an ordinary value. (No-GC moxie has to know how many values it is spreading, so it can't splat a `List` of unknown length, and its `rest` is a read-only view that can't be returned or stored.)
+- **The limits:** A variadic has a single element type (use a union or a tuple when you need a mix). **[gc]** In moxie/gc a `List` of any length can be splatted into a call, and a `rest` is an ordinary value. (GC-free moxie has to know how many values it is spreading, so it can't splat a `List` of unknown length, and its `rest` is a read-only view that can't be returned or stored.)
 
 **The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
 
@@ -1446,7 +1446,7 @@ println(twice(List(1, 2, 3)))
 
 Output: `Box(value: 7)` then `List(3, 5, 7)`. One function, written once, works on every container in the `Functor` club (the set of constructors that can be mapped over). Without this you would write `twice` again for `Box`, for `List`, and for every other container. `Functor`, `Applicative`, and `Monad` are ordinary interfaces over type constructors, which is why `for` comprehensions work on any type with a `Monad` impl. A call with no receiver goes through the parameter: write `F.pure(x)`, not a bare `pure(x)`.
 
-There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which has no GC, as well as in moxie/gc.
+There is no cost at run time. The compiler builds one copy of `twice` for `Box` and another for `List`, so nothing is looked up in a table and no type is stored on a value. That is why this works in moxie, which is GC-free, as well as in moxie/gc.
 
 The limits: a type with two or more arguments can have only one hole (`Result[_, E]` fixes `E`), and type lambdas (`[A] -> Result[String, A]`) fix any argument; the Mixer’s Guide has both. A generic function may not call itself with a different type each time (`nest[Pair[A]](...)` inside `nest[A]`), because the copies would never end, so the compiler reports it. A generic function called with a resource is checked as written for that type, so copying the resource is an error, and a function that passes a resource to a function-typed parameter is assumed to hand it over (see the Spec, section 24a).
 
@@ -2041,7 +2041,7 @@ The price is code size (each specialization is its own copy), the collector's ov
 
 ## Constraints from the "1-pass compiler"
 
-These come with the territory, and we don't mind them. **[gc]** (In GC-free moxie this section is "Constraints from 'no GC' and '1-pass compiler'," and it has more entries. The ones that went away are listed below.)
+These come with the territory, and we don't mind them. **[gc]** (In GC-free moxie this section is "Constraints from 'GC-free' and '1-pass compiler'," and it has more entries. The ones that went away are listed below.)
 
 - **No import cycles,** and names must be declared before they're used (with `forward fn` for mutual recursion). A single pass needs definitions first.
 - **A function passed to `swap` can't park or block.**
@@ -2062,7 +2062,7 @@ Taking the garbage collector back isn't free, and these are the prices:
 
 ## Constraints that went away with the GC **[gc]**
 
-No-GC moxie has each of these because it has no heap. moxie/gc doesn't:
+GC-free moxie has each of these because it has no heap. moxie/gc doesn't:
 
 - **Capturing closures can be stored anywhere:** in a Dict, a tuple field, or a channel element.
 - **A function can return a different closure from each branch.**

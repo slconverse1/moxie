@@ -62,8 +62,8 @@ println(state.exec(steps(2), steps(1).run(0)(1)))
 chk("the checker accepts a program that uses it", HEAD + '''println(state.eval(state.get(), 1))
 ''', 0, "ok", cmd="check")
 
-chk("no-GC moxie refuses at check", HEAD + 'println(1)\n', 1, "only in moxie/gc", flags=(), cmd="check")
-chk("no-GC moxie refuses at run", HEAD + 'println(1)\n', 2, "only in moxie/gc", flags=(), cmd="run")
+chk("GC-free moxie refuses at check", HEAD + 'println(1)\n', 1, "only in moxie/gc", flags=(), cmd="check")
+chk("GC-free moxie refuses at run", HEAD + 'println(1)\n', 2, "only in moxie/gc", flags=(), cmd="run")
 
 print()
 print("FAILURES: " + ", ".join(fails) if fails else "all fp.state tests passed")

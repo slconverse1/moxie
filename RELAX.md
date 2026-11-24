@@ -4,9 +4,9 @@ Principle (Steve): a restriction that exists only for speed or safety should be 
 
 Status key: A = recommend, B = worth discussing, C = recommend keeping.
 
-## 1. gc dialect: restrictions that only exist because of no-GC (A)
-1. **Views can't be returned/stored/sent to `go`** (Spec: slices, views and streams). In gc a view can be an ordinary reference that keeps its parent alive. Reuse: no new syntax; `inline fn` workaround becomes optional. no-GC keeps the rule, with `copy(x)` as the escape.
-2. **Concrete function-type annotations accept only no-capture functions.** In gc a closure is a heap object, so tuple fields, collection elements, and `go` arguments can hold capturing closures. no-GC keeps the rule.
+## 1. gc dialect: restrictions that only exist because moxie is GC-free (A)
+1. **Views can't be returned/stored/sent to `go`** (Spec: slices, views and streams). In gc a view can be an ordinary reference that keeps its parent alive. Reuse: no new syntax; `inline fn` workaround becomes optional. GC-free moxie keeps the rule, with `copy(x)` as the escape.
+2. **Concrete function-type annotations accept only no-capture functions.** In gc a closure is a heap object, so tuple fields, collection elements, and `go` arguments can hold capturing closures. GC-free moxie keeps the rule.
 3. **`any I` payload is sized for the largest type.** In gc `any` can box, so the "largest type in the program" link-time scan is unnecessary. No visible change; a simplification.
 4. **Variadic spread of a `List` of unknown length** is allowed in gc with no check, since arguments need no fixed frame.
 
@@ -33,7 +33,7 @@ Status key: A = recommend, B = worth discussing, C = recommend keeping.
 
 ## Suggested order
 1. Item 5 (`any` with equality and order): DONE 2026-11-09.
-2. gc items 1 and 2 (views and closures), which make the two dialects differ in the direction you intended: gc lifts restrictions that exist only for no-GC.
+2. gc items 1 and 2 (views and closures), which make the two dialects differ in the direction you intended: gc lifts restrictions that exist only in GC-free moxie.
 3. Item 7 (package-local retroactive impl).
 4. Items 10 and 14 after checking what exists.
 

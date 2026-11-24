@@ -1,9 +1,9 @@
-"""moxie/gc stores capturing closures anywhere; no-GC moxie still refuses.  Run: python3 tests/run_gcrelax.py"""
+"""moxie/gc stores capturing closures anywhere; GC-free moxie still refuses.  Run: python3 tests/run_gcrelax.py"""
 import subprocess, sys, os, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = 'tuple H deriving show\n  f (Int) -> Int\nfn make(k Int) H\n  H(f: (x) -> x + k)\nhs = List(make(1), make(2))\nprintln(hs(1).f(10))\nds = Dict("a" -> (x) -> x * 3)\nprintln(ds("a").unwrap()(4))\n'
 CASES = [("moxie/gc stores a capturing closure", ["--gc"], "12\n12", None),
-         ("no-GC moxie refuses it", [], None, "only plain functions can be stored")]
+         ("GC-free moxie refuses it", [], None, "only plain functions can be stored")]
 fails = []
 f = os.path.join(tempfile.mkdtemp(), "t.mx")
 open(f, "w").write(SRC)

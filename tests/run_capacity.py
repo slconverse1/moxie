@@ -1,4 +1,4 @@
-"""A size written on a declaration must be the literal's: `a: Set[Int][8] = Set(1, 2)` is an error in no-GC moxie, and room is
+"""A size written on a declaration must be the literal's: `a: Set[Int][8] = Set(1, 2)` is an error in GC-free moxie, and room is
 written on the constructor.  In moxie/gc a size is only a hint, so no error.  Run: python3 tests/run_capacity.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

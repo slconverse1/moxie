@@ -1,4 +1,4 @@
-"""union, merge, merge_with: no-GC moxie returns a Result with the left capacity, moxie/gc returns the plain collection.
+"""union, merge, merge_with: GC-free moxie returns a Result with the left capacity, moxie/gc returns the plain collection.
 Run: python3 tests/run_merge.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
