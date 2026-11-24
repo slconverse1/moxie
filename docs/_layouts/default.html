@@ -405,10 +405,10 @@ html,body{overscroll-behavior-x:none}
       }, { rootMargin: '0px 0px -75% 0px' });
       hs.forEach(function (h) { io.observe(h); });
     }
-  } else {                                    // the lesson list: mark the current page
+  } else {                                    // the lesson list: mark the current page and centre it in the list (without moving the page)
     var here = location.pathname.replace(/\/$/, '').split('/').pop();
     ul.querySelectorAll('a').forEach(function (a) {
-      if (a.getAttribute('href').split('/').pop() === here) { a.classList.add('here'); a.scrollIntoView({ block: 'nearest' }); }
+      if (a.getAttribute('href').split('/').pop() === here) { a.classList.add('here'); side.scrollTop = Math.max(0, a.offsetTop - side.clientHeight / 2); }
     });
   }
   small.appendChild(ul.cloneNode(true));
