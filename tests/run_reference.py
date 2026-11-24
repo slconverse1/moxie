@@ -26,5 +26,18 @@ for gc in (False, True):
 sections = set(re.findall(r"\{#(s\w+)\}", spec))
 used = {sec for _, _, sec in mr.HARD + mr.SOFT} | {sec for _, sec, _ in mr.FUNCS}
 check(used <= sections, "every Spec section the reference points to exists" + ("" if used <= sections else ": %s" % sorted(used - sections)))
+S = mr.load_sigs()
+for gc in (False, True):
+    d = os.path.join(ROOT, "docs", "gc" if gc else "", "ref")
+    miss = [n for n in sorted(described) if not os.path.exists(os.path.join(d, n + ".md"))]
+    check(not miss, "every function has a page in %s" % os.path.relpath(d, ROOT) + ("" if not miss else ": " + " ".join(miss)))
+    stale = [n for n in sorted(described) if os.path.exists(os.path.join(d, n + ".md"))
+             and ("\n" + mr.full_sig(n, S) + "\n") not in open(os.path.join(d, n + ".md")).read()]
+    check(not stale, "function pages show the current signature (run tools/make_ref_pages.py)" + ("" if not stale else ": " + " ".join(stale)))
+    thin = [n for n in sorted(described) if os.path.exists(os.path.join(d, n + ".md"))
+            and ("**Returns**" not in open(os.path.join(d, n + ".md")).read())]
+    check(not thin, "every function page says what it returns" + ("" if not thin else ": " + " ".join(thin)))
+ref = open(os.path.join(ROOT, "docs", "reference.md")).read()
+check(all(('href="ref/%s.html"' % n) in ref for n in described), "every function in the alphabetical list links to its page")
 print("all passed" if not bad else "%d failed" % bad)
 sys.exit(1 if bad else 0)

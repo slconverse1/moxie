@@ -98,7 +98,7 @@ html,body{overscroll-behavior-x:none}
 </head>
 <body class="{% if page.toc or page.learn %}hastoc{% endif %}{% if page.refpage %} refpage{% endif %}"{% if page.gcmarks %} data-gcmarks{% endif %}{% if page.learn or page.terms %} data-terms{% endif %}>
 <nav>
-  {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains 'spec' or page.url contains 'reference' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% endif %}
+  {% assign sect = 'home' %}{% if page.url contains '/learn/' %}{% assign sect = 'guide' %}{% elsif page.url contains 'tutorial' %}{% assign sect = 'tutorial' %}{% elsif page.url contains '/ref/' or page.url contains 'spec' or page.url contains 'reference' or page.url contains 'design-notes' %}{% assign sect = 'spec' %}{% elsif page.url contains 'style' %}{% assign sect = 'style' %}{% elsif page.url contains 'try' %}{% assign sect = 'try' %}{% elsif page.url contains 'repl' %}{% assign sect = 'repl' %}{% endif %}
   {% assign gc = false %}{% assign base = '' %}{% if page.dialect == 'gc' %}{% assign gc = true %}{% assign base = '/gc' %}{% endif %}
   <a class="brand{% if sect == 'home' %} here{% endif %}" href="{{ base | append: '/' | relative_url }}">{% if page.dialect == 'gc' %}moxie/gc{% else %}moxie{% endif %}</a>
   <a{% if sect == 'guide' %} class="here"{% endif %} href="{{ base | append: '/learn/' | relative_url }}">Mixer’s Guide</a>
@@ -131,7 +131,7 @@ html,body{overscroll-behavior-x:none}
   var GC = '{{ page.dialect }}' === 'gc', ROOT = '{{ "/" | relative_url }}'.replace(/\/?$/, '/');
   var dir = ROOT + (GC ? 'gc/' : ''), path = location.pathname.replace(/index\.html$/, '').replace(/\.html$/, '.html');
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
-  var sec = path.indexOf(dir + 'learn/') === 0 ? 'Guide' : (path === dir + 'spec.html' || path === dir + 'reference.html') ? 'Spec'
+  var sec = path.indexOf(dir + 'learn/') === 0 ? 'Guide' : (path === dir + 'spec.html' || path === dir + 'reference.html' || path.indexOf(dir + 'ref/') === 0) ? 'Spec'
           : (path === dir || path === dir.slice(0, -1)) ? 'Intro' : null;
   var el = function (tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text) n.textContent = text; return n; };
   var other = GC ? path.replace(ROOT + 'gc/', ROOT) : path.replace(ROOT, ROOT + 'gc/');
@@ -212,7 +212,7 @@ html,body{overscroll-behavior-x:none}
     clearTimeout(timer); timer = setTimeout(commit, 350);
   };
   // The flow: a strip of cards, one per history entry, slides past at a steady speed; where it stops is the page you land on.
-  var CARD = 236, SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html/.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
+  var CARD = 236, SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html|\/ref\//.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
   var endFlow = function (land) {
     if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf);
     if (f.el.parentNode) f.el.parentNode.removeChild(f.el);
@@ -403,10 +403,10 @@ html,body{overscroll-behavior-x:none}
     var c0 = code.trim(); if (/\s/.test(c0) && /[=$\/"']/.test(c0)) return null;      // a shell line, an assignment, a string: not a bare moxie term
     var m = /^([A-Za-z_]\w*)(?=[\(\[]|\s|$)/.exec(c0); if (!m) return null;
     var n = m[1], call = /^[\(\[]/.test(code.trim().slice(n.length)), only = code.trim() === n;
-    if (fn[n] && call) return ref + '#fn-' + n;
+    if (fn[n] && call) return dir + 'ref/' + n + '.html';
     if (kw[n] && !(only && bare[n]) && !(fn[n] && !call && only && !kw[n])) return ref + '#kw-' + n;
     if (ty[n]) return ref + '#ty-' + n;
-    if (fn[n] && !(only && bare[n])) return ref + '#fn-' + n;
+    if (fn[n] && !(only && bare[n])) return dir + 'ref/' + n + '.html';
     return null;
   };
   var skip = { A: 1, PRE: 1, UL: 1, OL: 1, H1: 1, H2: 1, H3: 1, H4: 1, SCRIPT: 1, BUTTON: 1, DETAILS: 1 };

@@ -380,9 +380,11 @@ def build(gc):
         if c != cur:
             if cur is not None: out.append("</dl>"); out.append("")
             out.append("## %s {#%s}" % (c.upper(), c)); out.append(""); out.append('<dl class="ref">'); cur = c
-        out.append('<dt id="%s"><code>%s</code> <span class="tag">%s</span></dt>' % (eid, esc(n), tag))
+        nm = ('<a href="ref/%s.html"><code>%s</code></a>' % (n, esc(n))) if tag == "function" else "<code>%s</code>" % esc(n)
+        out.append('<dt id="%s">%s <span class="tag">%s</span></dt>' % (eid, nm, tag))
         link = ' <a href="spec.html#%s">Spec §%s</a>' % (sec, sec[1:]) if sec else ""
         eff = effect_line(n) if tag == "function" else ""
+        if tag == "function": link += ' <a href="ref/%s.html">Full description</a>' % n
         out.append("<dd>%s%s%s%s</dd>" % (md_inline(d), link, ('<br><code class="sig">%s</code>' % esc(sg)) if sg else "",
                                             ('<br><span class="eff">%s</span>' % esc(eff)) if eff else ""))
     out.append("</dl>"); out.append("")

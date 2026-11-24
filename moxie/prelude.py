@@ -1243,7 +1243,9 @@ def b_round_to(I, a, kw, ta):
 def b_div(I, a, kw, ta):
     x, y, scale, mode = a
     q = Decimal(1).scaleb(-scale)
-    return Dec((to_dec(x).v / to_dec(y).v).quantize(q, rounding=ROUNDING[str(mode)]), scale)
+    if to_dec(y).v == 0:
+        return err_reserved("OUT_OF_RANGE", "division by zero")
+    return Ok(Dec((to_dec(x).v / to_dec(y).v).quantize(q, rounding=ROUNDING[str(mode)]), scale))
 
 
 @bi("parse_number")
