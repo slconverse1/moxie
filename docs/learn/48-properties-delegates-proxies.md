@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Properties, field delegates, and proxies · Moxie Mixer’s Guide"
 ---
-# 58. Properties, field delegates, and proxies
+# 59. Properties, field delegates, and proxies
 
 In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)
 {: .specref}
@@ -169,7 +169,7 @@ Hello, Ada Lovelace
 
 ### Watching a property
 
-When the tuple is held in an Atom (lesson 30), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
+When the tuple is held in an Atom (lesson 31), other code can watch a property, with as many listeners as it likes, such as a database handler and a GUI handler:
 
 ```moxie
 tuple Account deriving show

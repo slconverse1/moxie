@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Regular expressions · Moxie/gc Mixer’s Guide"
 ---
-# 40. Regular expressions
+# 41. Regular expressions
 
 In the Spec: [23f. Regular expressions (the `regex` package)](../spec.html#s23f)
 {: .specref}

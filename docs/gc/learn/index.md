@@ -49,68 +49,69 @@ You don't need to know any functional programming. If you do, the lessons point 
 ## Streams and pipelines
 
 25. [Streams and pipelines](21-streams-and-pipelines.html)
-26. [More stream tools: sources you build](61-more-stream-tools.html)
-27. [Pipe slots, `seq`, and doing work once](50-pipe-slots-and-caching.html)
+26. [One pipeline, one collect](67-one-pipeline-one-collect.html)
+27. [More stream tools: sources you build](61-more-stream-tools.html)
+28. [Pipe slots, `seq`, and doing work once](50-pipe-slots-and-caching.html)
 
 ## Concurrency
 
-28. [Fibers and channels](22-fibers-and-channels.html)
-29. [Waiting on several things: select, timers, and cancelling](23-select-timers-cancel.html)
-30. [Atoms and futures](24-atoms-and-futures.html)
-31. [Session types: a channel that remembers the conversation](52-session-types.html)
+29. [Fibers and channels](22-fibers-and-channels.html)
+30. [Waiting on several things: select, timers, and cancelling](23-select-timers-cancel.html)
+31. [Atoms and futures](24-atoms-and-futures.html)
+32. [Session types: a channel that remembers the conversation](52-session-types.html)
 
 ## Quality and larger programs
 
-32. [Testing, assertions, and checking](25-testing.html)
-33. [Formatting and checking: `moxie fmt` and `moxie check`](57-formatting-and-checking.html)
-34. [Errors in larger programs](26-errors-in-larger-programs.html)
-35. [Limits, pools, and the memory budget](53-limits-pools-memory.html)
+33. [Testing, assertions, and checking](25-testing.html)
+34. [Formatting and checking: `moxie fmt` and `moxie check`](57-formatting-and-checking.html)
+35. [Errors in larger programs](26-errors-in-larger-programs.html)
+36. [Limits, pools, and the memory budget](53-limits-pools-memory.html)
 
 ## Packages
 
-36. [Packages and imports](27-packages.html)
-37. [Input, output, and files](28-input-output-files.html)
-38. [Builders: a DSL without macros](29-builders-and-blocks.html)
+37. [Packages and imports](27-packages.html)
+38. [Input, output, and files](28-input-output-files.html)
+39. [Builders: a DSL without macros](29-builders-and-blocks.html)
 
 ## Data from outside
 
-39. [JSON and data from outside](30-json.html)
-40. [Regular expressions](31-regex.html)
-41. [Statistics and prediction](32-statistics.html)
-42. [Networking, deadlines, and parallel work](33-networking.html)
-43. [Units of measure](34-units.html)
-44. [Databases with SQL](35-sql.html)
+40. [JSON and data from outside](30-json.html)
+41. [Regular expressions](31-regex.html)
+42. [Statistics and prediction](32-statistics.html)
+43. [Networking, deadlines, and parallel work](33-networking.html)
+44. [Units of measure](34-units.html)
+45. [Databases with SQL](35-sql.html)
 
 ## Functional programming
 
-45. [Values, purity, and composing functions](36-purity-and-composition.html)
-46. [Mapping, sequencing, and combining: functors, applicatives, and monads](37-functors-and-monads.html)
-47. [`for` comprehensions](38-for-comprehensions.html)
-48. [State, lenses, lazy sequences, and monoids](39-state-lenses-monoids.html)
-49. [Tagless final: one program, many interpreters](40-tagless-final.html)
-50. [Data types that grow: the expression problem](41-open-data-types.html)
-51. [Programs with effects as data: the freer monad](42-freer-monad.html)
-52. [GADTs and typestate](43-gadts-and-typestate.html)
-53. [Reader, writer, and continuations](62-reader-writer-continuations.html)
-54. [Transformers and the mtl classes](63-transformers.html)
+46. [Values, purity, and composing functions](36-purity-and-composition.html)
+47. [Mapping, sequencing, and combining: functors, applicatives, and monads](37-functors-and-monads.html)
+48. [`for` comprehensions](38-for-comprehensions.html)
+49. [State, lenses, lazy sequences, and monoids](39-state-lenses-monoids.html)
+50. [Tagless final: one program, many interpreters](40-tagless-final.html)
+51. [Data types that grow: the expression problem](41-open-data-types.html)
+52. [Programs with effects as data: the freer monad](42-freer-monad.html)
+53. [GADTs and typestate](43-gadts-and-typestate.html)
+54. [Reader, writer, and continuations](62-reader-writer-continuations.html)
+55. [Transformers and the mtl classes](63-transformers.html)
 
 ## Designing with interfaces
 
-55. [Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html)
-56. [Typeclasses](46-typeclasses.html)
-57. [Types that compute](47-types-that-compute.html)
+56. [Receiver blocks, interface composition, and mocks](45-receiver-blocks-and-mocks.html)
+57. [Typeclasses](46-typeclasses.html)
+58. [Types that compute](47-types-that-compute.html)
 
 ## Fields and promises
 
-58. [Properties, field delegates, and proxies](48-properties-delegates-proxies.html)
-59. [Refined parameters: proofs in the signature](49-refined-parameters.html)
-60. [Contracts: where and invariant](55-contracts.html)
+59. [Properties, field delegates, and proxies](48-properties-delegates-proxies.html)
+60. [Refined parameters: proofs in the signature](49-refined-parameters.html)
+61. [Contracts: where and invariant](55-contracts.html)
 
 ## Your program and its machine
 
-61. [The system around your program](44-the-system-around-your-program.html)
-62. [Calling C](54-calling-c.html)
-63. [Byte streams: Reader and Writer](65-byte-streams.html)
-64. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
-65. […moxie: the rest of the moxie toolbox](66-the-rest-of-moxie.html)
-66. [Where to go next](64-where-to-go-next.html)
+62. [The system around your program](44-the-system-around-your-program.html)
+63. [Calling C](54-calling-c.html)
+64. [Byte streams: Reader and Writer](65-byte-streams.html)
+65. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
+66. […moxie: the rest of the moxie toolbox](66-the-rest-of-moxie.html)
+67. [Where to go next](64-where-to-go-next.html)

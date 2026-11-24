@@ -119,9 +119,9 @@ The first line prints `tom`; the second `Cat` breaks the interface's promise, an
 
 ## Conditions are pure
 
-A condition may call only pure functions (lesson 45), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
+A condition may call only pure functions (lesson 46), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
 
-Because `moxie test` checks contracts, a property test (lesson 32) exercises them: the postconditions are the properties that its generated inputs try to break.
+Because `moxie test` checks contracts, a property test (lesson 33) exercises them: the postconditions are the properties that its generated inputs try to break.
 
 ## Conditions on fields, and between fields
 
@@ -149,7 +149,7 @@ Account(balance: 5, limit: 2)
 
 `i Int where i >= 0` is a precondition, `Int where result >= 0` after the result type is a postcondition, `balance Int where balance >= 0` after a field is a condition on that field, and an `invariant` line says something about the fields together. A condition that is long can continue on the next line.
 
-Wherever the condition is written, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 49 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, quietly for a result or a field and with a note for a parameter, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
+Wherever the condition is written, the blame and the build modes are the same. The checker also tries to prove a condition where it has to hold: lesson 50 shows it for a parameter at each call, and it does the same for a result at each exit and for a field wherever a value is built. What it can see is false is a compile error, and what it can neither prove nor refute is checked when the program runs, quietly for a result or a field and with a note for a parameter, unless `prove = true` asks for a proof every time. In the `abs` above, the test `n < 0` is what lets the checker see that `0 - n` is not negative.
 
 ## What to remember
 

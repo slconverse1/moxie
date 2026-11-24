@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "State, lenses, lazy sequences, and monoids · Moxie/gc Mixer’s Guide"
 ---
-# 48. State, lenses, lazy sequences, and monoids
+# 49. State, lenses, lazy sequences, and monoids
 
 In the Spec: [23. Functional programming support](../spec.html#s23)
 {: .specref}

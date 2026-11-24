@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "JSON and data from outside · Moxie Mixer’s Guide"
 ---
-# 39. JSON and data from outside
+# 40. JSON and data from outside
 
 In the Spec: [23c. JSON and data from outside (the `json` package)](../spec.html#s23c), [15. Errors and Results](../spec.html#s15)
 {: .specref}

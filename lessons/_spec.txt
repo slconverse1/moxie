@@ -26,6 +26,7 @@
 20-interfaces: s0, s12, s9a
 21-streams-and-pipelines: s13, s18
 61-more-stream-tools: s13
+67-one-pipeline-one-collect: s13
 50-pipe-slots-and-caching: s13, s14
 22-fibers-and-channels: s16, s17, s18
 23-select-timers-cancel: s17

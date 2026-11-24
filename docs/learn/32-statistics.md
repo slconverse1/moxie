@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Statistics and prediction · Moxie Mixer’s Guide"
 ---
-# 41. Statistics and prediction
+# 42. Statistics and prediction
 
 In the Spec: [23a. Statistics and prediction (the `stats` package)](../spec.html#s23a)
 {: .specref}

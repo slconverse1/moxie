@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Values, purity, and composing functions · Moxie Mixer’s Guide"
 ---
-# 45. Values, purity, and composing functions
+# 46. Values, purity, and composing functions
 
 In the Spec: [14. Caching, memoization, and effects](../spec.html#s14), [23. Functional programming support](../spec.html#s23)
 {: .specref}

@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Fibers and channels · Moxie Mixer’s Guide"
 ---
-# 28. Fibers and channels
+# 29. Fibers and channels
 
 In the Spec: [16. Concurrency overview](../spec.html#s16), [17. Atoms, futures, channels, timers](../spec.html#s17), [18. Fibers, loops, streams](../spec.html#s18)
 {: .specref}

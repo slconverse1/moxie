@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Packages and imports · Moxie Mixer’s Guide"
 ---
-# 36. Packages and imports
+# 37. Packages and imports
 
 In the Spec: [4. Packages, modules, imports, exports, linking](../spec.html#s4), [19. Resources, pools, packages](../spec.html#s19)
 {: .specref}

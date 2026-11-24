@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Waiting on several things: select, timers, and cancelling · Moxie/gc Mixer’s Guide"
 ---
-# 29. Waiting on several things: select, timers, and cancelling
+# 30. Waiting on several things: select, timers, and cancelling
 
 In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)
 {: .specref}

@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "More stream tools: sources you build · Moxie Mixer’s Guide"
 ---
-# 26. More stream tools: sources you build
+# 27. More stream tools: sources you build
 
 In the Spec: [13. Pipelines and streams](../spec.html#s13)
 {: .specref}
@@ -157,4 +157,4 @@ Packet(id: 2)
 
 ---
 
-[← Streams and pipelines](21-streams-and-pipelines.html) · [Contents](./) · [Pipe slots, `seq`, and doing work once →](50-pipe-slots-and-caching.html)
+[← One pipeline, one collect](67-one-pipeline-one-collect.html) · [Contents](./) · [Pipe slots, `seq`, and doing work once →](50-pipe-slots-and-caching.html)

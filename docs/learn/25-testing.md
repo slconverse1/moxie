@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Testing, assertions, and checking · Moxie Mixer’s Guide"
 ---
-# 32. Testing, assertions, and checking
+# 33. Testing, assertions, and checking
 
 In the Spec: [22. Tooling, tests, and checks](../spec.html#s22), [9c. Contracts](../spec.html#s9c)
 {: .specref}

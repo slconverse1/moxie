@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Pipe slots, `seq`, and doing work once · Moxie/gc Mixer’s Guide"
 ---
-# 27. Pipe slots, `seq`, and doing work once
+# 28. Pipe slots, `seq`, and doing work once
 
 In the Spec: [13. Pipelines and streams](../spec.html#s13), [14. Caching, memoization, and effects](../spec.html#s14)
 {: .specref}
@@ -138,7 +138,7 @@ println(shrunk)
 
 Nothing is memoized, and nothing is cached behind your back. Caching is something you write on purpose, and moxie gives you these ways:
 
-- `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 58);
+- `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 59);
 - a `lazy` parameter (call by need) evaluates its argument once, only if the body reads it;
 - a bottom-up `reduce`, below, carries only what the next step needs;
 - a `Dict` threaded through a recursion as a `ref` parameter lets calls share work;

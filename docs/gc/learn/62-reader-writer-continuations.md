@@ -4,13 +4,13 @@ dialect: gc
 learn: true
 title: "Reader, writer, and continuations · Moxie/gc Mixer’s Guide"
 ---
-# 53. Reader, writer, and continuations
+# 54. Reader, writer, and continuations
 
 In the Spec: [23. Functional programming support](../spec.html#s23)
 {: .specref}
 
 
-Lesson 46 introduced the `Monad` interface and what `flat_map` means. Three packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), and a **continuation** monad (a step can jump out early). The free monad is covered in lesson 51. They need closures with one type per signature, so GC-free moxie does not have them. Each is the matching transformer from lesson 54 with nothing underneath, `Identity`, so a program that later needs two effects at once can move to the transformer without relearning anything.
+Lesson 47 introduced the `Monad` interface and what `flat_map` means. Three packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), and a **continuation** monad (a step can jump out early). The free monad is covered in lesson 52. They need closures with one type per signature, so GC-free moxie does not have them. Each is the matching transformer from lesson 55 with nothing underneath, `Identity`, so a program that later needs two effects at once can move to the transformer without relearning anything.
 
 ## Reader
 

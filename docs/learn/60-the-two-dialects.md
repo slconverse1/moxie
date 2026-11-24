@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Moxie and moxie/gc side by side · Moxie Mixer’s Guide"
 ---
-# 64. Moxie and moxie/gc side by side
+# 65. Moxie and moxie/gc side by side
 
 In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)
 {: .specref}
@@ -100,7 +100,7 @@ A stream works in place over what it reads from, so it can be passed down but no
 ## Resources and fibers
 
 
-Atoms, channels, timers, and futures are counted resources: the compiler adds them up before the program starts (lesson 35), so they can't be created in a loop whose count it can't bound. Fibers have slots, one pool per fiber function.
+Atoms, channels, timers, and futures are counted resources: the compiler adds them up before the program starts (lesson 36), so they can't be created in a loop whose count it can't bound. Fibers have slots, one pool per fiber function.
 
 ## Pauses and failure
 

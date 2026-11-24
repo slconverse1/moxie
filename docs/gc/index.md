@@ -117,7 +117,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Elixir:** the pin (`^`) operator for pattern matching.
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 - **Liquid Haskell:** refinement types: a `where` condition on a parameter, a result or a field, as in `type Pos = Int where self > 0`, which the checker proves at compile time when it can (linear integer arithmetic and `len`) and checks at run time when it can't.
-- **C#:** multi-cast delegation.
+- **C#:** multi-cast delegation, and the query pipeline: every collection is a pipeline source as it stands, so the stages chain directly and a single terminal such as `collect()` ends the pipeline, with no conversion step in between.
 
 By synthesizing these features and others into an elegant mash-up, moxie balances its expressiveness against FCFX constraints.
 
@@ -1311,6 +1311,18 @@ total = Range(1..)
 ```
 
 That's 9 + 36 + 81 + 144, or `270`, and it never builds a list. The vertical stages (`sort`, `reverse`) must see every element first, so they collect them in a temporary buffer and break the one-at-a-time flow. (`chunks` and `windows` buffer a little, too.)
+
+**One `collect`, no conversion.** Every collection is a pipeline source just as it stands: a `List`, `Array`, `Set`, `Dict`, a `String` (through `chars()`), a range, even an `Option`. A pipeline therefore starts from the collection itself, with no conversion step in front of it, and ends with a single terminal:
+
+```
+result = names
+  |> filter((n) -> len(n) > 2)
+  |> map(upper(_))
+  |> sort()
+  |> collect()
+```
+
+Output: `List("ANA", "LEE", "MINA", "ZOE")` for `names = List("mina", "lee", "ana", "zoe", "bo")`. Nothing between the stages builds a list, so `collect()` appears once, at the very end, and never to get a collection ready for the next stage. (A `collect()` in the middle still works, since a `List` is a source, but it builds a list that the next stage then walks again.) You convert only when a function declares a `Stream[T]` parameter, and then `to_stream()` at the call is all it takes. A type of your own joins in by having a `to_stream` method.
 
 **`lazy` parameters.** Mark a parameter `lazy` and the argument isn't evaluated until the function reads it, which makes call-by-name a one-word feature:
 

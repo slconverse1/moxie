@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Refined parameters: proofs in the signature · Moxie/gc Mixer’s Guide"
 ---
-# 59. Refined parameters: proofs in the signature
+# 60. Refined parameters: proofs in the signature
 
 In the Spec: [9d. Refined parameters](../spec.html#s9d)
 {: .specref}

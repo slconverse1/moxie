@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "…moxie: the rest of the moxie toolbox · Moxie Mixer’s Guide"
 ---
-# 65. …moxie: the rest of the moxie toolbox
+# 66. …moxie: the rest of the moxie toolbox
 
 In the Spec: [24. Prelude reference](../spec.html#s24)
 {: .specref}
@@ -126,11 +126,11 @@ Array(104, 195, 169)
 Ok("hé")
 ```
 
-`from_utf8` gives an `Err` with `BAD_ENCODING` when the bytes aren't valid UTF-8. Text is in lesson 6, and bytes in lessons 37 and 63.
+`from_utf8` gives an `Err` with `BAD_ENCODING` when the bytes aren't valid UTF-8. Text is in lesson 6, and bytes in lessons 38 and 64.
 
 ## Stream and Result helpers
 
-The stream stages in lessons 25 and 26 have a few more relatives. `filter_map` keeps what a function turns into a `Some`, `find_map` returns the first such value, `drop_last` is the mirror of `take_last`, `sort_by` sorts by a key, and `reduce_right` folds from the right:
+The stream stages in lessons 25 and 27 have a few more relatives. `filter_map` keeps what a function turns into a `Some`, `find_map` returns the first such value, `drop_last` is the mirror of `take_last`, `sort_by` sorts by a key, and `reduce_right` folds from the right:
 
 ```moxie
 xs = List(1, 2, 3, 4)
@@ -258,7 +258,7 @@ Ok(())
 done
 ```
 
-A timer has one owner and never goes to a fiber. Lessons 28 to 30 cover fibers, channels, atoms, and timers.
+A timer has one owner and never goes to a fiber. Lessons 29 to 30 cover fibers, channels, atoms, and timers.
 
 ## Random and reproducible
 
@@ -277,7 +277,7 @@ true
 4
 ```
 
-A property test (lesson 32) uses the same idea to make its inputs.
+A property test (lesson 33) uses the same idea to make its inputs.
 
 ## Dates
 
@@ -294,17 +294,17 @@ println(days_in_month(2023, 2))
 28
 ```
 
-A `DateTime` also has `weekday` (1 for Monday to 7 for Sunday) and `day_of_year`. There is no date arithmetic, which keeps time zones and calendars out of the language. The system functions around the clock are in lesson 61.
+A `DateTime` also has `weekday` (1 for Monday to 7 for Sunday) and `day_of_year`. There is no date arithmetic, which keeps time zones and calendars out of the language. The system functions around the clock are in lesson 62.
 
 ## More that is there
 
 A few more things exist that need a network, a file system, or a permission, so they have no example here:
 
-- Files and sockets (lessons 37 and 42): `read_bytes(io, n)` reads a number of bytes, `open_file` takes a `FileMode`, `connect_tls` is `connect` over TLS with no way to turn the check off, `bind_udp` with `send_to` and `receive` handles datagrams, and `listen_unix` and `connect_unix` talk to another program on the same machine through a file path.
+- Files and sockets (lessons 38 and 43): `read_bytes(io, n)` reads a number of bytes, `open_file` takes a `FileMode`, `connect_tls` is `connect` over TLS with no way to turn the check off, `bind_udp` with `send_to` and `receive` handles datagrams, and `listen_unix` and `connect_unix` talk to another program on the same machine through a file path.
 - Directories: `list_dir`, `file_info`, and `path_exists`, and `watch(path)`, which gives a channel of file changes.
-- Databases (lesson 44): `transaction(conn, f)` commits when `f` returns `Ok` and rolls back on `Err`, `?` included.
-- Permissions (lesson 61): a program says what it may touch with flags such as `--allow-read` and `--allow-connect`, and a manifest can fix them.
-- Calling C (lesson 62): `moxie bindgen` writes foreign declarations from a C header.
+- Databases (lesson 45): `transaction(conn, f)` commits when `f` returns `Ok` and rolls back on `Err`, `?` included.
+- Permissions (lesson 62): a program says what it may touch with flags such as `--allow-read` and `--allow-connect`, and a manifest can fix them.
+- Calling C (lesson 63): `moxie bindgen` writes foreign declarations from a C header.
 
 The Spec has the rest, section by section.
 

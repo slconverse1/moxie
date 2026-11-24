@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Typeclasses · Moxie Mixer’s Guide"
 ---
-# 56. Typeclasses
+# 57. Typeclasses
 
 In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12)
 {: .specref}
@@ -44,7 +44,7 @@ println("${mconcat(nums)} ${mconcat(maxes).value}")
 
 The tuple `Max` is built both ways: `Max(value: -1000000)` names the field and `Max(3)` is positional. A constructor is also a function, so `Array(3, 9, 4).fmap(Max)` builds the same array as `maxes`.
 
-`Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. (The prelude already declares `Semigroup` and `Monoid`, lesson 48; this example writes its own so you can see how an interface is built, and a declaration in your program is the one it uses.)
+`Monoid` embeds `Semigroup`, which is the superclass relationship, and one `impl Monoid` supplies both members. (The prelude already declares `Semigroup` and `Monoid`, lesson 49; this example writes its own so you can see how an interface is built, and a declaration in your program is the one it uses.)
 
 A member with no receiver is a `static fn`, reached through the type, so Haskell's `mempty` is `T.empty()`. The compiler specializes `mconcat` for each type, with no tables at run time.
 
@@ -84,7 +84,7 @@ A type has exactly one impl of each interface, so `C.Item` is never ambiguous. O
 
 A class over a type constructor takes `F[_]`, and an instance names the constructor itself. (`List` by itself is a type constructor, and a parameter that stands for one is what Haskell and Scala call a higher-kinded type. Without it, `double_in` below would have to be written again for every container.)
 
-With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and an `impl Monad[Box]` (lesson 46), you can write code that works for *any* monad:
+With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and an `impl Monad[Box]` (lesson 47), you can write code that works for *any* monad:
 
 ```moxie
 enum Box[T] deriving show

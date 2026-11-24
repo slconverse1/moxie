@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Units of measure · Moxie Mixer’s Guide"
 ---
-# 43. Units of measure
+# 44. Units of measure
 
 In the Spec: [23g. Units of measure](../spec.html#s23g)
 {: .specref}

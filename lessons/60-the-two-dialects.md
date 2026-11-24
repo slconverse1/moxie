@@ -163,7 +163,7 @@ Atoms, channels, timers, and futures can be created anywhere, loops included. Ow
 @end
 
 @nogc
-Atoms, channels, timers, and futures are counted resources: the compiler adds them up before the program starts (lesson 35), so they can't be created in a loop whose count it can't bound. Fibers have slots, one pool per fiber function.
+Atoms, channels, timers, and futures are counted resources: the compiler adds them up before the program starts (lesson 36), so they can't be created in a loop whose count it can't bound. Fibers have slots, one pool per fiber function.
 @end
 
 ## Pauses and failure

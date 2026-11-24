@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Atoms and futures · Moxie Mixer’s Guide"
 ---
-# 30. Atoms and futures
+# 31. Atoms and futures
 
 In the Spec: [17. Atoms, futures, channels, timers](../spec.html#s17)
 {: .specref}

@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Mapping, sequencing, and combining: functors, applicatives, and monads · Moxie Mixer’s Guide"
 ---
-# 46. Mapping, sequencing, and combining: functors, applicatives, and monads
+# 47. Mapping, sequencing, and combining: functors, applicatives, and monads
 
 In the Spec: [23. Functional programming support](../spec.html#s23)
 {: .specref}

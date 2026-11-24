@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Tagless final: one program, many interpreters · Moxie/gc Mixer’s Guide"
 ---
-# 49. Tagless final: one program, many interpreters
+# 50. Tagless final: one program, many interpreters
 
 In the Spec: [12. Interfaces and `impl` blocks](../spec.html#s12), [23. Functional programming support](../spec.html#s23)
 {: .specref}
@@ -157,7 +157,7 @@ Name the pair type when you call (`total[Both[Eval, Pretty]]`): a result type is
 
 ## Keeping the types straight
 
-The language above has one kind of value. When it has two (numbers and booleans, with `if` and `<=`), the interface has to say which is which, or `add(lit(1), bool(true))` would be meaningless. Make the representation a type constructor, as in the constructor interfaces of lesson 46 (`R[_]`), and give each operation a precise type:
+The language above has one kind of value. When it has two (numbers and booleans, with `if` and `<=`), the interface has to say which is which, or `add(lit(1), bool(true))` would be meaningless. Make the representation a type constructor, as in the constructor interfaces of lesson 47 (`R[_]`), and give each operation a precise type:
 
 ```moxie
 interface Sym[R[_]]
@@ -208,7 +208,7 @@ println(prog[Show]().text)
 if (1 <= 2) then (10 + 5) else 0
 ```
 
-`cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type, lesson 51); in the tagless style the interface carries the types.
+`cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type, lesson 52); in the tagless style the interface carries the types.
 
 The body of a generic program is checked against those signatures too: `R.add(R.lit(1), R.bool(true))` is a compile error, and so is a number as the test of `cond`.
 

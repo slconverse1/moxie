@@ -94,7 +94,7 @@ end of input: end of input
 
 Input is UTF-8. Input that is not gives an `Err` with the code `BAD_ENCODING`.
 
-All of these *park*: while a fiber waits for input, only that fiber is held up. Lesson 28 explains fibers; the point here is that waiting for a person to type does not freeze the rest of the program.
+All of these *park*: while a fiber waits for input, only that fiber is held up. Lesson 29 explains fibers; the point here is that waiting for a person to type does not freeze the rest of the program.
 
 ### Feeding a function its input
 
@@ -149,7 +149,7 @@ println("${letters} letters, ${len(read_file("notes.txt")?)} bytes")
 11 letters, 14 bytes
 ```
 
-Writes to a file are buffered until you call `flush` or `close`. A file left open when the program ends is closed by the runtime, but close it yourself: an open file is a *resource* that one fiber owns (lesson 34 and the memory lesson come back to this).
+Writes to a file are buffered until you call `flush` or `close`. A file left open when the program ends is closed by the runtime, but close it yourself: an open file is a *resource* that one fiber owns (lesson 35 and the memory lesson come back to this).
 
 Paths use `/` on every system.
 

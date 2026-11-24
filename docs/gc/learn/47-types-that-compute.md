@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Types that compute · Moxie/gc Mixer’s Guide"
 ---
-# 57. Types that compute
+# 58. Types that compute
 
 In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [23d. `dynamic fn` and `unsafe fn`](../spec.html#s23d)
 {: .specref}

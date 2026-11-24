@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Transformers and the mtl classes · Moxie/gc Mixer’s Guide"
 ---
-# 54. Transformers and the mtl classes
+# 55. Transformers and the mtl classes
 
 In the Spec: [23. Functional programming support](../spec.html#s23)
 {: .specref}

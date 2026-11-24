@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Errors in larger programs · Moxie Mixer’s Guide"
 ---
-# 34. Errors in larger programs
+# 35. Errors in larger programs
 
 In the Spec: [15. Errors and Results](../spec.html#s15)
 {: .specref}

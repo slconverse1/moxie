@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Calling C · Moxie/gc Mixer’s Guide"
 ---
-# 62. Calling C
+# 63. Calling C
 
 In the Spec: [19a. Foreign functions and `moxie bindgen`](../spec.html#s19a)
 {: .specref}
@@ -30,7 +30,7 @@ println(pow(2.0, 10.0))
 1024.0
 ```
 
-The string names the library (`"m"` is the math library, `"c"` the C library). The program needs the `ffi` permission (lesson 61).
+The string names the library (`"m"` is the math library, `"c"` the C library). The program needs the `ffi` permission (lesson 62).
 
 ## Out-parameters
 
@@ -95,7 +95,7 @@ The answer is 6, because `é` is two bytes in UTF-8.
 
 ## Handles
 
-A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too (lesson 35). A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL.
+A library that hands back an opaque pointer, such as a database, is declared as a **handle**, with the function that closes it. A handle is a resource: move-only, closed once, and the compiler rejects use after the close. A handle counts in the pool tally too (lesson 36). A function that returns `Result[Store, Error]` gives `Err(MISSING)` when C returns NULL.
 
 This needs a library to call, so it is shown but not run:
 

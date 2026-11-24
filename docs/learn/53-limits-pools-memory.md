@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Limits, pools, and the memory budget · Moxie Mixer’s Guide"
 ---
-# 35. Limits, pools, and the memory budget
+# 36. Limits, pools, and the memory budget
 
 In the Spec: [3a. The Moxie runtime](../spec.html#s3a), [19. Resources, pools, packages](../spec.html#s19)
 {: .specref}

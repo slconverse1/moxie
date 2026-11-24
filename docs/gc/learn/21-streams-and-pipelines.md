@@ -261,4 +261,4 @@ A loop says *how*: keep a counter, update a total, remember to stop. A pipeline 
 
 ---
 
-[← Methods and interfaces](20-interfaces.html) · [Contents](./) · [More stream tools: sources you build →](61-more-stream-tools.html)
+[← Methods and interfaces](20-interfaces.html) · [Contents](./) · [One pipeline, one collect →](67-one-pipeline-one-collect.html)

@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Moxie and moxie/gc side by side · Moxie/gc Mixer’s Guide"
 ---
-# 64. Moxie and moxie/gc side by side
+# 65. Moxie and moxie/gc side by side
 
 In the Spec: [3. Memory model: S-space, T-space, and resets](../spec.html#s3), [24a. Departures from compile-time type safety](../spec.html#s24a)
 {: .specref}

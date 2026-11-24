@@ -3,7 +3,7 @@ layout: default
 learn: true
 title: "Byte streams: Reader and Writer · Moxie Mixer’s Guide"
 ---
-# 63. Byte streams: Reader and Writer
+# 64. Byte streams: Reader and Writer
 
 In the Spec: [19c. Files and sockets](../spec.html#s19c)
 {: .specref}
