@@ -19,7 +19,7 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
-Sweep: a page passed over while a key or swipe is held is now shown as the whole page once it has loaded, not as a title card. A title card was a shortened form of the page. The landing still waits for the target page to load before it settles.
+Sweep: a page passed over while a key or swipe is held is now shown as the whole page once it has loaded, not as a title card. A title card was a shortened form of the page. The landing still waits for the target page to load before it settles. Each page now fills in from its top edge downward as it loads, instead of appearing all at once.
 
 Type-safety round 2 (from a second mutation run, seed 7: 4,433 mutants, 75% rejected, no checker crashes): the checker now rejects a wrong-typed argument to a function with a `using` parameter, a mixed-type `List(...)` at the head of a pipeline, `for n in 1..6` loops whose variable is used as a non-Int (the variable is now an `Int`), a trailing lambda in a pipeline (`xs |> map()(x) -> x + "x"`) whose parameter was untyped, `count@1 += v` with the wrong type, and `<<`/`>>` on non-integers. Cases are in tests/run_typesafe.py. Still open: generic higher-order calls such as `call_with(add, (3, "x"))`, the value of a `do` block, and untyped pattern-clause parameters.
 
