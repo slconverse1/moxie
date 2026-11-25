@@ -286,7 +286,7 @@ html,body{overscroll-behavior-x:none}
     f.strip.appendChild(fr); f.frames[j] = fr; return fr;
   };
   var loadFrame = function (f, j) {          // the page itself, in a frame over the card
-    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr || /\/(spec|reference)\.html$/.test(pathOf(e.u)) || (fr.__gone && Math.abs(j - curPos(f)) > 1.2)) return;
+    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr || (fr.__gone && Math.abs(j - curPos(f)) > 1.2)) return;
     f.loading++;
     var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
@@ -335,15 +335,16 @@ html,body{overscroll-behavior-x:none}
       var pos = curPos(f);
       var lo = Math.max(0, Math.floor(pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(pos) + 2);
       if (f.d < 0) { lo = Math.max(0, Math.floor(pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(pos) + 1); }
+      var tg = Math.round(f.target); if (!f.held && !f.frames[tg]) mkFrame(f, tg); if (!f.held && f.frames[tg] && !f.frames[tg].__ifr && f.go) loadFrame(f, tg);
       for (var j = lo; j <= hi; j++) if (!f.frames[j]) mkFrame(f, j);
       var slow = true, near = [];    // real pages only while the glide is slow enough to load them
       if (f.frames[f.start] && !f.frames[f.start].__ifr && now - f.t0 < 4000) loadFrame(f, f.start);
       if (slow) { for (var q in f.frames) if (!f.frames[q].__ifr && Math.abs(q - pos) < 2.2) near.push(+q);
         near.sort(function (x, y) { return Math.abs(x - pos) - Math.abs(y - pos); });
         for (var w = 0; w < near.length && f.loading < 2; w++) loadFrame(f, near[w]); }
-      Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
-      var live = Object.keys(f.frames).filter(function (k) { return f.frames[k].__ifr; }).sort(function (x, y) { return Math.abs(y - pos) - Math.abs(x - pos); });
-      while (live.length > 2) {                    // keep only the two nearest pages loaded: the rest go back to their cards, to spare memory
+      Object.keys(f.frames).forEach(function (k) { if ((k < lo - 1 || k > hi + 1) && +k !== Math.round(f.target)) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
+      var live = Object.keys(f.frames).filter(function (k) { return f.frames[k].__ifr && +k !== Math.round(f.target); }).sort(function (x, y) { return Math.abs(y - pos) - Math.abs(x - pos); });
+      while (live.length > 2) {                    // keep the target and the two nearest other pages loaded: the rest go back to their cards, to spare memory
         var q2 = live.shift(), fq = f.frames[q2], ifq = fq.__ifr;
         if (!f.ready[q2]) f.loading = Math.max(0, f.loading - 1);
         try { ifq.src = 'about:blank'; } catch (x) {}
@@ -353,7 +354,7 @@ html,body{overscroll-behavior-x:none}
       var sel = Math.round(pos);
       if (sel !== f.sel) { f.sel = sel; f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop here'; }
       if (f.go && !f.held && (!f.anim || f.anim.currentTime >= f.dur * 1000 - 1)) {
-        if (!f.done) { f.done = now; } else if (now - f.done > 700) { f.pos = f.target; endFlow(true); return; }
+        if (!f.done) { f.done = now; } else if (now - f.done > 700 && (f.ready[Math.round(f.target)] || now - f.done > 3500)) { f.pos = f.target; endFlow(true); return; }
       }
       f.raf = requestAnimationFrame(frame);
     };
