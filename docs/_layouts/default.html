@@ -5,7 +5,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ page.title }}</title>
-<script>window.mxMain=function(){var m=document.querySelector('main');return m&&getComputedStyle(m).overflowY==='auto'?m:null;};window.mxY=function(){var m=window.mxMain();return m?m.scrollTop:window.scrollY;};window.mxTo=function(y,smooth){var m=window.mxMain(),o={top:y,behavior:smooth?'smooth':'auto'};if(m)m.scrollTo(o);else window.scrollTo(o);};</script>
+<script>window.mxMain=function(){var m=document.querySelector('main');return m&&getComputedStyle(m).overflowY==='auto'?m:null;};window.mxY=function(){var m=window.mxMain();return m?m.scrollTop:window.scrollY;};window.mxPrune=function(){try{    /* a frame in the quick view: swap the blocks far above and below what is on screen for empty spacers of the same size, so a big page costs little memory */
+  var m=document.querySelector('main');if(!m||window.__pruned)return;window.__pruned=1;var H=window.innerHeight,kids=Array.prototype.slice.call(m.children),rs=kids.map(function(k){return k.getBoundingClientRect();});
+  kids.forEach(function(k,i){var r=rs[i];if(k.classList.contains('az')||(r.bottom>-1.5*H&&r.top<2.5*H))return;var cs=getComputedStyle(k),d=document.createElement('div');d.style.cssText='height:'+r.height+'px;margin:'+cs.marginTop+' 0 '+cs.marginBottom;m.replaceChild(d,k);});
+  var t=document.getElementById('toc');if(t)t.textContent='';}catch(e){}};
+window.mxTo=function(y,smooth){var m=window.mxMain(),o={top:y,behavior:smooth?'smooth':'auto'};if(m)m.scrollTo(o);else window.scrollTo(o);};</script>
 <script>try{window.mxWent=!!sessionStorage.getItem('moxie-go');
 if(window.mxWent&&window.self===window.top){
   if('PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition&&!window.mxWent) e.viewTransition.skipTransition(); }); }   // the browser crossfades from the strip to the page, once the page is ready
@@ -42,8 +46,8 @@ nav{position:sticky;top:0;z-index:30;background:var(--bg)}
 #hflow{position:fixed;inset:0;z-index:60;background:var(--bg);overflow:hidden}
 .hf-strip{position:absolute;left:0;top:0;width:0;height:100%;will-change:transform}
 .hf-frame{position:absolute;top:0;background:var(--bg);overflow:hidden;box-shadow:0 0 22px rgba(0,0,0,.5)}
-.hf-frame iframe{position:absolute;left:0;top:0;border:0;background:var(--bg);opacity:0;pointer-events:none}
-.hf-frame.ready iframe{opacity:1}
+.hf-strip>iframe{position:absolute;top:0;z-index:2;border:0;background:var(--bg);opacity:0;pointer-events:none}
+.hf-strip>iframe.on{opacity:1}
 .hf-card{padding:80px 28px;max-width:34rem;margin:0 auto}
 .hf-k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
 .hf-t{font-weight:700;font-size:26px;line-height:1.25;margin:6px 0 10px}
@@ -285,17 +289,36 @@ html,body{overscroll-behavior-x:none}
     c.appendChild(k); c.appendChild(t); c.appendChild(x); fr.appendChild(c);
     f.strip.appendChild(fr); f.frames[j] = fr; return fr;
   };
-  var loadFrame = function (f, j) {          // the page itself, in a frame over the card
+  var frameLoaded = function (ev) {           // a pooled frame has finished a page: put it at its scroll, trim it, show it
+    var ifr = ev.target, j = ifr.__j, f = flow; if (!f || j < 0 || ifr.__ready) return;
+    var href = ''; try { href = ifr.contentWindow.location.href; } catch (x) {}
+    if (!href || href === 'about:blank') return;
+    var e = S.l[j], y = ifr.__y, fr = ifr.__fr;
+    var go2 = function () { try { var w = ifr.contentWindow, h = hashOf(e.u); if (y) { if (w.mxTo) w.mxTo(y); else w.scrollTo(0, y); } else if (h) { var el = w.document.getElementById(decodeURIComponent(h.slice(1))); if (el) el.scrollIntoView(); } } catch (x) {} if (ifr.__j === j) { ifr.classList.add('on'); f.ready[j] = 1; } };
+    f.loading = Math.max(0, f.loading - 1); ifr.__ready = true; go2();
+    setTimeout(function () { if (ifr.__j !== j) return; go2(); try { if (ifr.contentWindow.mxPrune) ifr.contentWindow.mxPrune(); } catch (x) {} }, 60);
+  };
+  var releaseFrame = function (f, j) {         // give the frame back to the pool and empty it, so a page is never kept longer than it is on show
+    var fq = f.frames[j], ifr = fq && fq.__ifr; if (!ifr) return;
+    if (!f.ready[j]) f.loading = Math.max(0, f.loading - 1);
+    ifr.__j = -1; ifr.__ready = false; ifr.__fr = null; ifr.classList.remove('on');
+    try { ifr.contentWindow.location.replace('about:blank'); } catch (x) {}
+    fq.__ifr = null; fq.__gone = 1; delete f.ready[j];
+  };
+  var loadFrame = function (f, j) {          // the page itself, in one of three frames that are used over and over (so documents do not pile up)
     var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr || (fr.__gone && Math.abs(j - curPos(f)) > 1.2)) return;
+    f.pool = f.pool || []; var ifr = null;
+    for (var i = 0; i < f.pool.length; i++) if (f.pool[i].__j === -1) { ifr = f.pool[i]; break; }
+    if (!ifr) {
+      if (f.pool.length >= 3) return;
+      ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
+      ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.__j = -1; ifr.addEventListener('load', frameLoaded);
+      f.strip.appendChild(ifr); f.pool.push(ifr);
+    }
     f.loading++;
-    var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
-    ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
-    var y = j === S.i ? window.mxY() : (e.y || 0);
-    ifr.addEventListener('load', function () {
-      var go2 = function () { try { var w = ifr.contentWindow, h = hashOf(e.u); if (y) { if (w.mxTo) w.mxTo(y); else w.scrollTo(0, y); } else if (h) { var el = w.document.getElementById(decodeURIComponent(h.slice(1))); if (el) el.scrollIntoView(); } } catch (x) {} fr.classList.add('ready'); f.ready[j] = 1; };
-      f.loading--; go2(); setTimeout(go2, 60);
-    });
-    fr.appendChild(ifr); fr.__ifr = ifr;
+    ifr.__j = j; ifr.__ready = false; ifr.__fr = fr; ifr.__y = j === S.i ? window.mxY() : (e.y || 0); ifr.classList.remove('on'); ifr.style.left = (j * W) + 'px';
+    fr.__ifr = ifr;
+    try { ifr.contentWindow.location.replace(pathOf(e.u)); } catch (x) { ifr.src = pathOf(e.u); }
   };
   var speedAt = function (f, r) { return CPX / f.W; };   // pages a second: always the same   // long: fast at first, ever slower towards the end
   var DT = 1 / 60;
@@ -342,14 +365,10 @@ html,body{overscroll-behavior-x:none}
       if (slow) { for (var q in f.frames) if (!f.frames[q].__ifr && Math.abs(q - pos) < 2.2) near.push(+q);
         near.sort(function (x, y) { return Math.abs(x - pos) - Math.abs(y - pos); });
         for (var w = 0; w < near.length && f.loading < 2; w++) loadFrame(f, near[w]); }
-      Object.keys(f.frames).forEach(function (k) { if ((k < lo - 1 || k > hi + 1) && +k !== Math.round(f.target)) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
+      Object.keys(f.frames).forEach(function (k) { if ((k < lo - 1 || k > hi + 1) && +k !== Math.round(f.target)) { var fr = f.frames[k]; releaseFrame(f, k); if (fr.parentNode) fr.parentNode.removeChild(fr); delete f.frames[k]; delete f.ready[k]; } });
       var live = Object.keys(f.frames).filter(function (k) { return f.frames[k].__ifr && +k !== Math.round(f.target); }).sort(function (x, y) { return Math.abs(y - pos) - Math.abs(x - pos); });
       while (live.length > 2) {                    // keep the target and the two nearest other pages loaded: the rest go back to their cards, to spare memory
-        var q2 = live.shift(), fq = f.frames[q2], ifq = fq.__ifr;
-        if (!f.ready[q2]) f.loading = Math.max(0, f.loading - 1);
-        try { ifq.src = 'about:blank'; } catch (x) {}
-        if (ifq.parentNode) ifq.parentNode.removeChild(ifq);
-        fq.__ifr = null; fq.__gone = 1; fq.classList.remove('ready'); delete f.ready[q2];
+        releaseFrame(f, live.shift());
       }
       var sel = Math.round(pos);
       if (sel !== f.sel) { f.sel = sel; f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop here'; }
