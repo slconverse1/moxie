@@ -170,6 +170,17 @@ CASES = [
     ('lambda-list-arg', 'R', 'f = (xs) -> xs.nope()\nprintln(f(List(1)))\n'),
     ('when-int-guards-only', 'R', 'fn f(x Int) String\n  when x\n    n if n < 0 -> "neg"\n    n if n >= 0 -> "nonneg"\nprintln(f(1))\n'),
     ('when-int-guards-with-else', 'A', 'fn f(x Int) String\n  when x\n    n if n < 0 -> "neg"\n    else "nonneg"\nprintln(f(1))\n'),
+    ('compound-assign-string-to-int', 'R', 'count = 0\ncount += "x"\nprintln(count)\n'),
+    ('compound-assign-minus-string', 'R', 's = "a"\ns -= 1\nprintln(s)\n'),
+    ('compound-assign-in-fn', 'R', 'fn f() Int\n  n = 0\n  n += "x"\n  n\nprintln(f())\n'),
+    ('compound-assign-after-rebind', 'R', 'x = "a"\nx += 1\nprintln(x)\n'),
+    ('compound-assign-ok', 'A', 'n = 1\nn += 2\nn *= 3\nn -= 1\nn %= 5\ns = "a"\ns += "b"\nf = 1.5\nf += 2.5\nprintln("$n $s $f")\n'),
+    ('list-index-no-arg', 'R', 'xs = List(1, 2)\nprintln(xs())\n'),
+    ('list-index-two-args', 'R', 'xs = List(1, 2)\nprintln(xs(0, 1))\n'),
+    ('array-index-no-arg', 'R', 'xs Array[Int][2] = Array(1, 2)\nprintln(xs())\n'),
+    ('dict-index-no-arg', 'R', 'd = Dict("a" -> 1)\nprintln(d())\n'),
+    ('multiarray-string-index', 'R', 'g MultiArray[Int][2, 2] = fill(0)\nprintln(g(1, "x"))\n'),
+    ('list-index-ok', 'A', 'xs = List(1, 2)\nd = Dict("a" -> 1)\nprintln(xs(0))\nprintln(d("a"))\n'),
 ]
 
 fails = []

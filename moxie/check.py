@@ -4266,7 +4266,10 @@ class Checker(RefineMixin):
             if n.value.__class__ is Call:
                 self.__dict__.setdefault('slot_anns', {})[id(n.value)] = n.ann                   # a collection literal reads its written element type (`with (...)` layouts)
             self.expect_union(n.value, n.ann)
-        t, c = self.ev(n.value, sc)
+        if n.op in ("+=", "-=", "*=", "/=", "%=") and n.targets.__class__ is PBind:
+            t, c = self.ev(Binary(n.op[:-1], Name(n.targets.name, line=n.line), n.value, line=n.line), sc)       # `x += v` is `x = x + v`: the operands are checked as in the sum
+        else:
+            t, c = self.ev(n.value, sc)
         if id(n) in MUT_RE and t.__class__ is str:
             tg = n.targets if not isinstance(n.targets, list) else n.targets[0]
             if tg.__class__ is PPlace and tg.expr.__class__ is Gimme:
@@ -6837,6 +6840,10 @@ class Checker(RefineMixin):
                 fty = self.ty_of_type(fld.type) if fld is not None and fld.type is not None else None
                 if fty is not None and (fty in INTS or fty in ("String", "Bool", "Float", "Char", "Decimal")):
                     self.err(n.line, (f"`{f.obj.name}.{f.name}` is {tshow(fty)}, not a function" if f.obj.__class__ is Name else f"the field `{f.name}` is {tshow(fty)}, not a function"))
+        if (r is None or r[0] is None) and n.trailing is None and not n.args and not extra and f.__class__ is Name:
+            ft0 = self.quiet(f, sc)[0]
+            if ft0 == "String" or (ft0.__class__ is tuple and ft0[0] == "app" and ft0[1] in ("List", "Array", "Ring", "Dict", "Set")):
+                self.err(n.line, f"`{f.name}` is a `{tshow(ft0)}`, which is indexed with exactly one value, but none given")
         if (r is None or r[0] is None) and n.trailing is None and n.args and not extra:
             it = self.index_type(f, n.args, sc, n)
             if it is not None:
@@ -7085,8 +7092,17 @@ class Checker(RefineMixin):
             if el is None or self.has_unsettled(el):
                 return None
             whole = lambda e: e.__class__ is RangeE or (e.__class__ is Name and e.name == "..")
+            for a in args:
+                if not whole(a.expr):
+                    ixt = self.quiet(a.expr, sc)[0]
+                    if ixt is not None and (ixt in ("String", "Bool", "Float", "Char") or (ixt.__class__ is tuple and ixt[0] in ("app", "tup"))):
+                        self.err(getattr(a.expr, "line", 0) or self.cur_line, f"an index must be an `Int`, found `{tshow(ixt)}`")
+                        return None
             if all(whole(a.expr) or self.quiet(a.expr, sc)[0] == "Int" for a in args):
                 return el if not any(whole(a.expr) for a in args) else ("app", "MultiArray", (el,))   # a number drops a dimension, a range keeps it
+            return None
+        if len(args) != 1 and (ct == "String" or (ct.__class__ is tuple and ct[0] == "app" and ct[1] in ("List", "Array", "Ring", "Dict", "Set"))):
+            self.err(getattr(f, "line", 0) or self.cur_line, f"`{f.name if f.__class__ is Name else 'this value'}` is a `{tshow(ct)}`, which is indexed with exactly one value, but {len(args)} given")
             return None
         if len(args) != 1:
             return None
