@@ -1,11 +1,21 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script>try{if(sessionStorage.getItem('moxie-go')&&window.self===window.top){var mxd=document.documentElement;mxd.style.visibility='hidden';window.mxReveal=function(){mxd.style.visibility='';};setTimeout(window.mxReveal,1500);}}catch(e){}</script>
+<link rel="expect" href="#mxend" blocking="render">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ page.title }}</title>
+<script>try{window.mxWent=!!sessionStorage.getItem('moxie-go');
+if(window.mxWent&&window.self===window.top){
+  if('PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition&&!window.mxWent) e.viewTransition.skipTransition(); }); }   // the browser crossfades from the strip to the page, once the page is ready
+  else{var mxd=document.documentElement;mxd.style.visibility='hidden';window.mxReveal=function(){mxd.style.visibility='';};setTimeout(window.mxReveal,1500);}   // no such support: hold the page back until it is placed
+}
+if(!window.mxWent&&'PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition) e.viewTransition.skipTransition(); }); }   // other moves between pages stay plain
+}catch(e){}</script>
 <style>
+@view-transition{navigation:auto}
+::view-transition-group(root){animation-duration:.12s}
+
 :root{--bg:#fbfcfb;--ink:#15221f;--muted:#5b6b67;--line:#d5dddb;--accent:#0b6b5c;--code:#eef3f1;--link:blue;}
 @media (prefers-color-scheme:dark){:root{--bg:#0e1816;--ink:#e3efec;--muted:#93a8a2;--line:#27403a;--accent:#4cc9ad;--code:#15221f;--link:#7db7ff}}
 *{box-sizing:border-box}
@@ -83,7 +93,7 @@ nav a.here:hover{text-decoration:none}
 #toc .part{margin:12px 0 2px;padding:0 8px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 #toc code{font-size:.9em}
 #toc-small{position:fixed;top:calc(var(--navh,40px) + var(--azh,0px));left:0;right:0;z-index:20;max-height:calc(100vh - var(--navh,40px) - var(--azh,0px) - 8px);max-height:calc(100dvh - var(--navh,40px) - var(--azh,0px) - 8px);overflow:auto;margin:0;border:1px solid var(--line);border-left:0;border-right:0;border-top:0;border-radius:0;padding:8px 16px;background:var(--code)}
-@media (max-width:1099px){body.hastoc main{padding-top:calc(var(--smallh,44px) + var(--azh,0px) + 8px)}.az{position:fixed;top:var(--navh,40px);left:0;right:0;padding:6px 12px}}
+@media (max-width:1099px){body.hastoc main{padding-top:calc(var(--smallh,44px) + var(--azh,0px) + 8px)}.az{position:fixed;top:var(--navh,40px);left:0;right:0;padding:6px 12px}body.refpage #toc-small{top:var(--navh,40px)}body.refpage .az{top:calc(var(--navh,40px) + var(--smallh,44px))}}
 main{touch-action:pan-y pinch-zoom}
 html,body{overscroll-behavior-x:none}
 #toc-small summary{cursor:pointer;font-weight:600;color:var(--accent)}
@@ -551,5 +561,6 @@ html,body{overscroll-behavior-x:none}
   Array.prototype.forEach.call(document.querySelectorAll('main p, main li, main td'), work);
 })();
 </script>
+<span id="mxend"></span>
 </body>
 </html>
