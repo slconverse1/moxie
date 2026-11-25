@@ -231,10 +231,15 @@ html,body{overscroll-behavior-x:none}
   // click, touch or press a key) is the page you land on.
   var CPX = 585, MAXRUN = 10;                 // pixels a second (the same on every screen, so a wide iPad glides at the pace of a phone); the most pages one swipe shows
   var SECT = function (u) { return u.indexOf('/learn/') >= 0 ? 'Mixer’s Guide' : /reference\.html|\/ref\//.test(u) ? 'Spec' : /spec\.html/.test(u) ? 'Spec' : 'Intro'; };
+  var repaint = function () {                // iOS Safari can leave pinned bars (Contents, A-Z, menu) unpainted once a full-screen layer is gone: nudge them
+    var bars = document.querySelectorAll('nav, #toc-small, .az');
+    Array.prototype.forEach.call(bars, function (b) { b.style.transform = 'translateZ(0)'; });
+    requestAnimationFrame(function () { requestAnimationFrame(function () { Array.prototype.forEach.call(bars, function (b) { b.style.transform = ''; }); }); });
+  };
   var endFlow = function (land) {
     if (!flow) return; var f = flow; flow = null; cancelAnimationFrame(f.raf); if (land && f.anim) f.pos = curPos(f); if (f.anim) f.anim.cancel();
     var j = Math.max(0, Math.min(S.l.length - 1, Math.round(f.pos))), far = land && S.l[j] && j !== S.i && pathOf(S.l[j].u) !== path;
-    if (!far && f.el.parentNode) f.el.parentNode.removeChild(f.el);   // far landing: keep the overlay painted until the new page replaces it
+    if (!far && f.el.parentNode) { f.el.parentNode.removeChild(f.el); repaint(); }   // far landing: keep the overlay painted until the new page replaces it
     if (land) { if (S.run && S.run.d === f.d) S.run.shown = j; save(); go(j); }
   };
   window.addEventListener('pageshow', function (ev) { if (ev.persisted && !flow) { var o = document.getElementById('hflow'); if (o && o.parentNode) o.parentNode.removeChild(o); } });

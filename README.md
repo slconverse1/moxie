@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Quick view: after the swipe strip is removed, the pinned bars (menu, Contents, A-Z) are nudged to repaint, in case iOS Safari left the Contents bar unpainted after a swipe (reported on iPhone; not reproducible outside it).
+
 History: a page you stopped on (or reached by moving back or forward) is now added again when you leave it by any link to another page, the menu bar and Contents links included, not only by links in the text. Help says so.
 
 History: nothing is ever dropped now. Going back and then following a link used to discard the pages that were ahead; instead the history keeps them all (up to 500, up from 50), and leaving a page you reached by moving back or forward adds that page again before the new one, since it led somewhere. Stopping on a page in quick view does not add it by itself. Help now tells a short swipe (the next page) from a long one (up to ten pages).
