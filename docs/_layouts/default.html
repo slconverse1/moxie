@@ -12,7 +12,8 @@
 window.mxTo=function(y,smooth){var m=window.mxMain(),o={top:y,behavior:smooth?'smooth':'auto'};if(m)m.scrollTo(o);else window.scrollTo(o);};</script>
 <script>try{window.mxWent=!!sessionStorage.getItem('moxie-go');
 if(window.mxWent&&window.self===window.top){
-  if('PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition&&!window.mxWent) e.viewTransition.skipTransition(); }); }   // the browser crossfades from the strip to the page, once the page is ready
+  if('PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition&&!window.mxWent) e.viewTransition.skipTransition(); }); }
+  if('PageRevealEvent' in window){ window.addEventListener('pagereveal',function(){ try { var r = JSON.parse(sessionStorage.getItem('moxie-nav-' + ('{{ page.dialect }}' === 'gc' ? 'gc' : 'moxie')) || 'null'), e = r && r.l && r.l[r.i]; if (e && e.y && window.mxTo) window.mxTo(e.y); } catch (x) {} }); }   // the saved place is set before the first paint, so the crossfade never shows the top of the page   // the browser crossfades from the strip to the page, once the page is ready
   else{var mxd=document.documentElement;mxd.style.visibility='hidden';window.mxReveal=function(){mxd.style.visibility='';};setTimeout(window.mxReveal,1500);}   // no such support: hold the page back until it is placed
 }
 if(!window.mxWent&&'PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition) e.viewTransition.skipTransition(); }); }   // other moves between pages stay plain

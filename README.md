@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Jump attempt (untested): a page reached by a sweep now gets its saved place in `pagereveal`, before the first paint, instead of after load, so the crossfade should not show the top of the page first. Not verified in a browser.
+
 History is now capped at 20 pages, down from 500. When it is full, the oldest page drops off the start of the history.
 
 Sweep: a page passed over while a key or swipe is held is now shown as the whole page once it has loaded, not as a title card. A title card was a shortened form of the page. The landing still waits for the target page to load before it settles. Each page now fills in from its top edge downward as it loads, instead of appearing all at once.
