@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Quick view on phones: the glide keeps at most three real pages loaded at a time (the others fall back to their title cards), since long glides over the large Spec and reference pages could exhaust an iPhone's memory ("a problem repeatedly occurred"); the page you land on is held back until it is laid out and scrolled into place, so it no longer builds up in jumps; and moving to a history entry with no section in its address no longer leaves a stray `#` in the address bar (`.../moxie/#`).
+
 The Guide's pipelines lesson (and its part heading in the Contents) is now titled "Pipelines and streams", as the Spec section is, instead of "Streams and pipelines"; the links in the Spec carry the new title. The lesson's address is unchanged.
 
 Contents on the reference page: the page with the A-Z bar (the Spec reference) had lost its Contents, which showed only the moxie | moxie/gc switch. Contents is back there, under the A-Z bar on a phone and in the sidebar on a wide screen, and lists the sections of the Spec.

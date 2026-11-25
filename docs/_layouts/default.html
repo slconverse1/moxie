@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script>try{if(sessionStorage.getItem('moxie-go')&&window.self===window.top){var mxd=document.documentElement;mxd.style.visibility='hidden';window.mxReveal=function(){mxd.style.visibility='';};setTimeout(window.mxReveal,1500);}}catch(e){}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ page.title }}</title>
@@ -182,10 +183,14 @@ html,body{overscroll-behavior-x:none}
   try { went = !!sessionStorage.getItem('moxie-go'); sessionStorage.removeItem('moxie-go'); nav = performance.getEntriesByType('navigation')[0].type; } catch (e) {}
   var e0 = S.l[S.i];
   if (e0 && e0.u === curU()) {                // arrived by the arrows, or a reload
-    if (went && e0.y) { window.scrollTo(0, e0.y); window.addEventListener('load', function () { window.scrollTo(0, e0.y); }); }
+    if (went) {
+      if (e0.y) window.scrollTo(0, e0.y);
+      window.addEventListener('load', function () { if (e0.y) window.scrollTo(0, e0.y); requestAnimationFrame(function () { if (window.mxReveal) window.mxReveal(); }); });   // shown only once the page is laid out and in place, so it does not build up in front of you
+    }
   } else if (nav === 'back_forward' && S.l[S.i - 1] && S.l[S.i - 1].u === curU()) S.i -= 1;
   else if (nav === 'back_forward' && S.l[S.i + 1] && S.l[S.i + 1].u === curU()) S.i += 1;
   else push();
+  if (!(went && e0 && e0.u === curU()) && window.mxReveal) window.mxReveal();
   save();
   window.addEventListener('scroll', function () { if (S.l[S.i]) S.l[S.i].y = window.scrollY; }, { passive: true });
   window.addEventListener('pagehide', function () { if (S.l[S.i]) S.l[S.i].x = excerpt(); save(); });
@@ -213,7 +218,10 @@ html,body{overscroll-behavior-x:none}
     if (j === S.i || !S.l[j]) return;
     var t = S.l[j]; S.i = j; save();
     if (pathOf(t.u) === path) {
-      if (hashOf(t.u) !== location.hash) { skip = true; location.hash = hashOf(t.u); }
+      if (hashOf(t.u) !== location.hash) {
+        if (hashOf(t.u)) { skip = true; location.hash = hashOf(t.u); }
+        else { try { history.replaceState(null, '', location.pathname + location.search); } catch (x) {} }
+      }
       setTimeout(function () { window.scrollTo(0, t.y || 0); }, 0);
     } else { try { sessionStorage.setItem('moxie-go', '1'); } catch (x) {} location.href = t.u; }
   };
@@ -254,7 +262,7 @@ html,body{overscroll-behavior-x:none}
     f.strip.appendChild(fr); f.frames[j] = fr; return fr;
   };
   var loadFrame = function (f, j) {          // the page itself, in a frame over the card
-    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr) return;
+    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr || (fr.__gone && Math.abs(j - curPos(f)) > 1.2)) return;
     f.loading++;
     var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
@@ -310,6 +318,14 @@ html,body{overscroll-behavior-x:none}
         near.sort(function (x, y) { return Math.abs(x - pos) - Math.abs(y - pos); });
         for (var w = 0; w < near.length && f.loading < 2; w++) loadFrame(f, near[w]); }
       Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
+      var live = Object.keys(f.frames).filter(function (k) { return f.frames[k].__ifr; }).sort(function (x, y) { return Math.abs(y - pos) - Math.abs(x - pos); });
+      while (live.length > 3) {                    // keep only the three nearest pages loaded: the rest go back to their cards, to spare memory
+        var q2 = live.shift(), fq = f.frames[q2], ifq = fq.__ifr;
+        if (!f.ready[q2]) f.loading = Math.max(0, f.loading - 1);
+        try { ifq.src = 'about:blank'; } catch (x) {}
+        if (ifq.parentNode) ifq.parentNode.removeChild(ifq);
+        fq.__ifr = null; fq.__gone = 1; fq.classList.remove('ready'); delete f.ready[q2];
+      }
       var sel = Math.round(pos);
       if (sel !== f.sel) { f.sel = sel; f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop here'; }
       if (f.go && !f.held && (!f.anim || f.anim.currentTime >= f.dur * 1000 - 1)) {
