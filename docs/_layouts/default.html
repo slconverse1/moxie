@@ -48,10 +48,6 @@ nav{position:sticky;top:0;z-index:30;background:var(--bg)}
 .hf-frame{position:absolute;top:0;background:var(--bg);overflow:hidden;box-shadow:0 0 22px rgba(0,0,0,.5)}
 .hf-strip>iframe{position:absolute;top:0;z-index:2;border:0;background:var(--bg);opacity:0;pointer-events:none}
 .hf-strip>iframe.on{opacity:1}
-.hf-card{padding:80px 28px;max-width:34rem;margin:0 auto}
-.hf-k{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
-.hf-t{font-weight:700;font-size:26px;line-height:1.25;margin:6px 0 10px}
-.hf-x{font-size:15px;line-height:1.5;color:var(--muted)}
 .hf-cap{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);max-width:90vw;padding:8px 16px;border-radius:999px;background:var(--ink);color:var(--bg);font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 a.tl{color:inherit;text-decoration:none;border-bottom:1px dotted var(--muted)}
 a.tl:hover{color:var(--link);border-bottom-color:var(--link)}
@@ -279,14 +275,10 @@ html,body{overscroll-behavior-x:none}
     if (land) { if (S.run && S.run.d === f.d) S.run.shown = j; save(); go(j); }
   };
   window.addEventListener('pageshow', function (ev) { if (ev.persisted && !flow) { var o = document.getElementById('hflow'); if (o && o.parentNode) o.parentNode.removeChild(o); } });
-  var mkFrame = function (f, j) {            // one page: a card with its title at once, and the page itself over it when loaded
+  var mkFrame = function (f, j) {            // one page: an empty slot until its whole page has loaded into it
     var e = S.l[j], W = f.W, H = f.H;
     var fr = document.createElement('div'); fr.className = 'hf-frame'; fr.style.cssText = 'left:' + (j * W) + 'px;width:' + W + 'px;height:' + H + 'px';
-    var c = document.createElement('div'); c.className = 'hf-card';
-    var k = document.createElement('div'); k.className = 'hf-k'; k.textContent = SECT(e.u);
-    var t = document.createElement('div'); t.className = 'hf-t'; t.textContent = e.t.replace(/^(Guide|Spec|Intro) · /, '');
-    var x = document.createElement('div'); x.className = 'hf-x'; x.textContent = e.x || '';
-    c.appendChild(k); c.appendChild(t); c.appendChild(x); fr.appendChild(c);
+    fr.__e = e;                              // no title card: a page in the sweep is shown as the whole page, once it has loaded
     f.strip.appendChild(fr); f.frames[j] = fr; return fr;
   };
   var frameLoaded = function (ev) {           // a pooled frame has finished a page: put it at its scroll, trim it, show it
