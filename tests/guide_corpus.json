@@ -1424,7 +1424,7 @@
  ],
  [
   2849,
-  "nums5 = List(1, 2, 3, 4, 5)\ncs List[List[Int][2]][3] = nums5 |> chunks(2) |> collect()\nws List[Array[Int][2]][4] = nums5 |> windows(2) |> collect()\nprintln(\"${len(cs)} ${len(cs(0))} ${len(cs(2))}\")\nprintln(\"${len(ws)} ${ws(1)(0)} ${ws(3)(1)}\")\n",
+  "nums5 = List(1, 2, 3, 4, 5)\ncs List[List[Int][2]][3] = nums5 |> chunks(2) |> collect()\nws List[List[Int]][4] = nums5 |> windows(2) |> collect()\nprintln(\"${len(cs)} ${len(cs(0))} ${len(cs(2))}\")\nprintln(\"${len(ws)} ${ws(1)(0)} ${ws(3)(1)}\")\n",
   [
    "3 2 1",
    "4 2 5"
