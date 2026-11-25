@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+The Guide's pipelines lesson (and its part heading in the Contents) is now titled "Pipelines and streams", as the Spec section is, instead of "Streams and pipelines"; the links in the Spec carry the new title. The lesson's address is unchanged.
+
 Contents on the reference page: the page with the A-Z bar (the Spec reference) had lost its Contents, which showed only the moxie | moxie/gc switch. Contents is back there, under the A-Z bar on a phone and in the sidebar on a wide screen, and lists the sections of the Spec.
 
 Term links: the keys and tables of the manifest (`name`, `files`, `entry`, `limit`, `memory`, `strings`, `temps`, `stack`, `[fibers]`, `[pools]`, `[program]`, `[database]`, `[permissions]`, and the rest) now link to the manifest entry in the Spec (section 4) wherever the text is about the manifest, every time they appear, not just the first. `limit` in the Intro's "Top-level files everywhere" had no link.

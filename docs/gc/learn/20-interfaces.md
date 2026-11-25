@@ -241,4 +241,4 @@ Because `x.f(y)` is `f(x, y)`, you can use methods in pipelines, pass them as fu
 
 ---
 
-[← Binary patterns, and taking a value apart by its type](51-binary-patterns-and-type-tags.html) · [Contents](./) · [Streams and pipelines →](21-streams-and-pipelines.html)
+[← Binary patterns, and taking a value apart by its type](51-binary-patterns-and-type-tags.html) · [Contents](./) · [Pipelines and streams →](21-streams-and-pipelines.html)

@@ -603,7 +603,7 @@ How the heap behaves:
 ## 13. Pipelines and streams {#s13}
 
 <!-- guide -->
-*In the Mixer’s Guide: [9. Loops](learn/07-loops.html), [25. Streams and pipelines](learn/21-streams-and-pipelines.html), [26. More stream tools: sources you build](learn/61-more-stream-tools.html), [27. Pipe slots, `seq`, and doing work once](learn/50-pipe-slots-and-caching.html)*
+*In the Mixer’s Guide: [9. Loops](learn/07-loops.html), [25. Pipelines and streams](learn/21-streams-and-pipelines.html), [26. More stream tools: sources you build](learn/61-more-stream-tools.html), [27. Pipe slots, `seq`, and doing work once](learn/50-pipe-slots-and-caching.html)*
 <!-- /guide -->
 
 - **Pipe `|>`** inserts the left value into a call: `x |> f(a)`. The candidates are the first and the last mandatory parameters. The compiler places `x` in each candidate, fills the other parameters from the explicit arguments in order, and keeps the placements that type-check. One match is used, two matches are an ambiguity error that asks for `&`, and none is a type error. A middle slot needs `&`, and `&` skips inference: `10 |> subtract(&, 3)` is `subtract(10, 3)` and `10 |> subtract(3, &)` is `subtract(3, 10)`. A stage is always a call (`5 |> double` is not a stage, but `5 |> (inc ~> double)()` is). A trailing lambda fills the last parameter left after the pipe has taken its slot (section 9). There is no partial application. **Tuples in pipes:** when a stage has no explicit arguments and the piped value is a tuple that fits the stage's whole parameter list (by position, or by name for a named tuple), the stage is the call `f(tuple)`, which section 9 already allows, so `(1.0, 2.0, 3.0) |> velocity()` fills `velocity(x, y, z)`. An extra field, or a stage written without parentheses, is not accepted.
@@ -698,7 +698,7 @@ Moxie's concurrency is Go-style: fibers that communicate over channels, schedule
 ## 18. Fibers, loops, streams {#s18}
 
 <!-- guide -->
-*In the Mixer’s Guide: [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [9. Loops](learn/07-loops.html), [25. Streams and pipelines](learn/21-streams-and-pipelines.html), [28. Fibers and channels](learn/22-fibers-and-channels.html)*
+*In the Mixer’s Guide: [4. Moxie for imperative programmers](learn/58-for-imperative-programmers.html), [9. Loops](learn/07-loops.html), [25. Pipelines and streams](learn/21-streams-and-pipelines.html), [28. Fibers and channels](learn/22-fibers-and-channels.html)*
 <!-- /guide -->
 
 - **Named fibers** are declared `fiber[3] fn feed(...) Unit` (the limit is optional) and started with `\go feed(tx, msg)`. `go` on a function that isn't declared `fiber` is a compile error. A fiber function may return a value and may use `?` (it ends the fiber at the first failure), but nothing receives the returned value, as with a Go goroutine.

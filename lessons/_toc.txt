@@ -26,7 +26,7 @@
 51-binary-patterns-and-type-tags
 20-interfaces
 
-# Streams and pipelines
+# Pipelines and streams
 21-streams-and-pipelines
 67-one-pipeline-one-collect
 61-more-stream-tools

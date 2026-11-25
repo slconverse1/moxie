@@ -2,9 +2,9 @@
 layout: default
 dialect: gc
 learn: true
-title: "Streams and pipelines · Moxie/gc Mixer’s Guide"
+title: "Pipelines and streams · Moxie/gc Mixer’s Guide"
 ---
-# 25. Streams and pipelines
+# 25. Pipelines and streams
 
 In the Spec: [13. Pipelines and streams](../spec.html#s13), [18. Fibers, loops, streams](../spec.html#s18)
 {: .specref}

@@ -45,9 +45,9 @@ You don't need to know any functional programming. If you do, the lessons point 
 23. [Binary patterns, and taking a value apart by its type](51-binary-patterns-and-type-tags.html)
 24. [Methods and interfaces](20-interfaces.html)
 
-## Streams and pipelines
+## Pipelines and streams
 
-25. [Streams and pipelines](21-streams-and-pipelines.html)
+25. [Pipelines and streams](21-streams-and-pipelines.html)
 26. [One pipeline, one collect](67-one-pipeline-one-collect.html)
 27. [More stream tools: sources you build](61-more-stream-tools.html)
 28. [Pipe slots, `seq`, and doing work once](50-pipe-slots-and-caching.html)

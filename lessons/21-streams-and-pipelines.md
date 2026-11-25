@@ -1,4 +1,4 @@
-# Streams and pipelines
+# Pipelines and streams
 
 A *stream* is a sequence of values produced one at a time. Instead of writing a loop that builds up a result, you describe a *pipeline*: where the values come from, what happens to each, and what you want at the end. Streams are the main tool for working with collections in moxie.
 

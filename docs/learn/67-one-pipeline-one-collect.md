@@ -99,4 +99,4 @@ The element type is still checked: `evens(List("a"))` is a type error, because a
 
 ---
 
-[← Streams and pipelines](21-streams-and-pipelines.html) · [Contents](./) · [More stream tools: sources you build →](61-more-stream-tools.html)
+[← Pipelines and streams](21-streams-and-pipelines.html) · [Contents](./) · [More stream tools: sources you build →](61-more-stream-tools.html)

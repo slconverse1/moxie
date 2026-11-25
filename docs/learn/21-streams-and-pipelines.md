@@ -1,9 +1,9 @@
 ---
 layout: default
 learn: true
-title: "Streams and pipelines · Moxie Mixer’s Guide"
+title: "Pipelines and streams · Moxie Mixer’s Guide"
 ---
-# 25. Streams and pipelines
+# 25. Pipelines and streams
 
 In the Spec: [13. Pipelines and streams](../spec.html#s13), [18. Fibers, loops, streams](../spec.html#s18)
 {: .specref}
