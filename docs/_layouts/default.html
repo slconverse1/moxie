@@ -5,6 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ page.title }}</title>
+<script>window.mxMain=function(){var m=document.querySelector('main');return m&&getComputedStyle(m).overflowY==='auto'?m:null;};window.mxY=function(){var m=window.mxMain();return m?m.scrollTop:window.scrollY;};window.mxTo=function(y,smooth){var m=window.mxMain(),o={top:y,behavior:smooth?'smooth':'auto'};if(m)m.scrollTo(o);else window.scrollTo(o);};</script>
 <script>try{window.mxWent=!!sessionStorage.getItem('moxie-go');
 if(window.mxWent&&window.self===window.top){
   if('PageRevealEvent' in window){ window.addEventListener('pagereveal',function(e){ if(e.viewTransition&&!window.mxWent) e.viewTransition.skipTransition(); }); }   // the browser crossfades from the strip to the page, once the page is ready
@@ -92,8 +93,21 @@ nav a.here:hover{text-decoration:none}
 #toc a.here{border-left-color:var(--accent);color:var(--accent);font-weight:600}
 #toc .part{margin:12px 0 2px;padding:0 8px;font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 #toc code{font-size:.9em}
-#toc-small{position:fixed;top:calc(var(--navh,40px) + var(--azh,0px));left:0;right:0;z-index:20;max-height:calc(100vh - var(--navh,40px) - var(--azh,0px) - 8px);max-height:calc(100dvh - var(--navh,40px) - var(--azh,0px) - 8px);overflow:auto;margin:0;border:1px solid var(--line);border-left:0;border-right:0;border-top:0;border-radius:0;padding:8px 16px;background:var(--code)}
-@media (max-width:1099px){body.hastoc main{padding-top:calc(var(--smallh,44px) + var(--azh,0px) + 8px)}.az{position:fixed;top:var(--navh,40px);left:0;right:0;padding:6px 12px}body.refpage #toc-small{top:var(--navh,40px)}body.refpage .az{top:calc(var(--navh,40px) + var(--smallh,44px))}}
+#toc-small{margin:0;padding:0 16px;background:var(--code);border-bottom:1px solid var(--line)}
+@media (max-width:1099px){
+  /* the page is a frame that does not scroll: menu bar and Contents on top, and only the text scrolls beneath them */
+  html,body{height:100%;overflow:hidden}
+  body{display:flex;flex-direction:column;height:100dvh}
+  nav{position:static;flex:none}
+  #tcbar{flex:none;position:relative;z-index:25;height:44px}
+  #toc-small{position:absolute;top:0;left:0;right:0;max-height:calc(100dvh - var(--navh,40px) - 8px);overflow:auto;box-shadow:0 6px 14px rgba(0,0,0,.12)}
+  #toc-small:not([open]){box-shadow:none}
+  #toc-small summary{height:43px;line-height:43px;padding:0}
+  .page{flex:1;min-height:0;display:flex;flex-direction:column}
+  main{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;max-width:none;margin:0;padding:0 max(16px,calc((100% - 50rem) / 2)) 64px;scroll-padding-top:calc(var(--azh,0px) + 12px)}
+  .az{position:sticky;top:0;z-index:15;padding:6px 12px;margin:0 -12px}
+  dl.ref dt{scroll-margin-top:calc(var(--azh,0px) + 8px)}
+}
 main{touch-action:pan-y pinch-zoom}
 html,body{overscroll-behavior-x:none}
 #toc-small summary{cursor:pointer;font-weight:600;color:var(--accent)}
@@ -105,7 +119,7 @@ html,body{overscroll-behavior-x:none}
   body.hastoc .page{display:grid;grid-template-columns:16.5rem minmax(0,50rem);gap:32px;max-width:72rem;margin:0 auto;padding:0 16px}
   body.hastoc main{margin:0;max-width:none;padding:8px 0 64px}
   body.hastoc #toc{display:block;position:sticky;top:var(--navh,48px);align-self:start;max-height:calc(100vh - var(--navh,48px));overflow:auto;padding:0 0 24px;font-size:14px;line-height:1.35}
-  body.hastoc #toc-small{display:none}
+  body.hastoc #toc-small,body.hastoc #tcbar{display:none}
 }
 </style>
 </head>
@@ -124,10 +138,10 @@ html,body{overscroll-behavior-x:none}
   <a{% if sect == 'help' %} class="here"{% endif %} href="{{ base | append: '/help.html' | relative_url }}">Help</a>
   <a href="https://github.com/slconverse1/moxie">Source</a>
 </nav>
+{% if page.toc or page.learn %}<div id="tcbar"><details id="toc-small"><summary>Contents</summary></details></div>{% endif %}
 <div class="page">
 {% if page.toc or page.learn %}<aside id="toc" aria-label="Contents">{% if page.learn %}{% if page.dialect == 'gc' %}{% include learn-nav-gc.html %}{% else %}{% include learn-nav.html %}{% endif %}{% endif %}</aside>{% endif %}
 <main>
-{% if page.toc or page.learn %}<details id="toc-small"><summary>Contents</summary></details>{% endif %}
 {{ content }}
 </main>
 </div>
@@ -136,9 +150,9 @@ html,body{overscroll-behavior-x:none}
 (function () {
   var top = document.getElementById('to-top');
   if (top) {
-    top.addEventListener('click', function (e) { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); });
-    var onscroll = function () { top.classList.toggle('show', window.scrollY > 900); };
-    window.addEventListener('scroll', onscroll, { passive: true }); onscroll();
+    top.addEventListener('click', function (e) { e.preventDefault(); window.mxTo(0, true); });
+    var onscroll = function () { top.classList.toggle('show', window.mxY() > 900); };
+    window.addEventListener('scroll', onscroll, { passive: true, capture: true }); onscroll();
   }
 })();
 (function () {                               // One history for the text window: swipe or arrow keys step through it
@@ -194,15 +208,15 @@ html,body{overscroll-behavior-x:none}
   var e0 = S.l[S.i];
   if (e0 && e0.u === curU()) {                // arrived by the arrows, or a reload
     if (went) {
-      if (e0.y) window.scrollTo(0, e0.y);
-      window.addEventListener('load', function () { if (e0.y) window.scrollTo(0, e0.y); requestAnimationFrame(function () { if (window.mxReveal) window.mxReveal(); }); });   // shown only once the page is laid out and in place, so it does not build up in front of you
+      if (e0.y) window.mxTo(e0.y);
+      window.addEventListener('load', function () { if (e0.y) window.mxTo(e0.y); requestAnimationFrame(function () { if (window.mxReveal) window.mxReveal(); }); });   // shown only once the page is laid out and in place, so it does not build up in front of you
     }
   } else if (nav === 'back_forward' && S.l[S.i - 1] && S.l[S.i - 1].u === curU()) S.i -= 1;
   else if (nav === 'back_forward' && S.l[S.i + 1] && S.l[S.i + 1].u === curU()) S.i += 1;
   else push();
   if (!(went && e0 && e0.u === curU()) && window.mxReveal) window.mxReveal();
   save();
-  window.addEventListener('scroll', function () { if (S.l[S.i]) S.l[S.i].y = window.scrollY; }, { passive: true });
+  window.addEventListener('scroll', function () { if (S.l[S.i]) S.l[S.i].y = window.mxY(); }, { passive: true, capture: true });
   window.addEventListener('pagehide', function () { if (S.l[S.i]) S.l[S.i].x = excerpt(); save(); });
   document.addEventListener('click', function (ev) {      // a link that takes you to another page, the menu bar and Contents included: the page you are on, if you reached it by moving back or forward, led somewhere, so it is added again
     if (ev.defaultPrevented || ev.button || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
@@ -210,7 +224,7 @@ html,body{overscroll-behavior-x:none}
     var h = a.getAttribute('href') || ''; if (!h || h.charAt(0) === '#' || /^(javascript|mailto|tel):/i.test(h)) return;
     var c = S.l[S.i]; if (!c || S.i >= S.l.length - 1) return;
     var to = a.href.split('#')[0]; if (to === location.href.split('#')[0]) return;
-    c.y = window.scrollY; S.l.push({ u: c.u, t: c.t, y: c.y, x: c.x }); S.i = S.l.length - 1; S.run = null; save();
+    c.y = window.mxY(); S.l.push({ u: c.u, t: c.t, y: c.y, x: c.x }); S.i = S.l.length - 1; S.run = null; save();
   });
   var skip = false;
   window.addEventListener('hashchange', function () {
@@ -232,7 +246,7 @@ html,body{overscroll-behavior-x:none}
         if (hashOf(t.u)) { skip = true; location.hash = hashOf(t.u); }
         else { try { history.replaceState(null, '', location.pathname + location.search); } catch (x) {} }
       }
-      setTimeout(function () { window.scrollTo(0, t.y || 0); }, 0);
+      setTimeout(function () { window.mxTo(t.y || 0); }, 0);
     } else { try { sessionStorage.setItem('moxie-go', '1'); } catch (x) {} location.href = t.u; }
   };
   var commit = function () { var j = pend; pend = null; if (j !== null) go(j); };
@@ -276,9 +290,9 @@ html,body{overscroll-behavior-x:none}
     f.loading++;
     var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
-    var y = j === S.i ? window.scrollY : (e.y || 0);
+    var y = j === S.i ? window.mxY() : (e.y || 0);
     ifr.addEventListener('load', function () {
-      var go2 = function () { try { var w = ifr.contentWindow, h = hashOf(e.u); if (y) w.scrollTo(0, y); else if (h) { var el = w.document.getElementById(decodeURIComponent(h.slice(1))); if (el) el.scrollIntoView(); } } catch (x) {} fr.classList.add('ready'); f.ready[j] = 1; };
+      var go2 = function () { try { var w = ifr.contentWindow, h = hashOf(e.u); if (y) { if (w.mxTo) w.mxTo(y); else w.scrollTo(0, y); } else if (h) { var el = w.document.getElementById(decodeURIComponent(h.slice(1))); if (el) el.scrollIntoView(); } } catch (x) {} fr.classList.add('ready'); f.ready[j] = 1; };
       f.loading--; go2(); setTimeout(go2, 60);
     });
     fr.appendChild(ifr); fr.__ifr = ifr;
@@ -441,8 +455,9 @@ html,body{overscroll-behavior-x:none}
     var style = getComputedStyle(document.documentElement), navh = parseFloat(style.getPropertyValue('--navh')) || 48;
     var bars = window.innerWidth < 1100 ? navh + (parseFloat(style.getPropertyValue('--smallh')) || 44) : navh;
     if (location.hash !== h) location.hash = h;
-    var y = t.getBoundingClientRect().top + window.scrollY - bars - 12;
-    setTimeout(function () { window.scrollTo(0, Math.max(0, y)); }, 30);
+    var mm = window.mxMain(), azb = document.querySelector('.az'), y = mm ? mm.scrollTop + t.getBoundingClientRect().top - mm.getBoundingClientRect().top - (azb ? azb.offsetHeight : 0) - 12
+      : t.getBoundingClientRect().top + window.scrollY - bars - 12;
+    setTimeout(function () { window.mxTo(Math.max(0, y)); }, 30);
   };
   side.addEventListener('click', goTo); small.addEventListener('click', goTo);
   var ul = side.querySelector('ul:not(.trail)');

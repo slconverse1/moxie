@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+A fixed frame on phones and tablets (under 1100 px wide): the menu bar and the Contents bar (and, on the reference page, the A-Z letters) are now parts of a page frame that does not scroll, and only the text beneath them scrolls, instead of bars pinned over a scrolling page. This makes the Contents bar a stable part of the interface (it was being lost on iOS Safari after a swipe). Contents opens as a panel over the text. The page's scroll position, the Top button, Contents links, the quick-view frames and landing all use the text's own scroll (window.mxY / mxTo in the layout). Wide screens are unchanged. One cost: iOS's address bar no longer collapses as you read.
+
 Quick view on phones, memory: the glide no longer loads the Spec or the reference as moving frames (their title cards stand in, since they are the largest pages) and keeps at most two real pages loaded at a time, after an iPhone reported "a problem occurred on ..." during a swipe.
 
 Quick view landing, again: the end of a swipe now uses a cross-document view transition where the browser has one (Chrome 126+, Safari 18.2+), so the strip's last page dissolves into the real page once it is ready (the browser holds the first paint until the end of the page has loaded); browsers without it keep the old behavior of holding the page back until it is placed. Other moves between pages stay plain. On the Spec reference page (the A-Z bar) the Contents bar is back in its usual place under the menu, with the letters below it.
