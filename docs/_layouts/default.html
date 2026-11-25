@@ -388,8 +388,22 @@ html,body{overscroll-behavior-x:none}
 (function () {
   var side = document.getElementById('toc'), small = document.getElementById('toc-small');
   if (!side || !small) return;
-  if (document.body.classList.contains('refpage')) {   // the A-Z bar is the contents here: nothing to list
-    var sm = small.querySelector('summary'); if (sm) sm.textContent = 'moxie / moxie/gc';
+  if (document.body.classList.contains('refpage')) {   // the A-Z bar jumps within this page; Contents lists the sections of the Spec this page belongs to
+    var rdir = '{{ "/" | relative_url }}'.replace(/\/?$/, '/') + ('{{ page.dialect }}' === 'gc' ? 'gc/' : '');
+    try {
+      fetch(rdir + 'spec.html').then(function (r) { return r.text(); }).then(function (html) {
+        var hs = new DOMParser().parseFromString(html, 'text/html').querySelectorAll('main h2[id]'); if (!hs.length) return;
+        var rul = document.createElement('ul'), top = document.createElement('li'), ta = document.createElement('a');
+        ta.href = rdir + 'spec.html'; ta.textContent = 'The Spec'; top.appendChild(ta); rul.appendChild(top);
+        Array.prototype.forEach.call(hs, function (h) {
+          var li = document.createElement('li'), a = document.createElement('a');
+          if (/^\d+[a-z]\./.test(h.textContent.trim())) li.className = 'sub';
+          a.href = rdir + 'spec.html#' + h.id; a.textContent = h.textContent.replace(/\s*#\s*$/, '').trim();
+          li.appendChild(a); rul.appendChild(li);
+        });
+        side.appendChild(rul); small.appendChild(rul.cloneNode(true));
+      }).catch(function () {});
+    } catch (e) {}
     return;
   }
   var goTo = function (e) {                   // a contents link: close the dropdown, then scroll clear of the pinned bars

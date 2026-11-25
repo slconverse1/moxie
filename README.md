@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Contents on the reference page: the page with the A-Z bar (the Spec reference) had lost its Contents, which showed only the moxie | moxie/gc switch. Contents is back there, under the A-Z bar on a phone and in the sidebar on a wide screen, and lists the sections of the Spec.
+
 Term links: the keys and tables of the manifest (`name`, `files`, `entry`, `limit`, `memory`, `strings`, `temps`, `stack`, `[fibers]`, `[pools]`, `[program]`, `[database]`, `[permissions]`, and the rest) now link to the manifest entry in the Spec (section 4) wherever the text is about the manifest, every time they appear, not just the first. `limit` in the Intro's "Top-level files everywhere" had no link.
 
 Quick view: after the swipe strip is removed, the pinned bars (menu, Contents, A-Z) are nudged to repaint, in case iOS Safari left the Contents bar unpainted after a swipe (reported on iPhone; not reproducible outside it).
