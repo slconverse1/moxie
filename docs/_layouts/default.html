@@ -477,7 +477,15 @@ html,body{overscroll-behavior-x:none}
     timer: ref + '#ty-Timer', fiber: ref + '#kw-fiber', tuple: ref + '#kw-tuple', enum: ref + '#kw-enum', interface: ref + '#kw-interface',
     closure: dir + 'spec.html#s11', contract: dir + 'spec.html#s9c', generic: dir + 'spec.html#s9a', resource: dir + 'spec.html#s19', daemon: ref + '#kw-daemon' };
   var wre = /\b(package|channel|atom|stream|timer|fiber|tuple|enum|interface|closure|contract|generic|resource|daemon)(s|es)?\b/gi;
-  var target = function (code) {
+  var mkeys = set(['name', 'files', 'entry', 'limit', 'memory', 'strings', 'temps', 'stack', 'warn_threshold', 'header', 'key_warning', 'schema', 'driver', 'fibers', 'pools', 'program', 'database', 'permissions']);
+  var isMk = false, aboutManifest = function (b) {    // this block, or one of the three before it, speaks of the manifest
+    for (var i = 0; b && i < 4; i++, b = b.previousElementSibling) if (/manifest|Moxie\.toml/i.test(b.textContent)) return true;
+    return false;
+  };
+  var target = function (code, blk) {
+    var mk = /^\[?([a-z_]+)\]?$/.exec(code.trim());      // a key or table of the manifest (Moxie.toml), where the text is about the manifest
+    if (mk && mkeys[mk[1]] && blk && aboutManifest(blk)) { isMk = true; return dir + 'spec.html#s4'; }
+    isMk = false;
     var c0 = code.trim(); if (/\s/.test(c0) && /[=$\/"']/.test(c0)) return null;      // a shell line, an assignment, a string: not a bare moxie term
     var m = /^([A-Za-z_]\w*)(?=[\(\[]|\s|$)/.exec(c0); if (!m) return null;
     var n = m[1], call = /^[\(\[]/.test(code.trim().slice(n.length)), only = code.trim() === n;
@@ -499,7 +507,7 @@ html,body{overscroll-behavior-x:none}
     })(blk);
     Array.prototype.forEach.call(blk.querySelectorAll('a'), function (a) { var h = a.getAttribute('href') || ''; Object.keys(words).forEach(function (k) { if (words[k] === h) seen[h] = 1; }); });
     todo.forEach(function (n) {
-      if (n.nodeType === 1) { var h = target(n.textContent); if (h && !seen[h]) { seen[h] = 1; link(h, n); } return; }
+      if (n.nodeType === 1) { var h = target(n.textContent, blk); if (h && (isMk || !seen[h])) { if (!isMk) seen[h] = 1; link(h, n); } return; }
       var txt = n.nodeValue, last = 0, m, frag = null; wre.lastIndex = 0;
       while ((m = wre.exec(txt))) {
         var h = words[m[1].toLowerCase()]; if (seen[h]) continue; seen[h] = 1;
