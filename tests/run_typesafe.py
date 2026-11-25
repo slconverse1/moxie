@@ -15,6 +15,16 @@ def run(src, cmd):
 
 # (name, "R" = must be rejected / "A" = must be accepted and run without aborting, source)
 CASES = [
+    ('setter-field-wrong-type', 'R', 'tuple A\n  property b Int = 0\n    set(v Int) Result[Unit, Error]\n      field = "a"\n      Ok(())\nprintln(1)\n'),
+    ('setter-field-ok', 'A', 'tuple A\n  property b Int = 0\n    set(v Int) Result[Unit, Error]\n      field = v\n      Ok(())\nprintln(1)\n'),
+    ('multiarray-rank-extra', 'R', 'g MultiArray[Int][2, 2] = fill(0)\nprintln(g(1, 1, 1))\n'),
+    ('multiarray-rank-short', 'R', 'g MultiArray[Int][2, 2] = fill(0)\nprintln(g(1))\n'),
+    ('multiarray-rank-ok', 'A', 'g MultiArray[Int][2, 2] = fill(0)\nprintln(g(1, 1))\nrow = g(1, ..)\nprintln(row)\n'),
+    ('multiarray-rank-3-ok', 'A', 'g MultiArray[Int][2, 2, 2] = fill(0)\nprintln(g(1, 1, 1))\nprintln(g(0, .., 1))\n'),
+    ('tuple-call-string-key', 'R', 'p = (a: 1, b: 2)\nprintln(p("x"))\n'),
+    ('tuple-call-ok', 'A', 'p = (a: 1, b: 2)\nprintln(p(1))\n'),
+    ('stage-extra-arg-trailing', 'R', 'xs = List(1, 2)\nys = xs |> map(1)(x) -> x\nprintln(ys)\n'),
+    ('stage-trailing-ok', 'A', 'xs = List(1, 2)\nys = xs |> map()(x) -> x + 1\nprintln(ys |> collect())\n'),
     ('tuple-dot-index-type', 'R', 'p = (1, "a")\nx Int = p.1\nprintln(x)\n'),
     ('tuple-dot-index-generic', 'R', 'fn pair[A, B](a A, b B) (A, B) = (a, b)\nx Int = pair(1, "a").1\nprintln(x)\n'),
     ('tuple-dot-index-ok', 'A', 'fn pair[A, B](a A, b B) (A, B) = (a, b)\nx String = pair(1, "a").1\nprintln(x + "!")\n'),

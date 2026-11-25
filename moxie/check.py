@@ -4365,6 +4365,14 @@ class Checker(RefineMixin):
                 sp = self.prop_in(self.tuples[tgt.path[0]], tgt.path[1])      # `Account.rate = ...` reads as a pattern
                 if sp is not None and sp.static:
                     self.err(n.line, f"`{tgt.path[1]}` is a static property, which is read-only")
+            if tgt.__class__ is PBind and n.op == "=" and not isinstance(n.targets, list) and getattr(self, "method_ref", None) == "ref" \
+                    and getattr(self, "impl_ty", None) in self.tuples and sc.find(tgt.name) is None and t is not None:
+                td_ = self.tuples[self.impl_ty]                  # in a `ref` method (a setter's `field = v`), a bare field name writes that field
+                fd_ = next((f for f in td_.fields or [] if f.name == tgt.name), None)
+                if fd_ is not None and not getattr(td_, "tparams", None):
+                    ft_ = self.ty_of_type(fd_.type)
+                    if ft_ is not None and not self.has_unsettled(ft_) and not self.has_unsettled(t):
+                        self.compat(ft_, t, c, n.line)
             if tgt.__class__ is PBind:
                 carried = sc.loopbody and tgt.name not in sc.vars and self.else_names and sc.parent is not None \
                     and sc.parent.find(tgt.name) is not None \
@@ -6828,6 +6836,10 @@ class Checker(RefineMixin):
             elif fv is not None and fv.ty.__class__ is tuple and fv.ty[0] == "app" and fv.ty[1] in ("Result", "Atom", "ChanR", "ChanW", "FutureR", "FutureW") \
                     and fv.ty[1] not in self.tuples and fv.ty[1] not in self.enums and fv.ty[1] not in self.aliases:
                 self.err(n.line, f"`{f.name}` is a `{tshow(fv.ty)}`, not a function" + ("; take the value out of the Result first" if fv.ty[1] == "Result" else ""))
+            elif fv is not None and fv.ty.__class__ is tuple and (fv.ty[0] == "tup" or (fv.ty[0] == "named" and fv.ty[1] in self.tuples)) \
+                    and (len(n.args or []) != 1 or (hasattr(n.args[0], "expr") and n.args[0].expr.__class__ is StrLit)) and n.trailing is None:
+                self.err(n.line, f"`{f.name}` is a tuple: it is read with one position or field name, as in `{f.name}(0)` or `{f.name}(field)`, not with "
+                         + ("a String" if n.args else "no argument"))
         if f.__class__ is Field and not extra and f.name not in self.fns and f.name not in self.prelude \
                 and not any(k[1] == f.name for k in self.methods):
             if f.obj.__class__ is Name:
@@ -7092,6 +7104,15 @@ class Checker(RefineMixin):
             if el is None or self.has_unsettled(el):
                 return None
             whole = lambda e: e.__class__ is RangeE or (e.__class__ is Name and e.name == "..")
+            if f.__class__ is Name:                           # the type carries no rank, so read it from the variable's written `MultiArray[T][r, c]`
+                vd_ = sc.find(f.name)
+                an_ = self.var_node.get(vd_) if vd_ is not None else None
+                if an_.__class__ is TName and an_.path == ["MultiArray"] and len(an_.groups or []) == 2 and len(an_.groups[1]) != len(args) \
+                        and not any(a.name for a in args if getattr(a, "name", None)):
+                    self.err(getattr(f, "line", 0) or self.cur_line, f"`{f.name}` has {len(an_.groups[1])} dimension{'s' if len(an_.groups[1]) != 1 else ''}, "
+                             f"so it is indexed with {len(an_.groups[1])} value{'s' if len(an_.groups[1]) != 1 else ''}, but {len(args)} given")
+                    return None
+            whole = lambda e: e.__class__ is RangeE or (e.__class__ is Name and e.name == "..")
             for a in args:
                 if not whole(a.expr):
                     ixt = self.quiet(a.expr, sc)[0]
@@ -7271,6 +7292,13 @@ class Checker(RefineMixin):
             low = min((len(sg[1]) for sg in sg_all), default=0)
             if 0 <= len(sargs) + extra < low and fn.__class__ in (Name, Field) and (fn.name not in ("min", "max") or len(sargs) + extra == 0):
                 self.err(n.line, f"`{fn.name}` takes at least {low} argument{'s' if low != 1 else ''}, but {len(sargs) + extra} given")
+        if n.trailing is not None and plan is None and ufcs != "skip" and fn.__class__ in (Name, Field) and all(hasattr(a, "expr") for a in sargs):
+            ovt = self.sig_overloads(fn, sargs, sc, extra, ufcs=ufcs is True)        # the same builtin lookup, for a call that ends in a trailing function
+            sg_t = self.load_sigs().get(fn.name) if ovt is not None else None
+            if sg_t and n.trailing.__class__ is Lambda and not any(len(sg[1]) == len(sargs) + extra + 1 for sg in sg_t) and fn.name not in ("min", "max"):
+                lens = sorted({len(sg[1]) for sg in sg_t})
+                self.err(n.line, f"`{fn.name}` takes {' or '.join(str(k) for k in lens)} argument{'' if lens == [1] else 's'}, but {len(sargs) + extra + 1} given "
+                         f"(the function written after the call counts as the last one)")
         if ov is not None and ov[0] and all(hasattr(a, "expr") for a in sargs):
             ats, sigres = self.sig_args(n, ov[0], ov[1], sargs, asc, sc, extra)
             for a_, r_ in zip(sargs, ats):
