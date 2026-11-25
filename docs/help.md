@@ -8,7 +8,7 @@ Moving through the site (GC-free moxie).
 
 ## What the history holds
 
-The site keeps a history of the pages you visit in the Introduction, the Mixer’s Guide, and the Spec (including the reference and its function pages). A page is added when you arrive at it by following a link. Nothing is ever removed from the history (it holds up to 500 pages), and it is kept apart from the moxie/gc site’s history. Your place on each page is remembered, so you come back to where you were reading.
+The site keeps a history of the pages you visit in the Introduction, the Mixer’s Guide, and the Spec (including the reference and its function pages). A page is added when you arrive at it by following a link. The history holds up to 20 pages; when it is full, the oldest page drops off the start, and it is kept apart from the moxie/gc site’s history. Your place on each page is remembered, so you come back to where you were reading.
 
 Moving back and forward through the history adds nothing, and a page you stop at is not added just for being stopped at. But if you then leave it by any link that takes you to another page (a link in the text, a Contents link, or a tab in the menu bar), the page is added again, because it led somewhere. A new page in the history follows it.
 
