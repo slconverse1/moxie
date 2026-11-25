@@ -3262,6 +3262,9 @@ class Checker(RefineMixin):
                     self.err(n.line, f"cannot compare `{tshow(x)}` and `{tshow(y)}`: an `{x[1]}` is not the value inside it; compare with `Some(..)`, or take the value out first")
                     break
             return "Bool", None
+        if op in ("<<", ">>") and a in self.SCAL and b in self.SCAL and (a in ("String", "Float", "Decimal", "Bool", "Char") or b in ("String", "Float", "Decimal", "Bool", "Char")):
+            self.err(n.line, f"cannot apply `{op}` to `{tshow(a)}` and `{tshow(b)}`: a shift takes integers")
+            return None, None
         if op in ("+", "-", "*", "/", "%"):
             for u in (a, b):
                 if u.__class__ is tuple and u and u[0] == "hid":
@@ -4267,7 +4270,15 @@ class Checker(RefineMixin):
                 self.__dict__.setdefault('slot_anns', {})[id(n.value)] = n.ann                   # a collection literal reads its written element type (`with (...)` layouts)
             self.expect_union(n.value, n.ann)
         if n.op in ("+=", "-=", "*=", "/=", "%=") and n.targets.__class__ is PBind:
-            t, c = self.ev(Binary(n.op[:-1], Name(n.targets.name, line=n.line), n.value, line=n.line), sc)       # `x += v` is `x = x + v`: the operands are checked as in the sum
+            t, c = self.ev(Binary(n.op[:-1], Name(n.targets.name, line=n.line), n.value, line=n.line), sc)
+        elif n.op in ("+=", "-=", "*=", "/=", "%=") and n.targets.__class__ is PPlace and n.targets.expr.__class__ is Gimme:
+            gv_ = self.gimme_var(Gimme(n.targets.expr.n, n.targets.expr.name, line=n.line), Sc(sc), False)       # `count@1 += v` reads the carried copy
+            if gv_ is not None and gv_.ty is not None:
+                tmp_ = Sc(sc)
+                tmp_.vars["__carried"] = Var(gv_.ty)
+                t, c = self.ev(Binary(n.op[:-1], Name("__carried", line=n.line), n.value, line=n.line), tmp_)
+            else:
+                t, c = self.ev(n.value, sc)       # `x += v` is `x = x + v`: the operands are checked as in the sum
         else:
             t, c = self.ev(n.value, sc)
         if id(n) in MUT_RE and t.__class__ is str:
@@ -4777,6 +4788,9 @@ class Checker(RefineMixin):
         if it.__class__ is tuple and it[0] == "app" and it[1] in ("List", "Array", "Ring", "Set", "Stream", "ChanR") and len(it[2]) == 1 \
                 and it[2][0] is not None and not self.has_unsettled(it[2][0]):
             el = it[2][0]                                   # the loop variable has the collection's element type
+        elif n.iter.__class__ is RangeE and n.pat.__class__ is PBind and all(
+                b is None or self.quiet(b, sc)[0] == "Int" for b in (n.iter.lo, n.iter.hi)) and (n.iter.lo is not None or n.iter.hi is not None):
+            el = "Int"                                      # `for n in 1..6`: the variable is an Int
         elif it.__class__ is tuple and it[0] == "app" and it[1] == "Dict" and len(it[2]) == 2 and None not in it[2] \
                 and not any(self.has_unsettled(x) for x in it[2]):
             el = ("tup", (it[2][0], it[2][1]))               # a Dict gives (key, value) pairs
@@ -7280,6 +7294,7 @@ class Checker(RefineMixin):
                 extra = 1
             else:
                 ufcs = "skip"
+        pipe_keep = self.pipe_ty                           # the piped or receiver type, still needed to type a trailing function
         sargs, opt_ats = self.split_options(n, fn, args, sc, extra, asc)
         ov = self.sig_overloads(fn, sargs, sc, extra, ufcs=ufcs is True) if n.trailing is None and plan is None and ufcs != "skip" else None
         if ov is not None and not ov[0] and n.trailing is None and all(hasattr(a, "expr") for a in sargs):
@@ -7329,9 +7344,26 @@ class Checker(RefineMixin):
             if pt is not None and r[0] is not None:
                 tys.unify(pt, self.base(r[0]), binds)           # what this argument tells the later ones (a lambda's parameters)
         if n.trailing is not None:
-            if plan and n.trailing.__class__ is Lambda and len(args) < len(plan[0]) and plan[0][len(args)] is not None \
-                    and plan[0][len(args)][0] == "fn":
-                self.lam_expect = tys.subst(plan[0][len(args)], binds)
+            if plan is None and n.trailing.__class__ is Lambda and ufcs != "skip" and fn.__class__ in (Name, Field) and extra == 1 \
+                    and pipe_keep is not None and all(hasattr(a, "expr") for a in sargs) and len(ats) == len(sargs):
+                ovl = self.sig_overloads(fn, [], sc, extra, ufcs=ufcs is True)           # a builtin stage: its signature types the trailing function's parameters
+                sgs_ = [sg for sg in (self.load_sigs().get(fn.name) or []) if len(sg[1]) == len(sargs) + 2] if ovl is not None else []
+                ts_ = [(r[0] if r else None) for r in ats]
+                fits_ = []
+                for sg_ in sgs_:
+                    full_ = ts_ + [None, pipe_keep] if sg_[3] == "last" else [pipe_keep] + ts_ + [None]
+                    bd_ = self.sig_fit(sg_, full_)
+                    if bd_ is not None:
+                        fits_.append((sg_, bd_))
+                if len(fits_) == 1:
+                    sg_, bd_ = fits_[0]
+                    slot_ = len(sargs) if sg_[3] == "last" else len(sargs) + 1
+                    if sg_[1][slot_] is not None and sg_[1][slot_][0] == "fn":
+                        self.lam_expect = tys.subst(sg_[1][slot_], bd_)
+            ti_ = len(args) + (extra or 0)                   # a piped or method receiver already fills the first parameter
+            if plan and n.trailing.__class__ is Lambda and ti_ < len(plan[0]) and plan[0][ti_] is not None \
+                    and plan[0][ti_][0] == "fn":
+                self.lam_expect = tys.subst(plan[0][ti_], binds)
             self.trail_ty[id(n)] = self.ev(n.trailing, sc)
             self.lam_expect = None
         if fn.__class__ is Name and sc.find(fn.name) is None and fn.name not in self.fns and fn.name not in self.tuples \
@@ -8806,6 +8838,14 @@ class Checker(RefineMixin):
             params = [p for p in params if not self.hidden_foreign_param(p)]
         if any(p.mod == "using" for p in params):
             self.check_using_args(fd, n, args)
+            if not getattr(fd, "tparams", None) and not extra and n.trailing is None and len(args) <= len(params) \
+                    and not any(p.variadic for p in params) and not any(getattr(a, "label", None) or getattr(a, "mod", None) in ("ref", "move", "spread") or (a.expr is not None and (
+                    a.expr.__class__ in (PH, Slot) or self.has_ph(a.expr))) for a in args):
+                for q, a, (t, c) in zip(params, args, ats):           # the written arguments still fit their parameters (`retry("x", using)`)
+                    if q.mod is None and a.expr is not None and getattr(a, "mod", None) is None and q.type is not None and t is not None:
+                        qt = self.ty_of_type(q.type)
+                        if qt is not None and not self.has_unsettled(qt) and not self.has_unsettled(t):
+                            self.compat(qt, t, c, n.line)
             if not any(a.mod == "spread" or a.expr.__class__ in (PH, Slot) for a in args if hasattr(a, "expr")) \
                     and not any(p.variadic for p in params):
                 k = sum(1 for a in args if not a.label) + extra         # positional arguments fill the leading parameters
@@ -8900,6 +8940,9 @@ class Checker(RefineMixin):
     def e_Pipe(self, n, sc):
         lt = self.ev(n.l, sc)[0]
         st = n.stage
+        if id(n.l) in self.mixed_lits and not (st.__class__ is Call and st.fn.__class__ is Name and (st.fn.name in self.fns or sc.find(st.fn.name) is not None)) \
+                and not (st.__class__ is Name and st.name in self.fns):
+            self.settle_mixed(n.l, None)                    # `List(1, "x") |> map(f)`: a library stage takes no union, so the elements must agree
         if st.__class__ is Call:
             self.pipe_ty = lt
             r = self.e_Call(st, sc, extra=1)

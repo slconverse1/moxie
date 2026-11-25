@@ -15,6 +15,16 @@ def run(src, cmd):
 
 # (name, "R" = must be rejected / "A" = must be accepted and run without aborting, source)
 CASES = [
+    ('using-call-arg-type', 'R', 'tuple C\n  url String\nfn connect(using cfg C) String = cfg.url\nfn retry(n Int, using cfg C) String\n  connect(using)\nusing c = C(url: "e")\nprintln(retry("x", using))\n'),
+    ('using-call-ok', 'A', 'tuple C\n  url String\nfn connect(using cfg C) String = cfg.url\nfn retry(n Int, using cfg C) String\n  connect(using)\nusing c = C(url: "e")\nprintln(retry(3, using))\n'),
+    ('mixed-list-pipe-head', 'R', 'fn inc(x Int) Int = x + 1\nout = List(1, "x", 3) |> map(inc) |> collect()\nprintln(out)\n'),
+    ('range-loop-var-int', 'R', 'for n in 1..6\n  if n % "x" == 1\n    continue\n  println(n)\n'),
+    ('range-loop-var-ok', 'A', 'for n in 1..4\n  if n % 2 == 1\n    continue\n  println(n)\n'),
+    ('trailing-lambda-pipe-type', 'R', 'xs = List(1, 2)\nys = xs |> map()(x) -> x + "x"\nprintln(ys |> collect())\n'),
+    ('carried-compound-assign', 'R', 'count = "x"\nif true\n  count@1 += 1\nprintln(count)\n'),
+    ('carried-compound-ok', 'A', 'count = 0\nif true\n  count@1 += 1\nprintln(count)\n'),
+    ('shift-string', 'R', 'n = 5\nprintln(n >> "x")\n'),
+    ('shift-ok', 'A', 'n = 5\nprintln(n >> 1)\n'),
     ('setter-field-wrong-type', 'R', 'tuple A\n  property b Int = 0\n    set(v Int) Result[Unit, Error]\n      field = "a"\n      Ok(())\nprintln(1)\n'),
     ('setter-field-ok', 'A', 'tuple A\n  property b Int = 0\n    set(v Int) Result[Unit, Error]\n      field = v\n      Ok(())\nprintln(1)\n'),
     ('multiarray-rank-extra', 'R', 'g MultiArray[Int][2, 2] = fill(0)\nprintln(g(1, 1, 1))\n'),
