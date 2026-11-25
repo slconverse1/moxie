@@ -8828,6 +8828,11 @@ class Checker(RefineMixin):
 
     def check_call(self, fd, n, args, ats, extra):
         params = list(fd.params or [])
+        if any(p.variadic for p in params) and not extra and n.trailing is None and len(args) > 1 and all(hasattr(a, "expr") for a in args):
+            fts_ = [t for t, _c in ats if t.__class__ is tuple and t and t[0] == "fn" and self.arity_known(t) and not self.has_unsettled(t)]
+            if len(fts_) == len(ats) and len({(tuple(tshow(x) for x in t[1]), tshow(t[2])) for t in fts_}) > 1:
+                self.err(n.line, f"`{fd.name}` takes functions of one type, but these have different types: "
+                         + ", ".join(tshow(t) for t in fts_) + " (a chain of functions must each take and return the same type)")
         if extra and params and params[0].name == "self" and n.fn.__class__ is Field:
             rr = getattr(n, "ref_recv", None)
             if params[0].mod == "ref" and not rr:
