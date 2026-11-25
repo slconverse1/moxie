@@ -272,7 +272,7 @@ html,body{overscroll-behavior-x:none}
     f.strip.appendChild(fr); f.frames[j] = fr; return fr;
   };
   var loadFrame = function (f, j) {          // the page itself, in a frame over the card
-    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr || (fr.__gone && Math.abs(j - curPos(f)) > 1.2)) return;
+    var fr = f.frames[j], e = S.l[j], W = f.W, H = f.H; if (!fr || fr.__ifr || /\/(spec|reference)\.html$/.test(pathOf(e.u)) || (fr.__gone && Math.abs(j - curPos(f)) > 1.2)) return;
     f.loading++;
     var ifr = document.createElement('iframe'); ifr.setAttribute('tabindex', '-1'); ifr.setAttribute('aria-hidden', 'true');
     ifr.style.cssText = 'width:' + W + 'px;height:' + H + 'px'; ifr.src = pathOf(e.u);
@@ -329,7 +329,7 @@ html,body{overscroll-behavior-x:none}
         for (var w = 0; w < near.length && f.loading < 2; w++) loadFrame(f, near[w]); }
       Object.keys(f.frames).forEach(function (k) { if (k < lo - 1 || k > hi + 1) { var fr = f.frames[k]; if (fr.parentNode) fr.parentNode.removeChild(fr); if (fr.__ifr && !f.ready[k]) f.loading = Math.max(0, f.loading - 1); delete f.frames[k]; delete f.ready[k]; } });
       var live = Object.keys(f.frames).filter(function (k) { return f.frames[k].__ifr; }).sort(function (x, y) { return Math.abs(y - pos) - Math.abs(x - pos); });
-      while (live.length > 3) {                    // keep only the three nearest pages loaded: the rest go back to their cards, to spare memory
+      while (live.length > 2) {                    // keep only the two nearest pages loaded: the rest go back to their cards, to spare memory
         var q2 = live.shift(), fq = f.frames[q2], ifq = fq.__ifr;
         if (!f.ready[q2]) f.loading = Math.max(0, f.loading - 1);
         try { ifq.src = 'about:blank'; } catch (x) {}
