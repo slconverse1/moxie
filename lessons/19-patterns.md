@@ -7,7 +7,9 @@ A *pattern* describes the shape of a value and names its parts at the same time.
 A pattern can stand in a `when` arm, on the left of a binding, in a function parameter, in an `is` test, and in a `for` loop. They all mean the same thing: *does the value have this shape, and if so, what are its parts?*
 
 ```moxie
-tuple Point(x Int, y Int)
+tuple Point
+  x Int
+  y Int
 Point(a, b) = Point(3, 4)
 println(a + b)
 for (name, age) in Dict("ann" -> 30, "bo" -> 25)
@@ -98,8 +100,12 @@ cy
 Patterns nest: a field's pattern can itself be a pattern.
 
 ```moxie
-tuple Point(x Int, y Int)
-tuple Segment(from Point, to Point)
+tuple Point
+  x Int
+  y Int
+tuple Segment
+  from Point
+  to Point
 fn is_horizontal(s Segment) Bool
   when s
     Segment(Point(_, y1), Point(_, y2)) -> y1 == y2

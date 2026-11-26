@@ -15,7 +15,9 @@ You have seen methods already (`s.area()`, `xs.map(...)`). This lesson is about 
 A method is a function attached to a type. It is declared inside an `impl` block for that type, and inside it `self` is the value, and the type's fields are in scope by their bare names:
 
 ```moxie
-tuple Rect(w Double, h Double)
+tuple Rect
+  w Double
+  h Double
 impl Rect
   fn area() Double
     w * h
@@ -39,7 +41,9 @@ println(r.scaled(2.0).area())
 A *spread* inside `Self(...)` keeps the other fields, so a method can change one field without listing the rest:
 
 ```moxie
-tuple Counter(count Int, label String) deriving show
+tuple Counter deriving show
+  count Int
+  label String
 impl Counter
   fn incremented() Counter
     Self(..., count: count + 1)
@@ -61,8 +65,10 @@ An interface lists methods without bodies. A type satisfies it by writing an `im
 ```moxie
 interface Speaker
   fn speak() String
-tuple Dog(name String)
-tuple Robot(serial Int)
+tuple Dog
+  name String
+tuple Robot
+  serial Int
 impl Speaker for Dog
   fn speak() String
     "Woof! My name is $name"
@@ -90,7 +96,8 @@ The same idea written as a generic function: `[T Speaker]` says "any type `T` th
 ```moxie
 interface Speaker
   fn speak() String
-tuple Dog(name String)
+tuple Dog
+  name String
 impl Speaker for Dog
   fn speak() String
     "Woof, $name"
@@ -128,8 +135,10 @@ A `List` or `Array` holds one type. To put a `Dog` and a `Robot` in the same one
 ```moxie
 interface Speaker
   fn speak() String
-tuple Dog(name String)
-tuple Robot(serial Int)
+tuple Dog
+  name String
+tuple Robot
+  serial Int
 impl Speaker for Dog
   fn speak() String
     "Woof, $name"
@@ -157,7 +166,9 @@ An interface can describe a method that returns the implementing type, which `Se
 ```moxie
 interface Resettable
   fn reset() Self
-tuple Score(points Int, name String) deriving show
+tuple Score deriving show
+  points Int
+  name String
 impl Resettable for Score
   fn reset() Score
     Self(..., points: 0)
@@ -176,7 +187,9 @@ Score(points: 0, name: "ann")
 A method normally can't change its receiver, since values never change: it returns a new one. When you do want the effect of an in-place update on a name in your program, a `ref` receiver rebinds the caller's variable. The call says `ref` too, which keeps the effect visible:
 
 ```moxie
-tuple Counter(count Int, label String)
+tuple Counter
+  count Int
+  label String
 impl Counter
   fn (ref Self) increment() Unit
     count += 1
@@ -198,7 +211,8 @@ Leaving off `ref` at the call is an error, the same rule as `ref` parameters.
 A type can define operators in its `impl`: the receiver is the left side and the parameter is the right. Defining `<` also gives you `>`, `<=`, and `>=`, and defining `==` gives you `~=`:
 
 ```moxie
-tuple Money(cents Int) deriving show
+tuple Money deriving show
+  cents Int
 impl Money
   fn + (other Money) Money
     Money(cents + other.cents)

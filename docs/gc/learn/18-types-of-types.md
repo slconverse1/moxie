@@ -185,8 +185,12 @@ An unannotated `mixed = List(1, "a")` is the error.
 When tuples contain tuples, getting at a deep field and making a copy with it changed is tedious. A *data path* names a spot inside nested tuples. It begins with a type name and continues with fields, separated by `/`:
 
 ```moxie
-tuple Firm(name String, floor Int)
-tuple User(id Int, firm Firm)
+tuple Firm
+  name String
+  floor Int
+tuple User
+  id Int
+  firm Firm
 a = User(1, Firm("Initech", 2))
 firm_name = /User/firm/name
 println(firm_name(a))
@@ -202,8 +206,12 @@ Initech
 A path is a function from a `User` to the value it names, so it can be stored, passed, and combined. Two functions, `replace` and `modify`, use a path to build a changed copy, rewriting the nested tuples around it. The original is untouched:
 
 ```moxie
-tuple Firm(name String, floor Int) deriving show
-tuple User(id Int, firm Firm) deriving show
+tuple Firm deriving show
+  name String
+  floor Int
+tuple User deriving show
+  id Int
+  firm Firm
 a = User(1, Firm("Initech", 2))
 b = replace(a, /User/firm/name, "Acme")
 c = modify(a, /User/firm/name, (s) -> "$s Ltd")

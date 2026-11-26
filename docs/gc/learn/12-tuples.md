@@ -86,7 +86,9 @@ Point(x: 1.5, y: 2.0)
 A short tuple can go on one line, with the fields in parentheses after the name:
 
 ```moxie
-tuple Point(x Int, y Int) deriving show
+tuple Point deriving show
+  x Int
+  y Int
 p = Point(3, 4)
 println(p)
 println(p.x + p.y)
@@ -126,7 +128,9 @@ false
 Comparing declared tuples is checked: without `deriving eq`, `==` on them is a compile error that tells you what to add.
 
 ```moxie
-tuple Point(x Int, y Int)
+tuple Point
+  x Int
+  y Int
 println(Point(1, 2) == Point(1, 2))
 ```
 **The compiler says:**
@@ -142,7 +146,9 @@ Nothing is compared, ordered, or hashed unless the declaration says so, which ke
 Tuples are values, so you never change one in place. You make a new tuple that is the old one with some fields different. A *spread*, `...p`, brings in all the old fields, and the fields you write after it replace them:
 
 ```moxie
-tuple Point(x Int, y Int) deriving show
+tuple Point deriving show
+  x Int
+  y Int
 p = Point(3, 4)
 q = Point(...p, y: 9)
 println(p)
@@ -158,7 +164,9 @@ Point(x: 3, y: 9)
 `p` is unchanged. The `update` form says the same thing and reads well for several changes, because the new values can use the old ones:
 
 ```moxie
-tuple Account(name String, score Int) deriving show
+tuple Account deriving show
+  name String
+  score Int
 a = Account("Bob", 150)
 b = a.update
   score: a.score + 10
@@ -173,7 +181,9 @@ Account(name: "Bob", score: 160)
 A compound assignment works on a field too: `a.score += 10` means "rebind `a` to a copy with the score raised by ten".
 
 ```moxie
-tuple Account(name String, score Int) deriving show
+tuple Account deriving show
+  name String
+  score Int
 a = Account("Bob", 150)
 a.score += 10
 println(a)
@@ -232,7 +242,9 @@ A tuple whose fields don't include what the function asks for is a compile error
 A pattern with the type's name takes a tuple apart in a binding, and can name only some of the fields:
 
 ```moxie
-tuple Point(x Double, y Double)
+tuple Point
+  x Double
+  y Double
 Point(x, y) = Point(1.5, 2.0)
 println("$x $y")
 ```

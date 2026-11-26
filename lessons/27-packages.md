@@ -82,7 +82,9 @@ files = ["base.mxi", "area.mxi"]
 ```
 ```moxie
 //! file: shapes/base.mxi
-export tuple Rect(w Int, h Int)
+export tuple Rect
+  w Int
+  h Int
 ```
 ```moxie
 //! file: shapes/area.mxi
