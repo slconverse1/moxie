@@ -108,8 +108,9 @@ Moxie's elegance rests on an enormous architectural debt owed to the pioneering 
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond` and lock-free state through Atoms and `swap`.
 - **Haskell:** multi-clause function definitions with guards, `deriving`, `@` patterns, `Functor`/`Applicative`/`Monad` and their operators, typeclass-style interfaces with associated types, list helpers such as `zip_with`, `span`, `split_at`, `intersperse`, and `reduce_right`, and QuickCheck-style property tests (`forall`).
-- **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), units of measure, and anonymous records, the tuples whose named-field types are never declared, with the open form `(name String, ...)`.
+- **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), and units of measure.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
+- **Zig:** inline unnamed field types, written in place, as in `xyz (x Double, y Double, z Double)`, so a field needs no named type of its own.
 - **Node.js:** module-level code.
 - **Swift:** keypaths that act as lenses, named tuples, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, DSL block syntax, in the spirit of result builders (a function marks its last parameter `block`, and an indented block of children fills it: `ul(class: "menu")` followed by indented `li(...)` lines), the idea that a function parameter has a name for the body and a label for the call, and regex literals with typed captures, `(?<y:Int>\\d{4})`, whose names get the types the groups declare (the `regex` package's `Matches("...", (y, m))`).
 - **Elixir:** the pin (`^`) operator for pattern matching.
