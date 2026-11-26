@@ -89,3 +89,24 @@ The decisions behind the language, kept by date. They are a record of what was d
 - `go` moves its resource arguments; a second fiber needs `clone`.
 - `moxie doc` turns `[`name`]` into a link to the item, within a page and across the pages of one run.
 - Type lambdas `[A] -> T` (2026-11-05, section 9a): anonymous or named by a generic alias, first or higher order, applied by substitution, with no recursion and no type-level matching. Full type-level programming (type-level matching and recursion) was investigated and is not built; `TYPE-LEVEL.md` in the repository gives the analysis and the recommendation.
+
+## Decisions recorded on 2026-11-26 (draft)
+
+*Implemented on fp-primer: the expanded form, the `;` rule, and the removal of `!`. Everything under "Proposed" is not built or in the spec yet.*
+
+- **Expanded form.** Inside `( ... )`, one item per line with no commas is allowed for parameters, arguments, constructors, and local-name lists. A line break ends an item when the item is complete and the next line starts a new one. A line starting with an operator, a keyword, a `.` method name, or `-` followed by a space continues the line above. A line starting with `-` directly followed by its operand starts a new item (`-b`). The open-tuple marker `...` starts a new item. The compact form (commas) is unchanged, and the two may mix in one call. Brackets `[ ]` and braces `{ }` have no expanded form.
+- **Formatting.** `moxie fmt` keeps the form each call was written in and never converts one to the other. In an expanded call, a continuation line is indented two spaces inside the line that opens the call, and a closing `)` lines up with that line. A mixed call stays mixed.
+- **Statements.** `;` may join statements anywhere inside a block. A one-line `then`, `do`, or `else` body, lambda, or arm takes one statement, so a `;` after it is an error.
+- **Negation.** `!` is not a token. `not` is the only negation.
+
+**Proposed: formatting.** Interpolation keeps one mechanism, `${expr}`. Formatting is a pipe of named steps, with no spec language inside the string:
+
+    "${price |> fixed(2) |> pad_left(8)} | ${name |> pad_right(5)}"
+
+The helpers are ordinary typed prelude functions. The existing `${expr:spec}` and `fmt` forms stay valid, so both styles work side by side. Whether the old forms are marked deprecated is open.
+
+**Proposed: grouping.** `Locale` gets a group-size field: `(3)` for thousands, and `(3, 2)` for Indian grouping, where the last size repeats. `1234567` formats as `1,234,567` under `Locale.en_us` and `12,34,567` under `Locale.en_in`.
+
+**Proposed: currency.** A currency is named in source by its ISO 4217 code, as in `|> money("USD")` and `|> money("INR")`. The code is the only identifier. `Locale` holds a table from code to display symbol: `$` for `USD` under `Locale.en_us`, and `₹` for `INR` under `Locale.en_in`. Where a symbol would be ambiguous, the locale shows a prefixed form such as `CA$`, or the code itself. Symbols are display only and never identify a currency.
+
+**Open.** The exact helper names. Whether `money` is a type with arithmetic, or only a formatted value. Whether `fmt` templates are deprecated. Currency placement rules for each locale (before or after the amount, and the space).
