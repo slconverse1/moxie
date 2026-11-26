@@ -2808,7 +2808,7 @@ class Checker(RefineMixin):
         if n.op == "~" and t is not None and ((t.__class__ is str and t not in INTS) or (t.__class__ is tuple and t[0] in ("fn", "tup"))):
             self.err(n.line, f"`~` needs an integer, found `{tshow(t)}` (`~` is bitwise not; function composition is `~>`)")
             return None, None
-        if n.op == "not" or n.op == "!":
+        if n.op == "not":
             if t is not None and t != "Bool":
                 self.err(n.line, f"`not` needs a `Bool`, found `{tshow(t)}`")
             return "Bool", None
@@ -2919,7 +2919,7 @@ class Checker(RefineMixin):
         `possible` are the members the value may still be (a union holds what is left after tests), `type` a single type to give
         it (for `any`).  `not`, `and`, `or` combine the facts of their parts."""
         c = cond.__class__
-        if c is Unary and cond.op in ("not", "!"):
+        if c is Unary and cond.op == "not":
             return self.fact_set(cond.e, sc, not truth)
         if c is AndE or c is OrE:
             fa, fb = self.fact_set(cond.l, sc, truth), self.fact_set(cond.r, sc, truth)
