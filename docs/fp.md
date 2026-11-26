@@ -39,11 +39,18 @@ Because `~>` applies stages in the order written, backward composition is writte
 
 ## 2. Data and missing values
 
-**a. Enums and variants.** An enum is a value that is one of several named cases, and each case can hold its own data. A `when` over an enum must cover every case. See *[Enums](learn/13-enums.html)*.
+**a. Common data types.** Most FP languages share a core set of types, and moxie has them too:
 
-**b. Tuples as records.** A tuple groups named fields into one value, and fields can be read by name or position. Tuples are the usual way to bundle data. See *[Tuples](learn/12-tuples.html)*.
+- Numbers: `Int`, `Double`, `Decimal`, and sized integers such as `UInt8`. Each type's arithmetic is checked for mixing, so an `Int` and a `Double` don't combine without a conversion. See *[Numbers](learn/04-numbers.html)*.
+- Text: `String`, with interpolation such as `"hi ${name}"`. See *[Text](learn/05-text.html)*.
+- Collections: `List` for ordered values, `Array` for fixed-size ones, `Dict` for key-value pairs, and `Set` for unique values. All are immutable. See *[Lists](learn/15-lists.html)*, *[Arrays](learn/16-arrays.html)* and *[Dicts and sets](learn/17-dicts-and-sets.html)*.
+- Tuples, which are the structs of moxie, and enums. See the next two entries.
 
-**c. Missing and failed values.** Moxie has no `null`. A value that may be absent is an `Option`, and an operation that may fail returns a `Result`, which the compiler makes you handle. See *[Missing values and failures: Option and Result](learn/14-missing-and-failed.html)*.
+**b. Tuples and parameter unification.** A tuple groups named fields into one value. Moxie treats a tuple and a parameter list as the same shape: a function's parameters have the same type as a tuple of those parameter types, so a call with a single tuple argument can unpack into the parameters when the shapes match. A function can then ask for only the fields it needs, as in `(name String, ...)`, which accepts any tuple that has a `name`. See *[Tuples](learn/12-tuples.html)* and *[Functions](learn/08-functions.html)*.
+
+**c. Enums and variants.** An enum is a value that is one of several named cases, and each case can hold its own data. A `when` over an enum must cover every case. See *[Enums](learn/13-enums.html)*.
+
+**d. Missing and failed values.** Moxie has no `null`. A value that may be absent is an `Option`, and an operation that may fail returns a `Result`, which the compiler makes you handle. See *[Missing values and failures: Option and Result](learn/14-missing-and-failed.html)*.
 
 ## 3. Structure
 
@@ -51,7 +58,7 @@ Because `~>` applies stages in the order written, backward composition is writte
 
 **b. Encapsulation without objects.** An object keeps its data private and changes it only through its methods. Functional languages get the same protection from other tools: opaque types that hide a value's representation, closures that hide their captured data, and `mutable` blocks whose changes can't leak out. See *[Naming types: aliases, opaque types, and unions](learn/18-types-of-types.html)* and *[In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html)*.
 
-**c. Interfaces as clubs, and typeclasses.** An interface is a set of operations, and a type joins it by writing an `impl`. A type can join many interfaces, and joining adds nothing to the type itself. There is no inheritance. A generic function can require membership in an interface, and any member can be used. See *[Methods and interfaces](learn/20-interfaces.html)* and *[Typeclasses](learn/46-typeclasses.html)*.
+**c. Interfaces as clubs, and typeclasses.** An interface is a set of operations, and a type joins it by writing an `impl`. A type can join many interfaces, and joining adds nothing to the type itself. There is no data-type hierarchy: no class a type inherits from, and no base type that adds fields or behavior. In an object-oriented language, a `Dog` is a kind of `Animal` by its class; in moxie, a `Dog` is whatever its tuple says, and only the interfaces it has an `impl` for can be used on it. A generic function can require membership in an interface, and any member can be used. See *[Methods and interfaces](learn/20-interfaces.html)* and *[Typeclasses](learn/46-typeclasses.html)*.
 
 **d. Generics.** A generic function is written once for many types. The compiler checks each use at the type it is given. See *[Generic functions](learn/11-generics.html)*.
 
