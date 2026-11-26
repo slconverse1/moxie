@@ -187,7 +187,8 @@ class Parser(ExprParser):
     # Expanded bare calls (prototype): a statement that is a plain name followed by an indented block is a call whose
     # arguments are the indented lines, and each of those may itself be a bare call with its own indented arguments.
     BARE_BLOCKED = HARD | {"type", "test", "pattern", "property", "mutable", "seq", "union", "opaque", "lazy", "arm",
-                           "with", "where", "let", "tuple", "enum", "interface", "impl", "forward"}
+                           "with", "where", "let", "tuple", "enum", "interface", "impl", "forward",
+                           "scope", "wait", "eval", "init", "daemon", "select", "do"}
 
     def at_bare_call(self):
         t = self.peek()
