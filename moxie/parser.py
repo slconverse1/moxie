@@ -184,9 +184,37 @@ class Parser(ExprParser):
         return s
 
     # ------------------------------------------------------------ dispatch
+    # Expanded bare calls (prototype): a statement that is a plain name followed by an indented block is a call whose
+    # arguments are the indented lines, and each of those may itself be a bare call with its own indented arguments.
+    BARE_BLOCKED = HARD | {"type", "test", "pattern", "property", "mutable", "seq", "union", "opaque", "lazy", "arm",
+                           "with", "where", "let", "tuple", "enum", "interface", "impl", "forward"}
+
+    def at_bare_call(self):
+        t = self.peek()
+        return (t.kind == "NAME" and t.val not in self.BARE_BLOCKED and self.peek(1).kind == "NL"
+                and self.peek(2).kind == "INDENT")
+
+    def parse_bare_call(self):
+        t = self.next()
+        line = t.line
+        self.expect_nl_indent()
+        args = []
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            if self.at_bare_call():
+                args.append(Arg(None, self.parse_bare_call(), None, line=self.peek().line))
+            else:
+                args.append(self.parse_arg())
+        self.expect_dedent()
+        return Call(Name(t.val, line=line), args, None, None, None, None, bare=True, line=line)
+
     def parse_stmt_core(self, allow_decl):
         t = self.peek()
         line = t.line
+        if self.at_bare_call():                 # `println` then its arguments, indented under it
+            return ExprStmt(self.parse_bare_call(), line=line)
         if getattr(self, "collecting", 0) and t.kind == "OP" and t.val == "...":       # `...items` in a block of children
             self.next()
             return ExprStmt(Splat(self.parse_expr(), line=line), line=line)
