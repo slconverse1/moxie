@@ -114,6 +114,6 @@ The helpers are ordinary typed prelude functions. The existing `${expr:spec}` an
 - **`money` is a type with arithmetic.** A `Money` value holds an exact `Decimal` amount and its ISO code. `+` and `-` work only between two values with the same code, and a mix is a compile error when both codes are literals and an `Err` otherwise. `*` and `/` take a `Decimal` or `Int` factor. Comparisons follow the same rule as `+`. Arithmetic is exact; nothing rounds until display or an explicit `round_to`.
 - **Rounding.** Display rounds to the currency's minor units (2 for `USD`, `INR`, and `EUR`; 0 for `JPY`). A stored value is rounded only when the program asks.
 - **Helper names.** `fixed(x, places)`, `pad_left(s, width)`, `pad_right(s, width)`, `percent(x, places)`, `money(code)`. They use the spec's existing verbs and take no spec strings.
-- **`fmt` templates.** Not deprecated yet. The guides move to the pipe form first; deprecation waits until the pipe form is in the spec.
+- **`fmt` templates and `${expr:spec}`.** Not deprecated, and both stay valid. The pipe form is an addition; it is not the preferred form for simple values, which stay in the existing syntax.
 - **Placement.** Each `Locale` records whether the symbol goes before the amount and whether a space separates them. `Locale.en_us` puts `$` before with no space, `Locale.de_de` puts `€` after with a space (`1.234,50 €`), and so on.
 
