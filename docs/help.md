@@ -20,3 +20,7 @@ The Tutorial, Style, Try, REPL and Help pages are not part of the history.
 - **A short swipe** (on a touch screen) shows the next page, back or forward.
 - **A long swipe** sets the pages flowing by, each shown in full, as many as ten: the longer the swipe, the more pages. Swipe again and it carries on with the next ten, without replaying pages it has already shown.
 - **Tap, click or press any key** while pages are moving to stop on the page in view. That page opens in full and becomes the current page.
+
+## Memory
+
+Sweeping through the history works best on a device with at least 8 GB of RAM. The site keeps several pages loaded during a sweep, so on a device with less memory, or when other apps use much of it, pages may take longer to appear. Other running apps can change how much memory is free, so the speed you see can vary.
