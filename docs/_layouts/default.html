@@ -315,8 +315,10 @@ html,body{overscroll-behavior-x:none}
   };
   var speedAt = function (f, r) { return CPX / f.W; };   // pages a second: always the same   // long: fast at first, ever slower towards the end
   var DT = 1 / 60;
+  var GATED = false;     // switch: true makes the glide wait until each incoming page shows a quarter of itself (driven from script, so it may stutter on slow phones); false is the smooth compositor glide
   var planFlow = function (f) {              // work out the whole glide from here to the target, and hand it to the compositor, so loading pages can't make it stutter
     if (f.anim) f.anim.cancel();
+    if (GATED) { f.anim = null; f.samples = null; f.strip.style.transform = 'translate3d(' + (-f.pos * f.W) + 'px,0,0)'; return; }
     var pos = f.pos, sm = [pos], guard = 0;
     while (Math.abs(f.target - pos) > 0.001 && guard++ < 6000) {
       var r = f.target - pos; pos += (r > 0 ? 1 : -1) * Math.min(Math.abs(r), speedAt(f, r) * DT); sm.push(pos);
@@ -348,6 +350,16 @@ html,body{overscroll-behavior-x:none}
     var frame = function (now) {
       var f = flow; if (!f) return;
       if (!f.go && (f.ready[f.start] || now - f.t0 >= 400)) { f.go = true; if (f.anim) f.anim.play(); }     // let the page you are leaving appear first, so the glide begins from what you saw
+      if (GATED && f.go) {                       // gated glide: move at the usual speed, but not past a page until it shows a quarter of itself
+        var dtg = Math.min(0.05, Math.max(0, (now - (f.last === undefined ? now : f.last)) / 1000)); f.last = now;
+        var rg = f.target - f.pos;
+        if (Math.abs(rg) > 0.001) {
+          var dirg = rg > 0 ? 1 : -1, kg = dirg > 0 ? Math.floor(f.pos) + 1 : Math.floor(f.pos);
+          var gate = kg >= 0 && kg < S.l.length && !f.ready[kg] && (dirg > 0 ? kg - f.pos <= 0.75 : f.pos - kg <= 0.75);
+          if (!gate) f.pos += dirg * Math.min(Math.abs(rg), speedAt(f, rg) * dtg);
+          f.strip.style.transform = 'translate3d(' + (-f.pos * f.W) + 'px,0,0)';
+        }
+      }
       var pos = curPos(f);
       var lo = Math.max(0, Math.floor(pos) - 1), hi = Math.min(S.l.length - 1, Math.ceil(pos) + 2);
       if (f.d < 0) { lo = Math.max(0, Math.floor(pos) - 2); hi = Math.min(S.l.length - 1, Math.ceil(pos) + 1); }
@@ -365,7 +377,7 @@ html,body{overscroll-behavior-x:none}
       }
       var sel = Math.round(pos);
       if (sel !== f.sel) { f.sel = sel; f.cap.textContent = S.l[sel].t + '   ' + (sel + 1) + '/' + S.l.length + '   · tap to stop here'; }
-      if (f.go && !f.held && (!f.anim || f.anim.currentTime >= f.dur * 1000 - 1)) {
+      if (f.go && !f.held && (GATED ? Math.abs(f.target - f.pos) < 0.001 : (!f.anim || f.anim.currentTime >= f.dur * 1000 - 1))) {
         if (!f.done) { f.done = now; } else if (now - f.done > 700 && (f.ready[Math.round(f.target)] || now - f.done > 3500)) { f.pos = f.target; endFlow(true); return; }
       }
       f.raf = requestAnimationFrame(frame);

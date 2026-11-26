@@ -19,6 +19,8 @@ The interpreter needs Python 3.11 or later (tested on 3.11, 3.12, and 3.13) and 
 
 ## Changes
 
+Gated glide, behind the switch `GATED` in the layout (off). When on, a sweep moves past a page only once it shows a quarter of itself, so pages pass at the pace of the incoming pages. Untested in a browser.
+
 Jump attempt (untested): a page reached by a sweep now gets its saved place in `pagereveal`, before the first paint, instead of after load, so the crossfade should not show the top of the page first. Not verified in a browser.
 
 History is now capped at 12 pages, down from 20. When it is full, the oldest page drops off the start of the history.
