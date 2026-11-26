@@ -126,12 +126,33 @@ def _once(src, file, spacing=True):
     nm = {0: 0}
     d0 = 0
     prev_new = 0
+    # the innermost open bracket at the start of each code line: inside `( ... )` a continuation line is one
+    # level deeper than the line that opened the bracket, and a closing `)` lines up with that line
+    paren_open, st, seen_ln = {}, [], set()
+    for t in lx.raw:
+        if t.kind in ("BOL", "NL", "SQL"):
+            continue
+        if t.line not in seen_ln:
+            seen_ln.add(t.line)
+            paren_open[t.line] = st[-1] if st else None
+        if t.kind == "OP":
+            if t.val in OPENS:
+                st.append((t.line, t.val))
+            elif t.val in CLOSES and st:
+                st.pop()
     for ln in codes:
         info = lx.info[ln]
         lead = len(lines[ln - 1]) - len(lines[ln - 1].lstrip(" "))
         nm_before[ln] = dict(nm)
         if info["cont"]:
             new = lead + d0
+            po = paren_open.get(ln)
+            opened = by_line.get(po[0], [None])[-1] if po is not None else None
+            if po is not None and po[1] == "(" and po[0] in new_of and opened is not None \
+                    and opened.kind == "OP" and opened.val == "(":     # expanded form: the bracket ends its line
+                first = by_line[ln][0]
+                closes = first.kind == "OP" and first.val in CLOSES
+                new = new_of[po[0]] + (0 if closes else 2)
         else:
             ind = info["indent"]
             new = nm[ind] if ind in nm else prev_new + 2
