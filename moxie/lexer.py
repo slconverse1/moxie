@@ -98,6 +98,8 @@ def _item_starts(toks):
         return True
     if first.kind == "OP" and first.val == "-":
         return len(toks) > 1 and not toks[1].sp      # `-b` is a new item; `- b` continues
+    if first.kind == "OP" and first.val == "...":
+        return True                                  # the open-tuple marker: `(a Int` then `...`
     return False
 
 

@@ -19,6 +19,7 @@ CASES = [
  ("a leading -b starts a new item (negation)", PAIR + 'println(pair(\n  1\n  -4\n))\n', 0, "6"),
  ("one item per line, last item before )", PAIR + 'println(pair(\n  1\n  2\n))\n', 0, "12"),
  ("two items on one line are an error", PAIR + 'println(pair(\n  1\n  2 3\n))\n', 2, "expected ')'"),
+ ("open tuple in generics, expanded", 'fn f[R (\n  a Int\n  ...\n)](r R) R = r.update\n  a: 2\nprintln(f((a: 1)))\n', 0, "(a: 2)"),
  ("an inline body can't sit inside a call", 'fn twice(f () -> Unit) Unit\n  f()\ntwice(fn ()\n  println("x"))\n', 2, "bind it on its own line first"),
 ]
 
