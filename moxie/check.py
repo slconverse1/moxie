@@ -7956,6 +7956,14 @@ class Checker(RefineMixin):
             elif not any(tp.holes for tp in td.tparams):
                 return self.generic_tuple(td, n, args, ats), None
             return ("named", name), None
+        if name == "compose" and name not in self.fns and not extra and n.trailing is None and len(args) > 1 \
+                and all(hasattr(a, "expr") and not getattr(a, "label", None) and not getattr(a, "mod", None) for a in args):
+            # the prelude's compose[A](fs ...(A) -> A) (A) -> A: every function in the chain takes and returns the same type
+            fts = [t for t, _c in ats if t.__class__ is tuple and t and t[0] == "fn" and self.arity_known(t) and not self.has_unsettled(t)]
+            if len(fts) == len(ats) and len({(tuple(tshow(x) for x in t[1]), tshow(t[2])) for t in fts}) > 1:
+                self.err(n.line, "`compose` takes functions of one type, but these have different types: "
+                         + ", ".join(tshow(t) for t in fts) + " (a chain of functions must each take and return the same type)")
+            return None, None
         if name in self.fns and len(self.fns[name]) == 1:
             fd = self.fns[name][0]
             self.warn_list_spread(fd, n, args, ats)
@@ -8583,6 +8591,13 @@ class Checker(RefineMixin):
             return None
         bound = {}
         params = list(fd.params or [])
+        vp = next((i for i, q in enumerate(params) if q.variadic), None)
+        if vp is not None and vp == len(params) - 1 and params[vp].type.__class__ is TFn:     # `fs ...(A) -> A`: one type for all
+            fts = [t for t, _c in ats[vp:] if t.__class__ is tuple and t and t[0] == "fn" and self.arity_known(t) and not self.has_unsettled(t)]
+            if len(fts) == len(ats[vp:]) and len({(tuple(tshow(x) for x in t[1]), tshow(t[2])) for t in fts}) > 1:
+                self.err(n.line, f"`{fd.name}` takes functions of one type, but these have different types: "
+                         + ", ".join(tshow(t) for t in fts) + " (a chain of functions must each take and return the same type)")
+                return None
         for p, a, (t, _c) in zip(params, args, ats):
             tp = self.bare_tparam(fd, p.type)
             if tp is None or t is None or t == ("secret",) and False:

@@ -20,6 +20,8 @@ CASES = [
     ('mixed-list-pipe-head', 'R', 'fn inc(x Int) Int = x + 1\nout = List(1, "x", 3) |> map(inc) |> collect()\nprintln(out)\n'),
     ('range-loop-var-int', 'R', 'for n in 1..6\n  if n % "x" == 1\n    continue\n  println(n)\n'),
     ('range-loop-var-ok', 'A', 'for n in 1..4\n  if n % 2 == 1\n    continue\n  println(n)\n'),
+    ('compose-mixed-types', 'R', 'fn inc(n Int) Int = n + 1\nfn shout(s String) String = s + "!"\nh = compose(inc, shout)\nprintln(h(1))\n'),
+    ('compose-same-type-ok', 'A', 'fn inc(n Int) Int = n + 1\nfn dbl(n Int) Int = n * 2\nh = compose(inc, dbl)\nprintln(h(1))\n'),
     ('trailing-lambda-pipe-type', 'R', 'xs = List(1, 2)\nys = xs |> map()(x) -> x + "x"\nprintln(ys |> collect())\n'),
     ('carried-compound-assign', 'R', 'count = "x"\nif true\n  count@1 += 1\nprintln(count)\n'),
     ('carried-compound-ok', 'A', 'count = 0\nif true\n  count@1 += 1\nprintln(count)\n'),
