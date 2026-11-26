@@ -42,7 +42,7 @@ Because `~>` applies stages in the order written, backward composition is writte
 **a. Common data types.** Most FP languages share a core set of types, and moxie has them too:
 
 - Numbers: `Int`, `Double`, `Decimal`, and sized integers such as `UInt8`. Each type's arithmetic is checked for mixing, so an `Int` and a `Double` don't combine without a conversion. See *[Numbers](learn/04-numbers.html)*.
-- Text: `String`, with interpolation such as `"hi ${name}"`. See *[Text](learn/05-text.html)*.
+- Strings: `String`, with interpolation such as `"hi ${name}"`. See *[Text](learn/05-text.html)*.
 - Collections: `List` for ordered values, `Array` for fixed-size ones, `Dict` for key-value pairs, and `Set` for unique values. All are immutable. See *[Lists](learn/15-lists.html)*, *[Arrays](learn/16-arrays.html)* and *[Dicts and sets](learn/17-dicts-and-sets.html)*.
 - Tuples, which are the structs of moxie, and enums. See the next two entries.
 
