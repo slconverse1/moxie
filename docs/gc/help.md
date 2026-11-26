@@ -24,4 +24,4 @@ The Tutorial, Style, Try, REPL and Help pages are not part of the history.
 
 ## Memory
 
-Sweeping through the history works best on a device with at least 8 GB of RAM. The site keeps several pages loaded during a sweep, so on a device with less memory, or when other apps use much of it, pages may take longer to appear. Other running apps can change how much memory is free, so the speed you see can vary.
+Sweeping through the history works best on a device with 8 GB of RAM or more. The site keeps several pages loaded during a sweep, so on a device with less memory, or when other apps use much of it, pages may take longer to appear. Other running apps can change how much memory is free, so the speed you see can vary.
