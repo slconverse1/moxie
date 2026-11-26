@@ -109,4 +109,11 @@ The helpers are ordinary typed prelude functions. The existing `${expr:spec}` an
 
 **Proposed: currency.** A currency is named in source by its ISO 4217 code, as in `|> money("USD")` and `|> money("INR")`. The code is the only identifier. `Locale` holds a table from code to display symbol: `$` for `USD` under `Locale.en_us`, and `₹` for `INR` under `Locale.en_in`. Where a symbol would be ambiguous, the locale shows a prefixed form such as `CA$`, or the code itself. Symbols are display only and never identify a currency.
 
-**Open.** The exact helper names. Whether `money` is a type with arithmetic, or only a formatted value. Whether `fmt` templates are deprecated. Currency placement rules for each locale (before or after the amount, and the space).
+**Decided (2026-11-26).**
+
+- **`money` is a type with arithmetic.** A `Money` value holds an exact `Decimal` amount and its ISO code. `+` and `-` work only between two values with the same code, and a mix is a compile error when both codes are literals and an `Err` otherwise. `*` and `/` take a `Decimal` or `Int` factor. Comparisons follow the same rule as `+`. Arithmetic is exact; nothing rounds until display or an explicit `round_to`.
+- **Rounding.** Display rounds to the currency's minor units (2 for `USD`, `INR`, and `EUR`; 0 for `JPY`). A stored value is rounded only when the program asks.
+- **Helper names.** `fixed(x, places)`, `pad_left(s, width)`, `pad_right(s, width)`, `percent(x, places)`, `money(code)`. They use the spec's existing verbs and take no spec strings.
+- **`fmt` templates.** Not deprecated yet. The guides move to the pipe form first; deprecation waits until the pipe form is in the spec.
+- **Placement.** Each `Locale` records whether the symbol goes before the amount and whether a space separates them. `Locale.en_us` puts `$` before with no space, `Locale.de_de` puts `€` after with a space (`1.234,50 €`), and so on.
+
