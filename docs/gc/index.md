@@ -75,6 +75,8 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Mixer’s Guide](learn/), and reference interpreter.
 
+Long declarations and calls can run across several lines in one of two forms. The compact form separates items with commas. The expanded form puts one item on each line, with no commas. The examples here use the expanded form.
+
 ## A moxie appetizer
 
 ```

@@ -2,6 +2,8 @@
 
 A *tuple* groups a few values into one. It is moxie's way of making a record: a point is an `x` and a `y`, a user is a name and an age. Tuples hold values of any types, and each field has a name.
 
+Long declarations and calls can run across several lines in one of two forms. The compact form separates items with commas. The expanded form puts one item on each line, with no commas. The examples here use the expanded form.
+
 ## An unnamed tuple
 
 The simplest tuple is a few values in parentheses. You have already met them: `divmod` returned `(Int, Int)`.

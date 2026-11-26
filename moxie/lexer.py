@@ -55,6 +55,52 @@ for _k in OPS_BY_FIRST:
 DANGLING = {"+", "-", "*", "/", "%", "==", "~=", "<", ">", "<=", ">=", "=", "&", "|", "^",
             "<<", ">>", "|>", "|>>", "~>", "<$>", "<*>", "+=", "-=", "*=", "/=", "%=",
             ",", "and", "or", "not", "in", "is", "&=", "|=", "^="}
+# Words that cannot start or end an item in the expanded (comma-less) form.
+ITEM_WORDS = {"return", "and", "or", "not", "in", "is", "if", "elif", "else", "when", "while", "for",
+              "yield", "break", "continue", "fn", "do", "then", "select", "daemon", "let", "with", "of", "as"}
+ITEM_LITERALS = {"INT", "FLOAT", "DEC", "STR", "CHAR", "BYTES", "BCHAR", "HASH", "DUR"}
+
+
+def _item_ends(t):
+    """Can this token end a complete item in an argument or parameter list?"""
+    if t.kind == "NAME":
+        return t.val not in ITEM_WORDS
+    if t.kind in ITEM_LITERALS:
+        return True
+    return t.kind == "OP" and t.val in (")", "]", "}")
+
+
+def _item_has_fn(out):
+    """Is the item being written (back to the last `(` or `,` of this bracket) an anonymous fn?
+    Such an item keeps its own line rules: an inline body inside a call is still an error."""
+    nest = 0
+    for t in reversed(out):
+        if t.kind == "OP":
+            if t.val in (")", "]", "}"):
+                nest += 1
+            elif t.val in ("(", "[", "{"):
+                if nest == 0:
+                    return False
+                nest -= 1
+            elif t.val == "," and nest == 0:
+                return False
+        elif t.kind == "NAME" and t.val == "fn" and nest == 0:
+            return True
+    return False
+
+
+def _item_starts(toks):
+    """Does this physical line begin a new item (given the line above ended one)?"""
+    first = toks[0]
+    if first.kind == "NAME":
+        return first.val not in ITEM_WORDS
+    if first.kind in ITEM_LITERALS:
+        return True
+    if first.kind == "OP" and first.val == "-":
+        return len(toks) > 1 and not toks[1].sp      # `-b` is a new item; `- b` continues
+    return False
+
+
 CONT_STARTERS = {"|>", "|>>", "~>", "<$>", "<*>"}
 
 ESC_STR = {"n": "\n", "t": "\t", "r": "\r", "\\": "\\", '"': '"', "$": "$"}
@@ -773,6 +819,7 @@ class Lexer:
         out = []
         stack = [0]
         depth = 0
+        open_brackets = []     # the open brackets, innermost last
         stmt_indent = 0
         prev_last = None       # last token of the current logical line
         prev_toks = None       # all tokens of the previous physical line (a `property` header may be followed by accessors)
@@ -814,6 +861,14 @@ class Lexer:
                     is_cont = True
             if is_cont:
                 first.bol = True
+                # Expanded form: inside `( ... )`, a line break after a complete item
+                # that is followed by the start of a new item separates the two items
+                # as if a comma stood there.  `-` followed by a space continues the
+                # line above (subtraction); `-b` starts a new item (negation).
+                if depth > 0 and open_brackets and open_brackets[-1] == "(" and prev_last is not None \
+                        and _item_ends(prev_last) and _item_starts(toks) and not _item_has_fn(out) \
+                        and not (prev_last.kind == "NAME" and len(out) > 1 and out[-2].kind == "OP" and out[-2].val == "."):
+                    out.append(Tok("OP", ",", first.line, 1))
                 if depth == 0 and first.kind == "OP" and (first.val in CONT_STARTERS or first.val == "."):
                     while len(stack) > 1 and stack[-1] > stmt_indent:
                         stack.pop()
@@ -840,8 +895,11 @@ class Lexer:
                 if t.kind == "OP":
                     if t.val in ("(", "[", "{"):
                         depth += 1
+                        open_brackets.append(t.val)
                     elif t.val in (")", "]", "}"):
                         depth -= 1
+                        if open_brackets:
+                            open_brackets.pop()
                 out.append(t)
             have_line = True
             last = toks[-1]
