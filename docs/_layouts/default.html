@@ -180,7 +180,7 @@ html,body{overscroll-behavior-x:none}
   });
   if (window.self !== window.top) return;   // a frame inside the flow shows a page; it must not touch the history
   if (!sec) return;                          // Tutorial, Style, Try, REPL, Help: not part of the history
-  var KEY = 'moxie-nav-' + (GC ? 'gc' : 'moxie'), MAX = 20, S = { l: [], i: -1 };
+  var KEY = 'moxie-nav-' + (GC ? 'gc' : 'moxie'), MAX = 12, S = { l: [], i: -1 };
   try { var raw = JSON.parse(sessionStorage.getItem(KEY) || 'null'); if (raw && raw.l) S = raw; } catch (e) {}
   var pathOf = function (u) { return u.split('#')[0]; }, hashOf = function (u) { return u.indexOf('#') < 0 ? '' : u.slice(u.indexOf('#')); };
   var heading = function () {
