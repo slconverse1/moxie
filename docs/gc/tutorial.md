@@ -6,7 +6,7 @@ gcmarks: true
 dialect: gc
 title: "moxie/gc Tutorial"
 ---
-# MOXIE/GC TUTORIAL: build a gradebook
+# MOXIE/GC TUTORIAL
 
 This tutorial grows one small program, a gradebook, a step at a time. Each step adds a few lines to the same file and shows what it prints, so by the end you will have used values, functions, data, patterns, collections, errors, generics, concurrency, and tests. You don't need to know any functional programming. If you do, the notes will tell you where moxie differs from what you expect.
 
