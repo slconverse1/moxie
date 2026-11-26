@@ -485,6 +485,8 @@ html,body{overscroll-behavior-x:none}
     var hs = document.querySelectorAll('main h2[id]');
     if (!hs.length) return;                     // no outline; the History block stays
     ul = document.createElement('ul');
+    var top1 = document.querySelector('main h1');   // the page's title heads its own outline
+    if (top1) { var tl = document.createElement('li'), ta1 = document.createElement('a'); ta1.href = '#'; ta1.textContent = top1.textContent.replace(/\s*#\s*$/, '').trim(); tl.className = 'back'; tl.appendChild(ta1); ul.appendChild(tl); }
     hs.forEach(function (h) {
       var li = document.createElement('li'), a = document.createElement('a');
       if (/^\d+[a-z]\./.test(h.textContent.trim())) li.className = 'sub';

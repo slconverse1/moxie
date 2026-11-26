@@ -100,6 +100,7 @@ def build(gc):
     dia = ("dialect: gc\n" if gc else "") + "learn: true\n"
     # the sidebar: one list per dialect, in docs/_includes, shared by every lesson page
     nav = ["<ul>"]
+    nav.append(f'<li class="back"><a href="index.html">{"MOXIE/GC" if gc else "MOXIE"} MIXER’S GUIDE</a></li>')
     k = 0
     for p, ls in parts:
         nav.append(f'<li class="part">{p}</li>')

@@ -10,7 +10,7 @@ title: "Moxie"
 
 Allow us to introduce you to moxie.
 
-First, plainly: moxie is a language **design**, a complete specification with a working reference interpreter, and not yet a production compiler. Everything below describes the design.
+First, plainly: moxie is a language **design**, a complete specification with a working reference interpreter but not yet a production compiler. Everything below describes the design.
 
 Moxie is a (mostly) compile-time type-safe, highly expressive, practical functional programming language designed for **fast compilation and fast execution (FCFX)**. Its context-free grammar can be parsed and type-checked in a single pass, so compiles are fast, and the burdensome build times of other languages become somebody else's problem. Where the compiler can't verify a type, it says so with a warning and shows how to write the code so the check happens at compile time instead of at run time (see the Spec, section 24a).
 
