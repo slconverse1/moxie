@@ -119,3 +119,5 @@ The helpers are ordinary typed prelude functions. The existing `${expr:spec}` an
 
 
 **Decided (2026-11-26, later).** The multi-line strict form is removed: a call or parameter list that runs over several lines takes one item per line, with no commas (the lexer reports it). One-line lists keep their commas. The spec's function descriptions use strict form for one or two parameters and free form for three or more. Pipelines stay strict form. Multi-line `[ ]` lists still use commas, which is open.
+
+**Decided (2026-11-26, later still).** Square brackets `[ ]` hold type parameters and type arguments, never values (`[1, 2]` is an error). A multi-line `[ ]` list is free form, as `( )` is. If any part of a declaration or call runs over several lines, every bracket group in it is free form; one line keeps strict form throughout. Not yet enforced by the lexer.
