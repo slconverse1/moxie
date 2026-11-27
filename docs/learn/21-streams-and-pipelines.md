@@ -15,7 +15,13 @@ A *stream* is a sequence of values produced one at a time. Instead of writing a 
 A pipeline has a **source**, some **stages**, and a **terminal**, joined with `|>`:
 
 ```moxie
-numbers = List(1, 2, 3, 4, 5, 6)
+numbers = List
+  1
+  2
+  3
+  4
+  5
+  6
 result = numbers
   |> filter(_ % 2 == 0)
   |> map(_ * 10)

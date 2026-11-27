@@ -142,7 +142,10 @@ fn handle_light(light TrafficLight) Unit
     "green" ->  println("Go")
     else println("Unknown state")
 
-colors = Array("red", "yellow", "green")
+colors = Array
+  "red"
+  "yellow"
+  "green"
 for color in colors
   light = TrafficLight(color)
   handle_light(light)
@@ -609,7 +612,10 @@ fn add(x Int, y Int) Int = x + y
 fn total(base Int, numbers ...Int) Int
   numbers |> reduce(base, _1 + _2)
 pair = (3, 5)
-values = Array(10, 20, 30)
+values = Array
+  10
+  20
+  30
 print("${add(...pair)} ${total(100, 1, 2, 3)} ${total(100, ...values)} ")
 println("${total(100)}")
 fn describe(xs Array[Int][3]) String
@@ -1042,7 +1048,11 @@ An `Err` instead of an `Ok` ends the stream, and this one never returns an `Err`
 **Container comprehensions.** `List`, `Set`, and `Dict` each have one, with one `if` filter allowed and no nested `for`. **[gc]** The container grows as needed, so the declared type needs no size:
 
 ```
-xs = List(1, 2, 3, 4)
+xs = List
+  1
+  2
+  3
+  4
 squares List[Int] = List(x * x for x in xs if x > 1)
 words = List("ab", "cde")
 lens Dict[String, Int] = Dict(w -> len(w) for w in words)
@@ -1277,7 +1287,10 @@ You already know the toolbox. Here's how it looks in moxie.
 **Values don't change, and old versions stay valid:**
 
 ```
-old = List(1, 2, 3)
+old = List
+  1
+  2
+  3
 new = old + 4
 println("${len(old)} ${len(new)}")
 ```
@@ -1579,7 +1592,12 @@ foreign "c"
     size UInt = size_of(base)
     cmp (Ptr[Int32], Ptr[Int32]) -> Int32
   )
-xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)
+xs = Array
+  5i32
+  3i32
+  9i32
+  1i32
+  7i32
 qsort(ref xs, (a, b) -> a - b)
 println(xs)
 ```

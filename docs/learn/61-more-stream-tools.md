@@ -15,7 +15,12 @@ Lesson 25 covered the common stages. This lesson covers the rest of the toolbox:
 `distinct()` drops repeats and keeps the first of each. `intersperse(x)` puts a separator between elements, `min_by(f)` and `max_by(f)` pick by a measure and return a `Result`, and `span(pred)` splits at the first element that fails the test:
 
 ```moxie
-words = List("pear", "fig", "banana", "fig", "kiwi")
+words = List
+  "pear"
+  "fig"
+  "banana"
+  "fig"
+  "kiwi"
 println(words |> distinct() |> collect())
 joined = words
   |> distinct()

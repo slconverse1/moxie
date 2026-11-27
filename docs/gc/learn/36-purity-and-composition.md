@@ -16,7 +16,10 @@ Moxie's functional features are ordinary code on top of a few language features:
 Every update gives a *new* value, and a name is rebound, never mutated. The old value stays valid:
 
 ```moxie
-old = List(1, 2, 3)
+old = List
+  1
+  2
+  3
 new = old + 4
 println("${len(old)} ${len(new)}")
 println(old)

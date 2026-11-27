@@ -15,7 +15,10 @@ If you come from C, Java, Python, or JavaScript, most habits carry over, and a f
 A loop's rebindings don't leave it (lesson 9), so fold with a stream:
 
 ```moxie
-xs = List(1, 2, 3)
+xs = List
+  1
+  2
+  3
 total = xs |> reduce(0, _1 + _2)
 println(total)
 ```

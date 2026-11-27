@@ -14,7 +14,12 @@ In moxie a collection doesn't have to be turned into a stream before you can run
 ## Start from the collection
 
 ```moxie
-names = List("mina", "lee", "ana", "zoe", "bo")
+names = List
+  "mina"
+  "lee"
+  "ana"
+  "zoe"
+  "bo"
 result = names
   |> filter((n) -> len(n) > 2)
   |> map(upper(_))
