@@ -872,7 +872,9 @@ class Lexer:
                 if depth > 0 and open_brackets and open_brackets[-1] == "(" and prev_last is not None \
                         and _item_ends(prev_last) and _item_starts(toks) and not _item_has_fn(out) \
                         and not (prev_last.kind == "NAME" and len(out) > 1 and out[-2].kind == "OP" and out[-2].val == "."):
-                    out.append(Tok("OP", ",", first.line, 1))
+                    virtual = Tok("OP", ",", first.line, 1)
+                    virtual.extra = "virtual"           # free form's own separator, not a written comma
+                    out.append(virtual)
                 if depth == 0 and first.kind == "OP" and (first.val in CONT_STARTERS or first.val == "."):
                     while len(stack) > 1 and stack[-1] > stmt_indent:
                         stack.pop()
@@ -905,10 +907,6 @@ class Lexer:
                         if open_brackets:
                             open_brackets.pop()
                 out.append(t)
-            last = toks[-1]
-            if last.kind == "OP" and last.val == "," and open_brackets and open_brackets[-1] in ("(", "["):
-                raise MoxieSyntaxError("a call or parameter list that runs over several lines takes one item per line, "
-                                       "with no commas: write each item on its own line", last.line, last.col, self.file)
             have_line = True
             last = toks[-1]
             prev_last = last
@@ -919,7 +917,32 @@ class Lexer:
             stack.pop()
             out.append(Tok("DEDENT", None, self.line, 1))
         out.append(Tok("EOF", None, self.line, 1))
+        _check_strict_groups(out, self.file)
         return out
+
+
+def _check_strict_groups(out, file):
+    """A call or parameter list that runs over several lines takes one item per line with no commas.  A written comma
+    directly inside such a group is an error; the free form's own separators, and tuple and array literals, are not
+    checked."""
+    stack, closed, written = [], {}, []
+    for i, t in enumerate(out):
+        if t.kind != "OP":
+            continue
+        if t.val in ("(", "[", "{"):
+            stack.append(i)
+        elif t.val in (")", "]", "}"):
+            if stack:
+                closed[stack.pop()] = i
+        elif t.val == "," and t.extra != "virtual" and stack:
+            written.append((t, stack[-1]))
+    for t, o in written:
+        c = closed.get(o)
+        before = out[o - 1] if o > 0 else None          # a call or parameter list follows a name, `]` or `)`
+        is_call = before is not None and (before.kind == "NAME" or (before.kind == "OP" and before.val in ("]", ")")))
+        if out[o].val in ("(", "[") and is_call and c is not None and out[o].line != out[c].line:
+            raise MoxieSyntaxError("a call or parameter list that runs over several lines takes one item per line, "
+                                   "with no commas: write each item on its own line", t.line, t.col, file)
 
 
 def tokenize(src, file="<input>"):
