@@ -17,6 +17,8 @@ CASES = [
  ("if header still takes its body", 'ok = true\nif ok\n  println("yes")\n', 0, "yes"),
  ("wait block is not a call", 'wait\n  println("body")\n', 0, "body"),
  ("a zero-argument call keeps its parentheses in block form", 'fn two() Int\n  7\nprintln\n  two()\n', 0, "7"),
+ ("a block with its other arguments on the call line", 'fn section(title String, block items List[String]) String\n  title + ": " + items.join(", ")\npage = section("Fruit")\n  "apple"\n  "pear"\nprintln(page)\n', 0, "Fruit: apple, pear"),
+ ("bare call with other arguments before its block is an error", 'fn wrap(tag String, block kids List[String]) String\n  tag\nprintln\n  wrap\n    "ul"\n    "li1"\n', 2, "write them on the call's line"),
  ("a value followed by an indent is an error", 'x = 1\n  2\n', 2, "unexpected indent"),
 ]
 

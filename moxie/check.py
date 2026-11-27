@@ -6125,6 +6125,12 @@ class Checker(RefineMixin):
         if n.block is None and getattr(n, "bare", None) and n.fn.__class__ is Name and (sc is None or sc.find(n.fn.name) is None) \
                 and len(self.fns.get(n.fn.name, ())) == 1 and any(getattr(p, "block", None) for p in self.fns[n.fn.name][0].params or []) \
                 and n.args and all(a.label is None and a.mod is None for a in n.args):
+            params = self.fns[n.fn.name][0].params or []
+            if any(not getattr(p, "block", None) for p in params):
+                # every indented line is a block item, so the other arguments must go on the call's own line
+                self.err(n.line, f"`{n.fn.name}` takes arguments before its block: write them on the call's line, "
+                                 f"and only the block's items below it")
+                return
             n.block = Call(Name("List", line=n.line), [Arg(None, a.expr, None, line=n.line) for a in n.args], None, None, None, None, line=n.line)
             n.args = []
 
