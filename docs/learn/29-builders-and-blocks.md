@@ -40,9 +40,9 @@ fn html(child Html) String
 
 page = html(
   body(
-    h1("Welcome to moxie"),
+    h1("Welcome to moxie")
     ul(
-      li("fast"),
+      li("fast")
       li("small")
     )
   )

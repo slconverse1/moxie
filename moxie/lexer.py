@@ -863,7 +863,7 @@ class Lexer:
                     is_cont = True
             if is_cont:
                 first.bol = True
-                # Long form: inside `( ... )`, a line break after a complete item
+                # Free form: inside `( ... )`, a line break after a complete item
                 # that is followed by the start of a new item separates the two items
                 # as if a comma stood there.  `-` followed by a space continues the
                 # line above (subtraction); `-b` starts a new item (negation).
@@ -903,6 +903,10 @@ class Lexer:
                         if open_brackets:
                             open_brackets.pop()
                 out.append(t)
+            last = toks[-1]
+            if last.kind == "OP" and last.val == "," and open_brackets and open_brackets[-1] == "(":
+                raise MoxieSyntaxError("a call or parameter list that runs over several lines takes one item per line, "
+                                       "with no commas: write each item on its own line", last.line, last.col, self.file)
             have_line = True
             last = toks[-1]
             prev_last = last

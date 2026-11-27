@@ -11,7 +11,7 @@ In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [8. Patterns 
 
 A *tuple* groups a few values into one. It is moxie's way of making a record: a point is an `x` and a `y`, a user is a name and an age. Tuples hold values of any types, and each field has a name.
 
-Long declarations and calls can run across several lines in one of two forms. The short form separates items with commas. The long form puts one item on each line, with no commas. The examples here use the long form.
+Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form.
 
 ## An unnamed tuple
 

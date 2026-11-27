@@ -28,11 +28,11 @@ A literal byte (`0xCA`) or byte string (`b"MZ"`) must match exactly, `_` skips a
 fn describe(packet Array[Byte]) String
   when packet
     Bin(
-      0xCA,
-      version: bits(4),
-      kind: bits(4),
-      size: u16be,
-      body: bytes(size),
+      0xCA
+      version: bits(4)
+      kind: bits(4)
+      size: u16be
+      body: bytes(size)
       rest: bytes
     ) -> "v${version} k${kind} size ${size} body ${len(body)} rest ${len(rest)}"
     Bin(a: u8, b: i16le) -> "short ${a} ${b}"

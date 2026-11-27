@@ -75,7 +75,7 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Mixer’s Guide](learn/), and reference interpreter.
 
-Long declarations and calls can run across several lines in one of two forms. The short form separates items with commas. The long form puts one item on each line, with no commas. The examples here use the long form.
+Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form.
 
 ## A moxie appetizer
 
@@ -1754,17 +1754,17 @@ A short fiber can also be written inline, right where you start it. The full for
 ```
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
-// short form: parameter tx gets the variable tx
+// strict form: parameter tx gets the variable tx
 go fn (tx)
-  \write(tx, "short form")
+  \write(tx, "strict form")
 // full form: arguments, then parameters
-go fn ("long form", tx2)(msg, out)
+go fn ("free form", tx2)(msg, out)
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
 ```
 
-Output: `short form`, then `long form`. A literal or any other expression needs the full form.
+Output: `strict form`, then `free form`. A literal or any other expression needs the full form.
 
 Here's what you don't need: no `async`/`await` keywords, no IO monad to thread through your code, no executor or thread pool to configure, no locks, and no promises to chain. To wait for a fiber, just read from a channel it writes to.
 

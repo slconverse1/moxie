@@ -15,8 +15,8 @@ tuple Config
   port Int,
   limits Limits
 base = Config(
-  host: "localhost",
-  port: 80,
+  host: "localhost"
+  port: 80
   limits: Limits(retries: 3, timeout: 30)
 )
 label = base.do
@@ -49,8 +49,8 @@ tuple Config
   port Int,
   limits Limits
 base = Config(
-  host: "localhost",
-  port: 80,
+  host: "localhost"
+  port: 80
   limits: Limits(retries: 3, timeout: 30)
 )
 fn apply(base Config, change Config.() -> Config) Config
@@ -73,8 +73,8 @@ tuple Config
   port Int,
   limits Limits
 base = Config(
-  host: "localhost",
-  port: 80,
+  host: "localhost"
+  port: 80
   limits: Limits(retries: 3, timeout: 30)
 )
 fn apply(base Config, change Config.() -> Config) Config
