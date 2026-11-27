@@ -16,6 +16,7 @@ CASES = [
  ("block parameter on the right of =", LUNCH + 'menu = lunch\n  "soup"\n  "bread"\nprintln(menu)\n', 0, "soup, bread"),
  ("if header still takes its body", 'ok = true\nif ok\n  println("yes")\n', 0, "yes"),
  ("wait block is not a call", 'wait\n  println("body")\n', 0, "body"),
+ ("a zero-argument call keeps its parentheses in block form", 'fn two() Int\n  7\nprintln\n  two()\n', 0, "7"),
  ("a value followed by an indent is an error", 'x = 1\n  2\n', 2, "unexpected indent"),
 ]
 
