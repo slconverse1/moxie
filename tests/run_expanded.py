@@ -20,7 +20,7 @@ CASES = [
  ("a leading -b starts a new item (negation)", PAIR + 'println(pair(\n  1\n  -4\n))\n', 0, "6"),
  ("two items with a comma on one line are an error", PAIR + 'println(pair(\n  1, 2\n))\n', 2, "one item per line"),
  ("a strict call with commas inside a free-form list", 'fn add(x Int, y Int) Int\n  x + y\n' + PAIR + 'println(pair(\n  add(4, 1)\n  2\n))\n', 0, "52"),
- ("a tuple may mix the two forms", 't = (\n  1, 2\n  3\n)\nprintln(t)\n', 0, "(1, 2, 3)"),
+ ("a strict call as a field of a free-form tuple", 'fn area(w Int, h Int) Int\n  w * h\np = (\n  name: "ann"\n  size: area(2, 3)\n)\nprintln(p.size)\n', 0, "6"),
  ("a multi-line array literal may use commas", 'grid = (\n  1, 2 ;\n  3, 4\n)\nprintln(grid(1, 0))\n', 0, "3"),
  ("one item per line, last item before )", PAIR + 'println(pair(\n  1\n  2\n))\n', 0, "12"),
  ("two items on one line are an error", PAIR + 'println(pair(\n  1\n  2 3\n))\n', 2, "expected ')'"),
