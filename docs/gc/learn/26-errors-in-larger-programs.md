@@ -148,7 +148,11 @@ fn flaky() Result[Int, String]
   when k < 3
     true -> Err("not yet")
     false -> Ok(k)
-println(retry(5, 1ms, flaky))
+println
+  retry
+    5
+    1ms
+    flaky
 println(@tries)
 ```
 **Output:**

@@ -100,7 +100,10 @@ Like everything else, arrays don't change in place. `set` gives back a new array
 
 ```moxie
 numbers Array[Int] = (10, 20, 30)
-changed = set(numbers, 1, 99)
+changed = set
+  numbers
+  1
+  99
 println(changed)
 println(numbers)
 numbers(0) += 1

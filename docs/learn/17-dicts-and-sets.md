@@ -56,8 +56,16 @@ In `ages("alice")` the key is a string. To look up with a variable, write its na
 ages = Dict("alice" -> 30, "bob" -> 25)
 who = "bob"
 println(ages(who))
-println(get_or(ages, "dave", 0))
-println(get_or(ages, "bob", 0))
+println
+  get_or
+    ages
+    "dave"
+    0
+println
+  get_or
+    ages
+    "bob"
+    0
 ```
 **Output:**
 
@@ -111,7 +119,11 @@ Dict("alice" -> 31, "bob" -> 25, "carol" -> 41, "dave" -> 7)
 
 ```moxie
 ages = Dict[String, Int][4]("alice" -> 30, "bob" -> 25)
-println(put(ages, "carol", 41))
+println
+  put
+    ages
+    "carol"
+    41
 println(remove(ages, "bob"))
 ```
 **Output:**

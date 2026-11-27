@@ -82,8 +82,16 @@ fn apply(op Op, k Int, n Int) Int
     Add -> n + k
     Mul -> n * k
 
-println(apply(Add, 3, 10))
-println(apply(Mul, 3, 10))
+println
+  apply
+    Add
+    3
+    10
+println
+  apply
+    Mul
+    3
+    10
 ```
 **Output:**
 

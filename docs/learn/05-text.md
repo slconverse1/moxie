@@ -75,7 +75,11 @@ The spec reads `[[fill]align][sign][#][0][width][,][.precision][type]`. Align is
 If you prefer to write the template apart from its values, `fmt` takes `{}` fields:
 
 ```moxie
-println(fmt("{:>8.2f} | {:<5}|", 12.5, "Ann"))
+println
+  fmt
+    "{:>8.2f} | {:<5}|"
+    12.5
+    "Ann"
 ```
 **Output:**
 
@@ -143,7 +147,11 @@ s = "hello, world"
 println(contains(s, "lo, w"))
 println(starts_with(s, "he"))
 println(ends_with(s, "ld"))
-println(replace_text(s, "o", "0"))
+println
+  replace_text
+    s
+    "o"
+    "0"
 ```
 **Output:**
 

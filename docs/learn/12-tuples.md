@@ -10,7 +10,7 @@ In the Spec: [6. Tuples, enums, aliases, unions](../spec.html#s6), [8. Patterns 
 
 A *tuple* groups a few values into one. It is moxie's way of making a record: a point is an `x` and a `y`, a user is a name and an age. Tuples hold values of any types, and each field has a name.
 
-Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form. The free form does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict form. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict form, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
+Long declarations and calls can run across several lines in one of two forms. The strict style separates items with commas. The free style puts one item on each line, with no commas. The examples here use the free style. The free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict style. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict style, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
 
 ## An unnamed tuple
 

@@ -215,7 +215,10 @@ fn charge[M Mailer](ref mailer M, user_id Int, amount Int) Int
   ref mailer.notify(user_id, amount - fee)
   fee
 mock = FakeMailer(calls: 0, last_user: 0)
-fee = charge(ref mock, 7, 500)
+fee = charge
+  ref mock
+  7
+  500
 println("$fee ${mock.calls} ${mock.last_user}")
 ```
 **Output:**

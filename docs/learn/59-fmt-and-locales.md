@@ -17,7 +17,11 @@ A template that is written apart from its values uses `fmt`. Each `{}` or `{:spe
 ```moxie
 price = 12.5
 name = "Ann"
-println(fmt("{:>8.2f} | {:<5}|", price, name))
+println
+  fmt
+    "{:>8.2f} | {:<5}|"
+    price
+    name
 println(fmt("{{braces}} {}", 7))
 ```
 **Output:**
@@ -46,7 +50,11 @@ For a template that comes from data, such as a message loaded from a file, use `
 
 ```moxie
 template = "{:>6}|{:.1f}"
-println(try_fmt(template, "ab", 3.14159))
+println
+  try_fmt
+    template
+    "ab"
+    3.14159
 println(try_fmt(template, "ab"))
 ```
 **Output:**
@@ -94,7 +102,11 @@ t = 1793836800s
 d = to_utc(t)
 println(format_time(d, "%A, %d. %B %Y"))
 println(format_time(d, "%x"))
-println(format_time(d, "%x", Locale.fr_fr))
+println
+  format_time
+    d
+    "%x"
+    Locale.fr_fr
 ```
 **Output:**
 

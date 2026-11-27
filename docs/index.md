@@ -73,7 +73,59 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers”—its life force. Alongside this page you'll find the Moxie Spec, the Mixer’s Guide, the reference interpreter, and a set of sample programs. The interpreter is plain Python 3, so to run a sample you unzip moxie.zip and type `python3 -m moxie run hello.mxi`.
 
-Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form. The free form does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict form. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict form, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
+Long declarations, calls, and collections can be written in one of two styles. Strict style puts a list on one line, inside parentheses, with commas between the items. Free style has no brackets and no commas: each item goes on its own line, indented under the name it belongs to. Free style exists to get rid of parentheses. Every nested call normally needs a pair of them, and the pairs have to match, but in free style the indentation does that job instead. Here is a nested call written in free style, with no parentheses at all:
+
+```
+fn area(w Int, h Int) Int
+  w * h
+
+fn scale(n Int, k Int) Int
+  n * k
+
+println
+  scale
+    area
+      2
+      3
+    10
+```
+
+Output: `60`. In strict style the same line is `println(scale(area(2, 3), 10))`, which needs three pairs of parentheses to match. Free style needs none.
+
+Free style can be used in these places:
+
+- **Calls.** The name stands alone and each argument is indented under it. Named arguments work the same way: `greet` on one line, then `"Ada"`, then `greeting: "Hi"`, each indented under it.
+- **Collections.** `List`, `Array`, `Set`, `Dict`, and tuples all have a free style. Here is a list of three lists:
+
+```
+groups = List
+  List
+    1
+    2
+  List
+    3
+    4
+  List
+    5
+println(groups)
+```
+
+Output: `List(List(1, 2), List(3, 4), List(5))`.
+
+- **Declarations.** A declaration keeps one pair of parentheses around its parameters, with one parameter to a line, and its return type after the closing `)`:
+
+```
+fn box_volume(
+  w Int
+  h Int
+  d Int
+) Int
+  w * h * d
+```
+
+The signatures later in this section keep strict style, as explained there.
+
+Free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A `Bin(...)` pattern keeps its brackets. A call with a placeholder argument, such as `_ + 1`, stays strict, because the placeholder has to sit inside the call's parentheses. A trailing function is always strict, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call with one or two arguments, such as `add(4, 1)`, is usually written in strict style, as most of the short calls in these pages are.
 
 ## A moxie appetizer
 
@@ -173,7 +225,7 @@ fn name[generics](parameters) ReturnType
   body
 ```
 
-The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then the body, indented on the lines below. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations:
+The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then the body, indented on the lines below. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations. They use strict style, with each parameter list on one line, because strict style is the form our function descriptions use, whatever the number of parameters:
 
 ```
 fn add(x Int, y Int) Int
@@ -447,8 +499,14 @@ Integer overflow aborts instead of silently wrapping, unless you ask for `wrappi
 A path like `/User/firm/name` names a spot inside nested tuples, and it's an ordinary function, so you can store it, pass it, and compose it:
 
 ```
-b = replace(a, /User/firm/name, "Acme")
-c = modify(a, /User/firm/name, (s) -> "$s Ltd")
+b = replace
+  a
+  /User/firm/name
+  "Acme"
+c = modify
+  a
+  /User/firm/name
+  (s) -> "$s Ltd"
 ```
 
 You never write the nested-copy boilerplate, and the original `a` is untouched.
@@ -1034,7 +1092,10 @@ Output: `skipped: 0`, with no "computing" line, because `x` is never read. Be aw
 
 ```
 fn fib_memo(n Int, ref seen Dict[Int, Int][100]) Int
-  known = get_or(seen, n, -1)
+  known = get_or
+    seen
+    n
+    -1
   if known >= 0
     return known
   v = if n < 2 then n else fib_memo(n - 1, ref seen) + fib_memo(n - 2, ref seen)
@@ -1441,17 +1502,17 @@ A short fiber can also be written inline, right where you start it. The full for
 ```
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
-// strict form: parameter tx gets the variable tx
+// strict style: parameter tx gets the variable tx
 go fn (tx)
-  \write(tx, "strict form")
+  \write(tx, "strict style")
 // full form: arguments, then parameters
-go fn ("free form", tx2)(msg, out)
+go fn ("free style", tx2)(msg, out)
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
 ```
 
-Output: `strict form`, then `free form`. A literal or any other expression needs the full form.
+Output: `strict style`, then `free style`. A literal or any other expression needs the full form.
 
 Here's what you don't need: no `async`/`await` keywords, no IO monad to thread through your code, no executor or thread pool to configure, no locks, and no promises to chain. To wait for a fiber, just read from a channel it writes to.
 

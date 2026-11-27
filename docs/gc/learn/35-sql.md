@@ -180,7 +180,12 @@ _ = sql(conn):
   CREATE TABLE accounts (id INTEGER, balance INTEGER)
 _ = sql(conn):
   INSERT INTO accounts VALUES (1, 100), (2, 50)
-println(transfer(conn, 1, 2, 30))
+println
+  transfer
+    conn
+    1
+    2
+    30
 bal = sql(conn):
   SELECT id, balance FROM accounts ORDER BY id
 for r in bal?

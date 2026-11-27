@@ -190,7 +190,10 @@ fn check_email(s String) Result[String, String]
     false -> Err("bad email: ${s}")
 
 fn create(name String, email String) Result[User, List[String]]
-  map_all(User, check_name(name), check_email(email))
+  map_all
+    User
+    check_name(name)
+    check_email(email)
 
 println(create("ann", "ann@x.org"))
 println(create("", "nope"))

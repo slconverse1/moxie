@@ -184,7 +184,10 @@ tuple User deriving show
   id Int
   firm Firm
 a = User(1, Firm("Initech", 2))
-b = replace(a, /User/firm/name, "Acme")
+b = replace
+  a
+  /User/firm/name
+  "Acme"
 c = modify(a, /User/firm/name, (s) -> "$s Ltd")
 println(a)
 println(b)
