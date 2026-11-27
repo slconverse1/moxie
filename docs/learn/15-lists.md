@@ -15,8 +15,16 @@ A `List` holds a sequence of values of one type. It is the collection you will u
 `List(...)` builds one. The elements must all have the same type, and the compiler works out the list's type from them:
 
 ```moxie
-primes = List(2, 3, 5, 7, 11)
-names = List("Ann", "Bo", "Cy")
+primes = List
+  2
+  3
+  5
+  7
+  11
+names = List
+  "Ann"
+  "Bo"
+  "Cy"
 println(primes)
 println(names)
 println(len(primes))

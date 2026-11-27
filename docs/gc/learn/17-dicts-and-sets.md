@@ -16,7 +16,10 @@ A `Dict` maps keys to values: names to ages, ids to records, words to counts. A 
 `Dict(...)` takes `key -> value` entries. A key is an ordinary expression, so a word is written as a string, `"alice" -> 30`, and a bare name such as `who -> 30` uses the *value* of the variable `who`:
 
 ```moxie
-ages = Dict("alice" -> 30, "bob" -> 25, "carol" -> 41)
+ages = Dict
+  "alice" -> 30
+  "bob" -> 25
+  "carol" -> 41
 println(ages)
 println(len(ages))
 ```
