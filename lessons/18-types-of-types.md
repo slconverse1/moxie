@@ -176,7 +176,10 @@ A path is a function from a `User` to the value it names, so it can be stored, p
 tuple Firm(name String, floor Int) deriving show
 tuple User(id Int, firm Firm) deriving show
 a = User(1, Firm("Initech", 2))
-b = replace(a, /User/firm/name, "Acme")
+b = replace
+  a
+  /User/firm/name
+  "Acme"
 c = modify(a, /User/firm/name, (s) -> "$s Ltd")
 println(a)
 println(b)

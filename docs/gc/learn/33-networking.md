@@ -77,7 +77,10 @@ fn handle(req http.Request) http.Response
     http.text(404, "nothing at ${req.path}")
 
 fiber fn server(l Listener, count Int) Unit
-  http.serve_n(l, count, handle)
+  http.serve_n
+    l
+    count
+    handle
 
 l = listen(0)?
 port = port_of(l)
@@ -116,7 +119,11 @@ println(read(rx, timeout: 50ms))
 fn try_read() Result[Int, Error]
   read(rx, timeout: 10ms)
 
-println(retry(3, 10ms, try_read))
+println
+  retry
+    3
+    10ms
+    try_read
 close(tx)
 ```
 **Output:**
@@ -182,8 +189,16 @@ fn check(n Int) Result[Int, String]
     false -> Ok(n)
 
 println(List(1, 2, 3, 4, 5) |> par_map(slow_double, limit: 3))
-println(par_traverse(check, List(1, 3, 5), limit: 2))
-println(par_traverse(check, List(1, 2, 3, 4, 5), limit: 5))
+println
+  par_traverse
+    check
+    List(1, 3, 5)
+    limit: 2
+println
+  par_traverse
+    check
+    List(1, 2, 3, 4, 5)
+    limit: 5
 ```
 **Output:**
 

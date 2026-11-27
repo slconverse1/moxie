@@ -109,9 +109,21 @@ fn ratio_sum(a Int, b Int, c Int) Result[Int, Error]
   x = safe_div(a, b)?
   y = safe_div(a, c)?
   Ok(x + y)
-println(ratio_sum(100, 5, 10))
-println(ratio_sum(100, 0, 10))
-println(ratio_sum(100, 5, 0))
+println
+  ratio_sum
+    100
+    5
+    10
+println
+  ratio_sum
+    100
+    0
+    10
+println
+  ratio_sum
+    100
+    5
+    0
 ```
 ```output
 Ok(30)

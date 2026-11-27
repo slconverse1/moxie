@@ -126,7 +126,12 @@ A final parameter written with `...` takes any number of arguments, which the fu
 ```moxie
 fn total(base Int, numbers ...Int) Int
   numbers |> reduce(base, _1 + _2)
-println(total(100, 1, 2, 3))
+println
+  total
+    100
+    1
+    2
+    3
 println(total(100))
 ```
 **Output:**

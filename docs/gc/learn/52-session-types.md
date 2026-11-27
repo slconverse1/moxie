@@ -134,14 +134,21 @@ fn ask(c session.Endpoint[EchoClient], n Int, total Int) Result[Int, Error]
     c2 = session.pick_left(c)?
     c3 = session.send(c2, n)?
     (r, c4) = session.recv(c3)?
-    ask(c4, n - 1, total + r)
+    ask
+      c4
+      n - 1
+      total + r
 
 fiber fn server(e session.Endpoint[EchoServer]) Result[Unit, Error]
   serve(e)
 
 c, s = session.connect[EchoClient]()
 go server(move s)
-println(ask(c, 3, 0))
+println
+  ask
+    c
+    3
+    0
 ```
 **Output:**
 
