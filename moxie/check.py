@@ -166,8 +166,8 @@ def const_eval(e, env):
         return NOCONST if any(v is NOCONST for v in vals) else fold_builtin(e.fn.name, vals)
     if c is Call and CT[0] is not None and CT[0].key_of(e.fn) is not None:
         args = [a.expr for a in e.args or []]
-        if any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
-            return NOCONST
+        if e.trailing is not None or any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
+            return NOCONST                              # a trailing lambda is an argument the fold can't evaluate
         vals = [const_eval(a, env) for a in args]
         if any(v is NOCONST for v in vals):
             return NOCONST

@@ -73,7 +73,7 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers”—its life force. Alongside this page you'll find the Moxie Spec, the Mixer’s Guide, the reference interpreter, and a set of sample programs. The interpreter is plain Python 3, so to run a sample you unzip moxie.zip and type `python3 -m moxie run hello.mxi`.
 
-Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form.
+Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form. The free form does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict form. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict form, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
 
 ## A moxie appetizer
 
@@ -760,11 +760,7 @@ Here's some of what unification buys you:
 ```
 fn fetch_sensor_data(id Int) (Float, Float, Float)
   (12.5, 45.0, 0.8)
-fn calculate_velocity(
-  x Float
-  y Float
-  z Float
-) (speed Float, angle Float)
+fn calculate_velocity(x Float, y Float, z Float) (speed Float, angle Float)
   (95.2, 14.6)
 fn update_physics(speed Float, angle Float) Unit
   println("Physics vector updated: speed $speed, angle $angle")
@@ -1168,7 +1164,7 @@ page = html
       li("small")
 ```
 
-That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing blocks, receiver blocks (`x.do` and `x.update`), named arguments and defaults, contextual `using` parameters, and user-defined operators. You can extend types you don't own by writing your own `impl` for them.
+That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing functions, receiver blocks (`x.do` and `x.update`), named arguments and defaults, contextual `using` parameters, and user-defined operators. You can extend types you don't own by writing your own `impl` for them.
 
 One thing moxie doesn't have is Kotlin's lambda-with-receiver, where a block sees an implicit parent and children register themselves as they're created. In moxie, children are returned values, not side effects. Whether we need a dedicated child-collection mechanism is still an open question.
 

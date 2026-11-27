@@ -8,7 +8,9 @@ program : { NL } { item } EOF ;
 item : decl | stmt ;
 
 # ---------------------------------------------------------------- statements
-stmt : simple { ';' simple } [ ';' ] NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | target_list [ type ] '=' compound ;
+stmt : simple { ';' simple } [ ';' ] NL | simple NL INDENT 'if' expr NL [ 'else' expr NL ] DEDENT | blockend | compound | barecall | target_list [ type ] '=' ( compound | barecall ) ;
+barecall : ident { '.' ident } NL INDENT { barearg } DEDENT ;
+barearg : [ ident ':' ] expr NL | barecall ;
 simple : base [ 'if' expr [ 'else' expr ] ] | '...' expr ;
 callblock : primary { '(' [ args ] ')' | '.' ident | '?' } '(' [ args ] ')' childblock ;
 childblock : NL INDENT { stmt } DEDENT ;
