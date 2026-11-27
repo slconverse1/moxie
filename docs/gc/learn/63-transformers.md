@@ -27,9 +27,8 @@ You write the program once, calling the class members on `M`, and choose the sta
 import fp.trans
 
 fn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]
-  M.get().flat_map((n) ->
-    if n >= limit then M.throw_error("too big") else M.put(n + 1)
-  ).flat_map((u) -> M.get())
+  step = (n Int) -> if n >= limit then M.throw_error("too big") else M.put(n + 1)
+  M.get().flat_map(step).flat_map((u) -> M.get())
 
 fn state_then_error(s Int) Result[(Int, Int), String]
   trans.run_identity(trans.run_except_t(trans.run_state_t(tick[trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, _]](5), s)))
@@ -57,8 +56,7 @@ A class member reaches through every layer above the one that provides it (`M.ge
 import fp.trans
 
 fn find_first[M[_] Monad + MonadCont](xs List[Int], want Int) M[Int]
-  M.call_cc((leave) -> xs.reduce(M.pure(-1), (acc, x) ->
-    acc.flat_map((r) -> if x == want then leave(x * 100) else M.pure(r))))
+  M.call_cc((leave) -> xs.reduce(M.pure(-1), (acc, x) -> acc.flat_map((r) -> if x == want then leave(x * 100) else M.pure(r))))
 fn begin(want Int) Int
   trans.run_identity(trans.run_cont_t(find_first[trans.ContT[trans.Identity, Int, _]](List(1, 2, 3), want), (a) -> trans.Identity.pure(a)))
 println("${begin(2)} ${begin(9)}")
@@ -81,9 +79,8 @@ import fp.trans
 type App[A] = trans.StateT[trans.ExceptT[trans.Identity, String, _], Int, A]
 
 fn tick[M[_] Monad + MonadState[Int] + MonadError[String]](limit Int) M[Int]
-  M.get().flat_map((n) ->
-    if n >= limit then M.throw_error("too big") else M.put(n + 1)
-  ).flat_map((u) -> M.get())
+  step = (n Int) -> if n >= limit then M.throw_error("too big") else M.put(n + 1)
+  M.get().flat_map(step).flat_map((u) -> M.get())
 fn begin(s Int) Result[(Int, Int), String]
   trans.run_identity(trans.run_except_t(trans.run_state_t(tick[App](5), s)))
 println("${begin(1)} ${begin(9)}")

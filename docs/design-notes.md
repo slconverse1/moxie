@@ -89,3 +89,35 @@ The decisions behind the language, kept by date. They are a record of what was d
 - `go` moves its resource arguments; a second fiber needs `clone`.
 - `moxie doc` turns `[`name`]` into a link to the item, within a page and across the pages of one run.
 - Type lambdas `[A] -> T` (2026-11-05, section 9a): anonymous or named by a generic alias, first or higher order, applied by substitution, with no recursion and no type-level matching. Full type-level programming (type-level matching and recursion) was investigated and is not built; `TYPE-LEVEL.md` in the repository gives the analysis and the recommendation.
+
+## Decisions recorded on 2026-11-26 (draft)
+
+*Implemented on fp-primer: the free form, the `;` rule, and the removal of `!`. Everything under "Proposed" is not built or in the spec yet.*
+
+- **Free form.** Inside `( ... )`, one item per line with no commas is allowed for parameters, arguments, constructors, and local-name lists. A line break ends an item when the item is complete and the next line starts a new one. A line starting with an operator, a keyword, a `.` method name, or `-` followed by a space continues the line above. A line starting with `-` directly followed by its operand starts a new item (`-b`). The open-tuple marker `...` starts a new item. The strict form (commas) is unchanged, and the two may mix in one call. Brackets `[ ]` and braces `{ }` have no free form.
+- **Formatting.** `moxie fmt` keeps the form each call was written in and never converts one to the other. In a free call, a continuation line is indented two spaces inside the line that opens the call, and a closing `)` lines up with that line. A mixed call stays mixed.
+- **Statements.** `;` may join statements anywhere inside a block. A one-line `then`, `do`, or `else` body, lambda, or arm takes one statement, so a `;` after it is an error.
+- **Negation.** `!` is not a token. `not` is the only negation.
+
+**Proposed: formatting.** Interpolation keeps one mechanism, `${expr}`. Formatting is a pipe of named steps, with no spec language inside the string:
+
+    "${price |> fixed(2) |> pad_left(8)} | ${name |> pad_right(5)}"
+
+The helpers are ordinary typed prelude functions. The existing `${expr:spec}` and `fmt` forms stay valid, so both styles work side by side. Whether the old forms are marked deprecated is open.
+
+**Proposed: grouping.** `Locale` gets a group-size field: `(3)` for thousands, and `(3, 2)` for Indian grouping, where the last size repeats. `1234567` formats as `1,234,567` under `Locale.en_us` and `12,34,567` under `Locale.en_in`.
+
+**Proposed: currency.** A currency is named in source by its ISO 4217 code, as in `|> money("USD")` and `|> money("INR")`. The code is the only identifier. `Locale` holds a table from code to display symbol: `$` for `USD` under `Locale.en_us`, and `₹` for `INR` under `Locale.en_in`. Where a symbol would be ambiguous, the locale shows a prefixed form such as `CA$`, or the code itself. Symbols are display only and never identify a currency.
+
+**Decided (2026-11-26).**
+
+- **`money` is a type with arithmetic.** A `Money` value holds an exact `Decimal` amount and its ISO code. `+` and `-` work only between two values with the same code, and a mix is a compile error when both codes are literals and an `Err` otherwise. `*` and `/` take a `Decimal` or `Int` factor. Comparisons follow the same rule as `+`. Arithmetic is exact; nothing rounds until display or an explicit `round_to`.
+- **Rounding.** Display rounds to the currency's minor units (2 for `USD`, `INR`, and `EUR`; 0 for `JPY`). A stored value is rounded only when the program asks.
+- **Helper names.** `fixed(x, places)`, `pad_left(s, width)`, `pad_right(s, width)`, `percent(x, places)`, `money(code)`. They use the spec's existing verbs and take no spec strings.
+- **`fmt` templates and `${expr:spec}`.** Not deprecated, and both stay valid. The pipe form is an addition; it is not the preferred form for simple values, which stay in the existing syntax.
+- **Placement.** Each `Locale` records whether the symbol goes before the amount and whether a space separates them. `Locale.en_us` puts `$` before with no space, `Locale.de_de` puts `€` after with a space (`1.234,50 €`), and so on.
+
+
+**Decided (2026-11-26, later).** The multi-line strict form is removed: a call or parameter list that runs over several lines takes one item per line, with no commas (the lexer reports it). One-line lists keep their commas. The spec's function descriptions use strict form for one or two parameters and free form for three or more. Pipelines stay strict form. Multi-line `[ ]` lists still use commas, which is open.
+
+**Decided (2026-11-26, later still).** Square brackets `[ ]` hold type parameters and type arguments, never values (`[1, 2]` is an error). A multi-line `[ ]` list is free form, as `( )` is. If any part of a declaration or call runs over several lines, every bracket group in it is free form; one line keeps strict form throughout. Not yet enforced by the lexer.

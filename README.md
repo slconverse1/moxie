@@ -26,6 +26,7 @@ Jump attempt (untested): a page reached by a sweep now gets its saved place in `
 History is now capped at 12 pages, down from 20. When it is full, the oldest page drops off the start of the history.
 
 Sweep: a page passed over while a key or swipe is held is now shown as the whole page once it has loaded, not as a title card. A title card was a shortened form of the page. The landing still waits for the target page to load before it settles. Each page now fills in from its top edge downward as it loads, instead of appearing all at once.
+Prelude `compose[A](fs ...(A) -> A) (A) -> A` (branch fp-primer): composes any number of functions right to left, with `compose()` as the identity. A call that mixes function types is rejected for a plain variadic function. Still open: the generic `compose` and generic variadic functions still accept mixed function types, and fail at run time instead.
 
 Type-safety round 2 (from a second mutation run, seed 7: 4,433 mutants, 75% rejected, no checker crashes): the checker now rejects a wrong-typed argument to a function with a `using` parameter, a mixed-type `List(...)` at the head of a pipeline, `for n in 1..6` loops whose variable is used as a non-Int (the variable is now an `Int`), a trailing lambda in a pipeline (`xs |> map()(x) -> x + "x"`) whose parameter was untyped, `count@1 += v` with the wrong type, and `<<`/`>>` on non-integers. Cases are in tests/run_typesafe.py. Still open: generic higher-order calls such as `call_with(add, (3, "x"))`, the value of a `do` block, and untyped pattern-clause parameters.
 

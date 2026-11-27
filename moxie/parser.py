@@ -184,9 +184,60 @@ class Parser(ExprParser):
         return s
 
     # ------------------------------------------------------------ dispatch
+    # Expanded bare calls (prototype): a statement that is a plain name followed by an indented block is a call whose
+    # arguments are the indented lines, and each of those may itself be a bare call with its own indented arguments.
+    BARE_BLOCKED = HARD | {"type", "test", "pattern", "property", "mutable", "seq", "union", "opaque", "lazy", "arm",
+                           "with", "where", "let", "tuple", "enum", "interface", "impl", "forward",
+                           "scope", "wait", "eval", "init", "daemon", "select", "do"}
+
+    def bare_head_len(self):
+        """The number of tokens in a bare call's head (`name` or `a.b.name`) when it is followed by a line break and
+        an indent, else 0."""
+        t = self.peek()
+        if t.kind != "NAME" or t.val in self.BARE_BLOCKED:
+            return 0
+        i = 1
+        while self.peek(i).kind == "OP" and self.peek(i).val == "." and self.peek(i + 1).kind == "NAME" \
+                and not self.peek(i).sp and self.peek(i + 1).val not in ("update", "do"):   # `x.update` is a receiver block
+            i += 2
+        if self.peek(i).kind == "NL" and self.peek(i + 1).kind == "INDENT":
+            return i
+        return 0
+
+    def at_bare_call(self):
+        return self.bare_head_len() > 0
+
+    def parse_bare_call(self):
+        n = self.bare_head_len()
+        t = self.peek()
+        line = t.line
+        head = Name(t.val, line=line)
+        self.next()
+        for _ in range((n - 1) // 2):
+            self.next()                          # the dot
+            nt = self.next()
+            head = Field(head, nt.val, line=nt.line)
+        self.expect_nl_indent()
+        args = []
+        while True:
+            self.skip_nl()
+            if self.peek().kind in ("DEDENT", "EOF"):
+                break
+            if self.at_bare_call():
+                args.append(Arg(None, self.parse_bare_call(), None, line=self.peek().line))
+            else:
+                args.append(self.parse_arg())
+                if self.peek().kind not in ("NL", "DEDENT", "EOF"):
+                    raise MoxieSyntaxError("each argument of a call without brackets takes a line of its own",
+                                           self.peek().line, self.peek().col, self.file)
+        self.expect_dedent()
+        return Call(head, args, None, None, None, None, bare=True, line=line)
+
     def parse_stmt_core(self, allow_decl):
         t = self.peek()
         line = t.line
+        if self.at_bare_call():                 # `println` then its arguments, indented under it
+            return ExprStmt(self.parse_bare_call(), line=line)
         if getattr(self, "collecting", 0) and t.kind == "OP" and t.val == "...":       # `...items` in a block of children
             self.next()
             return ExprStmt(Splat(self.parse_expr(), line=line), line=line)
@@ -395,7 +446,10 @@ class Parser(ExprParser):
             self.skip_nl()
             chain.append(self.next())
             self.next()                                # the `=`
-        value = self.parse_expr()
+        if op == "=" and self.at_bare_call():                  # `r =` then the arguments, indented under the name
+            value = self.parse_bare_call()
+        else:
+            value = self.parse_expr()
         if self.at_op(",") and op == "=":
             items = [(None, value, False)]
             while self.eat_op(","):

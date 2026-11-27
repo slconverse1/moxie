@@ -58,8 +58,7 @@ The log is an ordinary `List`, so it is an immutable value like any other, and e
 ```moxie
 import fp.cont
 
-safe_div = (a Int, b Int) -> cont.call_cc((leave) ->
-  if b == 0 then leave(-1) else cont.Cont.pure(a / b))
+safe_div = (a Int, b Int) -> cont.call_cc((leave) -> if b == 0 then leave(-1) else cont.Cont.pure(a / b))
 println("${cont.eval_cont(safe_div(10, 2))} ${cont.eval_cont(safe_div(1, 0))}")
 ```
 **Output:**

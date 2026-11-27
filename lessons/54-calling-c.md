@@ -44,9 +44,9 @@ An `Array` of any number type is passed as a pointer. A parameter written `n UIn
 ```moxie
 foreign "c"
   impure fn qsort(
-    ref base Array[Int32],
-    n UInt = len(base),
-    size UInt = size_of(base),
+    ref base Array[Int32]
+    n UInt = len(base)
+    size UInt = size_of(base)
     cmp (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 

@@ -561,8 +561,8 @@ class CallsMixin:
             return v, None, False
         if k is TupleV and obj.names and name in obj.names:
             f = obj.vals[obj.names.index(name)]
-            if isinstance(f, (Closure, Builtin, PartialV, ComposeV, PathV)):
-                return f, None, False
+            if isinstance(f, (Closure, Builtin, PartialV, ComposeV, PathV)) or not self.methods_of(obj, name, env):
+                return f, None, False          # a field, called with arguments: a function field is called; any other field is indexed, as in `cmp.contacts(1)`
         if k is EnumV and obj.names and name in obj.names:
             f = obj.vals[obj.names.index(name)]
             if isinstance(f, (Closure, Builtin, PartialV, ComposeV, PathV)):

@@ -39,15 +39,12 @@ fn body(children ...Html) Html
 fn html(child Html) String
   "<html>${child.text}</html>"
 
-page = html(
-  body(
-    h1("Welcome to moxie"),
-    ul(
-      li("fast"),
+page = html
+  body
+    h1("Welcome to moxie")
+    ul
+      li("fast")
       li("small")
-    )
-  )
-)
 println(page)
 ```
 **Output:**

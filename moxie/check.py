@@ -166,8 +166,8 @@ def const_eval(e, env):
         return NOCONST if any(v is NOCONST for v in vals) else fold_builtin(e.fn.name, vals)
     if c is Call and CT[0] is not None and CT[0].key_of(e.fn) is not None:
         args = [a.expr for a in e.args or []]
-        if any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
-            return NOCONST
+        if e.trailing is not None or any(a is None or getattr(a, "label", None) or getattr(a, "mod", None) for a in e.args or []):
+            return NOCONST                              # a trailing lambda is an argument the fold can't evaluate
         vals = [const_eval(a, env) for a in args]
         if any(v is NOCONST for v in vals):
             return NOCONST
@@ -650,6 +650,8 @@ class Checker(RefineMixin):
         del self.diags[mark:]
 
     def fold_binding(self, st):
+        if st.__class__ is Assign and st.value.__class__ is Call:
+            self.prep_bare(st.value, None)
         """`N = fib(10)`: a top-level binding whose value the compiler can work out is a constant (a size may use it, and a call that
         aborts is a compile error)."""
         if st.__class__ is not Assign or st.op not in (None, "", "="):
@@ -2808,7 +2810,7 @@ class Checker(RefineMixin):
         if n.op == "~" and t is not None and ((t.__class__ is str and t not in INTS) or (t.__class__ is tuple and t[0] in ("fn", "tup"))):
             self.err(n.line, f"`~` needs an integer, found `{tshow(t)}` (`~` is bitwise not; function composition is `~>`)")
             return None, None
-        if n.op == "not" or n.op == "!":
+        if n.op == "not":
             if t is not None and t != "Bool":
                 self.err(n.line, f"`not` needs a `Bool`, found `{tshow(t)}`")
             return "Bool", None
@@ -2919,7 +2921,7 @@ class Checker(RefineMixin):
         `possible` are the members the value may still be (a union holds what is left after tests), `type` a single type to give
         it (for `any`).  `not`, `and`, `or` combine the facts of their parts."""
         c = cond.__class__
-        if c is Unary and cond.op in ("not", "!"):
+        if c is Unary and cond.op == "not":
             return self.fact_set(cond.e, sc, not truth)
         if c is AndE or c is OrE:
             fa, fb = self.fact_set(cond.l, sc, truth), self.fact_set(cond.r, sc, truth)
@@ -6118,7 +6120,22 @@ class Checker(RefineMixin):
         n.args = list(n.args) + [Arg(p.name, n.block, None)]
         n.block = None
 
+    def prep_bare(self, n, sc):
+        """An expanded bare call whose callee has a `block` parameter: its indented lines are the block's children."""
+        if n.block is None and getattr(n, "bare", None) and n.fn.__class__ is Name and (sc is None or sc.find(n.fn.name) is None) \
+                and len(self.fns.get(n.fn.name, ())) == 1 and any(getattr(p, "block", None) for p in self.fns[n.fn.name][0].params or []) \
+                and n.args and all(a.label is None and a.mod is None for a in n.args):
+            params = self.fns[n.fn.name][0].params or []
+            if any(not getattr(p, "block", None) for p in params):
+                # every indented line is a block item, so the other arguments must go on the call's own line
+                self.err(n.line, f"`{n.fn.name}` takes arguments before its block: write them on the call's line, "
+                                 f"and only the block's items below it")
+                return
+            n.block = Call(Name("List", line=n.line), [Arg(None, a.expr, None, line=n.line) for a in n.args], None, None, None, None, line=n.line)
+            n.args = []
+
     def e_Call(self, n, sc, *a, **k):
+        self.prep_bare(n, sc)
         if n.block is not None:
             self.attach_block(n, sc)
         if self.unit_dims and n.fn.__class__ is Name and n.fn.name in self.UNIT_FNS and n.fn.name not in self.fns \
@@ -7956,6 +7973,14 @@ class Checker(RefineMixin):
             elif not any(tp.holes for tp in td.tparams):
                 return self.generic_tuple(td, n, args, ats), None
             return ("named", name), None
+        if name == "compose" and name not in self.fns and not extra and n.trailing is None and len(args) > 1 \
+                and all(hasattr(a, "expr") and not getattr(a, "label", None) and not getattr(a, "mod", None) for a in args):
+            # the prelude's compose[A](fs ...(A) -> A) (A) -> A: every function in the chain takes and returns the same type
+            fts = [t for t, _c in ats if t.__class__ is tuple and t and t[0] == "fn" and self.arity_known(t) and not self.has_unsettled(t)]
+            if len(fts) == len(ats) and len({(tuple(tshow(x) for x in t[1]), tshow(t[2])) for t in fts}) > 1:
+                self.err(n.line, "`compose` takes functions of one type, but these have different types: "
+                         + ", ".join(tshow(t) for t in fts) + " (a chain of functions must each take and return the same type)")
+            return None, None
         if name in self.fns and len(self.fns[name]) == 1:
             fd = self.fns[name][0]
             self.warn_list_spread(fd, n, args, ats)
@@ -8583,6 +8608,13 @@ class Checker(RefineMixin):
             return None
         bound = {}
         params = list(fd.params or [])
+        vp = next((i for i, q in enumerate(params) if q.variadic), None)
+        if vp is not None and vp == len(params) - 1 and params[vp].type.__class__ is TFn:     # `fs ...(A) -> A`: one type for all
+            fts = [t for t, _c in ats[vp:] if t.__class__ is tuple and t and t[0] == "fn" and self.arity_known(t) and not self.has_unsettled(t)]
+            if len(fts) == len(ats[vp:]) and len({(tuple(tshow(x) for x in t[1]), tshow(t[2])) for t in fts}) > 1:
+                self.err(n.line, f"`{fd.name}` takes functions of one type, but these have different types: "
+                         + ", ".join(tshow(t) for t in fts) + " (a chain of functions must each take and return the same type)")
+                return None
         for p, a, (t, _c) in zip(params, args, ats):
             tp = self.bare_tparam(fd, p.type)
             if tp is None or t is None or t == ("secret",) and False:
@@ -8828,6 +8860,11 @@ class Checker(RefineMixin):
 
     def check_call(self, fd, n, args, ats, extra):
         params = list(fd.params or [])
+        if any(p.variadic for p in params) and not extra and n.trailing is None and len(args) > 1 and all(hasattr(a, "expr") for a in args):
+            fts_ = [t for t, _c in ats if t.__class__ is tuple and t and t[0] == "fn" and self.arity_known(t) and not self.has_unsettled(t)]
+            if len(fts_) == len(ats) and len({(tuple(tshow(x) for x in t[1]), tshow(t[2])) for t in fts_}) > 1:
+                self.err(n.line, f"`{fd.name}` takes functions of one type, but these have different types: "
+                         + ", ".join(tshow(t) for t in fts_) + " (a chain of functions must each take and return the same type)")
         if extra and params and params[0].name == "self" and n.fn.__class__ is Field:
             rr = getattr(n, "ref_recv", None)
             if params[0].mod == "ref" and not rr:

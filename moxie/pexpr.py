@@ -599,6 +599,7 @@ class ExprParser(PBase):
         return e
 
     def parse_args(self):
+        open_tok = self.peek()
         self.expect_op("(")
         save = (self.no_trailing, self.stop_bol)
         self.no_trailing = False
@@ -622,6 +623,10 @@ class ExprParser(PBase):
                 break
             self.skip_nl()
         self.skip_nl()
+        close_tok = self.peek()
+        if close_tok.kind == "OP" and close_tok.val == ")" and close_tok.line != open_tok.line:
+            raise MoxieSyntaxError("a call that runs over several lines has no brackets: write the arguments on indented "
+                                   "lines under the name", open_tok.line, open_tok.col, self.file)
         self.expect_op(")", "to close the argument list")
         self.no_trailing, self.stop_bol = save
         return args

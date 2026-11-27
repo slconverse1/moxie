@@ -23,11 +23,10 @@ tuple Config
   host String,
   port Int,
   limits Limits
-base = Config(
-  host: "localhost",
-  port: 80,
+base = Config
+  host: "localhost"
+  port: 80
   limits: Limits(retries: 3, timeout: 30)
-)
 label = base.do
   "$host:$port"
 secure = base.update
@@ -59,11 +58,10 @@ tuple Config
   host String,
   port Int,
   limits Limits
-base = Config(
-  host: "localhost",
-  port: 80,
+base = Config
+  host: "localhost"
+  port: 80
   limits: Limits(retries: 3, timeout: 30)
-)
 fn apply(base Config, change Config.() -> Config) Config
   base.change()
 bumped = apply(base, () -> Config(...self, port: port + 1))
@@ -85,11 +83,10 @@ tuple Config
   host String,
   port Int,
   limits Limits
-base = Config(
-  host: "localhost",
-  port: 80,
+base = Config
+  host: "localhost"
+  port: 80
   limits: Limits(retries: 3, timeout: 30)
-)
 fn apply(base Config, change Config.() -> Config) Config
   base.change()
 again = apply(base)() -> self.update

@@ -4,7 +4,7 @@ toc: true
 terms: true
 title: "Moxie Tutorial"
 ---
-# MOXIE TUTORIAL: build a gradebook
+# MOXIE TUTORIAL
 
 This tutorial grows one small program, a gradebook, a step at a time. Each step adds a few lines to the same file and shows what it prints, so by the end you will have used values, functions, data, patterns, collections, errors, generics, concurrency, and tests. You don't need to know any functional programming. If you do, the notes will tell you where moxie differs from what you expect.
 
@@ -148,12 +148,11 @@ Student(name: "Bob", score: 86)
 ## Step 4. Many students
 
 ```moxie
-roster = List(
-  ada,
-  bob,
-  Student(name: "Cy", score: 71),
+roster = List
+  ada
+  bob
+  Student(name: "Cy", score: 71)
   Student(name: "Di", score: 58)
-)
 total = roster |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
 passing List[Student][4] = roster

@@ -143,6 +143,9 @@ fn fold_all[T Monoid](xs) T
 fn fold_map[T, M Monoid](f, xs) M
   fold_all[M](xs |> map(f) |> collect())
 
+fn compose[A](fs ...(A) -> A) (A) -> A
+  (x) -> fs |> reverse() |> reduce(x, (acc, f) -> f(acc))      // compose(f, g, h)(x) is f(g(h(x))); every function takes and returns A
+
 tuple NonEmpty[T]
   head T
   tail List[T]
