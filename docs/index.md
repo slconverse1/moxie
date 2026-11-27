@@ -73,7 +73,7 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers”—its life force. Alongside this page you'll find the Moxie Spec, the Mixer’s Guide, the reference interpreter, and a set of sample programs. The interpreter is plain Python 3, so to run a sample you unzip moxie.zip and type `python3 -m moxie run hello.mxi`.
 
-Long declarations and calls can run across several lines in one of two forms. The compact form separates items with commas. The expanded form puts one item on each line, with no commas. The examples here use the expanded form.
+Long declarations and calls can run across several lines in one of two forms. The short form separates items with commas. The long form puts one item on each line, with no commas. The examples here use the long form.
 
 ## A moxie appetizer
 

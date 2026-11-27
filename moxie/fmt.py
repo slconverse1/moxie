@@ -149,7 +149,7 @@ def _once(src, file, spacing=True):
             po = paren_open.get(ln)
             opened = by_line.get(po[0], [None])[-1] if po is not None else None
             if po is not None and po[1] == "(" and po[0] in new_of and opened is not None \
-                    and opened.kind == "OP" and opened.val == "(":     # expanded form: the bracket ends its line
+                    and opened.kind == "OP" and opened.val == "(":     # long form: the bracket ends its line
                 first = by_line[ln][0]
                 closes = first.kind == "OP" and first.val in CLOSES
                 new = new_of[po[0]] + (0 if closes else 2)

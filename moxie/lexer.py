@@ -55,7 +55,7 @@ for _k in OPS_BY_FIRST:
 DANGLING = {"+", "-", "*", "/", "%", "==", "~=", "<", ">", "<=", ">=", "=", "&", "|", "^",
             "<<", ">>", "|>", "|>>", "~>", "<$>", "<*>", "+=", "-=", "*=", "/=", "%=",
             ",", "and", "or", "not", "in", "is", "&=", "|=", "^="}
-# Words that cannot start or end an item in the expanded (comma-less) form.
+# Words that cannot start or end an item in the long (comma-less) form.
 ITEM_WORDS = {"return", "and", "or", "not", "in", "is", "if", "elif", "else", "when", "while", "for",
               "yield", "break", "continue", "fn", "do", "then", "select", "daemon", "let", "with", "of", "as"}
 ITEM_LITERALS = {"INT", "FLOAT", "DEC", "STR", "CHAR", "BYTES", "BCHAR", "HASH", "DUR"}
@@ -863,7 +863,7 @@ class Lexer:
                     is_cont = True
             if is_cont:
                 first.bol = True
-                # Expanded form: inside `( ... )`, a line break after a complete item
+                # Long form: inside `( ... )`, a line break after a complete item
                 # that is followed by the start of a new item separates the two items
                 # as if a comma stood there.  `-` followed by a space continues the
                 # line above (subtraction); `-b` starts a new item (negation).

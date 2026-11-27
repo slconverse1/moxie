@@ -92,10 +92,10 @@ The decisions behind the language, kept by date. They are a record of what was d
 
 ## Decisions recorded on 2026-11-26 (draft)
 
-*Implemented on fp-primer: the expanded form, the `;` rule, and the removal of `!`. Everything under "Proposed" is not built or in the spec yet.*
+*Implemented on fp-primer: the long form, the `;` rule, and the removal of `!`. Everything under "Proposed" is not built or in the spec yet.*
 
-- **Expanded form.** Inside `( ... )`, one item per line with no commas is allowed for parameters, arguments, constructors, and local-name lists. A line break ends an item when the item is complete and the next line starts a new one. A line starting with an operator, a keyword, a `.` method name, or `-` followed by a space continues the line above. A line starting with `-` directly followed by its operand starts a new item (`-b`). The open-tuple marker `...` starts a new item. The compact form (commas) is unchanged, and the two may mix in one call. Brackets `[ ]` and braces `{ }` have no expanded form.
-- **Formatting.** `moxie fmt` keeps the form each call was written in and never converts one to the other. In an expanded call, a continuation line is indented two spaces inside the line that opens the call, and a closing `)` lines up with that line. A mixed call stays mixed.
+- **Long form.** Inside `( ... )`, one item per line with no commas is allowed for parameters, arguments, constructors, and local-name lists. A line break ends an item when the item is complete and the next line starts a new one. A line starting with an operator, a keyword, a `.` method name, or `-` followed by a space continues the line above. A line starting with `-` directly followed by its operand starts a new item (`-b`). The open-tuple marker `...` starts a new item. The short form (commas) is unchanged, and the two may mix in one call. Brackets `[ ]` and braces `{ }` have no long form.
+- **Formatting.** `moxie fmt` keeps the form each call was written in and never converts one to the other. In a long call, a continuation line is indented two spaces inside the line that opens the call, and a closing `)` lines up with that line. A mixed call stays mixed.
 - **Statements.** `;` may join statements anywhere inside a block. A one-line `then`, `do`, or `else` body, lambda, or arm takes one statement, so a `;` after it is an error.
 - **Negation.** `!` is not a token. `not` is the only negation.
 
