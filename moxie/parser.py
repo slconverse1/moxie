@@ -190,14 +190,33 @@ class Parser(ExprParser):
                            "with", "where", "let", "tuple", "enum", "interface", "impl", "forward",
                            "scope", "wait", "eval", "init", "daemon", "select", "do"}
 
-    def at_bare_call(self):
+    def bare_head_len(self):
+        """The number of tokens in a bare call's head (`name` or `a.b.name`) when it is followed by a line break and
+        an indent, else 0."""
         t = self.peek()
-        return (t.kind == "NAME" and t.val not in self.BARE_BLOCKED and self.peek(1).kind == "NL"
-                and self.peek(2).kind == "INDENT")
+        if t.kind != "NAME" or t.val in self.BARE_BLOCKED:
+            return 0
+        i = 1
+        while self.peek(i).kind == "OP" and self.peek(i).val == "." and self.peek(i + 1).kind == "NAME" \
+                and not self.peek(i).sp and self.peek(i + 1).val not in ("update", "do"):   # `x.update` is a receiver block
+            i += 2
+        if self.peek(i).kind == "NL" and self.peek(i + 1).kind == "INDENT":
+            return i
+        return 0
+
+    def at_bare_call(self):
+        return self.bare_head_len() > 0
 
     def parse_bare_call(self):
-        t = self.next()
+        n = self.bare_head_len()
+        t = self.peek()
         line = t.line
+        head = Name(t.val, line=line)
+        self.next()
+        for _ in range((n - 1) // 2):
+            self.next()                          # the dot
+            nt = self.next()
+            head = Field(head, nt.val, line=nt.line)
         self.expect_nl_indent()
         args = []
         while True:
@@ -208,8 +227,11 @@ class Parser(ExprParser):
                 args.append(Arg(None, self.parse_bare_call(), None, line=self.peek().line))
             else:
                 args.append(self.parse_arg())
+                if self.peek().kind not in ("NL", "DEDENT", "EOF"):
+                    raise MoxieSyntaxError("each argument of a call without brackets takes a line of its own",
+                                           self.peek().line, self.peek().col, self.file)
         self.expect_dedent()
-        return Call(Name(t.val, line=line), args, None, None, None, None, bare=True, line=line)
+        return Call(head, args, None, None, None, None, bare=True, line=line)
 
     def parse_stmt_core(self, allow_decl):
         t = self.peek()

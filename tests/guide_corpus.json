@@ -891,7 +891,7 @@
  ],
  [
   1627,
-  "tuple Limits\n  retries Int,\n  timeout Int\ntuple Config\n  host String,\n  port Int,\n  limits Limits\nbase = Config(\n  host: \"localhost\"\n  port: 80\n  limits: Limits(retries: 3, timeout: 30)\n)\nlabel = base.do\n  \"$host:$port\"\nsecure = base.update\n  port: 443,\n  limits:\n    retries: & * 2\nprint(\"$label ${secure.host} ${secure.port} ${secure.limits.retries} \")\nprintln(\"${secure.limits.timeout} ${base.port}\")\n",
+  "tuple Limits\n  retries Int,\n  timeout Int\ntuple Config\n  host String,\n  port Int,\n  limits Limits\nbase = Config\n  host: \"localhost\"\n  port: 80\n  limits: Limits(retries: 3, timeout: 30)\nlabel = base.do\n  \"$host:$port\"\nsecure = base.update\n  port: 443,\n  limits:\n    retries: & * 2\nprint(\"$label ${secure.host} ${secure.port} ${secure.limits.retries} \")\nprintln(\"${secure.limits.timeout} ${base.port}\")\n",
   [
    "localhost:80 localhost 443 6 30 80"
   ]
@@ -1532,7 +1532,7 @@
  ],
  [
   3024,
-  "enum Tree[T]\n  Leaf,\n  Node(left Tree, value T, right Tree)\nfn size[T](t Tree[T]) Int\n  when t\n    Leaf -> 0\n    Node(l, _, r) -> size(l) + 1 + size(r)\nsmall = Tree.Node(\n  left: Node(left: Leaf, value: 1, right: Leaf)\n  value: 2\n  right: Node(left: Leaf, value: 3, right: Leaf)\n)\nprintln(\"${size(small)}\")\n",
+  "enum Tree[T]\n  Leaf,\n  Node(left Tree, value T, right Tree)\nfn size[T](t Tree[T]) Int\n  when t\n    Leaf -> 0\n    Node(l, _, r) -> size(l) + 1 + size(r)\nsmall = Tree.Node\n  left: Node(left: Leaf, value: 1, right: Leaf)\n  value: 2\n  right: Node(left: Leaf, value: 3, right: Leaf)\nprintln(\"${size(small)}\")\n",
   [
    "3"
   ]
@@ -1981,7 +1981,7 @@
  ],
  [
   4007,
-  "tuple Html\n  text String\ntuple Li\n  text String\nfn join[N](parts Array[Html][N]) String\n  parts |> map(_.text) |> reduce(\"\", _1 + _2)\nfn h1(text String) Html\n  Html(text: \"<h1>$text</h1>\")\nfn li(text String) Li\n  Li(text: \"<li>$text</li>\")\nfn ul(items ...Li) Html\n  inner = items |> map(_.text) |> reduce(\"\", _1 + _2)\n  Html(text: \"<ul>$inner</ul>\")\nfn body(children ...Html) Html\n  Html(text: \"<body>${join(children)}</body>\")\nfn html(child Html) String\n  \"<html>${child.text}</html>\"\npage = html(\n  body(\n    h1(\"Welcome to moxie\")\n    ul(\n      li(\"fast\")\n      li(\"small\")\n    )\n  )\n)\nprintln(page)\n",
+  "tuple Html\n  text String\ntuple Li\n  text String\nfn join[N](parts Array[Html][N]) String\n  parts |> map(_.text) |> reduce(\"\", _1 + _2)\nfn h1(text String) Html\n  Html(text: \"<h1>$text</h1>\")\nfn li(text String) Li\n  Li(text: \"<li>$text</li>\")\nfn ul(items ...Li) Html\n  inner = items |> map(_.text) |> reduce(\"\", _1 + _2)\n  Html(text: \"<ul>$inner</ul>\")\nfn body(children ...Html) Html\n  Html(text: \"<body>${join(children)}</body>\")\nfn html(child Html) String\n  \"<html>${child.text}</html>\"\npage = html\n  body\n    h1(\"Welcome to moxie\")\n    ul\n      li(\"fast\")\n      li(\"small\")\nprintln(page)\n",
   [
    "<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>"
   ]
@@ -2096,7 +2096,7 @@
  ],
  [
   4326,
-  "r1 Result[Int, Error] = Ok(1)\nr2 Result[Int, Error] = Ok(2)\nbad Result[Int, Error] = fail(9, \"bad\")\nprintln(\n  \"${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}\"\n)\n",
+  "r1 Result[Int, Error] = Ok(1)\nr2 Result[Int, Error] = Ok(2)\nbad Result[Int, Error] = fail(9, \"bad\")\nprintln\n  \"${(curry(add) <$> r1) <*> r2} ${is_err((curry(add) <$> bad) <*> r2)}\"\n",
   [
    "Ok(3) true"
   ]

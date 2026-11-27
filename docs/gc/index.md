@@ -1218,15 +1218,12 @@ Let's be clear about what DSLs are and aren't. A DSL can't alter the grammar or 
 A builder is just a set of ordinary functions, and nesting is nested calls. Variadic parameters let a parent take any number of children, and nominal tuples make it type-safe:
 
 ```
-page = html(
-  body(
+page = html
+  body
     h1("Welcome to moxie")
-    ul(
+    ul
       li("fast")
       li("small")
-    )
-  )
-)
 ```
 
 That prints `<html><body><h1>Welcome to moxie</h1><ul><li>fast</li><li>small</li></ul></body></html>`. A `ul` accepts only `Li` items, so `ul(h1("x"))` is a compile error. The rest of the toolbox is trailing blocks, receiver blocks (`x.do` and `x.update`), named arguments and defaults, contextual `using` parameters, and user-defined operators. You can extend types you don't own by writing your own `impl` for them.

@@ -32,8 +32,9 @@ def _tokens(src, file):
     a comma just before a closing bracket is not either (a broken group is written without one)."""
     toks = [(t.kind, _LINE_IN_PART.sub(r"\1)", repr(t.val)) if t.kind == "STR" else repr(t.val))
             for t in Lexer(src, file).tokenize()]
-    return [t for i, t in enumerate(toks)
-            if not (t == ("OP", "','") and i + 1 < len(toks) and toks[i + 1][1] in ("')'", "']'", "'}'"))]
+    # brackets around a call and commas between its items are layout: a call may be written with or without them
+    return [t for t in toks
+            if t[0] not in ("NL", "INDENT", "DEDENT") and (t[0] != "OP" or t[1] not in ("'('", "')'", "','"))]
 
 
 SPACED = {"==", "~=", "<=", ">=", "->", "|>", "|>>", "<$>", "<*>", "~>", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^="}
@@ -292,6 +293,19 @@ def _break(text, marks, indent):
     pieces = [(a + 1, b) for a, b in zip(cuts, cuts[1:])]   # (start, end) of each item in the original text
     if len(pieces) > 1 and text[pieces[-1][0]:pieces[-1][1]].strip() == "":   # a trailing comma is dropped
         pieces.pop()
+    if (o > 0 and text[o] == "(" and (text[o - 1].isalnum() or text[o - 1] in "_])") and not _DECL.match(text)
+            and text[c + 1:].strip() == ""):
+        # a call: the name stands alone and its arguments are indented under it, one to a line, no brackets
+        lines = [text[:o].rstrip()]
+        for a, b in pieces:
+            raw = text[a:b]
+            lead = len(raw) - len(raw.lstrip())
+            item = " " * (indent + 2) + raw.strip()
+            sub = [(i - a - lead + len(" " * (indent + 2)), ch) for i, ch in marks if a + lead <= i < b]
+            lines.extend(_break(item, sub, indent + 2))
+        if max(len(x) for x in lines) >= len(text):
+            return [text]
+        return lines
     head = text[:o + 1].rstrip()
     lines = _break(head, [(i, ch) for i, ch in marks if i <= o], indent)
     pad = " " * (indent + 2)
@@ -333,7 +347,7 @@ def _wrap(src, file):
 
 def _ast(src, file):
     try:
-        return repr(parse_program(src, file))
+        return re.sub(r"bare=(True|False|None)", "bare=?", repr(parse_program(src, file)))
     except Exception:
         return None
 

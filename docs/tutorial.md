@@ -148,12 +148,11 @@ Student(name: "Bob", score: 86)
 ## Step 4. Many students
 
 ```moxie
-roster = List(
+roster = List
   ada
   bob
   Student(name: "Cy", score: 71)
   Student(name: "Di", score: 58)
-)
 total = roster |> map((s) -> s.score) |> sum()
 println("average ${total / len(roster)}")
 passing List[Student][4] = roster
