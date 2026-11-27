@@ -1,7 +1,8 @@
 """Expanded form: inside `( ... )`, one item per line with no commas (parameters and arguments).
 A line break ends an item when the item is complete and the next line starts a new one.
 A line starting with `-` followed by a space continues the line above; `-b` starts a new item.
-The compact form (commas) is unchanged.  Run: python3 tests/run_expanded.py"""
+Commas are not allowed in a call or parameter list that runs over several lines
+(the strict form, one line with commas, is unchanged).  Run: python3 tests/run_expanded.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -13,8 +14,8 @@ CASES = [
  ("expanded parameters", AREA + 'println(area(2, 3))\n', 0, "6"),
  ("expanded arguments", AREA + 'println(area(\n  2\n  3\n))\n', 0, "6"),
  ("expanded keyword arguments", AREA + 'println(area(\n  w: 2\n  h: 3\n))\n', 0, "6"),
- ("compact form still works", AREA + 'println(area(2,\n  3))\n', 0, "6"),
- ("trailing comma with expanded items", AREA + 'println(area(\n  2,\n  3,\n))\n', 0, "6"),
+ ("compact form over several lines is an error", AREA + 'println(area(2,\n  3))\n', 2, "one item per line"),
+ ("trailing comma with expanded items is an error", AREA + 'println(area(\n  2,\n  3,\n))\n', 2, "one item per line"),
  ("a leading - with a space continues the line", ONE + 'println(one(\n  10 - 4\n))\n', 0, "6"),
  ("a leading -b starts a new item (negation)", PAIR + 'println(pair(\n  1\n  -4\n))\n', 0, "6"),
  ("one item per line, last item before )", PAIR + 'println(pair(\n  1\n  2\n))\n', 0, "12"),

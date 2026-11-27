@@ -761,8 +761,8 @@ Here's some of what unification buys you:
 fn fetch_sensor_data(id Int) (Float, Float, Float)
   (12.5, 45.0, 0.8)
 fn calculate_velocity(
-  x Float,
-  y Float,
+  x Float
+  y Float
   z Float
 ) (speed Float, angle Float)
   (95.2, 14.6)
@@ -1162,9 +1162,9 @@ A builder is just a set of ordinary functions, and nesting is nested calls. Vari
 ```
 page = html(
   body(
-    h1("Welcome to moxie"),
+    h1("Welcome to moxie")
     ul(
-      li("fast"),
+      li("fast")
       li("small")
     )
   )
@@ -1749,9 +1749,9 @@ net.connect = ["example.com:443"]
 ```
 foreign "c"
   impure fn qsort(
-    ref base Array[Int32],
-    n UInt = len(base),
-    size UInt = size_of(base),
+    ref base Array[Int32]
+    n UInt = len(base)
+    size UInt = size_of(base)
     cmp (Ptr[Int32], Ptr[Int32]) -> Int32
   )
 xs = Array(5i32, 3i32, 9i32, 1i32, 7i32)

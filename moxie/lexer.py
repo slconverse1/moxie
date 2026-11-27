@@ -100,6 +100,8 @@ def _item_starts(toks):
         return len(toks) > 1 and not toks[1].sp      # `-b` is a new item; `- b` continues
     if first.kind == "OP" and first.val == "...":
         return True                                  # the open-tuple marker: `(a Int` then `...`
+    if first.kind == "OP" and first.val == "*":
+        return len(toks) > 1 and not toks[1].sp      # a spread item: `*rest`
     return False
 
 
@@ -904,7 +906,7 @@ class Lexer:
                             open_brackets.pop()
                 out.append(t)
             last = toks[-1]
-            if last.kind == "OP" and last.val == "," and open_brackets and open_brackets[-1] == "(":
+            if last.kind == "OP" and last.val == "," and open_brackets and open_brackets[-1] in ("(", "["):
                 raise MoxieSyntaxError("a call or parameter list that runs over several lines takes one item per line, "
                                        "with no commas: write each item on its own line", last.line, last.col, self.file)
             have_line = True

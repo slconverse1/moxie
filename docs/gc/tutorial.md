@@ -155,9 +155,9 @@ Student(name: "Bob", score: 86)
 
 ```moxie
 roster = List(
-  ada,
-  bob,
-  Student(name: "Cy", score: 71),
+  ada
+  bob
+  Student(name: "Cy", score: 71)
   Student(name: "Di", score: 58)
 )
 total = roster |> map((s) -> s.score) |> sum()

@@ -28,9 +28,12 @@ def _comments(src, file):
 
 
 def _tokens(src, file):
-    """Token kinds and values; the line numbers inside string interpolations are not part of the comparison."""
-    return [(t.kind, _LINE_IN_PART.sub(r"\1)", repr(t.val)) if t.kind == "STR" else repr(t.val))
+    """Token kinds and values; the line numbers inside string interpolations are not part of the comparison, and
+    a comma just before a closing bracket is not either (a broken group is written without one)."""
+    toks = [(t.kind, _LINE_IN_PART.sub(r"\1)", repr(t.val)) if t.kind == "STR" else repr(t.val))
             for t in Lexer(src, file).tokenize()]
+    return [t for i, t in enumerate(toks)
+            if not (t == ("OP", "','") and i + 1 < len(toks) and toks[i + 1][1] in ("')'", "']'", "'}'"))]
 
 
 SPACED = {"==", "~=", "<=", ">=", "->", "|>", "|>>", "<$>", "<*>", "~>", "=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^="}
@@ -286,20 +289,16 @@ def _break(text, marks, indent):
         elif ch == "," and depth == 0:
             cuts.append(i)
     cuts.append(c)
-    pieces = []                                     # (start, end, trailing comma) in the original text
-    for a, b in zip(cuts, cuts[1:]):
-        pieces.append((a + 1, b, b < c))
-    last = pieces[-1]
-    if text[last[0]:last[1]].strip() == "" and len(pieces) > 1:       # an existing trailing comma stays
+    pieces = [(a + 1, b) for a, b in zip(cuts, cuts[1:])]   # (start, end) of each item in the original text
+    if len(pieces) > 1 and text[pieces[-1][0]:pieces[-1][1]].strip() == "":   # a trailing comma is dropped
         pieces.pop()
-        pieces[-1] = (pieces[-1][0], pieces[-1][1], True)
     head = text[:o + 1].rstrip()
     lines = _break(head, [(i, ch) for i, ch in marks if i <= o], indent)
     pad = " " * (indent + 2)
-    for a, b, comma in pieces:
+    for a, b in pieces:
         raw = text[a:b]
         lead = len(raw) - len(raw.lstrip())
-        item = pad + raw.strip() + ("," if comma else "")
+        item = pad + raw.strip()                    # free form: a broken group has no commas
         sub = [(i - a - lead + len(pad), ch) for i, ch in marks if a + lead <= i < b]
         lines.extend(_break(item, sub, indent + 2))
     tail = " " * indent + text[c:]
