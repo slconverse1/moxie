@@ -2,7 +2,7 @@
 A line break ends an item when the item is complete and the next line starts a new one.
 A line starting with `-` followed by a space continues the line above; `-b` starts a new item.
 Commas are not allowed in a call or parameter list that runs over several lines
-(the strict form, one line with commas, is unchanged).  Run: python3 tests/run_expanded.py"""
+(the strict style, one line with commas, is unchanged).  Run: python3 tests/run_expanded.py"""
 import os, subprocess, sys, tempfile
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -19,8 +19,8 @@ CASES = [
  ("a leading - with a space continues the line", ONE + 'println\n  one\n    10 - 4\n', 0, "6"),
  ("a leading -b starts a new item (negation)", PAIR + 'println\n  pair\n    1\n    -4\n', 0, "6"),
  ("two items with a comma on one line are an error", PAIR + 'println(pair(\n  1, 2\n))\n', 2, "one item per line"),
- ("a strict call with commas inside a free-form list", 'fn add(x Int, y Int) Int\n  x + y\n' + PAIR + 'println\n  pair\n    add(4, 1)\n    2\n', 0, "52"),
- ("a strict call as a field of a free-form tuple", 'fn area(w Int, h Int) Int\n  w * h\np = (\n  name: "ann"\n  size: area(2, 3)\n)\nprintln(p.size)\n', 0, "6"),
+ ("a strict call with commas inside a freestyle list", 'fn add(x Int, y Int) Int\n  x + y\n' + PAIR + 'println\n  pair\n    add(4, 1)\n    2\n', 0, "52"),
+ ("a strict call as a field of a freestyle tuple", 'fn area(w Int, h Int) Int\n  w * h\np = (\n  name: "ann"\n  size: area(2, 3)\n)\nprintln(p.size)\n', 0, "6"),
  ("a multi-line array literal may use commas", 'grid = (\n  1, 2 ;\n  3, 4\n)\nprintln(grid(1, 0))\n', 0, "3"),
  ("one item per line, last item before )", PAIR + 'println\n  pair\n    1\n    2\n', 0, "12"),
  ("two items on one line are an error", PAIR + 'println\n  pair\n    1\n    2 3\n', 2, "takes a line of its own"),

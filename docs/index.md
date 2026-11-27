@@ -73,7 +73,7 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe moxie’s “superpowers”—its life force. Alongside this page you'll find the Moxie Spec, the Mixer’s Guide, the reference interpreter, and a set of sample programs. The interpreter is plain Python 3, so to run a sample you unzip moxie.zip and type `python3 -m moxie run hello.mxi`.
 
-Long declarations and calls can run across several lines in one of two forms. The strict form separates items with commas. The free form puts one item on each line, with no commas. The examples here use the free form. The free form does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict form. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict form, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
+Long declarations and calls can run across several lines in one of two forms. The strict style separates items with commas. The freestyle puts one item on each line, with no commas. The examples here use the freestyle. The freestyle does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict style. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict style, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
 
 ## A moxie appetizer
 
@@ -1440,17 +1440,17 @@ A short fiber can also be written inline, right where you start it. The full for
 ```
 rx, tx = Chan[String][2]()
 tx2 = clone(tx)
-// strict form: parameter tx gets the variable tx
+// strict style: parameter tx gets the variable tx
 go fn (tx)
-  \write(tx, "strict form")
+  \write(tx, "strict style")
 // full form: arguments, then parameters
-go fn ("free form", tx2)(msg, out)
+go fn ("freestyle", tx2)(msg, out)
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
 ```
 
-Output: `strict form`, then `free form`. A literal or any other expression needs the full form.
+Output: `strict style`, then `freestyle`. A literal or any other expression needs the full form.
 
 Here's what you don't need: no `async`/`await` keywords, no IO monad to thread through your code, no executor or thread pool to configure, no locks, and no promises to chain. To wait for a fiber, just read from a channel it writes to.
 

@@ -153,7 +153,7 @@ def _once(src, file, spacing=True):
             po = paren_open.get(ln)
             opened = by_line.get(po[0], [None])[-1] if po is not None else None
             if po is not None and po[1] == "(" and po[0] in new_of and opened is not None \
-                    and opened.kind == "OP" and opened.val == "(":     # free form: the bracket ends its line
+                    and opened.kind == "OP" and opened.val == "(":     # freestyle: the bracket ends its line
                 first = by_line[ln][0]
                 closes = first.kind == "OP" and first.val in CLOSES
                 new = new_of[po[0]] + (0 if closes else 2)
@@ -312,7 +312,7 @@ def _break(text, marks, indent):
     for a, b in pieces:
         raw = text[a:b]
         lead = len(raw) - len(raw.lstrip())
-        item = pad + raw.strip()                    # free form: a broken group has no commas
+        item = pad + raw.strip()                    # freestyle: a broken group has no commas
         sub = [(i - a - lead + len(pad), ch) for i, ch in marks if a + lead <= i < b]
         lines.extend(_break(item, sub, indent + 2))
     tail = " " * indent + text[c:]
