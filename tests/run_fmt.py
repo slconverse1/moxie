@@ -25,7 +25,7 @@ check("blank lines: two at top level, one inside", format_source('\n\n\nx = 1\n\
       'x = 1\n\n\ny = 2\n\nfn f() Int\n  a = 1\n\n  a\n')
 check("comment follows the code level",
       format_source('fn f() Int\n    // note\n    1\n// top\nx = 2\n'), 'fn f() Int\n  // note\n  1\n// top\nx = 2\n')
-check("freestyle items indent under their call", format_source('fn f() Int\n    x = foo\n      a\n      b\n    x\n'),
+check("free style items indent under their call", format_source('fn f() Int\n    x = foo\n      a\n      b\n    x\n'),
       'fn f() Int\n  x = foo\n    a\n    b\n  x\n')
 try:
     format_source('fn f() Int\n    x = foo(a,\n            b)\n    x\n')

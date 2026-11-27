@@ -865,7 +865,7 @@ class Lexer:
                     is_cont = True
             if is_cont:
                 first.bol = True
-                # Freestyle: inside `( ... )`, a line break after a complete item
+                # Free style: inside `( ... )`, a line break after a complete item
                 # that is followed by the start of a new item separates the two items
                 # as if a comma stood there.  `-` followed by a space continues the
                 # line above (subtraction); `-b` starts a new item (negation).
@@ -873,7 +873,7 @@ class Lexer:
                         and _item_ends(prev_last) and _item_starts(toks) and not _item_has_fn(out) \
                         and not (prev_last.kind == "NAME" and len(out) > 1 and out[-2].kind == "OP" and out[-2].val == "."):
                     virtual = Tok("OP", ",", first.line, 1)
-                    virtual.extra = "virtual"           # freestyle's own separator, not a written comma
+                    virtual.extra = "virtual"           # free style's own separator, not a written comma
                     out.append(virtual)
                 if depth == 0 and first.kind == "OP" and (first.val in CONT_STARTERS or first.val == "."):
                     while len(stack) > 1 and stack[-1] > stmt_indent:
@@ -923,7 +923,7 @@ class Lexer:
 
 def _check_strict_groups(out, file):
     """A call or parameter list that runs over several lines takes one item per line with no commas.  A written comma
-    directly inside such a group is an error; the freestyle's own separators, and tuple and array literals, are not
+    directly inside such a group is an error; the free style's own separators, and tuple and array literals, are not
     checked."""
     stack, closed, written = [], {}, []
     for i, t in enumerate(out):

@@ -75,7 +75,18 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Mixer’s Guide](learn/), and reference interpreter.
 
-Long declarations and calls can run across several lines in one of two forms. The strict style separates items with commas. The freestyle puts one item on each line, with no commas. The examples here use the freestyle. The freestyle does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A call whose arguments fit on one line stays in strict style. A `Bin(...)` pattern keeps its brackets. A trailing function is always strict style, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
+Long declarations and calls can be written in one of two styles, and they differ in three ways. Strict style puts a list on one line, inside parentheses, with commas between items: `add(4, 1)`. Free style has no brackets and no commas. The name of a call stands alone, and each argument is indented beneath it on its own line:
+
+```
+println
+  add
+    4
+    1
+```
+
+A declaration keeps one pair of parentheses, with each parameter on its own line and the return type after the closing `)`.
+
+The reason for free style is to omit parentheses. Calls nest, and every nested call adds a pair of brackets that has to match. In free style the indentation does that job, so a deeply nested call reads from top to bottom like a list of values. Most of the examples in these pages use free style for calls with three or more arguments. Short calls with one or two arguments, such as `add(4, 1)`, stay in strict style. Free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A `Bin(...)` pattern keeps its brackets. A list or array literal on one line is strict. A trailing function is always strict style, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
 
 ## A moxie appetizer
 
@@ -192,7 +203,7 @@ fn name[generics](parameters) ReturnType
   body
 ```
 
-The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then the body, indented on the lines below. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations:
+The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then the body, indented on the lines below. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations. They use strict style, with each parameter list on one line, because strict style is the form our function descriptions use, whatever the number of parameters:
 
 ```
 fn add(x Int, y Int) Int
@@ -468,8 +479,14 @@ Integer overflow aborts instead of silently wrapping, unless you ask for `wrappi
 A path like `/User/firm/name` names a spot inside nested tuples, and it's an ordinary function, so you can store it, pass it, and compose it:
 
 ```
-b = replace(a, /User/firm/name, "Acme")
-c = modify(a, /User/firm/name, (s) -> "$s Ltd")
+b = replace
+  a
+  /User/firm/name
+  "Acme"
+c = modify
+  a
+  /User/firm/name
+  (s) -> "$s Ltd"
 ```
 
 You never write the nested-copy boilerplate, and the original `a` is untouched.
@@ -1056,7 +1073,10 @@ Output: `skipped: 0`, with no "computing" line, because `x` is never read. Be aw
 
 ```
 fn fib_memo(n Int, ref seen Dict[Int, Int]) Int
-  known = get_or(seen, n, -1)
+  known = get_or
+    seen
+    n
+    -1
   if known >= 0
     return known
   v = if n < 2 then n else fib_memo(n - 1, ref seen) + fib_memo(n - 2, ref seen)
@@ -1465,13 +1485,13 @@ tx2 = clone(tx)
 go fn (tx)
   \write(tx, "strict style")
 // full form: arguments, then parameters
-go fn ("freestyle", tx2)(msg, out)
+go fn ("free style", tx2)(msg, out)
   \write(out, msg)
 println(read(rx).get_or("none"))
 println(read(rx).get_or("none"))
 ```
 
-Output: `strict style`, then `freestyle`. A literal or any other expression needs the full form.
+Output: `strict style`, then `free style`. A literal or any other expression needs the full form.
 
 Here's what you don't need: no `async`/`await` keywords, no IO monad to thread through your code, no executor or thread pool to configure, no locks, and no promises to chain. To wait for a fiber, just read from a channel it writes to.
 
