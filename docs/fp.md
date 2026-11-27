@@ -179,9 +179,152 @@ The block form of `for` with `yield` comes from Scala, widened with ideas from F
 
 ## 4. Structure
 
-### Modularity {#modularity}
+### Modularity without classes {#modularity}
 
-Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but modularity: a program is built from parts that keep their insides private and show the rest of the program a small interface, so one part can be replaced without changing the others. You can have all of that without a class hierarchy, with four pieces: an [interface](#interface), `any` ([existential type](#existential-type)), lexical hiding of state (see [Closure](#closure)), and delegation with `proxy`, which forwards the methods an `impl` doesn't write to a field. There is no base class to become fragile. See *[Methods and interfaces](learn/20-interfaces.html)*, *[Properties, delegates, and proxies](learn/48-properties-delegates-proxies.html)* and *[Packages and imports](learn/27-packages.html)*.
+Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small [interface](#interface), so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below.
+
+**An [interface](#interface) is the boundary.** The code that needs a logger asks for the interface, not for a particular logger. Any type that has an `impl` of the interface can be passed in, and nothing else about it is visible. Unlike a structural system (Go, TypeScript), a type joins an interface only by an explicit `impl`, so you can always find the place where it agreed to the contract, and you can add an `impl` for a type that you didn't write.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+interface Logger
+  fn info(self, msg String) Unit
+  fn error(self, msg String) Unit
+
+tuple ConsoleLogger
+  prefix String
+impl Logger for ConsoleLogger
+  fn info(self, msg String) Unit
+    println("${self.prefix} info: $msg")
+  fn error(self, msg String) Unit
+    println("${self.prefix} ERROR: $msg")
+
+tuple QuietLogger
+  level Int
+impl Logger for QuietLogger
+  fn info(self, msg String) Unit
+    ()
+  fn error(self, msg String) Unit
+    println("error: $msg")
+
+fn save[L Logger](log L, name String) Unit
+  log.info("saving $name")
+  log.error("disk full")
+
+save(ConsoleLogger(prefix: "app"), "report")
+save(QuietLogger(level: 1), "report")
+```
+
+</details>
+
+This prints `app info: saving report`, `app ERROR: disk full`, and then `error: disk full`. `save` has no idea which logger it got, and a test can hand it a fake one.
+
+**`any` is dynamic dispatch without a hierarchy.** When you want a mixed collection, say `any Logger`. `ConsoleLogger` is not a subtype of anything. Each value is simply stored together with the way to call its `Logger` methods.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+loggers = List[any Logger][2](ConsoleLogger(prefix: "a"), QuietLogger(level: 0))
+for l in loggers
+  l.error("heterogeneous")
+```
+
+</details>
+
+This prints `a ERROR: heterogeneous` and `error: heterogeneous`.
+
+**Hiding state is lexical.** Everything in moxie is immutable, so a part's private state is either a field of its [tuple](#tuple) or something a [closure](#closure) captured, and the code outside can reach it only through the functions you hand out. A function can return a closure that keeps a private counter, and the counter has no name outside it.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+fn make_counter() () -> Int
+  hits = Atom[Int](0)
+  bump = fn () Int
+    swap(hits, (n) -> n + 1)
+  bump
+
+next = make_counter()
+next()
+next()
+println(next())
+```
+
+</details>
+
+This prints `3`.
+
+**Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+interface Logger
+  fn info(self, msg String) Unit
+  fn error(self, msg String) Unit
+
+tuple ConsoleLogger
+  prefix String
+impl Logger for ConsoleLogger
+  fn info(self, msg String) Unit
+    println("${self.prefix} info: $msg")
+  fn error(self, msg String) Unit
+    println("${self.prefix} ERROR: $msg")
+
+tuple Stamped
+  base ConsoleLogger
+impl Logger for Stamped proxy(base)
+  fn info(self, msg String) Unit
+    self.base.info("12:00 $msg")
+
+s = Stamped(base: ConsoleLogger(prefix: "t"))
+s.info("saving x")
+s.error("disk full")
+```
+
+</details>
+
+This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
+
+One thing the GC-free dialect does not do is store a [closure](#closure) that captures values inside a [tuple](#tuple) field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an [interface](#interface) and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
+
+**In moxie/gc, an object can be a record of [closures](#closure).** With a garbage collector, a closure that captures values can be stored in a [tuple](#tuple) field, so Odersky's "an object is a bundle of functions over private state" can be written directly, and the stamped version is an ordinary tuple update with `...`:
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Log
+  info (String) -> Unit
+  error (String) -> Unit
+
+fn console_log(prefix String) Log
+  info = fn (m String) Unit
+    println("$prefix info: $m")
+  error = fn (m String) Unit
+    println("$prefix ERROR: $m")
+  Log(info: info, error: error)
+
+fn stamped(base Log, time String) Log
+  info = fn (m String) Unit
+    base.info("$time $m")
+  Log(...base, info: info)
+
+lg = stamped(console_log("app"), "12:00")
+lg.info("started")
+lg.error("failed")
+```
+
+</details>
+
+This prints `app info: 12:00 started` and `app ERROR: failed`. The GC-free dialect refuses to store a [closure](#closure) that captures values inside a [tuple](#tuple), because the closure's captured values would have no owner, so the GC-free dialect uses the [interface](#interface)-and-`impl` style in its place.
+
+Packages and imports are the outer layer of the same idea. See *[Packages and imports](learn/27-packages.html)*.
 
 ### Interface {#interface}
 
@@ -203,19 +346,153 @@ A generic function is written once for many types. The compiler checks each use 
 
 A type constructor, such as `List` or `Result[_, E]`, takes a type and makes a type. A function can be generic over a type constructor, as in `fn double_in[F[_] Monad](m F[Int]) F[Int]`, and then it works for every type with that interface. A *type lambda*, such as `[A] -> Result[String, A]`, fixes any argument. Moxie takes at most one hole in an ordinary type constructor. See *[Types that compute](learn/47-types-that-compute.html)*.
 
-### Encapsulation {#encapsulation}
+### Encapsulating state without objects {#encapsulation}
 
-An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from other tools: an [opaque type](#opaque-type) protects an invariant, a closure hides its captured data, state is threaded with `ref` parameters, a [mutable block](#local-mutation) is the one place a variable is written in place, and an [existential type](#existential-type) hides the representation of parts with different state. The table below gives the tool for each need.
+An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from five other tools, and moxie has all five. [Modularity](#modularity) covered two of them, the [interface](#interface) and the [closure](#closure); this section covers the rest.
+
+**An [opaque type](#opaque-type) protects an invariant.** opaque type is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple AccountData
+  balance Double
+opaque type Account = AccountData
+
+export fn open_account(initial Double) Result[Account, Error]
+  if initial < 0
+    return Err(Error("opening balance can't be negative"))
+  Ok(Account(AccountData(initial)))
+
+export fn deposit(a Account, amount Double) Account
+  if amount > 0
+    return Account(AccountData(a.balance + amount))
+  a
+
+export fn balance(a Account) Double
+  a.balance
+
+when open_account(10.0)
+  Ok(a) -> println(balance(deposit(a, 5.0)))
+  Err(e) -> println(e.message)
+```
+
+</details>
+
+This prints `15.0`. Outside the declaring package nobody can write `Account(...)` or read `a.balance`, so a negative balance can't be built, and a "change" is always a new `Account` made by a function that you wrote.
+
+**State is threaded, and the compiler can hide the threading.** Where a functional program would use the [State monad](#state-monad), moxie lets a `ref` parameter carry the state. The callee gets a copy, rebinds it, and the final value goes back to the caller's variable, so the code reads like mutation while every value stays immutable and nothing is shared.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+fn next_id(ref counter Int) Int
+  counter += 1
+  counter
+
+fn label(name String, ref counter Int) String
+  "${name}${next_id(ref counter)}"
+
+n = 0
+a = label("tmp", ref n)
+b = label("tmp", ref n)
+println("$a $b $n")
+```
+
+</details>
+
+This prints `tmp1 tmp2 2`. When you want the state passed explicitly instead, return it with the answer, `(Int, Int)`, and bind both: `a, s1 = next(seed)`.
+
+**Local mutation gets a block of its own.** Haskell needs the `ST` [monad](#monad) and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still [pure](#purity) from outside. Moxie has a `mutable` block. Inside it, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write into the variable's storage from any depth of loop or branch, with no rebinding, no shadowing and no `@N`. The writes are guaranteed in place, so the in-place algorithms (a sieve, an in-place sort, union-find) cost what they should.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+fn running_totals(xs Array[Int][5]) Array[Int][5]
+  mutable
+    out = xs
+    total = 0
+    for i in 0..<5
+      total += xs(i)
+      out(i) = total
+    out
+
+println(running_totals(Array(3, 1, 4, 1, 5)))
+```
+
+</details>
+
+This prints `Array(3, 4, 8, 9, 14)`. The block is an expression, and its last line is the value. Containment comes from the language's other rules rather than from a type trick: `b = a` inside the block copies, values enter by copy (or by move when the old one is dead) and leave as ordinary immutable values, and a [closure](#closure) made inside takes the current values, so no mutable variable can be reached from outside. A variable keeps its declared type, an outer name is read-only unless copied in on an `in` line, and the block is [pure](#purity) from outside, so a `pure fn` may contain one. Outside a `mutable` block, an update is in place only when the old value is dead, and `moxie build --report` lists the ones that copied. The only truly shared mutable thing is the `Atom`, which holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is where state outlives a call.
+
+**An [existential](#existential-type) hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+interface Component
+  fn step(self) any Component
+  fn show(self) String
+
+tuple Counter
+  n Int
+impl Component for Counter
+  fn step(self) any Component
+    Counter(n: self.n + 1)
+  fn show(self) String
+    "count ${self.n}"
+
+tuple Blinker
+  on Bool
+impl Component for Blinker
+  fn step(self) any Component
+    Blinker(on: not self.on)
+  fn show(self) String
+    if self.on
+      return "on"
+    "off"
+
+parts = List[any Component][2](Counter(n: 0), Blinker(on: false))
+parts = parts.map((p) -> p.step())
+for p in parts
+  println(p.show())
+```
+
+</details>
+
+This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a new component of the same kind with the next state, so the list is stepped without anyone knowing which is which.
 
 | Need | Moxie's tool | Mutability |
 | --- | --- | --- |
-| Enforce a rule about a value | Opaque type with `export`ed functions | Immutable |
+| Enforce a rule about a value | opaque type with `export`ed functions | Immutable |
 | Hide a private counter or handle | A closure over an `Atom`, or a tuple field | Only the `Atom` |
-| Thread state through a pipeline | `ref` parameters, returned tuples | Immutable |
+| Thread state through a pipeline | `ref` parameters, returned tuples (State in moxie/gc) | Immutable |
 | An in-place algorithm | A `mutable` block | Local only, never visible |
 | Parts with different hidden state | `any Interface` | Immutable |
 
-See *[Naming types: aliases, opaque types, and unions](learn/18-types-of-types.html)* and *[In-place algorithms: `mutable` blocks](learn/56-mutable-blocks.html)*.
+# Moxie's Superpowers
+
+**In moxie/gc,** the [State monad](#state-monad) is ready-made as `fp.state`, which threads a state through a computation as a value:
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+import fp.state
+
+fn label(name String) state.State[Int, String]
+  eval
+    u <- state.modify((n Int) -> n + 1)
+    state.gets((n Int) -> "${name}${n}")
+println(state.traverse(List("a", "b", "c"), label).run(0))
+```
+
+</details>
+
+This prints `(List("a1", "b2", "c3"), 3)`.
 
 ### Opaque type {#opaque-type}
 
@@ -244,6 +521,58 @@ Inside a `mutable` block you can write to your own variables in place, and nothi
 ## 5. Monads and abstractions
 
 These are the names for ways of working with a value inside a container. You don't need them to use `map`, `?` or `|>>`, but they matter when you write code that works for every container, or give your own type the same abilities. See *[Functors and monads](learn/37-functors-and-monads.html)*.
+
+### Avoiding the pyramid of doom {#pyramid-of-doom}
+
+Anyone who has written code where every step can fail knows the pyramid of doom. You check the first result, and if it's good you indent and check the second, and if that's good you indent again, until the real work sits at the far right of the screen under a stack of closing brackets. Every level has its own "what if this failed?" branch, and the branches all say the same thing.
+
+Here's that shape in moxie, with three lookups that each return a `Result`:
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+fn pay_nested(id Int) Result[Int, Error]
+  when find_user(id)
+    Err(e) -> Err(e)
+    Ok(user) ->
+      when find_rate(user)
+        Err(e) -> Err(e)
+        Ok(rate) ->
+          when find_hours(user)
+            Err(e) -> Err(e)
+            Ok(hours) -> Ok(rate * hours)
+```
+
+</details>
+
+It works, but it's the pyramid. Moxie gives you several ways to flatten it, and they all keep the compiler's checking:
+
+- **`?` hands the failure back for you.** A `?` after a call means "if this failed, return the error to my caller; otherwise give me the value." The same function becomes four flat lines, and every error still reaches the caller:
+
+  ```
+  fn pay_flat(id Int) [Result](#result)[Int, Error]
+    user = find_user(id)?
+    rate = find_rate(user)?
+    hours = find_hours(user)?
+    Ok(rate * hours)
+  ```
+
+- **Let-else is a guard clause for a pattern.** When the value has to have a particular shape, `Active(_, rank) = acct else fail(7, "account closed")` binds the pieces and bails out on the spot if the shape is wrong, so the rest of the function stays at the left margin (see [Expression](#expression)).
+- **A `for` comprehension chains steps that depend on each other.** Each line can use the names bound above it, and the first failure ends the chain:
+
+  ```
+  fn pay_for(id Int) [Result](#result)[Int, Error]
+    for
+      user in find_user(id)
+      and rate in find_rate(user)
+      and hours in find_hours(user)
+      yield rate * hours
+  ```
+
+- **`|>>` does the same with a pipeline** when each step needs only the result of the one before it, and an early `return` or a trailing `if` (`return fail(1, "negative") if n < 0`) handles the simple guards.
+
+All three versions give `Ok(400)` for a good id, and for a bad id they all give the same `Err` from the failing lookup. The checking didn't go anywhere. You just don't have to write it out at every level.
 
 ### Functor {#functor}
 
