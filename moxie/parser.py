@@ -424,7 +424,10 @@ class Parser(ExprParser):
             self.skip_nl()
             chain.append(self.next())
             self.next()                                # the `=`
-        value = self.parse_expr()
+        if op == "=" and self.at_bare_call():                  # `r =` then the arguments, indented under the name
+            value = self.parse_bare_call()
+        else:
+            value = self.parse_expr()
         if self.at_op(",") and op == "=":
             items = [(None, value, False)]
             while self.eat_op(","):

@@ -650,6 +650,8 @@ class Checker(RefineMixin):
         del self.diags[mark:]
 
     def fold_binding(self, st):
+        if st.__class__ is Assign and st.value.__class__ is Call:
+            self.prep_bare(st.value, None)
         """`N = fib(10)`: a top-level binding whose value the compiler can work out is a constant (a size may use it, and a call that
         aborts is a compile error)."""
         if st.__class__ is not Assign or st.op not in (None, "", "="):
@@ -6118,13 +6120,16 @@ class Checker(RefineMixin):
         n.args = list(n.args) + [Arg(p.name, n.block, None)]
         n.block = None
 
-    def e_Call(self, n, sc, *a, **k):
-        if n.block is None and getattr(n, "bare", None) and n.fn.__class__ is Name and sc.find(n.fn.name) is None \
+    def prep_bare(self, n, sc):
+        """An expanded bare call whose callee has a `block` parameter: its indented lines are the block's children."""
+        if n.block is None and getattr(n, "bare", None) and n.fn.__class__ is Name and (sc is None or sc.find(n.fn.name) is None) \
                 and len(self.fns.get(n.fn.name, ())) == 1 and any(getattr(p, "block", None) for p in self.fns[n.fn.name][0].params or []) \
                 and n.args and all(a.label is None and a.mod is None for a in n.args):
-            # an expanded bare call whose callee has a `block` parameter: its indented lines are the block's children
             n.block = Call(Name("List", line=n.line), [Arg(None, a.expr, None, line=n.line) for a in n.args], None, None, None, None, line=n.line)
             n.args = []
+
+    def e_Call(self, n, sc, *a, **k):
+        self.prep_bare(n, sc)
         if n.block is not None:
             self.attach_block(n, sc)
         if self.unit_dims and n.fn.__class__ is Name and n.fn.name in self.UNIT_FNS and n.fn.name not in self.fns \
