@@ -75,18 +75,59 @@ Of course, we're not true language designers. We're no Simon Peyton Jones, no Yu
 
 In the following, we show why moxie is a language FPers will love. After some introductory sections, we describe its “superpowers.” Alongside this page you'll find moxie/gc’s [Spec](spec.html), [Mixer’s Guide](learn/), and reference interpreter.
 
-Long declarations and calls can be written in one of two styles, and they differ in three ways. Strict style puts a list on one line, inside parentheses, with commas between items: `add(4, 1)`. Free style has no brackets and no commas. The name of a call stands alone, and each argument is indented beneath it on its own line:
+Long declarations, calls, and collections can be written in one of two styles. Strict style puts a list on one line, inside parentheses, with commas between the items. Free style has no brackets and no commas: each item goes on its own line, indented under the name it belongs to. Free style exists to get rid of parentheses. Every nested call normally needs a pair of them, and the pairs have to match, but in free style the indentation does that job instead. Here is a nested call written in free style, with no parentheses at all:
 
 ```
+fn area(w Int, h Int) Int
+  w * h
+
+fn scale(n Int, k Int) Int
+  n * k
+
 println
-  add
-    4
-    1
+  scale
+    area
+      2
+      3
+    10
 ```
 
-A declaration keeps one pair of parentheses, with each parameter on its own line and the return type after the closing `)`.
+Output: `60`. In strict style the same line is `println(scale(area(2, 3), 10))`, which needs three pairs of parentheses to match. Free style needs none.
 
-The reason for free style is to omit parentheses, or, as we like to put it, to rid code of all those darn parentheses! Calls nest, and every nested call adds a pair of brackets that has to match. In free style the indentation does that job, so a deeply nested call reads from top to bottom like a list of values. Most of the examples in these pages use free style for calls with three or more arguments. Short calls with one or two arguments, such as `add(4, 1)`, stay in strict style. Free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A `Bin(...)` pattern keeps its brackets. A list or array literal on one line is strict. A call with a placeholder argument, such as `_ + 1`, stays strict too, because the placeholder has to sit inside the call's parentheses. A trailing function is always strict style, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call that takes a block keeps its other arguments on the call's own line, with the block's items indented below it.
+Free style can be used in these places:
+
+- **Calls.** The name stands alone and each argument is indented under it. Named arguments work the same way: `greet` on one line, then `"Ada"`, then `greeting: "Hi"`, each indented under it.
+- **Collections.** `List`, `Array`, `Set`, `Dict`, and tuples all have a free style. Here is a list of three lists:
+
+```
+groups = List
+  List
+    1
+    2
+  List
+    3
+    4
+  List
+    5
+println(groups)
+```
+
+Output: `List(List(1, 2), List(3, 4), List(5))`.
+
+- **Declarations.** A declaration keeps one pair of parentheses around its parameters, with one parameter to a line, and its return type after the closing `)`:
+
+```
+fn box_volume(
+  w Int
+  h Int
+  d Int
+) Int
+  w * h * d
+```
+
+The signatures later in this section keep strict style, as explained there.
+
+Free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A `Bin(...)` pattern keeps its brackets. A call with a placeholder argument, such as `_ + 1`, stays strict, because the placeholder has to sit inside the call's parentheses. A trailing function is always strict, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call with one or two arguments, such as `add(4, 1)`, is usually written in strict style, as most of the short calls in these pages are.
 
 ## A moxie appetizer
 
