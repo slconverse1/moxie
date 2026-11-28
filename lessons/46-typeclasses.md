@@ -1,6 +1,6 @@
 # Typeclasses
 
-Moxie has no separate typeclass feature. A class is an `interface`, an instance is an `impl`, a constraint is a bound, a superclass is an embedded interface, a member with no receiver is a `static fn`, and deriving is `deriving show, eq, ord, read, hash`. This lesson gathers those pieces in one place. If you know Haskell, the last section is a translation table.
+Moxie has no separate [typeclass]({{FP}}fp.html#typeclass) feature. A class is an `interface`, an instance is an `impl`, a constraint is a bound, a superclass is an embedded interface, a member with no receiver is a `static fn`, and deriving is `deriving show, eq, ord, read, hash`. This lesson gathers those pieces in one place. If you know Haskell, the last section is a translation table.
 
 ## A class, its instances, and a constrained function
 
@@ -70,9 +70,9 @@ A type has exactly one impl of each interface, so `C.Item` is never ambiguous. O
 
 ## Constructor classes
 
-A class over a type constructor takes `F[_]`, and an instance names the constructor itself. (`List` by itself is a type constructor, and a parameter that stands for one is what Haskell and Scala call a higher-kinded type. Without it, `double_in` below would have to be written again for every container.)
+A class over a type constructor takes `F[_]`, and an instance names the constructor itself. (`List` by itself is a type constructor, and a parameter that stands for one is what Haskell and Scala call a [higher-kinded type]({{FP}}fp.html#higher-kinded-types). Without it, `double_in` below would have to be written again for every container.)
 
-With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and an `impl Monad[Box]` (lesson 47), you can write code that works for *any* monad:
+With the prelude's `Functor`, `Applicative`, and `Monad` interfaces and an `impl Monad[Box]` (lesson 47), you can write code that works for *any* [monad]({{FP}}fp.html#monad):
 
 ```moxie
 enum Box[T] deriving show
@@ -104,7 +104,7 @@ println("${double_in(Box.Full(21))} ${double_in(r)}")
 Box.Full(42) Ok(42)
 ```
 
-`Box.Full(21)` and `Ok(21)` both work, and each gives back its own kind of container. And an applicative lift:
+`Box.Full(21)` and `Ok(21)` both work, and each gives back its own kind of container. And an [applicative]({{FP}}fp.html#applicative) lift:
 
 ```moxie
 enum Box[T] deriving show
@@ -226,7 +226,7 @@ The default is specialized for each implementing type.
 - Superclasses are embedded interfaces; constraints are bounds like `[T Monoid]`.
 - `deriving` is `deriving show, eq, ord, read`.
 - Instances must live with the type or the interface (no orphans).
-- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families (see the next lesson for type functions), and monad transformers (in GC-free moxie; moxie/gc has them as the library `fp.trans`).
+- Default method bodies and associated types exist. Missing from the language: functional dependencies, type families (see the next lesson for type functions), and [monad transformers]({{FP}}fp.html#monad-transformer) (in GC-free moxie; moxie/gc has them as the library `fp.trans`).
 
 ## Mistakes
 

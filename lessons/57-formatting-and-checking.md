@@ -6,7 +6,7 @@ Two commands do most of the work of keeping a project in good shape. `moxie fmt`
 
 `moxie fmt FILE-or-DIR...` rewrites files into one layout, and it has no layout options. It fixes the shape of the file:
 
-- every block is indented two spaces per level, and a continuation line keeps its offset from the statement it continues;
+- every block is indented two spaces per level, and a [continuation]({{FP}}fp.html#continuation) line keeps its offset from the statement it continues;
 - multi-line strings, SQL bodies, and block comments move together with their text unchanged;
 - trailing spaces go; blank lines are limited to two at the top level and one inside a block; the file ends with a single newline;
 - a comment takes the level of the code it belongs to;

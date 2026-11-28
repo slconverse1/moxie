@@ -20,7 +20,7 @@ Moxie/gc compiles straight to machine code, so there's no bytecode standing betw
 
 Moxie/gc is an offshoot of moxie, its close, GC-free cousin. Their differences are described in a dedicated section below. Unless otherwise distinguished, “moxie” refers to both moxie and moxie/gc.
 
-Naturally, moxie has all the features you've come to expect in an FP language: iterators, generators, comprehensions, lambdas, monads, pipes, laziness, generics, you name it. For data, it has the usual suspects: primitive types (numbers and String), structure types (tuple and enum), collection types (Array, MultiArray, List, Set, and Dict), resource types, and a fistful of others for good luck. Last but not least, as in any respectable FP language, functions are first-class citizens.
+Naturally, moxie has all the features you've come to expect in an FP language: [iterators](../fp.html#iterator), [generators](../fp.html#generator), [comprehensions](../fp.html#comprehension), lambdas, [monads](../fp.html#monad), pipes, laziness, generics, you name it. For data, it has the usual suspects: primitive types (numbers and String), structure types (tuple and enum), collection types (Array, MultiArray, List, Set, and Dict), resource types, and a fistful of others for good luck. Last but not least, as in any respectable FP language, functions are first-class citizens.
 
 In short, moxie is perfect for Top Gun FP programmers who feel the need for speed.
 
@@ -137,7 +137,7 @@ fn box_volume(
 
 The signatures later in this section keep strict style, as explained there.
 
-Free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A `Bin(...)` pattern keeps its brackets. A call with a placeholder argument, such as `_ + 1`, stays strict, because the placeholder has to sit inside the call's parentheses. A trailing function is always strict, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call with one or two arguments, such as `add(4, 1)`, is usually written in strict style, as most of the short calls in these pages are.
+Free style does not apply everywhere. A call with no arguments keeps its parentheses (`pair()`), because a bare name is a value. A `Bin(...)` pattern keeps its brackets. A call with a [placeholder](../fp.html#placeholder) argument, such as `_ + 1`, stays strict, because the placeholder has to sit inside the call's parentheses. A trailing function is always strict, with its arguments in parentheses, as in `apply(3)(n) -> n + 1`. A call with one or two arguments, such as `add(4, 1)`, is usually written in strict style, as most of the short calls in these pages are.
 
 ## A moxie appetizer
 
@@ -177,7 +177,7 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **Go:** interfaces, goroutines, channels, and `select`, and the goal of garbage collection with short pauses **[gc]**, and `moxie fmt`, a formatter with no layout options, in the spirit of `gofmt`.
 - **Python:** clean, human-readable visual spacing, `and`/`or`/`not`, `x in s`, collection operators such as `+` to join two lists, slicing with ranges, and doctests, examples in doc comments that run as tests.
 - **Kotlin:** scoped receiver blocks, field delegates, Domain-Specific Languages, labeled `break` and `continue`, and the `step` syntax for ranges, as in `1..<9 step 2`.
-- **Scala:** opaque types, contextual parameters, expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, and type-level programming: matching on types, recursion, and numbers and strings as types.
+- **Scala:** [opaque types](../fp.html#opaque-type), contextual parameters, expression-based syntax, its first-character precedence rule for user-defined operators, `for`/`yield` comprehensions, enums with fields, `tailrec`, and type-level programming: matching on types, [recursion](../fp.html#recursion), and numbers and strings as types.
 - **Ruby:** its block argument and trailing `if`.
 - **Rust:** the `?` error-propagation operator, `Result` instead of exceptions, no null, `impl` blocks, `Self`, let-else, `todo`, and doctests and `moxie doc`, which writes documentation that includes contracts.
 - **Clojure:** `cond`, lock-free state through Atoms and `swap`, and persistent collections that share structure. **[gc]**
@@ -185,8 +185,8 @@ The elegance of moxie rests on an enormous architectural debt owed to the pionee
 - **F#:** the `|>` pipeline, its startup execution model, its computation expressions, active patterns (as `pattern fn`), and anonymous records, the tuples whose named-field types are never declared, with the open form `(name String, ...)`.
 - **Standard ML and OCaml:** the unification of tuples and parameter lists.
 - **Node.js:** module-level code.
-- **Swift:** named tuples, keypaths that act as lenses, and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, DSL block syntax, in the spirit of result builders (a function marks its last parameter `block`, and an indented block of children fills it: `ul(class: "menu")` followed by indented `li(...)` lines), the idea that a function parameter has a name for the body and a label for the call, and regex literals with typed captures, `(?<y:Int>\\d{4})`, whose names get the types the groups declare (the `regex` package's `Matches("...", (y, m))`).
-- **Elixir:** the pin (`^`) operator for pattern matching.
+- **Swift:** named tuples, keypaths that act as [lenses](../fp.html#lens), and properties: computed, lazy, and static, with `will_set` and `did_set` observers, backing-field shorthand, DSL block syntax, in the spirit of result builders (a function marks its last parameter `block`, and an indented block of children fills it: `ul(class: "menu")` followed by indented `li(...)` lines), the idea that a function parameter has a name for the body and a label for the call, and regex literals with typed captures, `(?<y:Int>\\d{4})`, whose names get the types the groups declare (the `regex` package's `Matches("...", (y, m))`).
+- **Elixir:** the pin (`^`) operator for [pattern matching](../fp.html#pattern-matching).
 - **Eiffel:** contracts, with `requires` and `ensures` on functions and interface members and `invariant` on tuples, checked in debug builds.
 - **Liquid Haskell:** refinement types: a `where` condition on a parameter, a result or a field, as in `type Pos = Int where self > 0`, which the checker proves at compile time when it can (linear integer arithmetic and `len`) and checks at run time when it can't.
 - **C#:** multi-cast delegation, and the query pipeline: every collection is a pipeline source as it stands, so the stages chain directly and a single terminal such as `collect()` ends the pipeline, with no conversion step in between.
@@ -203,7 +203,7 @@ Patterns, pipes, generics, interfaces, results, fibers, and channels are the sam
 - **Sizes.** `List`, `Dict`, and `Set` grow as needed. A declared size is only a hint. `Array` and `MultiArray` still carry their sizes in their types.
 - **Updates.** `List`, `Dict`, and `Set` are persistent, so an update shares structure with the old version.
 - **Strings.** One `String` type. There is no `String[n]`, no `static`, and no "lasts until the next reset."
-- **Closures.** A function type is just its signature, so a closure can go in a Dict, a tuple field, or a channel, and a function can return a different closure from each branch.
+- **[Closures](../fp.html#closure).** A function type is just its signature, so a closure can go in a Dict, a tuple field, or a channel, and a function can return a different closure from each branch.
 - **Streams.** A stream can be returned from a function, unless it borrows a resource.
 - **Resources.** Atoms, channels, timers, and futures can be created anywhere, loops included. Ownership and moves work as before.
 - **Fibers.** Created on demand, with no slots reserved in advance. A cap is optional.
@@ -222,7 +222,7 @@ The fine print:
 - **Updates share structure.** **[gc]** `List`, `Dict`, and `Set` are persistent: an update builds a new version that shares most of its storage with the old one, so `list += 4` is cheap, and holding on to old versions costs very little. (`Array` and `MultiArray` are flat blocks, and updating one copies it, so use a `List` for element-by-element changes, or do the work inside a `mutable` block, where an `Array` or `MultiArray` is written in place; see [Local mutation](../fp.html#local-mutation) in the FP Overview.) `moxie build --report` shows where your program allocates the most.
 - **`name@N` reaches the outer binding.** Shadowing a name with itself (`total = total + 1` inside a block that already has its own `total`) is an error, because it hides the old binding. To keep the outer value in view, write `total@1` for the nearest enclosing binding, or `total@label` for one named by a loop label. When a block wants its own working copy of an outer variable, begin it with an `in` line (`in total, count@1`): the local starts as the outer value, the outer name is unchanged, and the result leaves through `break(v)`, `else v`, or an assignment like `total@1 = ...`. An `in` line is only allowed first in a block, since it declares and has no value. A whole stretch of in-place work needs none of this bookkeeping: inside a `mutable` block, `x += 1` and `a(i) = v` assign to the block's own variables from any depth of loop or branch, with no `@N`.
 - **Several fields at once.** `base.update` takes `field: value` lines and builds a changed copy. As in a constructor call, a comma ends each line but the last, and `&` is the field's current value, so `retries: & * 2` doubles it. A nested tuple takes an indented block. Every right-hand side sees the original value, so the order of the lines doesn't matter.
-- **Atoms are the only mutable state that is shared or outlives a call.** (A `mutable` block's variables are mutable too, but only inside the block, and no one else can reach them.) An Atom is a managed cell that holds an immutable value and swaps in a new one, lock-free, through a pure function (`swap(counter, _ + 1)`). Readers always get an immutable snapshot.
+- **Atoms are the only mutable state that is shared or outlives a call.** (A `mutable` block's variables are mutable too, but only inside the block, and no one else can reach them.) An Atom is a managed cell that holds an immutable value and swaps in a new one, lock-free, through a [pure function](../fp.html#purity) (`swap(counter, _ + 1)`). Readers always get an immutable snapshot.
 - **`ref` parameters look like mutation but aren't.** The callee gets a copy, rebinds it, and the final value is copied back out to the caller's variable. Nobody ever holds two names for one changing thing.
 - **Resources are stateful.** A channel end, a timer, or a database connection is a handle with an identity, so it's *moved* (one owner at a time) rather than copied. A tuple that holds a resource is a resource too.
 
@@ -335,7 +335,7 @@ add5 = make_adder(5)
 println("${add5(10)} ${apply_curried(add_curried, 3, 4)}")
 ```
 
-Output: `15 7`. Read `make_adder(n Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic currying, written out by hand, which is what the prelude's `curry` does for you.
+Output: `15 7`. Read `make_adder(n Int) (Int) -> Int` in three pieces: the name and parameter `make_adder(n Int)`, then the return type `(Int) -> Int` (a function from `Int` to `Int`), then the body, whose last line is the function being returned. In `apply_curried`, the parameter `f` has the two-step type, so `f(a)` is itself a function and `f(a)(b)` calls it. `add_curried` fits `f`'s type exactly: it is classic [currying](../fp.html#currying), written out by hand, which is what the prelude's `curry` does for you.
 
 ## Call by value, reference, name, and need
 
@@ -431,7 +431,7 @@ The values here are only examples. The `limit` is a default for each fiber funct
 
 Moxie is a general language, but four kinds of applications come with the language itself, so you start with a toolbox instead of a shopping list.
 
-**Typeclasses and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
+**[Typeclasses](../fp.html#typeclass) and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
 
 **SQL databases.** See the [Mixer’s Guide](learn/).
 
@@ -493,11 +493,11 @@ discount = if is_member then 0.2 else 0.0
 
 By making everything an expression, you drastically reduce the surface area for bugs caused by variables being accidentally modified or read before they’re initialized.
 
-**Referential transparency**
+**[Referential transparency](../fp.html#referential-transparency)**
 
 In FP, a core goal is referential transparency—the idea that you can replace a function call with its resulting value without changing the program's behavior.
 
-In a statement-based language, moving code around is dangerous because statements often rely on when and where they change the surrounding environment (side effects). In an expression-based language, code behaves cleanly like mathematics: `f(x)` simply yields a result, making it incredibly easy to reason about, refactor, and test. Moxie doesn't promise purity everywhere, though: a function can still print, read a channel, or swap an atom, and the compiler works out which functions do. Mark a function `pure fn` and the compiler enforces it.
+In a statement-based language, moving code around is dangerous because statements often rely on when and where they change the surrounding environment ([side effects](../fp.html#side-effect)). In an expression-based language, code behaves cleanly like mathematics: `f(x)` simply yields a result, making it incredibly easy to reason about, refactor, and test. Moxie doesn't promise purity everywhere, though: a function can still print, read a channel, or swap an atom, and the compiler works out which functions do. Mark a function `pure fn` and the compiler enforces it.
 
 **Specifically:** bindings, `if`, `when`, `select`, `do` blocks, and loops all have a value in moxie, and the last line of a block *is* its value:
 
@@ -667,7 +667,7 @@ Output: `8 106 160 100`, then `first 10, then 2 more`, then `(x: 1, y: 9)`. Here
 - **Gathering:** `numbers ...Int` gathers any number of trailing arguments into one list **[gc]**, and zero is fine. A pattern gathers too: in `Array(first, ...rest)` the `rest` collects whatever the pattern didn't name.
 - **The limits:** A variadic has a single element type (use a union or a tuple when you need a mix). **[gc]** In moxie/gc a `List` of any length can be splatted into a call, and a `rest` is an ordinary value. (GC-free moxie has to know how many values it is spreading, so it can't splat a `List` of unknown length, and its `rest` is a read-only view that can't be returned or stored.)
 
-**The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get partial application for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
+**The tradeoff for unification** is currying. If everything takes its arguments as a bundle, you don't get [partial application](../fp.html#partial-application) for free the way Haskell does. Moxie's answer is the placeholder call (for example, `log("ERROR", _)`, covered in the Pipes section), plus `curry(f)` in the prelude, for a function with any number of parameters, when you want classic currying. `uncurry[n](g)` goes the other way, with the count in brackets and no limit; you rarely need it, because moxie's argument bundle already is a tuple and `f(a, b)` and `f(pair)` both work.
 
 ### Open tuples: row polymorphism for the rest of us
 
@@ -723,7 +723,7 @@ If you want one rule on many fields, such as "keep this between 0 and 100", writ
 
 A pattern describes the shape of a value. Matching a value against patterns tests that shape, takes the value apart, binds names to the pieces, and runs the code for the first pattern that fits, all in one step. Instead of nesting `if` and `else` tests, you say what the data looks like. In moxie it's `when value`, and the arms are tried from top to bottom.
 
-**Sum types made safe.** Enums are moxie's algebraic data types: a value is exactly one of several cases (an OR), and each case can carry fields. A `when` is how you open one up safely:
+**Sum types made safe.** Enums are moxie's [algebraic data types](../fp.html#algebraic-data-types): a value is exactly one of several cases (an OR), and each case can carry fields. A `when` is how you open one up safely:
 
 <details markdown="1">
 <summary>Code example</summary>
@@ -1205,7 +1205,7 @@ println("skipped: ${maybe(false, costly())}")
 Output: `skipped: 0`, with no "computing" line, because `x` is never read. Be aware that a `lazy` argument is re-run on every read, so `x + x` computes it twice. If you want call-by-need, bind it once with `once = x` and use `once`.
 
 **The fine print.**
-- Nothing is cached for you, and there's no hidden memoization. Caching is a recipe you write on purpose (example below).
+- Nothing is cached for you, and there's no hidden [memoization](../fp.html#memoization). Caching is a recipe you write on purpose (example below).
 - A stream feeding two terminals runs its recipe twice, and the compiler warns you.
 - **[gc]** A stream holds its source, and the collector keeps the source alive, so a stream can be returned from a function. The exception is a stream that borrows a resource, such as a channel end or a database connection. A helper that returns one has to be an `inline fn`. (In GC-free moxie every stream over local data is a view that can't be returned.)
 - A `lazy` parameter can't also be a `ref` parameter.
@@ -1304,7 +1304,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
   ```
 
   Output: `7 hi! yo!!`. Other languages handle this with a family of types or overloads (Scala's function types come as `Function1` through `Function22`, with a catch-all for longer lists, and Scala 3 dropped the old 22-argument limit), or with a feature like C++'s variadic templates. In moxie it falls out of tuple and parameter-list unification. The limit is that a wrapper can pass an argument list along but can't add or remove an argument, because moxie has no way to take a tuple type apart.
-- **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `List`, so one function works for any of them without being written twice. These are what Haskell and Scala call higher-kinded types; see the next section.
+- **Even type constructors can be parameters.** A parameter written `F[_]` stands for something like `Box` or `List`, so one function works for any of them without being written twice. These are what Haskell and Scala call [higher-kinded types](../fp.html#higher-kinded-types); see the next section.
 - **No cost at run time.** The compiler builds one specialized copy of the function for each set of types it's actually used with. There's no boxing, no run-time type information on ordinary values (see superpower 28), and no call through a table. The price is code size, and that's the trade moxie makes on purpose, in keeping with FCFX.
 
 **Higher-kinded types.** `List[Int]` is a type. `List` by itself is a *type constructor*: give it a type and it makes a type. Most languages let you write a function over any type. Moxie also lets you write one over any type constructor, by writing the constructor as a parameter, `F[_]`:
@@ -1378,8 +1378,6 @@ println(same_voice(Dog(name: "Rex"), Dog(name: "Rex")))
 
 </details>
 
-This prints `a dog called Rex, a dog called Ann`, then `a Mini`, then `the number 1, the number 2, the number 3`, then `Rex says Woof`.
-
 When you want a mixed bag of types, say `any Voice`:
 
 ```
@@ -1431,7 +1429,7 @@ fn quarter(n Int) Result[Int, Error]
   half(a)
 ```
 
-The operators work for any type with the right impls. With a `Box` a sequence, a map and an applicative combination look like this:
+The operators work for any type with the right impls. With a `Box` a sequence, a map and an [applicative](../fp.html#applicative) combination look like this:
 
 ```
 Box.Full(20) |>> half |>> half                       // Box.Full(5)
@@ -1457,7 +1455,7 @@ That works for `Box.Full(21)` and `Ok(21)` alike.
 **The limitations:**
 
 - There's no IO monad. Effects are inferred, and `pure fn` lets you ask the compiler to enforce purity.
-- A State monad can be defined, and **[gc]** it has none of GC-free moxie's limits. `ref` threading is still the simple way to carry state.
+- A [State monad](../fp.html#state-monad) can be defined, and **[gc]** it has none of GC-free moxie's limits. `ref` threading is still the simple way to carry state.
 - Type constructors take at most one "hole" (`Result[_, E]`), and type lambdas (`[A] -> Result[String, A]`) fix any argument. Matching on types and recursion at the type level are covered in superpower 27.
 - Evaluation is eager, apart from `lazy` parameters and streams, and nothing is memoized for you.
 - The compiler doesn't check the monad laws.
@@ -1490,7 +1488,7 @@ pure fn noisy(w Int) Int
 
 ## 20. Local mutation, without leaks
 
-Immutability is the rule, and it has one deliberate exception: inside a `mutable` block you can write to your own variables in place, and nothing outside can ever tell. You get the speed and the plain loops of imperative code, and the function around the block stays pure.
+[Immutability](../fp.html#immutability) is the rule, and it has one deliberate exception: inside a `mutable` block you can write to your own variables in place, and nothing outside can ever tell. You get the speed and the plain loops of imperative code, and the function around the block stays pure.
 
 <details markdown="1">
 <summary>Code example</summary>
@@ -1518,7 +1516,7 @@ println(running_totals(Array(3, 1, 4, 1, 5)))
 
 </details>
 
-This prints `30` and `Array(3, 4, 8, 9, 14)`. Inside the block, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write in place from any depth of loop or branch: no rebinding, no shadowing, no `@N`. The writes are guaranteed in place, so a sieve, an in-place sort or union-find costs what it should (the `algo` package is built this way).
+Inside the block, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write in place from any depth of loop or branch: no rebinding, no shadowing, no `@N`. The writes are guaranteed in place, so a sieve, an in-place sort or union-find costs what it should (the `algo` package is built this way).
 
 Why it's a superpower:
 

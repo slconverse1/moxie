@@ -28,9 +28,9 @@ interface Monad[F[_]]
   fn flat_map[A, B](self F[A], f (A) -> F[B]) F[B]
 ```
 
-- A **Functor** can have a function applied to what's inside, keeping the shape (`fmap`).
-- An **Applicative** can also wrap a plain value (`pure`) and apply a function that is itself inside the container (`ap`), which is how *independent* values are combined.
-- A **Monad** can also chain: `flat_map` feeds the value inside into a function that returns a new container, and the first failure or emptiness stops the chain.
+- A **[Functor](../fp.html#functor)** can have a function applied to what's inside, keeping the shape (`fmap`).
+- An **[Applicative](../fp.html#applicative)** can also wrap a plain value (`pure`) and apply a function that is itself inside the container (`ap`), which is how *independent* values are combined.
+- A **[Monad](../fp.html#monad)** can also chain: `flat_map` feeds the value inside into a function that returns a new container, and the first failure or emptiness stops the chain.
 
 The prelude has instances for `Result[_, E]`, `Stream`, `List[_][N]`, and `Array[_][N]`. `fmap` keeps the container: on a `List` it gives a `List`, on an `Array` an `Array`, and on an `Option` or `Result` the same constructor. (The pipeline stage `map` returns a lazy `Stream`; `fmap` is the container-preserving one that generic code uses.)
 
@@ -40,7 +40,7 @@ The operators `<$>`, `<*>`, and `|>>` are the prelude's spellings of `fmap`, `ap
 |---|---|---|
 | `f <$> x` | change the value inside | one input, a plain function |
 | `f <$> x <*> y` | combine independent values | the inputs don't depend on each other |
-| `x \|>> f` | chain a step that returns a container | each step needs the previous result |
+| <code>x &#124;&gt;&gt; f</code> | chain a step that returns a container | each step needs the previous result |
 
 `<$>` and `<*>` sit in the comparison tier, so parenthesize them next to other operators.
 

@@ -1,6 +1,6 @@
 # Values, purity, and composing functions
 
-Moxie's functional features are ordinary code on top of a few language features: immutable values, higher-order functions, pipelines, and interfaces over type constructors. This lesson covers the first and the oldest ideas: values that never change, functions that say what they do, and functions built out of functions.
+Moxie's functional features are ordinary code on top of a few language features: immutable values, [higher-order functions]({{FP}}fp.html#higher-order), pipelines, and interfaces over type constructors. This lesson covers the first and the oldest ideas: values that never change, functions that say what they do, and functions built out of functions.
 
 ## Values never change
 
@@ -22,7 +22,7 @@ List(1, 2, 3)
 List(1, 2, 3, 4)
 ```
 
-When the old value is dead afterwards, the compiler updates in place, so immutability costs no copying in the common case. `moxie build --report` lists the exceptions.
+When the old value is dead afterwards, the compiler updates in place, so [immutability]({{FP}}fp.html#immutability) costs no copying in the common case. `moxie build --report` lists the exceptions.
 
 ## Pure functions, and what a function does
 
@@ -96,7 +96,7 @@ println(result)
 
 ## Currying
 
-`curry` turns a function of several arguments into one that takes them one at a time, so supplying only some of them gives a new function. Closures carry data with them:
+`curry` turns a function of several arguments into one that takes them one at a time, so supplying only some of them gives a new function. [Closures]({{FP}}fp.html#closure) carry data with them:
 
 ```moxie
 fn add(a Int, b Int) Int = a + b

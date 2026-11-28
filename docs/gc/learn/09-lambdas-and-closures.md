@@ -73,7 +73,7 @@ println(apply_twice((n) -> n * 3, 2))
 
 ## Shorter forms
 
-When a lambda is as simple as "do this to the argument", a placeholder `_` stands for the argument and you needn't name it:
+When a lambda is as simple as "do this to the argument", a [placeholder](../../fp.html#placeholder) `_` stands for the argument and you needn't name it:
 
 ```moxie
 println(List(1, 2, 3).map(_ * 2).collect())
@@ -114,7 +114,7 @@ A lambda can also be written *after* a call, with its own parameter list, when t
 
 ## Closures
 
-A lambda can use the names around it. When it does, the function carries those values along with it, and such a function is called a *closure*:
+A lambda can use the names around it. When it does, the function carries those values along with it, and such a function is called a *[closure](../../fp.html#closure)*:
 
 ```moxie
 factor = 5

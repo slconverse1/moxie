@@ -1,11 +1,11 @@
 # Transformers and the mtl classes
 
 @nogc
-Monad transformers need closures of one type per signature, so they ship only with moxie/gc. In GC-free moxie, handle several effects at once with the tools in earlier lessons: `Result` and `?` for failure, a tuple threaded through a `reduce` for state, and a `mutable` block (lesson 19) for the places where in-place updates are the clearest code.
+[Monad transformers]({{FP}}fp.html#monad-transformer) need [closures]({{FP}}fp.html#closure) of one type per signature, so they ship only with moxie/gc. In GC-free moxie, handle several effects at once with the tools in earlier lessons: `Result` and `?` for failure, a tuple threaded through a `reduce` for state, and a `mutable` block (lesson 19) for the places where in-place updates are the clearest code.
 @end
 
 @gc
-A **transformer** adds one capability to any monad underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs rather than which stack provides it:
+A **transformer** adds one capability to any [monad]({{FP}}fp.html#monad) underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs rather than which stack provides it:
 
 - `MonadState[S]`: `get`, `put`, `modify`, `gets`
 - `MonadReader[R]`: `ask`, `asks`, `local`
@@ -43,7 +43,7 @@ A class member reaches through every layer above the one that provides it (`M.ge
 
 ## Continuations and free programs in a stack
 
-`ContT` is a continuation transformer, and `MonadCont` gives any stack `M.call_cc`, which reaches through the other layers. An escape keeps the state as it was at the moment of the jump:
+`ContT` is a [continuation]({{FP}}fp.html#continuation) transformer, and `MonadCont` gives any stack `M.call_cc`, which reaches through the other layers. An escape keeps the state as it was at the moment of the jump:
 
 ```moxie
 import fp.trans

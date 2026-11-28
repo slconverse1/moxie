@@ -219,7 +219,7 @@ save(QuietLogger(level: 1), "report")
 
 </details>
 
-This prints `app info: saving report`, `app ERROR: disk full`, and then `error: disk full`. `save` has no idea which logger it got, and a test can hand it a fake one.
+`save` has no idea which logger it got, and a test can hand it a fake one.
 
 **`any` is dynamic dispatch without a hierarchy.** When you want a mixed collection, say `any Logger`. `ConsoleLogger` is not a subtype of anything. Each value is simply stored together with the way to call its `Logger` methods.
 
@@ -233,8 +233,6 @@ for l in loggers
 ```
 
 </details>
-
-This prints `a ERROR: heterogeneous` and `error: heterogeneous`.
 
 **Hiding state is lexical.** Everything in moxie is immutable, so a part's private state is either a field of its [tuple](#tuple) or something a [closure](#closure) captured, and the code outside can reach it only through the functions you hand out. A function can return a closure that keeps a private counter, and the counter has no name outside it.
 
@@ -255,8 +253,6 @@ println(next())
 ```
 
 </details>
-
-This prints `3`.
 
 **Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
 
@@ -289,7 +285,7 @@ s.error("disk full")
 
 </details>
 
-This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
+`error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
 
 One thing the GC-free dialect does not do is store a [closure](#closure) that captures values inside a [tuple](#tuple) field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an [interface](#interface) and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
 
@@ -322,7 +318,7 @@ lg.error("failed")
 
 </details>
 
-This prints `app info: 12:00 started` and `app ERROR: failed`. The GC-free dialect refuses to store a [closure](#closure) that captures values inside a [tuple](#tuple), because the closure's captured values would have no owner, so the GC-free dialect uses the [interface](#interface)-and-`impl` style in its place.
+The GC-free dialect refuses to store a [closure](#closure) that captures values inside a [tuple](#tuple), because the closure's captured values would have no owner, so the GC-free dialect uses the [interface](#interface)-and-`impl` style in its place.
 
 Packages and imports are the outer layer of the same idea. See *[Packages and imports](learn/27-packages.html)*.
 
@@ -373,7 +369,7 @@ println("$a $b $n")
 
 </details>
 
-This prints `tmp1 tmp2 2`. When you want the state passed explicitly instead, return it with the answer, `(Int, Int)`, and bind both: `a, s1 = next(seed)`.
+When you want the state passed explicitly instead, return it with the answer, `(Int, Int)`, and bind both: `a, s1 = next(seed)`.
 
 **Local mutation gets a block of its own.** Haskell needs the `ST` [monad](#monad) and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still [pure](#purity) from outside. Moxie has a `mutable` block. Inside it, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write into the variable's storage from any depth of loop or branch, with no rebinding, no shadowing and no `@N`. The writes are guaranteed in place, so the in-place algorithms (a sieve, an in-place sort, union-find) cost what they should.
 
@@ -395,7 +391,7 @@ println(running_totals(Array(3, 1, 4, 1, 5)))
 
 </details>
 
-This prints `Array(3, 4, 8, 9, 14)`. The block is an expression, and its last line is the value. Containment comes from the language's other rules rather than from a type trick: `b = a` inside the block copies, values enter by copy (or by move when the old one is dead) and leave as ordinary immutable values, and a [closure](#closure) made inside takes the current values, so no mutable variable can be reached from outside. A variable keeps its declared type, an outer name is read-only unless copied in on an `in` line, and the block is [pure](#purity) from outside, so a `pure fn` may contain one. Outside a `mutable` block, an update is in place only when the old value is dead, and `moxie build --report` lists the ones that copied. The only truly shared mutable thing is the `Atom`, which holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is where state outlives a call.
+The block is an expression, and its last line is the value. Containment comes from the language's other rules rather than from a type trick: `b = a` inside the block copies, values enter by copy (or by move when the old one is dead) and leave as ordinary immutable values, and a [closure](#closure) made inside takes the current values, so no mutable variable can be reached from outside. A variable keeps its declared type, an outer name is read-only unless copied in on an `in` line, and the block is [pure](#purity) from outside, so a `pure fn` may contain one. Outside a `mutable` block, an update is in place only when the old value is dead, and `moxie build --report` lists the ones that copied. The only truly shared mutable thing is the `Atom`, which holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is where state outlives a call.
 
 **An [existential](#existential-type) hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
 
@@ -433,7 +429,7 @@ for p in parts
 
 </details>
 
-This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a new component of the same kind with the next state, so the list is stepped without anyone knowing which is which.
+A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a new component of the same kind with the next state, so the list is stepped without anyone knowing which is which.
 
 | Need | Moxie's tool | Mutability |
 | --- | --- | --- |
@@ -459,8 +455,6 @@ println(state.traverse(List("a", "b", "c"), label).run(0))
 ```
 
 </details>
-
-This prints `(List("a1", "b2", "c3"), 3)`.
 
 ### Opaque types {#opaque-type}
 

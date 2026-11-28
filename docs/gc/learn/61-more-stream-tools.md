@@ -9,7 +9,7 @@ title: "More stream tools: sources you build · Moxie/gc Mixer’s Guide"
 In the Spec: [13. Pipelines and streams](../spec.html#s13)
 {: .specref}
 
-Lesson 25 covered the common stages. This lesson covers the rest of the toolbox: stages that tidy and combine streams, generators that make a stream from a seed, and how to make your own types into stream sources.
+Lesson 25 covered the common stages. This lesson covers the rest of the toolbox: stages that tidy and combine streams, [generators](../../fp.html#generator) that make a stream from a seed, and how to make your own types into stream sources.
 
 ## Tidying and combining
 

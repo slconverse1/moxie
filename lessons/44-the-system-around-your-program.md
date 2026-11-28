@@ -85,7 +85,7 @@ Don't read `now()` twice to time something: the clock can be set while you measu
 
 ## Random numbers
 
-`random()` and `random_int(r)` (which takes a range, as in `random_int(1..6)`) are for games and sampling. `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a *reproducible* source that the generator functions from property tests (lesson 33) read:
+`random()` and `random_int(r)` (which takes a range, as in `random_int(1..6)`) are for games and sampling. `random_bytes(n)` comes from the operating system's secure source, so use it for tokens and keys. `seeded(n)` gives a *reproducible* source that the [generator]({{FP}}fp.html#generator) functions from property tests (lesson 33) read:
 
 ```moxie
 g = seeded(7)

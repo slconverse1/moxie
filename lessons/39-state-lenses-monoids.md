@@ -26,11 +26,11 @@ println("${a * b} ${len(s)}")
 12 0
 ```
 
-Each call returns a value and hands back the updated state: the `(A, S)` pair of a state monad, without the machinery.
+Each call returns a value and hands back the updated state: the `(A, S)` pair of a state [monad]({{FP}}fp.html#monad), without the machinery.
 
 ### A State monad, if you want one
 
-A real **State monad** can be defined as a local value, because a closure inside a generic type is specialized per use:
+A real **[State monad]({{FP}}fp.html#state-monad)** can be defined as a local value, because a [closure]({{FP}}fp.html#closure) inside a generic type is specialized per use:
 
 ```moxie
 tuple State[S, A]
@@ -63,7 +63,7 @@ println("${r(0)(0)} ${r(0)(1)} ${r(1)}")
 1 2 2
 ```
 
-The limits are the closure rules: one closure type per composition, no branches that return different closures, no loops or recursion over run-time-length data, and the value is local and transient (it can't go in a `Dict`, atom, or channel). That is why it's an example in a lesson and not a library type, and why `ref` threading is the recommended way.
+The limits are the closure rules: one closure type per composition, no branches that return different closures, no loops or [recursion]({{FP}}fp.html#recursion) over run-time-length data, and the value is local and transient (it can't go in a `Dict`, atom, or channel). That is why it's an example in a lesson and not a library type, and why `ref` threading is the recommended way.
 
 ### Reader and Writer
 
@@ -116,7 +116,7 @@ println("${total} ${under_50}")
 270 7
 ```
 
-The first is 9 + 36 + 81 + 144; the second counts the squares 1, 4, 9, 16, 25, 36, and 49. `unfold` builds a generator from a seed, and a `lazy` parameter delays an argument and re-runs it on every read, so call by need is a one-line `once = x`. Nothing is cached for you, so work that is shared needs a recipe you write yourself.
+The first is 9 + 36 + 81 + 144; the second counts the squares 1, 4, 9, 16, 25, 36, and 49. `unfold` builds a [generator]({{FP}}fp.html#generator) from a seed, and a `lazy` parameter delays an argument and re-runs it on every read, so call by need is a one-line `once = x`. Nothing is cached for you, so work that is shared needs a recipe you write yourself.
 
 ## Lenses: data paths
 
@@ -146,7 +146,7 @@ User(id: 1, firm: Firm(name: "Initech", floor: 2))
 
 ## Semigroup and Monoid
 
-A **Semigroup** is a type with an *associative* way to combine two values (`fn combine(self, other Self) Self`). A **Monoid** is a semigroup that also has an identity value (`static fn empty() Self`), such as `""` for text or `List()` for lists. Both are declared in the prelude.
+A **[Semigroup]({{FP}}fp.html#semigroup)** is a type with an *associative* way to combine two values (`fn combine(self, other Self) Self`). A **[Monoid]({{FP}}fp.html#monoid)** is a semigroup that also has an identity value (`static fn empty() Self`), such as `""` for text or `List()` for lists. Both are declared in the prelude.
 
 `String` and `List[T]` implement both, with `+` as `combine`. A number has more than one monoid (add with 0, or multiply with 1), so it has none of its own: you pick one by wrapping it. The prelude has small wrapper tuples with one field, `value`:
 
@@ -206,7 +206,7 @@ An empty input gives `empty()`, so name the type when nothing else says which on
 
 - **Stored capturing closures.** A capturing closure can't live in a concrete tuple field, `Dict`, or channel, so a State value is a transient local, and plain functions are what you store.
 - **An IO monad.** Effects are inferred, and the compiler enforces them where they matter (`swap`, `debug_assert`, compile-time evaluation).
-- **Hidden laziness and memoization.** Laziness is `lazy` and streams; nothing is cached automatically.
+- **Hidden laziness and [memoization]({{FP}}fp.html#memoization).** Laziness is `lazy` and streams; nothing is cached automatically.
 - **Checked monad laws.** The interfaces are conventions, as in Haskell.
 
 ## What to remember

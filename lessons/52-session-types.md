@@ -60,7 +60,7 @@ error: mismatched types: expected `session.Endpoint[session.Recv[T, S]]`, found 
 
 ## Choices
 
-`Pick[A, B]` is a turn where *you* choose between two continuations, and `Offer[A, B]` is the other side's view: it waits and finds out. You choose with `session.pick_left(e)` or `session.pick_right(e)`, and the other side takes the result of `session.offer(e)` apart with `when`. It is a `session.Branch`, whose cases `Left` and `Right` each carry the endpoint for that branch.
+`Pick[A, B]` is a turn where *you* choose between two [continuations]({{FP}}fp.html#continuation), and `Offer[A, B]` is the other side's view: it waits and finds out. You choose with `session.pick_left(e)` or `session.pick_right(e)`, and the other side takes the result of `session.offer(e)` apart with `when`. It is a `session.Branch`, whose cases `Left` and `Right` each carry the endpoint for that branch.
 
 ```moxie
 import session

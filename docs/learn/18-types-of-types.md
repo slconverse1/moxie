@@ -59,7 +59,7 @@ println(describe(Feet(1.0)))
 error: mismatched types: expected `Meters`, found `Feet`
 ```
 
-Opaque types prevent the classic mistake of passing a user id where an order id was expected, or metres where feet were. They cost nothing at run time. (Inside the file that declares one, it is still a double underneath; the representation is hidden from other packages.)
+[Opaque types](../fp.html#opaque-type) prevent the classic mistake of passing a user id where an order id was expected, or metres where feet were. They cost nothing at run time. (Inside the file that declares one, it is still a double underneath; the representation is hidden from other packages.)
 
 ## Generic tuples
 

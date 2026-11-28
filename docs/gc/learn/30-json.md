@@ -106,7 +106,7 @@ Ok(User(name: "Al", tags: List("a", "b"), addr: Addr(city: "Oslo", zip: 150)))
 Err(Error(code: 1, message: "not a String"))
 ```
 
-A field may be an `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple or enum that derives `dyn`. A missing key or a value of the wrong kind gives an `Err` that says which. A type that doesn't derive `dyn`, a `Dict`, a function, and a closure can't be converted, and the compiler tells you so.
+A field may be an `Int`, `Float`, `Bool`, `String`, a `List` of those, or another tuple or enum that derives `dyn`. A missing key or a value of the wrong kind gives an `Err` that says which. A type that doesn't derive `dyn`, a `Dict`, a function, and a [closure](../../fp.html#closure) can't be converted, and the compiler tells you so.
 
 ### Enums
 

@@ -238,7 +238,7 @@ true
 false
 ```
 
-A function that calls itself is *recursive*, and the lesson on recursion shows how moxie keeps even very deep recursion cheap.
+A function that calls itself is *recursive*, and the lesson on [recursion](../fp.html#recursion) shows how moxie keeps even very deep recursion cheap.
 
 ## Pure and impure
 

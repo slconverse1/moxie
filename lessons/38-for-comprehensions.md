@@ -1,6 +1,6 @@
 # `for` comprehensions
 
-Lesson 47 chained dependent steps with `|>>`. When there are several steps, the chain gets hard to read, and a `for` block does the same job in a shape that reads top to bottom. A `for` block is a chain of *generators* ending in `yield`, and it works for any type that has a `Monad` instance: `Result`, `List`, `Stream`, and your own types.
+Lesson 47 chained dependent steps with `|>>`. When there are several steps, the chain gets hard to read, and a `for` block does the same job in a shape that reads top to bottom. A `for` block is a chain of *[generators]({{FP}}fp.html#generator)* ending in `yield`, and it works for any type that has a `Monad` instance: `Result`, `List`, `Stream`, and your own types.
 
 ## The block form
 

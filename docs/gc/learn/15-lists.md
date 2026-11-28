@@ -140,7 +140,7 @@ println(squares)
 List(1, 4, 9, 16, 25)
 ```
 
-`List[Int]()` is an empty list of integers. (Often a comprehension or `map` is a better way to build a list, below.)
+`List[Int]()` is an empty list of integers. (Often a [comprehension](../../fp.html#comprehension) or `map` is a better way to build a list, below.)
 
 In moxie/gc a list grows as needed and has no size in its type. A capacity is only an optional hint, as in `List[Int][100]()`, which reserves room and changes nothing else. `+`, `set`, and `remove` build a new version that shares most of its storage with the old one, so each costs O(log n) rather than a copy of the whole list.
 
@@ -243,7 +243,7 @@ When the grid is a real rectangle, the lesson on arrays shows a type that knows 
 
 ## Taking a list apart with a pattern
 
-A list pattern names the first element and the rest, and is the foundation of recursion over lists:
+A list pattern names the first element and the rest, and is the foundation of [recursion](../../fp.html#recursion) over lists:
 
 ```moxie
 fn describe(xs List[Int]) String

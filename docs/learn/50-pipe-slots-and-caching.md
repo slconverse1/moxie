@@ -63,7 +63,7 @@ println(10 |> subtract(3, &))
 -7
 ```
 
-A stage is always a call, and there's no partial application: `|> update_physics` without parentheses is an error.
+A stage is always a call, and there's no [partial application](../fp.html#partial-application): `|> update_physics` without parentheses is an error.
 
 ### The dot form
 
@@ -140,7 +140,7 @@ Nothing is memoized, and nothing is cached behind your back. Caching is somethin
 - `lazy` on a binding or a property computes one pure expression once, on its first read (lesson 59);
 - a `lazy` parameter (call by need) evaluates its argument once, only if the body reads it;
 - a bottom-up `reduce`, below, carries only what the next step needs;
-- a `Dict` threaded through a recursion as a `ref` parameter lets calls share work;
+- a `Dict` threaded through a [recursion](../fp.html#recursion) as a `ref` parameter lets calls share work;
 - for a table many fibers share, one cache fiber (or an `Atom`) owns it and answers over channels.
 
 ### The bottom-up `reduce`
