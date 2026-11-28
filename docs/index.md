@@ -417,7 +417,7 @@ Moxie is a general language, but five kinds of applications come with the langua
 
 **AI and machine learning (lite).** A small `ml` package for learning the ideas: a logistic model trained by gradient descent, a nearest-neighbour rule, and two-group clustering, each in a few readable lines on one number per example. It's not a deep-learning toolkit. See [Machine learning, lite](learn/76-machine-learning-lite.html).
 
-**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See [Networking, deadlines, and parallel work](learn/33-networking.html).
+**Networking.** Programs that talk to each other over TCP sockets, with a small `http` package on top: a client that fetches and posts, and a server that calls your handler for each request. See [Networking, deadlines, and parallel work](learn/33-networking.html).
 
 **Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See [Regular expressions](learn/31-regex.html).
 
