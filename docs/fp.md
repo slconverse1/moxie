@@ -210,6 +210,67 @@ println(total(List(acct, deposit(acct, 2.0))))
 
 This prints `ann: 15.0` and `22.0`. Neither `describe` nor `total` is a method of `Account`, and `Account` has no methods at all. Behaviour can be attached to a type from outside with an `impl` block (see [Methods and interfaces](learn/20-interfaces.html)), and that leaves the data exactly as it was.
 
+**Why the separation is done.** The main reason is reuse. A function that is written once, with no reference to any particular data type, can be used on any data of the right shape. The next example writes `total_by` once and uses it on two different tuples, and `first_or` once for any list.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Account deriving show, eq, hash
+  owner String
+  balance Double
+
+tuple Order deriving show, eq
+  item String
+  price Double
+  qty Int
+
+fn total_by[T](xs List[T], amount (T) -> Double) Double
+  amounts = xs |> map()(x) -> amount(x)
+  amounts |> sum()
+
+fn first_or[T](xs List[T], fallback T) T
+  when xs |> first()
+    Ok(x) -> x
+    Err(e) -> fallback
+
+accounts = List(Account(owner: "ann", balance: 10.0), Account(owner: "bob", balance: 4.5))
+orders = List(Order(item: "pen", price: 1.5, qty: 4), Order(item: "pad", price: 3.0, qty: 2))
+println(total_by(accounts, (a) -> a.balance))
+println(total_by(orders, (o) -> o.price * cast[Double](o.qty)))
+println(first_or(orders, Order(item: "none", price: 0.0, qty: 0)))
+```
+
+</details>
+
+This prints `14.5`, `12.0`, and `Order(item: "pen", price: 1.5, qty: 4)`. The function `total_by` does not know what an account or an order is. It only needs a list and a way to get a number from each item, and you supply that way as a function each time you call it. This is where [generics](#generics) come in: the `[T]` in `total_by[T]` and `first_or[T]` is a type variable, so one definition works for every element type, and the compiler checks each use against the type it is given. See *[Generic functions](learn/11-generics.html)*.
+
+Keeping data plain brings other benefits, and they come from the same source:
+
+- **Equality and printing come for free.** A tuple with `deriving eq` compares by value, and `deriving show` prints it, with no code written for either.
+- **Data can be a key.** A tuple that derives `hash` can be used as a `Dict` key, so the ledger below is keyed by the account value itself.
+- **Data can cross a channel.** Because a tuple holds no methods or hidden state, it can be sent to another fiber as it is.
+- **Behaviour can change without touching data.** New functions can be written for an existing type, as in the `describe` and `total` example above, and the code that already uses the data keeps working.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Account deriving show, eq, hash
+  owner String
+  balance Double
+
+saved = Account(owner: "ann", balance: 10.0)
+ledger Dict[Account, Int] = Dict(saved -> 1)
+println(ledger(saved))
+println(saved == Account(owner: "ann", balance: 10.0))
+println(saved)
+```
+
+</details>
+
+This prints `Ok(1)`, `true`, and `Account(owner: "ann", balance: 10.0)`.
+
 ### Modularity without classes {#modularity}
 
 Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small [interface](#interface), so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below.
