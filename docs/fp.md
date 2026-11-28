@@ -473,8 +473,6 @@ This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds
 | An in-place algorithm | A `mutable` block | Local only, never visible |
 | Parts with different hidden state | `any Interface` | Immutable |
 
-# Moxie's Superpowers
-
 **In moxie/gc,** the [State monad](#state-monad) is ready-made as `fp.state`, which threads a state through a computation as a value:
 
 <details markdown="1">
