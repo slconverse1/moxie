@@ -350,37 +350,7 @@ A type constructor, such as `List` or `Result[_, E]`, takes a type and makes a t
 
 An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from five other tools, and moxie has all five. [Modularity](#modularity) covered two of them, the [interface](#interface) and the [closure](#closure); this section covers the rest.
 
-**An [opaque type](#opaque-type) protects an invariant.** opaque type is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules.
-
-<details markdown="1">
-<summary>Code example</summary>
-
-```
-tuple AccountData
-  balance Double
-opaque type Account = AccountData
-
-export fn open_account(initial Double) Result[Account, Error]
-  if initial < 0
-    return Err(Error("opening balance can't be negative"))
-  Ok(Account(AccountData(initial)))
-
-export fn deposit(a Account, amount Double) Account
-  if amount > 0
-    return Account(AccountData(a.balance + amount))
-  a
-
-export fn balance(a Account) Double
-  a.balance
-
-when open_account(10.0)
-  Ok(a) -> println(balance(deposit(a, 5.0)))
-  Err(e) -> println(e.message)
-```
-
-</details>
-
-This prints `15.0`. Outside the declaring package nobody can write `Account(...)` or read `a.balance`, so a negative balance can't be built, and a "change" is always a new `Account` made by a function that you wrote.
+**An [opaque type](#opaque-type) protects an invariant.** An opaque type is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules. The lesson [Opaque types: genuinely new](learn/18-types-of-types.html#opaque-types-genuinely-new) shows how to write one, with the constructor and the rules that go with it.
 
 **State is threaded, and the compiler can hide the threading.** Where a functional program would use the [State monad](#state-monad), moxie lets a `ref` parameter carry the state. The callee gets a copy, rebinds it, and the final value goes back to the caller's variable, so the code reads like mutation while every value stays immutable and nothing is shared.
 
