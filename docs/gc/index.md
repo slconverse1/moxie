@@ -78,7 +78,7 @@ In the following, we show why moxie is a language FPers will love. After some in
 Long declarations, calls, and collections can be written in one of two styles. Strict style puts a list on one line, inside parentheses, with commas between the items. Free style has no brackets and no commas: each item goes on its own line, indented under the name it belongs to. Free style exists to get rid of parentheses. Every nested call normally needs a pair of them, and the pairs have to match, but in free style the indentation does that job instead. Here is a nested call written in free style, with no parentheses at all:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn area(w Int, h Int) Int
@@ -105,7 +105,7 @@ Free style can be used in these places:
 - **Collections.** `List`, `Array`, `Set`, `Dict`, and tuples all have a free style. Here is a list of three lists:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 groups = List
@@ -142,7 +142,7 @@ Free style does not apply everywhere. A call with no arguments keeps its parenth
 ## A moxie appetizer
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple TrafficLight
@@ -266,7 +266,7 @@ fn name[generics](parameters) ReturnType
 The name comes first, then optional generic parameters in square brackets, then the parameters in parentheses, then the return type, then the body, indented on the lines below. The last line of the body is the value, so you rarely need `return`. It exists for programmers coming from other languages, though, and is handy for an early exit: `return value` leaves the function at once, as in a guard clause. A `return` on a function's last line is redundant, so the compiler warns about it. Here are some example declarations. They use strict style, with each parameter list on one line, because strict style is the form our function descriptions use, whatever the number of parameters:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn add(x Int, y Int) Int
@@ -369,7 +369,7 @@ Output: `error 1: negative age`. So `fail(1, "negative age")` is the same as `Er
 When the caller needs to know *what* went wrong, use your own enum as the error type instead of `Error`. The `Err` wrapper is the same either way:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 enum AgeError
@@ -621,7 +621,7 @@ Here's some of what unification buys you:
 - **Pipes just work.** When a stage returns a tuple and the next stage's parameter list matches it, the value slides straight in:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn fetch_sensor_data(id Int) (Float, Float, Float)
@@ -643,7 +643,7 @@ Output: `Physics vector updated: speed 95.2, angle 14.6`. There are no intermedi
 **Splatting and gathering.** Other languages use two common terms. *Splatting* spreads one bundle out into separate slots, and *gathering* collects separate values back into one bundle. Moxie does both with the same `...`, and a tuple makes most of it automatic:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn add(x Int, y Int) Int = x + y
@@ -698,7 +698,7 @@ Output: `(first: "Ada", last: "Lovelace", age: 37, full: "Ada Lovelace")`. Each 
 A field is a name in a tuple that holds a value. A *property* looks exactly like one from the outside, `r.area` and `r.area = 12.0`, but it can run code when it is read or written. That lets you start with a plain field and add a rule later without touching a single caller.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple Rect
@@ -731,7 +731,7 @@ A pattern describes the shape of a value. Matching a value against patterns test
 **Sum types made safe.** Enums are moxie's [algebraic data types](../fp.html#algebraic-data-types): a value is exactly one of several cases (an OR), and each case can carry fields. A `when` is how you open one up safely:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 enum Shape
@@ -767,7 +767,7 @@ The payoff comes later. Add a case to `Shape` six months from now, and the compi
 **Deep destructuring.** Patterns nest to any depth, so one arm can check a case, look inside a tuple, and test a literal at the same time:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 enum Response
@@ -803,7 +803,7 @@ Output: `55`. That is the textbook definition, not the fast one; the caching rec
 **Patterns in a parameter list.** A parameter doesn't have to be a name. It can be a pattern that takes the argument apart before the body runs, so the body starts with the pieces already bound. Here `area` is written as one clause per case, and `describe` unpacks a tuple right in its parameter list:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 enum Shape
@@ -834,7 +834,7 @@ Output: `12.0 6.0 0.0`, then `Ann has 250`. The clauses are tried from top to bo
 **Guards.** An arm can add an `if` condition. When it's false, matching falls through to the next arm, and the logic stays flat instead of drifting to the right in nested blocks:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple Player
@@ -874,7 +874,7 @@ Output: `Success Client Error Server Error Unknown`. The subject is named once, 
 **Conditions, not just shapes.** A plain `when` is a chain of Boolean tests: the first arm that is true wins, and the chain must end with an `else` arm. It's the right tool when the tests involve different things:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn advice(temp Int, raining Bool) String
@@ -897,7 +897,7 @@ Output: `Bring a coat and an umbrella`, `Bring an umbrella`, `Bring a coat`, the
 **Looking inside an object.** `x.do` runs a block with `x` as its receiver, which puts the fields of `x` in scope as bare names. (`x.do` works like Kotlin's `run`, with the receiver's fields in scope and the last line as the value.) Combine that with a value-less `when` and the tests can be written in terms of the object's own fields:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple User
@@ -923,7 +923,7 @@ Output: `Limited Access Full Access No Access`.
 **A whole shape at once.** A pattern can describe a nested structure down to its literals, so one arm can recognize a particular value outright:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple Point
@@ -975,7 +975,7 @@ final_score = 10
 A `seq` stage runs every step whose condition holds, in order, each seeing the result of the one before. Each line is a condition, an arrow, and a step, and it works like a row of "if this, then do that" gates that the value passes through, with no `if`, no `else`, and no temporary variables:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn is_big(n Int) Bool
@@ -1013,7 +1013,7 @@ That one line makes a plain, storable function out of `log`.
 **Pipelines read left to right.** Nested calls read inside out: `make_header(make_alert(raw))` runs `make_alert` first, but you meet it last. With UFCS the same chain reads in the order things happen, and a line that starts with `.name` continues the statement, so a long chain stacks neatly:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn add_prefix(text String, prefix String) String
@@ -1050,7 +1050,7 @@ The output is the same. The two differ in where the value may land: the dot alwa
 **Open-world extensibility.** In a strict object-oriented language, adding a method to a class means editing its source or subclassing it. In moxie, write a plain function anywhere and call it as if it were a method. Suppose `User` is declared in a package you can't change:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple User
@@ -1218,7 +1218,7 @@ Output: `skipped: 0`, with no "computing" line, because `x` is never read. Be aw
 **A caching recipe.** The simplest one threads a `Dict` through the recursion as a `ref` parameter, so every call can see what earlier calls learned, and wraps it in a plain function that starts the table empty:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn fib_memo(n Int, ref seen Dict[Int, Int]) Int
@@ -1250,7 +1250,7 @@ A language can survive without generics for a while, but it pays in copy-and-pas
 A generic declaration lists its type parameters in square brackets, ahead of the ordinary parameters in parentheses. The compiler works the types out from the arguments, so you rarely write them at a call:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn bigger[T Ordered](a T, b T) T
@@ -1315,7 +1315,7 @@ Output: `9 pear`, then `Pair(first: "one", second: 1)`, then `7`. A few things a
 **Higher-kinded types.** `List[Int]` is a type. `List` by itself is a *type constructor*: give it a type and it makes a type. Most languages let you write a function over any type. Moxie also lets you write one over any type constructor, by writing the constructor as a parameter, `F[_]`:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple Box[A] deriving show
@@ -1348,7 +1348,7 @@ An `interface` says what a type can do, and an `impl` says that a type does it. 
 There is no type hierarchy and no inheritance. An interface works like a club (a set, in mathematical terms), and an `impl` says a type belongs to it. A type can join one club or a hundred, and joining adds nothing to the type: no fields, no hidden pointer, no parent. A generic function can say which clubs its type must belong to, and any member can be used, related or not. Membership can be added after the fact, and by someone else, so even a built-in like `Int` can join. A class language would need a common base class or a wrapper for that. A non-member is a compile error ("`Dog` doesn't implement `Describable`, which `describe_all` requires of `T`").
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 interface Speaker
@@ -1468,7 +1468,7 @@ That works for `Box.Full(21)` and `Ok(21)` alike.
 **Where you'll actually bump into them.** Here's what the compiler says (the messages are approximate):
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 factor = 5
@@ -1496,7 +1496,7 @@ pure fn noisy(w Int) Int
 [Immutability](../fp.html#immutability) is the rule, and it has one deliberate exception: inside a `mutable` block you can write to your own variables in place, and nothing outside can ever tell. You get the speed and the plain loops of imperative code, and the function around the block stays pure.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 pure fn sum_sq(xs Array[Int][4]) Int
@@ -1575,7 +1575,7 @@ The worker doesn't start until the main fiber reaches `read` and parks. Fibers i
 **Futures.** A channel carries a stream of values. A future carries exactly one, delivered at some point. `Future[T]()` returns two handles, a read end and a write end, just as a channel does. One fiber completes the future through the write end, and anyone holding the read end can look at it:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fiber fn compute(w FutureW[Int]) Unit
@@ -1621,7 +1621,7 @@ fail: rejected no luck
 Servers don't end, so moxie has a place for that—`daemon` is the server program's main cycle. **[gc]** Strings built inside a cycle are reclaimed by the collector once nothing refers to them, so a program can run for years without growing, as long as it doesn't keep adding to a structure forever.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 daemon
@@ -1666,7 +1666,7 @@ Output: `29`. The fibers may finish in any order, and the sum is 4 + 9 + 16 eith
 A short fiber can also be written inline, right where you start it. The full form takes two lists: first the fiber's arguments, then the parameters to pass in. When an argument is just a name that matches the parameter name, you give that one list once:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 rx, tx = Chan[String][2]()
@@ -1723,7 +1723,7 @@ net.connect = ["example.com:443"]
 **C libraries are a declaration away.** A `foreign` block gives the signatures, each marked `pure`, `parks`, or `impure`, and the call looks like any other. Arrays of numbers, out-parameters, text, callbacks (even `qsort`'s comparator), handles that must be closed, and callbacks that C keeps and calls from its own thread are all covered, and `moxie bindgen` writes the declarations from a C header:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 foreign "c"
@@ -1752,7 +1752,7 @@ The output is `Array(1, 3, 5, 7, 9)`. Foreign code is outside moxie's guarantees
 A channel end, a timer, a future, a file, a socket, a child process, a terminal, or a handle from a C library is a resource: a value with an identity, not just a number or a piece of text. You can't copy a file the way you copy an `Int`, so moxie doesn't try. A resource has exactly one owner at a time, it moves rather than copies, and a tuple that holds one is a resource too. Where a language with a collector would tidy up later, moxie closes things at a place you can see, and the compiler checks it. There's no borrow checker to feed with lifetimes and no `&` to write. There is one rule, with two cases:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fn put_one(out ChanW[Int]) Unit
@@ -1807,7 +1807,7 @@ None of this costs anything at run time. It's all decided by the compiler, so th
 Haskell tracks effects by putting them in the type: an `IO` function can't hide inside a pure one. Koka and Scala's effect libraries do something similar with more machinery. Moxie tracks them too, but you don't write them, and nothing threads through your types. The compiler works out what each function does: it prints, it waits (parks) on a channel or a timer, it uses a resource, or it uses the system (`cwd()`, `hostname()`). A caller inherits what its callees do, all the way up:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 fiber fn square(n Int) Int
@@ -1853,7 +1853,7 @@ Effects say what code *does*. Permissions (superpower 23) say what a program is 
 A contract states what a function needs and what it promises, in the code instead of a comment. a `where` after a parameter is a precondition the caller must meet, a `where` after the result type is a postcondition the function guarantees (it may name `result`), and `invariant` is a condition every value of a tuple type must satisfy:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 tuple Account
@@ -1899,7 +1899,7 @@ Eiffel made contracts famous. In moxie they sit beside the types, and the checke
 Most languages let you write functions on values. Moxie also lets you write functions on *types*, and run them while the compiler checks your program. A type alias whose body is a `when` is a function that takes a type apart and builds another, with an arm for each shape:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie/gc</summary>
 
 ```
 type Elem[T] = when T

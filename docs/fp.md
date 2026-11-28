@@ -70,19 +70,19 @@ A pure function returns the same result for the same arguments and does nothing 
 
 ### Side effects {#side-effect}
 
-An effect outside the function's result, such as printing, reading a channel, writing a file or swapping an `Atom`. Moxie doesn't promise purity everywhere: the compiler works out which functions have effects, and a `pure fn` must have none. There is no IO monad (see [Limits](#limits)).
+An effect outside the function's result, such as printing, reading a channel, writing a file or swapping an `Atom`. Moxie doesn't promise purity everywhere: the compiler works out which functions have effects, and a `pure fn` must have none. There is no IO monad (see [Limits](#limits)). The lesson [Side effects and referential transparency](learn/68-side-effects-and-referential-transparency.html) covers this in full.
 
 ### Referential transparency {#referential-transparency}
 
-You can replace a call with its result without changing the program's behavior. In an expression-based language, `f(x)` yields a result, and code can be moved, refactored and tested like mathematics. In a statement-based language, moving code is risky because statements rely on when and where they change the surrounding environment. A `pure fn` is referentially transparent by the compiler's check. Other functions are transparent only when they have no side effects, which the compiler tells you.
+You can replace a call with its result without changing the program's behavior. In an expression-based language, `f(x)` yields a result, and code can be moved, refactored and tested like mathematics. In a statement-based language, moving code is risky because statements rely on when and where they change the surrounding environment. A `pure fn` is referentially transparent by the compiler's check. Other functions are transparent only when they have no side effects, which the compiler tells you. The lesson [Side effects and referential transparency](learn/68-side-effects-and-referential-transparency.html) covers this in full.
 
 ### Laziness {#laziness}
 
-Moxie is eager by default, so laziness is something you ask for, in two places. The first is streams: a stream is a recipe, and nothing happens until a terminal (`collect`, `sum`, `reduce`, `count`, or a `for` loop) pulls on it. Horizontal stages such as `map`, `filter`, `take`, `scan` and `enumerate` are lazy, so an element that `take` or `filter` rejects is never mapped over further, and an infinite source costs nothing. Vertical stages such as `sort` and `reverse` see every element first, so they collect them in a buffer. The second place is a `lazy` parameter (see [By name](#by-name)). See *[Pipelines and streams](learn/21-streams-and-pipelines.html)* and *[More stream tools](learn/61-more-stream-tools.html)*.
+Moxie is eager by default, so laziness is something you ask for, in two places. The first is streams: a stream is a recipe, and nothing happens until a terminal (`collect`, `sum`, `reduce`, `count`, or a `for` loop) pulls on it. Horizontal stages such as `map`, `filter`, `take`, `scan` and `enumerate` are lazy, so an element that `take` or `filter` rejects is never mapped over further, and an infinite source costs nothing. Vertical stages such as `sort` and `reverse` see every element first, so they collect them in a buffer. The second place is a `lazy` parameter (see [By name](#by-name)). See *[Pipelines and streams](learn/21-streams-and-pipelines.html)* and *[More stream tools](learn/61-more-stream-tools.html)*. The lesson [Eager and lazy evaluation](learn/69-eager-and-lazy-evaluation.html) covers this in full.
 
 ### Eager evaluation {#eager}
 
-Arguments are computed once, before the call. Eager is the default, and the exceptions are `lazy` parameters and streams. See [Laziness](#laziness).
+Arguments are computed once, before the call. Eager is the default, and the exceptions are `lazy` parameters and streams. See [Laziness](#laziness). The lesson [Eager and lazy evaluation](learn/69-eager-and-lazy-evaluation.html) covers this in full.
 
 ### Memoization {#memoization}
 
@@ -90,19 +90,19 @@ Storing a result so that the same call is not computed again. Moxie never caches
 
 ### Call-by-value {#by-value}
 
-The default way to receive an argument. The argument is evaluated once, before the call, and the function gets its own value. Nothing it does can change your variable.
+The default way to receive an argument. The argument is evaluated once, before the call, and the function gets its own value. Nothing it does can change your variable. The lesson [Call by value, reference, name, and need](learn/70-call-by-value-reference-name-and-need.html) covers this in full.
 
 ### Call-by-reference (`ref`) {#ref-parameter}
 
-A parameter marked `ref`. It isn't a shared pointer. The function gets a copy, may rebind it, and when the function returns, the final value is copied back into the caller's variable. The caller writes `ref` in front of the variable, so a change is always visible at the call. A `ref` parameter the function never changes draws a compiler warning. See *[Functions](learn/08-functions.html)*.
+A parameter marked `ref`. It isn't a shared pointer. The function gets a copy, may rebind it, and when the function returns, the final value is copied back into the caller's variable. The caller writes `ref` in front of the variable, so a change is always visible at the call. A `ref` parameter the function never changes draws a compiler warning. See *[Functions](learn/08-functions.html)*. The lesson [Call by value, reference, name, and need](learn/70-call-by-value-reference-name-and-need.html) covers this in full.
 
 ### Call-by-name (`lazy`) {#by-name}
 
-A parameter marked `lazy`. The argument isn't evaluated before the call. It is evaluated each time the function reads the parameter, and never if the function never reads it. A lazy argument can't contain a `ref`. See [Laziness](#laziness).
+A parameter marked `lazy`. The argument isn't evaluated before the call. It is evaluated each time the function reads the parameter, and never if the function never reads it. A lazy argument can't contain a `ref`. See [Laziness](#laziness). The lesson [Call by value, reference, name, and need](learn/70-call-by-value-reference-name-and-need.html) covers this in full.
 
 ### Call-by-need {#by-need}
 
-By name with a cache, so the argument is evaluated at most once. Moxie doesn't build this in. To get it, read the lazy parameter once, bind the result to a name, and use that name. See [Memoization](#memoization).
+By name with a cache, so the argument is evaluated at most once. Moxie doesn't build this in. To get it, read the lazy parameter once, bind the result to a name, and use that name. See [Memoization](#memoization). The lesson [Call by value, reference, name, and need](learn/70-call-by-value-reference-name-and-need.html) covers this in full.
 
 ## 2. Data and types
 
@@ -121,7 +121,7 @@ A tuple groups named fields into one value, the structs of moxie. A declared tup
 
 ### Unification of tuples and parameter lists {#unification}
 
-Moxie treats a tuple and a parameter list as the same shape: a function's parameters have the same type as a tuple of those parameter types. A call with a single tuple argument unpacks into the parameters when the shapes match. Parameter modifiers such as `ref`, `lazy` and `using` have no tuple counterpart, so the unification stops there. See *[Tuples](learn/12-tuples.html)* and *[Functions](learn/08-functions.html)*.
+Moxie treats a tuple and a parameter list as the same shape: a function's parameters have the same type as a tuple of those parameter types. A call with a single tuple argument unpacks into the parameters when the shapes match. Parameter modifiers such as `ref`, `lazy` and `using` have no tuple counterpart, so the unification stops there. See *[Tuples](learn/12-tuples.html)* and *[Functions](learn/08-functions.html)*. The lesson [Unifying tuples and parameter lists](learn/75-unifying-tuples-and-parameters.html) covers this in full.
 
 ### Product types {#product-type}
 
@@ -159,7 +159,7 @@ A type with a condition on it, written with `where` after a parameter, result or
 
 ### Iterators {#iterator}
 
-A source you can loop over. Any collection is a loop source: `for x in numbers` walks a list. A `Dict` yields `(key, value)` tuples, a `Range` counts with an optional step, and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate` and `windows` are its stages. Your own tuple or enum is a source once it has a `to_stream` function that returns a `Stream[T]`. See *[Pipelines and streams](learn/21-streams-and-pipelines.html)* and *[More stream tools](learn/61-more-stream-tools.html)*.
+A source you can loop over. Any collection is a loop source: `for x in numbers` walks a list. A `Dict` yields `(key, value)` tuples, a `Range` counts with an optional step, and `zip` pairs two sources. A stream (`to_stream()`) is moxie's general iterator, and `map`, `filter`, `take`, `scan`, `enumerate` and `windows` are its stages. Your own tuple or enum is a source once it has a `to_stream` function that returns a `Stream[T]`. See *[Pipelines and streams](learn/21-streams-and-pipelines.html)* and *[More stream tools](learn/61-more-stream-tools.html)*. The lesson [Iterators and generators](learn/72-iterators-and-generators.html) covers this in full.
 
 ### Streams {#stream}
 
@@ -167,7 +167,7 @@ A lazy pipeline of stages over a source. Each element passes through the whole c
 
 ### Generators {#generator}
 
-A function that returns a stream built with `unfold`. The step takes the current state and returns a value together with the next state, or an `Err` to stop. The first pass receives the seed, and each later pass receives the state the previous pass returned. A sequence such as the Fibonacci numbers can be infinite, and `take` is what ends the loop. See *[More stream tools](learn/61-more-stream-tools.html)*.
+A function that returns a stream built with `unfold`. The step takes the current state and returns a value together with the next state, or an `Err` to stop. The first pass receives the seed, and each later pass receives the state the previous pass returned. A sequence such as the Fibonacci numbers can be infinite, and `take` is what ends the loop. See *[More stream tools](learn/61-more-stream-tools.html)*. The lesson [Iterators and generators](learn/72-iterators-and-generators.html) covers this in full.
 
 ### Comprehensions {#comprehension}
 
@@ -184,7 +184,7 @@ The block form of `for` with `yield` comes from Scala, widened with ideas from F
 In an object, the data and the methods that work on it live together: `deposit` belongs to the account, and the fields are reached through it. Functional programming keeps them apart. The data is a plain value, a tuple with no behaviour attached, and the functions that act on it are separate values. A function written once works on any data of the right shape, and the same data can be printed, compared, stored, or sent to a fiber without carrying any methods along.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Account
@@ -213,7 +213,7 @@ This prints `ann: 15.0` and `22.0`. Neither `describe` nor `total` is a method o
 **Why the separation is done.** The main reason is reuse. A function that is written once, with no reference to any particular data type, can be used on any data of the right shape. The next example writes `total_by` once and uses it on two different tuples, and `first_or` once for any list.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Account deriving show, eq, hash
@@ -253,7 +253,7 @@ Keeping data plain brings other benefits, and they come from the same source:
 - **Behaviour can change without touching data.** New functions can be written for an existing type, as in the `describe` and `total` example above, and the code that already uses the data keeps working.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Account deriving show, eq, hash
@@ -273,12 +273,12 @@ This prints `Ok(1)`, `true`, and `Account(owner: "ann", balance: 10.0)`.
 
 ### Modularity without classes {#modularity}
 
-Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small [interface](#interface), so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below.
+Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small [interface](#interface), so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below. The lesson [Modularity and encapsulation without classes](learn/74-modularity-and-encapsulation.html) covers this in full.
 
 **An [interface](#interface) is the boundary.** The code that needs a logger asks for the interface, not for a particular logger. Any type that has an `impl` of the interface can be passed in, and nothing else about it is visible. Unlike a structural system (Go, TypeScript), a type joins an interface only by an explicit `impl`, so you can always find the place where it agreed to the contract, and you can add an `impl` for a type that you didn't write.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 interface Logger
@@ -316,7 +316,7 @@ save(QuietLogger(level: 1), "report")
 **`any` is dynamic dispatch without a hierarchy.** When you want a mixed collection, say `any Logger`. `ConsoleLogger` is not a subtype of anything. Each value is simply stored together with the way to call its `Logger` methods.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 loggers = List[any Logger][2](ConsoleLogger(prefix: "a"), QuietLogger(level: 0))
@@ -329,7 +329,7 @@ for l in loggers
 **Hiding state is lexical.** Everything in moxie is immutable, so a part's private state is either a field of its [tuple](#tuple) or something a [closure](#closure) captured, and the code outside can reach it only through the functions you hand out. A function can return a closure that keeps a private counter, and the counter has no name outside it.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn make_counter() () -> Int
@@ -349,7 +349,7 @@ println(next())
 **Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 interface Logger
@@ -384,7 +384,7 @@ One thing the GC-free dialect does not do is store a [closure](#closure) that ca
 **In moxie/gc, an object can be a record of [closures](#closure).** With a garbage collector, a closure that captures values can be stored in a [tuple](#tuple) field, so Odersky's "an object is a bundle of functions over private state" can be written directly, and the stamped version is an ordinary tuple update with `...`:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Log
@@ -424,7 +424,7 @@ Moxie has no separate typeclass feature. A class is an [interface](#interface), 
 
 ### Existential types {#existential-type}
 
-`any Interface` holds a value together with the way to call its methods, so a collection can hold values of different types that share an interface, and the code that holds one can't see what is inside. No type is a subtype of another. See *[Typeclasses](learn/46-typeclasses.html)*.
+`any Interface` holds a value together with the way to call its methods, so a collection can hold values of different types that share an interface, and the code that holds one can't see what is inside. No type is a subtype of another. See *[Typeclasses](learn/46-typeclasses.html)*. The lesson [Existential types](learn/73-existential-types.html) covers this in full.
 
 ### Generics {#generics}
 
@@ -436,14 +436,14 @@ A type constructor, such as `List` or `Result[_, E]`, takes a type and makes a t
 
 ### Encapsulating state without objects {#encapsulation}
 
-An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from five other tools, and moxie has all five. [Modularity](#modularity) covered two of them, the [interface](#interface) and the [closure](#closure); this section covers the rest.
+An object bundles state with the methods that may touch it. Functional languages get the same protection, hidden representation and controlled change, from five other tools, and moxie has all five. [Modularity](#modularity) covered two of them, the [interface](#interface) and the [closure](#closure); this section covers the rest. The lesson [Modularity and encapsulation without classes](learn/74-modularity-and-encapsulation.html) covers this in full.
 
 **An [opaque type](#opaque-type) protects an invariant.** An opaque type is the module-level answer to a class with private fields. Other packages can name the type and hold it, but they can't construct or inspect it, so the only way to get an `Account` is through the functions that check the rules. The lesson [Opaque types: genuinely new](learn/18-types-of-types.html#opaque-types-genuinely-new) shows how to write one, with the constructor and the rules that go with it.
 
 **State is threaded, and the compiler can hide the threading.** Where a functional program would use the [State monad](#state-monad), moxie lets a `ref` parameter carry the state. The callee gets a copy, rebinds it, and the final value goes back to the caller's variable, so the code reads like mutation while every value stays immutable and nothing is shared.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn next_id(ref counter Int) Int
@@ -466,7 +466,7 @@ When you want the state passed explicitly instead, return it with the answer, `(
 **Local mutation gets a block of its own.** Haskell needs the `ST` [monad](#monad) and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still [pure](#purity) from outside. Moxie has a `mutable` block. Inside it, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write into the variable's storage from any depth of loop or branch, with no rebinding, no shadowing and no `@N`. The writes are guaranteed in place, so the in-place algorithms (a sieve, an in-place sort, union-find) cost what they should.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn running_totals(xs Array[Int][5]) Array[Int][5]
@@ -488,7 +488,7 @@ The block is an expression, and its last line is the value. Containment comes fr
 **An [existential](#existential-type) hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 interface Component
@@ -534,7 +534,7 @@ A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a 
 **In moxie/gc,** the [State monad](#state-monad) is ready-made as `fp.state`, which threads a state through a computation as a value:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 import fp.state
@@ -578,12 +578,12 @@ These are the names for ways of working with a value inside a container. You don
 
 ### Avoiding the pyramid of doom {#pyramid-of-doom}
 
-Anyone who has written code where every step can fail knows the pyramid of doom. You check the first result, and if it's good you indent and check the second, and if that's good you indent again, until the real work sits at the far right of the screen under a stack of closing brackets. Every level has its own "what if this failed?" branch, and the branches all say the same thing.
+Anyone who has written code where every step can fail knows the pyramid of doom. You check the first result, and if it's good you indent and check the second, and if that's good you indent again, until the real work sits at the far right of the screen under a stack of closing brackets. Every level has its own "what if this failed?" branch, and the branches all say the same thing. The lesson [The pyramid of doom](learn/71-the-pyramid-of-doom.html) covers this in full.
 
 Here's that shape in moxie, with three lookups that each return a `Result`:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn pay_nested(id Int) Result[Int, Error]

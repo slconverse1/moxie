@@ -953,7 +953,7 @@ A small library for learning statistics and simple prediction, in both dialects.
 - **Prediction:** `tuple Line` with the fields `slope Double`, `intercept Double`, and `r_squared Double`. `fit_line(xs, ys) Result[Line, Error]` is the least-squares line (an `Err` when every `x` is the same), `predict(line, x)` is `slope * x + intercept`, and `predict_all(line, xs)` predicts each value of an array. `r_squared` is the share of the variation in `y` that the line explains.
 - **Error measures:** `rmse(actual, predicted)` and `mean_absolute_error(actual, predicted)`, with arrays of the same length.
 - **A series:** `moving_average(xs, window) List[Double]` averages each `window` values in a row, and `smooth(xs, alpha) Double` is exponential smoothing (`alpha` from 0.0 to 1.0): the level after the last value, which is also the forecast for the next one.
-- **Not included:** regression on several variables, classifiers, and anything that needs matrix inversion.
+- **Not included:** regression on several variables, classifiers on several variables (the `ml` package, section 23h, has a one-variable classifier), and anything that needs matrix inversion.
 
 ## 23b. Networking (the `http` package) {#s23b}
 
