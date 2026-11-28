@@ -955,7 +955,7 @@ A small library for learning statistics and simple prediction, in both dialects.
 - **A series:** `moving_average(xs, window) List[Double]` averages each `window` values in a row, and `smooth(xs, alpha) Double` is exponential smoothing (`alpha` from 0.0 to 1.0): the level after the last value, which is also the forecast for the next one.
 - **Not included:** regression on several variables, classifiers, and anything that needs matrix inversion.
 
-## 23b. HTTP (the `http` package) {#s23b}
+## 23b. Networking (the `http` package) {#s23b}
 
 <!-- guide -->
 *In the Mixer’s Guide: [42. Networking, deadlines, and parallel work](learn/33-networking.html)*
