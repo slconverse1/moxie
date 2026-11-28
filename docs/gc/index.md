@@ -433,19 +433,19 @@ Moxie is a general language, but five kinds of applications come with the langua
 
 **[Typeclasses](../fp.html#typeclass) and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
 
-**SQL databases.** See the [Mixer’s Guide](learn/).
+**SQL databases.** See [Databases with SQL](learn/35-sql.html).
 
-**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It’s not a numeric toolkit. See the [Mixer’s Guide](learn/).
+**Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It’s not a numeric toolkit. See [Statistics and prediction](learn/32-statistics.html).
 
-**AI and machine learning (lite).** A small `ml` package for learning the ideas: a logistic model trained by gradient descent, a nearest-neighbour rule, and two-group clustering, each in a few readable lines on one number per example. It's not a deep-learning toolkit. See the [Mixer’s Guide](learn/).
+**AI and machine learning (lite).** A small `ml` package for learning the ideas: a logistic model trained by gradient descent, a nearest-neighbour rule, and two-group clustering, each in a few readable lines on one number per example. It's not a deep-learning toolkit. See [Machine learning, lite](learn/76-machine-learning-lite.html).
 
-**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Mixer’s Guide](learn/).
+**HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See [Networking, deadlines, and parallel work](learn/33-networking.html).
 
-**Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See the [Mixer’s Guide](learn/).
+**Regular expressions.** A `regex` package written in moxie that runs in time proportional to the text (no backtracking, so no pattern can hang). In a `when`, `Matches("(?<y:Int>\\d{4})-(\\d\\d)", (y, m))` types the names from the groups, as Swift's regex literals do: `y` is an `Int`, and a wrong count or type is a compile error. See [Regular expressions](learn/31-regex.html).
 
-**Units of measure.** `unit m` declares a unit and `5.0 m` is a quantity of it; the checker keeps the unit in the type (`Double[m/s]`, `Int[m^2]`) and works it through `+ - * /`, comparisons, `abs`, `sum`, `sqrt` and `pow`, so adding meters to seconds is a compile error. Units are erased at run time, and `Duration` stays separate. Scaled units (`unit km = 1000 m`) are stored in the base unit and converted out with `d in km`; unit-polymorphic functions are not done yet. See the [Mixer’s Guide](learn/).
+**Units of measure.** `unit m` declares a unit and `5.0 m` is a quantity of it; the checker keeps the unit in the type (`Double[m/s]`, `Int[m^2]`) and works it through `+ - * /`, comparisons, `abs`, `sum`, `sqrt` and `pow`, so adding meters to seconds is a compile error. Units are erased at run time, and `Duration` stays separate. Scaled units (`unit km = 1000 m`) are stored in the base unit and converted out with `d in km`; unit-polymorphic functions are not done yet. See [Units of measure](learn/34-units.html).
 
-**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See the [Mixer’s Guide](learn/). An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
+**JSON and data from outside.** A small `json` package with a closed `Dyn` type (null, bool, int, float, text, list, map) that reads and writes JSON. Lookups return a `Result`, so bad or missing data is an `Err`, and nothing needs run-time reflection. See [JSON and data from outside](learn/30-json.html). An enum can derive the same conversion with `deriving dyn` (each case becomes a map with a `"case"` key).
 
 ## 4. Everything is an expression
 
