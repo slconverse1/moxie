@@ -179,6 +179,37 @@ The block form of `for` with `yield` comes from Scala, widened with ideas from F
 
 ## 4. Structure
 
+### Code and data are separate {#code-and-data}
+
+In an object, the data and the methods that work on it live together: `deposit` belongs to the account, and the fields are reached through it. Functional programming keeps them apart. The data is a plain value, a tuple with no behaviour attached, and the functions that act on it are separate values. A function written once works on any data of the right shape, and the same data can be printed, compared, stored, or sent to a fiber without carrying any methods along.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Account
+  owner String
+  balance Double
+
+fn deposit(a Account, amount Double) Account
+  Account(owner: a.owner, balance: a.balance + amount)
+
+fn describe(a Account) String
+  "${a.owner}: ${a.balance}"
+
+fn total(accounts List[Account]) Double
+  balances = accounts |> map()(a) -> a.balance
+  balances |> sum()
+
+acct = Account(owner: "ann", balance: 10.0)
+println(describe(deposit(acct, 5.0)))
+println(total(List(acct, deposit(acct, 2.0))))
+```
+
+</details>
+
+This prints `ann: 15.0` and `22.0`. Neither `describe` nor `total` is a method of `Account`, and `Account` has no methods at all. Behaviour can be attached to a type from outside with an `impl` block (see [Methods and interfaces](learn/20-interfaces.html)), and that leaves the data exactly as it was.
+
 ### Modularity without classes {#modularity}
 
 Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small [interface](#interface), so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below.
