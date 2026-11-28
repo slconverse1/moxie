@@ -184,7 +184,7 @@ The block form of `for` with `yield` comes from Scala, widened with ideas from F
 In an object, the data and the methods that work on it live together: `deposit` belongs to the account, and the fields are reached through it. Functional programming keeps them apart. The data is a plain value, a tuple with no behaviour attached, and the functions that act on it are separate values. A function written once works on any data of the right shape, and the same data can be printed, compared, stored, or sent to a fiber without carrying any methods along.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Account
@@ -213,7 +213,7 @@ This prints `ann: 15.0` and `22.0`. Neither `describe` nor `total` is a method o
 **Why the separation is done.** The main reason is reuse. A function that is written once, with no reference to any particular data type, can be used on any data of the right shape. The next example writes `total_by` once and uses it on two different tuples, and `first_or` once for any list.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Account deriving show, eq, hash
@@ -253,7 +253,7 @@ Keeping data plain brings other benefits, and they come from the same source:
 - **Behaviour can change without touching data.** New functions can be written for an existing type, as in the `describe` and `total` example above, and the code that already uses the data keeps working.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Account deriving show, eq, hash
@@ -278,7 +278,7 @@ Martin Odersky, who designed Scala, has argued that the main thing object-orient
 **An [interface](#interface) is the boundary.** The code that needs a logger asks for the interface, not for a particular logger. Any type that has an `impl` of the interface can be passed in, and nothing else about it is visible. Unlike a structural system (Go, TypeScript), a type joins an interface only by an explicit `impl`, so you can always find the place where it agreed to the contract, and you can add an `impl` for a type that you didn't write.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 interface Logger
@@ -316,7 +316,7 @@ save(QuietLogger(level: 1), "report")
 **`any` is dynamic dispatch without a hierarchy.** When you want a mixed collection, say `any Logger`. `ConsoleLogger` is not a subtype of anything. Each value is simply stored together with the way to call its `Logger` methods.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 loggers = List[any Logger][2](ConsoleLogger(prefix: "a"), QuietLogger(level: 0))
@@ -329,7 +329,7 @@ for l in loggers
 **Hiding state is lexical.** Everything in moxie is immutable, so a part's private state is either a field of its [tuple](#tuple) or something a [closure](#closure) captured, and the code outside can reach it only through the functions you hand out. A function can return a closure that keeps a private counter, and the counter has no name outside it.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn make_counter() () -> Int
@@ -349,7 +349,7 @@ println(next())
 **Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 interface Logger
@@ -384,7 +384,7 @@ One thing the GC-free dialect does not do is store a [closure](#closure) that ca
 **In moxie/gc, an object can be a record of [closures](#closure).** With a garbage collector, a closure that captures values can be stored in a [tuple](#tuple) field, so Odersky's "an object is a bundle of functions over private state" can be written directly, and the stamped version is an ordinary tuple update with `...`:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 tuple Log
@@ -443,7 +443,7 @@ An object bundles state with the methods that may touch it. Functional languages
 **State is threaded, and the compiler can hide the threading.** Where a functional program would use the [State monad](#state-monad), moxie lets a `ref` parameter carry the state. The callee gets a copy, rebinds it, and the final value goes back to the caller's variable, so the code reads like mutation while every value stays immutable and nothing is shared.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn next_id(ref counter Int) Int
@@ -466,7 +466,7 @@ When you want the state passed explicitly instead, return it with the answer, `(
 **Local mutation gets a block of its own.** Haskell needs the `ST` [monad](#monad) and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still [pure](#purity) from outside. Moxie has a `mutable` block. Inside it, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write into the variable's storage from any depth of loop or branch, with no rebinding, no shadowing and no `@N`. The writes are guaranteed in place, so the in-place algorithms (a sieve, an in-place sort, union-find) cost what they should.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn running_totals(xs Array[Int][5]) Array[Int][5]
@@ -488,7 +488,7 @@ The block is an expression, and its last line is the value. Containment comes fr
 **An [existential](#existential-type) hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 interface Component
@@ -534,7 +534,7 @@ A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a 
 **In moxie/gc,** the [State monad](#state-monad) is ready-made as `fp.state`, which threads a state through a computation as a value:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 import fp.state
@@ -583,7 +583,7 @@ Anyone who has written code where every step can fail knows the pyramid of doom.
 Here's that shape in moxie, with three lookups that each return a `Result`:
 
 <details markdown="1">
-<summary>Code example</summary>
+<summary>moxie</summary>
 
 ```
 fn pay_nested(id Int) Result[Int, Error]
