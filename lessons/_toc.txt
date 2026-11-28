@@ -85,4 +85,15 @@
 65-byte-streams
 60-the-two-dialects
 66-the-rest-of-moxie
+
+# Ideas and applications
+68-side-effects-and-referential-transparency
+69-eager-and-lazy-evaluation
+70-call-by-value-reference-name-and-need
+71-the-pyramid-of-doom
+72-iterators-and-generators
+73-existential-types
+74-modularity-and-encapsulation
+75-unifying-tuples-and-parameters
+76-machine-learning-lite
 64-where-to-go-next

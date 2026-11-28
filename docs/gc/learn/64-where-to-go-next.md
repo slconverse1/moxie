@@ -4,7 +4,7 @@ dialect: gc
 learn: true
 title: "Where to go next · Moxie/gc Mixer’s Guide"
 ---
-# 67. Where to go next
+# 76. Where to go next
 
 In the Spec: [25. Still open](../spec.html#s25), [26. Grammar](../spec.html#s26)
 {: .specref}
@@ -47,4 +47,4 @@ That is the whole tour. Write something small, run it, and let it grow.
 
 ---
 
-[← …moxie: the rest of the moxie toolbox](66-the-rest-of-moxie.html) · [Contents](./)
+[← Machine learning, lite](76-machine-learning-lite.html) · [Contents](./)

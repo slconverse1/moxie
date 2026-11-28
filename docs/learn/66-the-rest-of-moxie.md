@@ -318,4 +318,4 @@ The Spec has the rest, section by section.
 
 ---
 
-[← Moxie and moxie/gc side by side](60-the-two-dialects.html) · [Contents](./) · [Where to go next →](64-where-to-go-next.html)
+[← Moxie and moxie/gc side by side](60-the-two-dialects.html) · [Contents](./) · [Side effects and referential transparency →](68-side-effects-and-referential-transparency.html)

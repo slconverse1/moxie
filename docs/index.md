@@ -407,13 +407,15 @@ The values here are only examples. The `limit` is a default for each fiber funct
 
 ## 3. What moxie is built for
 
-Moxie is a general language, but four kinds of applications come with the language itself, so you start with a toolbox instead of a shopping list.
+Moxie is a general language, but five kinds of applications come with the language itself, so you start with a toolbox instead of a shopping list.
 
 **[Typeclasses](fp.html#typeclass) and their operations.** See superpower 18 (interfaces and impls) and superpower 19 (functional programming).
 
 **SQL databases.** See the [Mixer’s Guide](learn/).
 
 **Data science (lite).** A small built-in `stats` package for learning and quick answers: averages, spread, correlation, a fitted line with predictions, and smoothing. It’s not a numeric toolkit. See the [Mixer’s Guide](learn/).
+
+**AI and machine learning (lite).** A small `ml` package for learning the ideas: a logistic model trained by gradient descent, a nearest-neighbour rule, and two-group clustering, each in a few readable lines on one number per example. It's not a deep-learning toolkit. See the [Mixer’s Guide](learn/).
 
 **HTTP client and server.** A small `http` package over moxie's own sockets: a client that fetches and posts, and a server that calls your handler for each request. See the [Mixer’s Guide](learn/).
 
