@@ -51,7 +51,7 @@ println("${m} ${e}")
 
 ## Arrays and callbacks
 
-An `Array` of any number type is passed as a pointer. A parameter written `n UInt = len(base)` is C's length, filled in by the call, and `size UInt = size_of(base)` is the element size. A parameter of function type is a C callback for the length of the call, and `Ptr[T]` in the callback's type is a `const T *` that arrives as the value. That is enough to declare `qsort` and call it with a closure:
+An `Array` of any number type is passed as a pointer. A parameter written `n UInt = len(base)` is C's length, filled in by the call, and `size UInt = size_of(base)` is the element size. A parameter of function type is a C callback for the length of the call, and `Ptr[T]` in the callback's type is a `const T *` that arrives as the value. That is enough to declare `qsort` and call it with a [closure](../fp.html#closure):
 
 ```moxie
 foreign "c"

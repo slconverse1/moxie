@@ -1,6 +1,6 @@
 # Tagless final: one program, many interpreters
 
-Suppose you are writing a tiny language of sums (numbers, `+`, negation) and want to run it, print it, and later do more with it. The usual way is a data type (an `enum`) and one function per job that takes it apart with `when`. **Tagless final** turns that around: you write the language as an *interface*, and a program in it is a generic function that builds its result using the interface's functions. An interpreter is a type that implements the interface, so choosing the interpreter is choosing a type argument, and no tree is built at all.
+Suppose you are writing a tiny language of sums (numbers, `+`, negation) and want to run it, print it, and later do more with it. The usual way is a data type (an `enum`) and one function per job that takes it apart with `when`. **[Tagless final]({{FP}}fp.html#tagless-final)** turns that around: you write the language as an *interface*, and a program in it is a generic function that builds its result using the interface's functions. An interpreter is a type that implements the interface, so choosing the interpreter is choosing a type argument, and no tree is built at all.
 
 This is an advanced lesson. It uses interfaces (lesson 24) and generics (lesson 13) together, and it shows that a language with no macros can still describe a program once and run it in many ways.
 
@@ -191,7 +191,7 @@ println(prog[Show]().text)
 if (1 <= 2) then (10 + 5) else 0
 ```
 
-`cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs GADTs for this (a case that states its own result type, lesson 52); in the tagless style the interface carries the types.
+`cond` takes a `R[Bool]` for its test and two `R[A]` for its branches, so every interpreter has to give a boolean test and branches of one type, and each `impl` is checked against those signatures. A typed evaluator over a data type needs [GADTs]({{FP}}fp.html#gadt) for this (a case that states its own result type, lesson 52); in the tagless style the interface carries the types.
 
 The body of a generic program is checked against those signatures too: `R.add(R.lit(1), R.bool(true))` is a compile error, and so is a number as the test of `cond`.
 

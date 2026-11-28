@@ -179,6 +179,98 @@ The block form of `for` with `yield` comes from Scala, widened with ideas from F
 
 ## 4. Structure
 
+### Code and data are separate {#code-and-data}
+
+In an object, the data and the methods that work on it live together: `deposit` belongs to the account, and the fields are reached through it. Functional programming keeps them apart. The data is a plain value, a tuple with no behaviour attached, and the functions that act on it are separate values. A function written once works on any data of the right shape, and the same data can be printed, compared, stored, or sent to a fiber without carrying any methods along.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Account
+  owner String
+  balance Double
+
+fn deposit(a Account, amount Double) Account
+  Account(owner: a.owner, balance: a.balance + amount)
+
+fn describe(a Account) String
+  "${a.owner}: ${a.balance}"
+
+fn total(accounts List[Account]) Double
+  balances = accounts |> map()(a) -> a.balance
+  balances |> sum()
+
+acct = Account(owner: "ann", balance: 10.0)
+println(describe(deposit(acct, 5.0)))
+println(total(List(acct, deposit(acct, 2.0))))
+```
+
+</details>
+
+This prints `ann: 15.0` and `22.0`. Neither `describe` nor `total` is a method of `Account`, and `Account` has no methods at all. Behaviour can be attached to a type from outside with an `impl` block (see [Methods and interfaces](learn/20-interfaces.html)), and that leaves the data exactly as it was.
+
+**Why the separation is done.** The main reason is reuse. A function that is written once, with no reference to any particular data type, can be used on any data of the right shape. The next example writes `total_by` once and uses it on two different tuples, and `first_or` once for any list.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Account deriving show, eq, hash
+  owner String
+  balance Double
+
+tuple Order deriving show, eq
+  item String
+  price Double
+  qty Int
+
+fn total_by[T](xs List[T], amount (T) -> Double) Double
+  amounts = xs |> map()(x) -> amount(x)
+  amounts |> sum()
+
+fn first_or[T](xs List[T], fallback T) T
+  when xs |> first()
+    Ok(x) -> x
+    Err(e) -> fallback
+
+accounts = List(Account(owner: "ann", balance: 10.0), Account(owner: "bob", balance: 4.5))
+orders = List(Order(item: "pen", price: 1.5, qty: 4), Order(item: "pad", price: 3.0, qty: 2))
+println(total_by(accounts, (a) -> a.balance))
+println(total_by(orders, (o) -> o.price * cast[Double](o.qty)))
+println(first_or(orders, Order(item: "none", price: 0.0, qty: 0)))
+```
+
+</details>
+
+This prints `14.5`, `12.0`, and `Order(item: "pen", price: 1.5, qty: 4)`. The function `total_by` does not know what an account or an order is. It only needs a list and a way to get a number from each item, and you supply that way as a function each time you call it. This is where [generics](#generics) come in: the `[T]` in `total_by[T]` and `first_or[T]` is a type variable, so one definition works for every element type, and the compiler checks each use against the type it is given. See *[Generic functions](learn/11-generics.html)*.
+
+Keeping data plain brings other benefits, and they come from the same source:
+
+- **Equality and printing come for free.** A tuple with `deriving eq` compares by value, and `deriving show` prints it, with no code written for either.
+- **Data can be a key.** A tuple that derives `hash` can be used as a `Dict` key, so the ledger below is keyed by the account value itself.
+- **Data can cross a channel.** Because a tuple holds no methods or hidden state, it can be sent to another fiber as it is.
+- **Behaviour can change without touching data.** New functions can be written for an existing type, as in the `describe` and `total` example above, and the code that already uses the data keeps working.
+
+<details markdown="1">
+<summary>Code example</summary>
+
+```
+tuple Account deriving show, eq, hash
+  owner String
+  balance Double
+
+saved = Account(owner: "ann", balance: 10.0)
+ledger Dict[Account, Int] = Dict(saved -> 1)
+println(ledger(saved))
+println(saved == Account(owner: "ann", balance: 10.0))
+println(saved)
+```
+
+</details>
+
+This prints `Ok(1)`, `true`, and `Account(owner: "ann", balance: 10.0)`.
+
 ### Modularity without classes {#modularity}
 
 Martin Odersky, who designed Scala, has argued that the main thing object-oriented programming gives you is not inheritance but **modularity**: a program is built from parts that keep their insides private and show the rest of the program a small [interface](#interface), so that one part can be replaced by another without touching the code that uses it. You can have all of that without a class hierarchy, and moxie has it from four pieces that you have already met or will meet below.
@@ -219,7 +311,7 @@ save(QuietLogger(level: 1), "report")
 
 </details>
 
-This prints `app info: saving report`, `app ERROR: disk full`, and then `error: disk full`. `save` has no idea which logger it got, and a test can hand it a fake one.
+`save` has no idea which logger it got, and a test can hand it a fake one.
 
 **`any` is dynamic dispatch without a hierarchy.** When you want a mixed collection, say `any Logger`. `ConsoleLogger` is not a subtype of anything. Each value is simply stored together with the way to call its `Logger` methods.
 
@@ -233,8 +325,6 @@ for l in loggers
 ```
 
 </details>
-
-This prints `a ERROR: heterogeneous` and `error: heterogeneous`.
 
 **Hiding state is lexical.** Everything in moxie is immutable, so a part's private state is either a field of its [tuple](#tuple) or something a [closure](#closure) captured, and the code outside can reach it only through the functions you hand out. A function can return a closure that keeps a private counter, and the counter has no name outside it.
 
@@ -255,8 +345,6 @@ println(next())
 ```
 
 </details>
-
-This prints `3`.
 
 **Reuse is delegation, not inheritance.** What people miss most when they give up base classes is "override one method and keep the other ten". `proxy` does that: the methods an `impl` doesn't write are forwarded to a field, and the ones it does write win. There is no base class to become fragile, no `super`, and no diamond.
 
@@ -289,7 +377,7 @@ s.error("disk full")
 
 </details>
 
-This prints `t info: 12:00 saving x` and `t ERROR: disk full`. `error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
+`error` was forwarded to the `ConsoleLogger` inside, and `info` was replaced.
 
 One thing the GC-free dialect does not do is store a [closure](#closure) that captures values inside a [tuple](#tuple) field, because the captured values would have no owner. An object that is "a record of functions over private state" is written with an [interface](#interface) and a tuple that holds its state, as above (the `moxie/gc` dialect does allow the record-of-closures style).
 
@@ -322,7 +410,7 @@ lg.error("failed")
 
 </details>
 
-This prints `app info: 12:00 started` and `app ERROR: failed`. The GC-free dialect refuses to store a [closure](#closure) that captures values inside a [tuple](#tuple), because the closure's captured values would have no owner, so the GC-free dialect uses the [interface](#interface)-and-`impl` style in its place.
+The GC-free dialect refuses to store a [closure](#closure) that captures values inside a [tuple](#tuple), because the closure's captured values would have no owner, so the GC-free dialect uses the [interface](#interface)-and-`impl` style in its place.
 
 Packages and imports are the outer layer of the same idea. See *[Packages and imports](learn/27-packages.html)*.
 
@@ -373,7 +461,7 @@ println("$a $b $n")
 
 </details>
 
-This prints `tmp1 tmp2 2`. When you want the state passed explicitly instead, return it with the answer, `(Int, Int)`, and bind both: `a, s1 = next(seed)`.
+When you want the state passed explicitly instead, return it with the answer, `(Int, Int)`, and bind both: `a, s1 = next(seed)`.
 
 **Local mutation gets a block of its own.** Haskell needs the `ST` [monad](#monad) and a rank-2 type to prove that a function's private mutable array never leaks, so that the function is still [pure](#purity) from outside. Moxie has a `mutable` block. Inside it, `=` declares a variable the first time and assigns to it after that, and `x += e`, `out(i) = v` and `p.f = e` write into the variable's storage from any depth of loop or branch, with no rebinding, no shadowing and no `@N`. The writes are guaranteed in place, so the in-place algorithms (a sieve, an in-place sort, union-find) cost what they should.
 
@@ -395,7 +483,7 @@ println(running_totals(Array(3, 1, 4, 1, 5)))
 
 </details>
 
-This prints `Array(3, 4, 8, 9, 14)`. The block is an expression, and its last line is the value. Containment comes from the language's other rules rather than from a type trick: `b = a` inside the block copies, values enter by copy (or by move when the old one is dead) and leave as ordinary immutable values, and a [closure](#closure) made inside takes the current values, so no mutable variable can be reached from outside. A variable keeps its declared type, an outer name is read-only unless copied in on an `in` line, and the block is [pure](#purity) from outside, so a `pure fn` may contain one. Outside a `mutable` block, an update is in place only when the old value is dead, and `moxie build --report` lists the ones that copied. The only truly shared mutable thing is the `Atom`, which holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is where state outlives a call.
+The block is an expression, and its last line is the value. Containment comes from the language's other rules rather than from a type trick: `b = a` inside the block copies, values enter by copy (or by move when the old one is dead) and leave as ordinary immutable values, and a [closure](#closure) made inside takes the current values, so no mutable variable can be reached from outside. A variable keeps its declared type, an outer name is read-only unless copied in on an `in` line, and the block is [pure](#purity) from outside, so a `pure fn` may contain one. Outside a `mutable` block, an update is in place only when the old value is dead, and `moxie build --report` lists the ones that copied. The only truly shared mutable thing is the `Atom`, which holds immutable values that you replace through a pure function, so a closure that captures one (as `make_counter` does above) is where state outlives a call.
 
 **An [existential](#existential-type) hides the representation.** A collection of parts whose internal state types differ, such as widgets or game entities, needs each one to keep its own state private while sharing a behavior. `any Interface` is that existential: the value travels with its methods, and the code that holds it can't see what is inside.
 
@@ -433,7 +521,7 @@ for p in parts
 
 </details>
 
-This prints `count 1` and `on`. A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a new component of the same kind with the next state, so the list is stepped without anyone knowing which is which.
+A `Counter` holds an `Int` and a `Blinker` holds a `Bool`, and `step` returns a new component of the same kind with the next state, so the list is stepped without anyone knowing which is which.
 
 | Need | Moxie's tool | Mutability |
 | --- | --- | --- |
@@ -459,8 +547,6 @@ println(state.traverse(List("a", "b", "c"), label).run(0))
 ```
 
 </details>
-
-This prints `(List("a1", "b2", "c3"), 3)`.
 
 ### Opaque types {#opaque-type}
 

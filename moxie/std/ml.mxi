@@ -1,0 +1,110 @@
+//! ml: machine learning for learning the ideas, in plain moxie. Three small methods on one number per example: a
+//! logistic model trained by gradient descent, a nearest-neighbour rule and two-group clustering. Each is a few
+//! lines you can read, and a bad input is an `Err`, never a surprise.
+
+// ---------------------------------------------------------------- logistic regression
+
+/// A logistic model of one number: the weight and the bias of the line that is passed through the sigmoid.
+export tuple Model
+  weight Double,
+  bias Double
+
+fn e_base() Double
+  2.718281828459045
+
+/// The S-shaped squashing function: any number in, a number between 0 and 1 out.
+///
+/// > sigmoid(0.0)
+/// 0.5
+export fn sigmoid(z Double) Double
+  1.0 / (1.0 + pow(e_base(), 0.0 - z))
+
+/// The probability that `x` belongs to class 1.
+export fn probability(m Model, x Double) Double
+  sigmoid(m.weight * x + m.bias)
+
+/// The class for `x`: 1.0 when the probability is at least one half, otherwise 0.0.
+export fn classify(m Model, x Double) Double
+  if probability(m, x) >= 0.5 then 1.0 else 0.0
+
+fn is_label(y Double) Bool
+  y == 0.0 or y == 1.0
+
+fn all_labels[N](labels Array[Double][N]) Bool
+  (labels |> filter((y) -> not is_label(y)) |> count()) == 0
+
+fn one_gradient_step[N](xs Array[Double][N], labels Array[Double][N], m Model, rate Double) Model
+  n = cast[Double](len(xs))
+  errors = zip(xs, labels) |> map()(x, y) -> probability(m, x) - y
+  weighted = zip(xs, errors) |> map()(x, e) -> x * e
+  grad_w = (weighted |> sum()) / n
+  grad_b = (errors |> sum()) / n
+  Model(weight: m.weight - rate * grad_w, bias: m.bias - rate * grad_b)
+
+fn train[N](xs Array[Double][N], labels Array[Double][N], m Model, rate Double, steps Int) Model
+  if steps == 0
+    m
+  else
+    train(xs, labels, one_gradient_step(xs, labels, m, rate), rate, steps - 1)
+
+/// Trains the model by gradient descent: each step moves the weight and the bias a little way downhill on the
+/// average error, `steps` times, by `rate` of the slope. Labels must be 0.0 or 1.0, there must be one label per
+/// example and at least one example, and the number of steps must not be negative.
+export fn fit[N](xs Array[Double][N], labels Array[Double][N], rate Double, steps Int) Result[Model, Error]
+  if len(xs) ~= len(labels)
+    fail(1, "fit: there must be one label for each example")
+  elif len(xs) == 0
+    fail(2, "fit: there must be at least one example")
+  elif steps < 0
+    fail(3, "fit: the number of steps must not be negative")
+  elif not all_labels(labels)
+    fail(4, "fit: labels must be 0.0 or 1.0")
+  else
+    Ok(train(xs, labels, Model(weight: 0.0, bias: 0.0), rate, steps))
+
+// ---------------------------------------------------------------- nearest neighbour
+
+fn nearest_from[N](xs Array[Double][N], labels Array[Double][N], query Double, i Int, best_d Double, best_y Double) Double
+  if i == len(xs)
+    best_y
+  else
+    d = abs(xs(i) - query)
+    if d < best_d
+      nearest_from(xs, labels, query, i + 1, d, labels(i))
+    else
+      nearest_from(xs, labels, query, i + 1, best_d, best_y)
+
+/// The label of the example whose value is closest to `query`; the first one wins a tie.
+export fn nearest_label[N](xs Array[Double][N], labels Array[Double][N], query Double) Result[Double, Error]
+  if len(xs) == 0
+    fail(1, "nearest_label: there must be at least one example")
+  elif len(xs) ~= len(labels)
+    fail(2, "nearest_label: there must be one label for each example")
+  else
+    Ok(nearest_from(xs, labels, query, 1, abs(xs(0) - query), labels(0)))
+
+// ---------------------------------------------------------------- two groups
+
+fn move_centers[N](xs Array[Double][N], c1 Double, c2 Double, steps Int) (Double, Double)
+  if steps == 0
+    (c1, c2)
+  else
+    n1 = xs |> filter((x) -> abs(x - c1) <= abs(x - c2)) |> count()
+    s1 = xs |> filter((x) -> abs(x - c1) <= abs(x - c2)) |> sum()
+    n2 = xs |> filter((x) -> abs(x - c1) > abs(x - c2)) |> count()
+    s2 = xs |> filter((x) -> abs(x - c1) > abs(x - c2)) |> sum()
+    next1 = if n1 == 0 then c1 else s1 / cast[Double](n1)
+    next2 = if n2 == 0 then c2 else s2 / cast[Double](n2)
+    move_centers(xs, next1, next2, steps - 1)
+
+/// Splits the numbers into two groups. The two centres start at the smallest and the largest value; each step
+/// gives every number to its nearer centre and then moves each centre to the average of its group.
+export fn two_means[N](xs Array[Double][N], steps Int) Result[(Double, Double), Error]
+  if len(xs) < 2
+    fail(1, "two_means: there must be at least two values")
+  elif steps < 0
+    fail(2, "two_means: the number of steps must not be negative")
+  else
+    lo = min(xs)?
+    hi = max(xs)?
+    Ok(move_centers(xs, lo, hi, steps))

@@ -228,7 +228,7 @@ A timer has one owner and never goes to a fiber. Lessons 29 to 30 cover fibers, 
 
 ## Random and reproducible
 
-`random()` and `random_int(1..6)` come from a generator that starts from operating-system entropy. They aren't for secrets: use `random_bytes(n)` for tokens and keys. For tests, `seeded(n)` makes a generator that repeats for the same `n`, and `gen_int`, `gen_bool`, and `gen_pick` draw from it:
+`random()` and `random_int(1..6)` come from a [generator]({{FP}}fp.html#generator) that starts from operating-system entropy. They aren't for secrets: use `random_bytes(n)` for tokens and keys. For tests, `seeded(n)` makes a generator that repeats for the same `n`, and `gen_int`, `gen_bool`, and `gen_pick` draw from it:
 
 ```moxie
 g1 = seeded(7)

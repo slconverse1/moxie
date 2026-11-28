@@ -72,7 +72,7 @@ Ada
 
 ## Closures can go anywhere
 
-A function type in moxie/gc is just its signature, so a closure can be stored in a `Dict`, a tuple field, or a channel, and a function can return a different closure from each branch:
+A function type in moxie/gc is just its signature, so a [closure](../../fp.html#closure) can be stored in a `Dict`, a tuple field, or a channel, and a function can return a different closure from each branch:
 
 ```moxie
 fn pick(flag Bool, k Int) (Int) -> Int

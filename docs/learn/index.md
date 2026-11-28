@@ -113,4 +113,16 @@ You don't need to know any functional programming. If you do, the lessons point 
 64. [Byte streams: Reader and Writer](65-byte-streams.html)
 65. [Moxie and moxie/gc side by side](60-the-two-dialects.html)
 66. […moxie: the rest of the moxie toolbox](66-the-rest-of-moxie.html)
-67. [Where to go next](64-where-to-go-next.html)
+
+## Ideas and applications
+
+67. [Side effects and referential transparency](68-side-effects-and-referential-transparency.html)
+68. [Eager and lazy evaluation](69-eager-and-lazy-evaluation.html)
+69. [Call by value, reference, name, and need](70-call-by-value-reference-name-and-need.html)
+70. [The pyramid of doom](71-the-pyramid-of-doom.html)
+71. [Iterators and generators](72-iterators-and-generators.html)
+72. [Existential types](73-existential-types.html)
+73. [Modularity and encapsulation without classes](74-modularity-and-encapsulation.html)
+74. [Unifying tuples and parameter lists](75-unifying-tuples-and-parameters.html)
+75. [Machine learning, lite](76-machine-learning-lite.html)
+76. [Where to go next](64-where-to-go-next.html)

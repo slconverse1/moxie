@@ -10,7 +10,7 @@ In the Spec: [23. Functional programming support](../spec.html#s23)
 {: .specref}
 
 
-A **transformer** adds one capability to any monad underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs rather than which stack provides it:
+A **transformer** adds one capability to any [monad](../../fp.html#monad) underneath it. `import fp.trans` gives `StateT`, `ReaderT`, `WriterT`, and `ExceptT` (each takes the inner monad as its first type argument), `Identity` for the bottom of a stack, and four classes that say what a program needs rather than which stack provides it:
 
 - `MonadState[S]`: `get`, `put`, `modify`, `gets`
 - `MonadReader[R]`: `ask`, `asks`, `local`
@@ -50,7 +50,7 @@ A class member reaches through every layer above the one that provides it (`M.ge
 
 ## Continuations and free programs in a stack
 
-`ContT` is a continuation transformer, and `MonadCont` gives any stack `M.call_cc`, which reaches through the other layers. An escape keeps the state as it was at the moment of the jump:
+`ContT` is a [continuation](../../fp.html#continuation) transformer, and `MonadCont` gives any stack `M.call_cc`, which reaches through the other layers. An escape keeps the state as it was at the moment of the jump:
 
 ```moxie
 import fp.trans

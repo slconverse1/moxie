@@ -28,7 +28,7 @@ println(@counter)
 
 An atom is the one kind of shared, changeable thing in moxie. It is safe because the update is a single step: `swap` takes the old value and a *pure* function, stores the new value, and returns it. The function must not wait or have effects, so nothing else can slip in between reading the old value and writing the new one.
 
-`swap` returns the new value, and extra arguments go in with a placeholder call:
+`swap` returns the new value, and extra arguments go in with a [placeholder](../fp.html#placeholder) call:
 
 ```moxie
 fn add(x Int, y Int) Int = x + y

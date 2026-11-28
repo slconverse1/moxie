@@ -1,17 +1,17 @@
 # Reader, writer, and continuations
 
 @nogc
-The monads in this lesson and the next are packages that need closures of one type per signature, which GC-free moxie does not have, so they ship only with moxie/gc. The idea of each, and what to use instead, is below.
+The [monads]({{FP}}fp.html#monad) in this lesson and the next are packages that need [closures]({{FP}}fp.html#closure) of one type per signature, which GC-free moxie does not have, so they ship only with moxie/gc. The idea of each, and what to use instead, is below.
 
 - **Reader** passes a read-only setting to every step. In GC-free moxie, pass the setting as a parameter, or use a receiver block (lesson 56).
 - **Writer** collects a log alongside a result. Return a tuple `(value, log)`, or build the log with a `reduce`.
-- **Continuations** let a computation jump out early. Use `break(value)` in a loop, a `?` that returns an `Err`, or a `when` that returns early.
+- **[Continuations]({{FP}}fp.html#continuation)** let a computation jump out early. Use `break(value)` in a loop, a `?` that returns an `Err`, or a `when` that returns early.
 
 Lesson 47 and lesson 50 cover the monads that do exist in GC-free moxie.
 @end
 
 @gc
-Lesson 47 introduced the `Monad` interface and what `flat_map` means. Three packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), and a **continuation** monad (a step can jump out early). The free monad is covered in lesson 52. They need closures with one type per signature, so GC-free moxie does not have them. Each is the matching transformer from lesson 55 with nothing underneath, `Identity`, so a program that later needs two effects at once can move to the transformer without relearning anything.
+Lesson 47 introduced the `Monad` interface and what `flat_map` means. Three packages in moxie/gc give you ready-made monads for common jobs: a **Reader** (every step can read a shared setting), a **Writer** (every step can add to a log), and a **continuation** monad (a step can jump out early). The [free monad]({{FP}}fp.html#free-monad) is covered in lesson 52. They need closures with one type per signature, so GC-free moxie does not have them. Each is the matching transformer from lesson 55 with nothing underneath, `Identity`, so a program that later needs two effects at once can move to the transformer without relearning anything.
 
 ## Reader
 

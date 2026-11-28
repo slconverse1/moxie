@@ -33,9 +33,9 @@ The block is an expression whose value is its last line.
 - A variable keeps the type it was declared with, so `total = "x"` after `total = 0` is an error.
 - Outer names are read-only inside the block, unless they are copied in on an `in` line (`in total`), which makes a mutable local of the same name and leaves the outer one alone.
 - The assignments are *guaranteed* in-place writes. That's the difference from an ordinary update, which is in place only when the old value is dead.
-- To keep that safe, `b = a` inside the block *copies* `a`, values enter by copy and leave as plain immutable values, and a closure made inside takes the current values.
+- To keep that safe, `b = a` inside the block *copies* `a`, values enter by copy and leave as plain immutable values, and a [closure]({{FP}}fp.html#closure) made inside takes the current values.
 
-So the block is pure from the outside, and a `pure fn` may contain one. This is what Haskell's `ST` monad provides with `runST` and a rank-2 type, here as a block with a keyword.
+So the block is pure from the outside, and a `pure fn` may contain one. This is what Haskell's `ST` [monad]({{FP}}fp.html#monad) provides with `runST` and a rank-2 type, here as a block with a keyword.
 
 ### Bringing an outer value in
 
@@ -59,7 +59,7 @@ Array(12, 15, 18)
 
 ## The `algo` package
 
-A small standard package, `algo`, is written this way. Each function takes an array, copies it in, writes into the copy in place, and gives back an ordinary immutable array, so a caller sees pure functions:
+A small standard package, `algo`, is written this way. Each function takes an array, copies it in, writes into the copy in place, and gives back an ordinary immutable array, so a caller sees [pure functions]({{FP}}fp.html#purity):
 
 | Function | What it does |
 |---|---|

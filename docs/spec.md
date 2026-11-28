@@ -955,7 +955,7 @@ A small library for learning statistics and simple prediction, in both dialects.
 - **A series:** `moving_average(xs, window) List[Double]` averages each `window` values in a row, and `smooth(xs, alpha) Double` is exponential smoothing (`alpha` from 0.0 to 1.0): the level after the last value, which is also the forecast for the next one.
 - **Not included:** regression on several variables, classifiers, and anything that needs matrix inversion.
 
-## 23b. HTTP (the `http` package) {#s23b}
+## 23b. Networking (the `http` package) {#s23b}
 
 <!-- guide -->
 *In the Mixer’s Guide: [42. Networking, deadlines, and parallel work](learn/33-networking.html)*
@@ -1036,6 +1036,20 @@ Two declared markers, written before `fn` like an effect, that say where compile
 - **Unit parameters.** A type parameter written as a unit, `fn twice[U](x Double[U]) Double[U]`, stands for a dimension. A call binds it from the arguments (`U` is `m/s` for a `Double[m/s]`; a plain number binds it to no unit), and the result substitutes it, so `Double[A/B]` and `Double[U^2]` work. A parameter used twice must get one dimension. In the body `U` behaves as a base unit nobody else has, so `x + x` is a `Double[U]` and `x * x` a `Double[U^2]`.
 - **Packages.** `export unit m` makes a unit part of a package's interface. `import phys` brings its exported units into scope unqualified, so `5.0 m`, `Double[m/s]` and `d in km` work, and the signatures of its exported functions are checked in those units (a scaled unit keeps its factor). A unit the package does not export cannot be written as a literal. A unit declared twice (here and in a package) is an error. The files of a multi-file package share its units: a unit declared in one file is in scope in the others (a derived unit must come after the units it is built from, in the manifest's file order).
 - **Not yet.** Nothing is planned beyond this.
+
+## 23h. Machine learning, lite (the `ml` package) {#s23h}
+
+<!-- guide -->
+*In the Mixer’s Guide: [76. Machine learning, lite](learn/76-machine-learning-lite.html)*
+<!-- /guide -->
+
+(a built-in package written in moxie, `moxie/std/ml.mxi`; `import ml`)
+A small library for learning the ideas of machine learning, in both dialects. It works on one number per example, each function is a few readable lines, and it is not a deep-learning toolkit.
+- **Logistic model:** `tuple Model` with `weight Double` and `bias Double`. `fit(xs, labels, rate, steps) Result[Model, Error]` trains by gradient descent. The labels must be 0.0 or 1.0, the lengths must match (a compile error when the sizes are known), `steps` must not be negative, and there must be at least one example. `probability(m, x)` is the chance of class 1, `classify(m, x)` is 1.0 when that chance is at least one half and 0.0 otherwise, and `sigmoid(z)` is the squashing function.
+- **Nearest neighbour:** `nearest_label(xs, labels, query) Result[Double, Error]` copies the label of the example closest to `query`; the first example wins a tie.
+- **Two groups:** `two_means(xs, steps) Result[(Double, Double), Error]` moves two centres, starting at the smallest and the largest value, until they settle on the two groups.
+- **Errors:** bad input is an `Err`, and known, different array sizes are a compile error.
+- **Not included:** deep networks, several features at once, and anything that needs matrix inversion.
 
 ## 24. Prelude reference {#s24}
 

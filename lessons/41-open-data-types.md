@@ -2,7 +2,7 @@
 
 Suppose a library defines arithmetic as data (numbers and `+`) together with a function that evaluates it. You want to add multiplication, and later a function that prints it, **without editing the library**.
 
-With an `enum` this is the **expression problem**: a new *operation* is easy (write a function), but a new *variant* means editing the `enum` and every `when` over it. Tagless final (lesson 50) solves it, but its programs are functions, so you can't look inside one. This lesson shows a way that keeps real data you can inspect, rewrite, and serialize.
+With an `enum` this is the **[expression problem]({{FP}}fp.html#expression-problem)**: a new *operation* is easy (write a function), but a new *variant* means editing the `enum` and every `when` over it. [Tagless final]({{FP}}fp.html#tagless-final) (lesson 50) solves it, but its programs are functions, so you can't look inside one. This lesson shows a way that keeps real data you can inspect, rewrite, and serialize.
 
 ## The pieces
 
@@ -75,7 +75,7 @@ Nothing above the "new code" comment changed: `Mul` and `Pretty` are new code, t
 
 In a real project the two halves would be separate files: `import arith` makes the first part available to the second.
 
-Write the recursion once for any union with a bound: `fn eval_any[U Eval[U]](e U) Int` is `e.eval(eval_any)`, and it works for `Arith`, `Full`, and every union you add later.
+Write the [recursion]({{FP}}fp.html#recursion) once for any union with a bound: `fn eval_any[U Eval[U]](e U) Int` is `e.eval(eval_any)`, and it works for `Arith`, `Full`, and every union you add later.
 
 ## The compiler checks the union
 

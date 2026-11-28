@@ -1,6 +1,6 @@
 # Recursion and function clauses
 
-A function that calls itself is *recursive*. Recursion is the natural way to work through data that is built from smaller pieces of the same kind, and in moxie it is cheap enough to use freely.
+A function that calls itself is *recursive*. [Recursion]({{FP}}fp.html#recursion) is the natural way to work through data that is built from smaller pieces of the same kind, and in moxie it is cheap enough to use freely.
 
 ## A recursive function
 
@@ -73,7 +73,7 @@ positive
 
 ## Deep recursion is fine
 
-A recursive call that is the very last thing a function does is a *tail call*, and the language promises that a tail call reuses the function's frame instead of growing the stack. That is why `sum_to` above, which carries its running total along in `total`, can count as high as you like where a version that waits for each answer (`n + sum_to(n - 1)`) would eventually run out of stack. Writing a function with an extra "accumulator" parameter, as `sum_to` does, is the standard way to turn a recursion into a tail call:
+A recursive call that is the very last thing a function does is a *[tail call]({{FP}}fp.html#tail-call)*, and the language promises that a tail call reuses the function's frame instead of growing the stack. That is why `sum_to` above, which carries its running total along in `total`, can count as high as you like where a version that waits for each answer (`n + sum_to(n - 1)`) would eventually run out of stack. Writing a function with an extra "accumulator" parameter, as `sum_to` does, is the standard way to turn a recursion into a tail call:
 
 ```moxie
 fn sum_to(0, total Int) Int = total

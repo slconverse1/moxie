@@ -2,7 +2,7 @@
 
 The same idea as the last lesson covers programs that *do* things. The commands are described as data, and a program is data that holds a command and what to do with its answer. A separate function, a *handler*, decides what the commands actually do. That way the same program can talk to the real world in production and to a script in a test.
 
-This is an advanced lesson. It builds on GADTs (lesson 53) for typed commands and on monads (lesson 47).
+This is an advanced lesson. It builds on [GADTs]({{FP}}fp.html#gadt) (lesson 53) for typed commands and on [monads]({{FP}}fp.html#monad) (lesson 47).
 
 ## Commands and programs
 
@@ -100,7 +100,7 @@ List("hi bob")
 
 A helper that should work in any language holding a command bounds its constructor parameter with `Has`: `fn say[C[_] Has[Say]](t String) freer.Prog[C, Unit] = freer.send(Print(t))` builds into `freer.Prog[Cmds, Unit]`, and `x freer.Prog[OnlyAsk, Unit] = say("hi")` is a compile error (`OnlyAsk has no Say`).
 
-Handlers that run for a long program should be `tailrec fn`: a `tailrec fn` runs its tail calls as a loop, so a handler over twenty thousand commands takes no stack, where the same handler without `tailrec` slows down as the program deepens.
+Handlers that run for a long program should be `tailrec fn`: a `tailrec fn` runs its [tail calls]({{FP}}fp.html#tail-call) as a loop, so a handler over twenty thousand commands takes no stack, where the same handler without `tailrec` slows down as the program deepens.
 
 ## Why bother
 

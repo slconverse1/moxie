@@ -76,7 +76,7 @@ An arm may use a bound as its pattern: `X Named -> String` matches any type that
 
 ## Compile-time evaluation
 
-A pure function that you declare is also run by the compiler when its arguments are constants and a constant is needed. `N = fib(6)` makes `N` usable as a size, and a wrong size is caught before the program runs:
+A [pure function]({{FP}}fp.html#purity) that you declare is also run by the compiler when its arguments are constants and a constant is needed. `N = fib(6)` makes `N` usable as a size, and a wrong size is caught before the program runs:
 
 ```moxie
 pure fn fib(n Int) Int

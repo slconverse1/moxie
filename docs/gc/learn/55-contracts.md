@@ -142,7 +142,7 @@ The first line prints `tom`; the second `Cat` breaks the interface's promise, an
 
 ## Conditions are pure
 
-A condition may call only pure functions (lesson 46), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
+A condition may call only [pure functions](../../fp.html#purity) (lesson 46), as `debug_assert` may. Contracts are checked in debug builds and in `moxie test`. `moxie build --release` removes them, as it removes `debug_assert`, unless the manifest sets `[contracts]` `keep_in_release = true`.
 
 Because `moxie test` checks contracts, a property test (lesson 33) exercises them: the postconditions are the properties that its generated inputs try to break.
 

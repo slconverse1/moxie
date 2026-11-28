@@ -122,7 +122,7 @@ def build(gc):
     open(os.path.join(base, "index.md"), "w", encoding="utf-8").write("\n".join(idx) + "\n")
     sl = spec_lines()
     for i, (p, s, t, txt) in enumerate(flat):
-        body = render(txt, gc)
+        body = render(txt, gc).replace("{{FP}}", "../../" if gc else "../")   # the FP Overview sits at the site root
         if s in sl:
             refs = ", ".join(f"[{h[0]}. {h[1]}](../spec.html#{sid})" for sid, h in sl[s])
             body = re.sub(r"^(# .+)$", lambda m: m.group(1) + f"\n\nIn the Spec: {refs}\n{{: .specref}}", body, 1, flags=re.M)
